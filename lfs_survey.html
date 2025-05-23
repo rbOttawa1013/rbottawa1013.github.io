@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LFS Questionnaire Prototype (2022) | Prototype de questionnaire EPA (2022)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link id="opendyslexic-font-cdn" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/opendyslexic@0.3.0/build/opendyslexic.css" media="none" onload="if(media!='all')media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/opendyslexic@0.3.0/build/opendyslexic.css"></noscript>
+
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .lang-fr, .lang-en { display: none; }
+        .active-lang { display: block !important; }
+        .section {
+            display: none;
+            border: 1px solid #e2e8f0; /* cool-gray-200 */
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+            background-color: #fff; /* Default background for sections */
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .active-section { display: block !important; }
+        label { font-weight: 600; margin-bottom: 0.5rem; display: block; }
+        input[type="text"], input[type="date"], input[type="number"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0; /* cool-gray-300 */
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        input[type="radio"], input[type="checkbox"] { margin-right: 0.5rem; }
+        .radio-group div, .checkbox-group div { margin-bottom: 0.5rem; }
+        .btn {
+            padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600;
+            cursor: pointer; transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .btn-primary { background-color: #2563eb; color: white; } /* blue-600 */
+        .btn-primary:hover { background-color: #1d4ed8; } /* blue-700 */
+        .btn-secondary { background-color: #e2e8f0; color: #1f2937; } /* cool-gray-200, cool-gray-800 */
+        .btn-secondary:hover { background-color: #cbd5e0; } /* cool-gray-300 */
+        .btn-warning { background-color: #f59e0b; color: white; } /* amber-500 */
+        .btn-warning:hover { background-color: #d97706; } /* amber-600 */
+        .btn-lang.active { background-color: #10b981; color: white; } /* emerald-500 */
+        .disclaimer {
+            background-color: #fefcbf; border: 1px solid #fef08a; color: #713f12; /* yellow-100, yellow-200, yellow-800 */
+            padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.5rem; text-align: center;
+        }
+        .form-group { margin-bottom: 1.5rem; }
+        .progress-bar-container { width: 100%; background-color: #e5e7eb; border-radius: 0.5rem; margin-bottom: 1.5rem; overflow: hidden; }
+        .progress-bar {
+            height: 1.5rem; width: 0%; background-color: #2563eb; /* blue-600 */
+            text-align: center; line-height: 1.5rem; color: white; font-weight: bold;
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+        .validation-error { border-color: #f56565 !important; } /* red-500 */
+        .radio-group-error { border: 1px solid #f56565; border-radius: 0.375rem; padding: 0.25rem; }
+        .text-red-500 { color: #ef4444; } /* Tailwind red-500 */
+
+        /* Accessibility Styles */
+        .large-font body, body.large-font { font-size: 1.15em; } /* Increase base font size */
+        body.large-font input, body.large-font select, body.large-font button, body.large-font textarea { font-size: 1em; /* Ensure form elements scale relative to body */ }
+        body.large-font h1 { font-size: 2.25rem; } /* Adjust heading sizes if needed */
+        body.large-font h2 { font-size: 1.75rem; }
+
+        body.high-contrast { background-color: #000000; color: #ffffff; }
+        body.high-contrast .section, body.high-contrast .max-w-3xl { background-color: #1a1a1a; border-color: #555555; }
+        body.high-contrast label, body.high-contrast p, body.high-contrast h1, body.high-contrast h2 { color: #ffffff; }
+        body.high-contrast input[type="text"], body.high-contrast input[type="date"], body.high-contrast input[type="number"], body.high-contrast select {
+            background-color: #333333; color: #ffffff; border-color: #ffffff;
+        }
+        body.high-contrast input::placeholder { color: #bbbbbb; }
+        body.high-contrast .btn-primary { background-color: #ffffff; color: #000000; border: 1px solid #000000; }
+        body.high-contrast .btn-primary:hover { background-color: #dddddd; }
+        body.high-contrast .btn-secondary { background-color: #555555; color: #ffffff; border: 1px solid #888888;}
+        body.high-contrast .btn-secondary:hover { background-color: #777777; }
+        body.high-contrast .btn-warning { background-color: #ffff00; color: #000000; border: 1px solid #000000;}
+        body.high-contrast .btn-warning:hover { background-color: #eeee00; }
+        body.high-contrast .btn-lang { border: 1px solid #888888; }
+        body.high-contrast .btn-lang.active { background-color: #00ff00; color: #000000; border: 1px solid #000000;}
+        body.high-contrast .disclaimer { background-color: #333333; color: #ffff00; border-color: #ffff00; }
+        body.high-contrast .progress-bar-container { background-color: #555555; }
+        body.high-contrast .progress-bar { background-color: #ffffff; color: #000000; }
+        body.high-contrast .validation-error { border-color: #ffff00 !important; }
+        body.high-contrast .radio-group-error { border-color: #ffff00; }
+        body.high-contrast .text-red-500 { color: #ffff00 !important; } /* Yellow for errors in high contrast */
+        body.high-contrast a { color: #66ccff; } /* Light blue for links */
+
+        /* Color Blind Friendly (Deuteranopia) - Using Paul Tol's vibrant palette ideas */
+        body.color-blind-deuteranopia .btn-primary { background-color: #0072B2; } /* Blue */
+        body.color-blind-deuteranopia .btn-primary:hover { background-color: #00588a; }
+        body.color-blind-deuteranopia .btn-warning { background-color: #E69F00; } /* Orange */
+        body.color-blind-deuteranopia .btn-warning:hover { background-color: #c78a00; }
+        body.color-blind-deuteranopia .btn-lang.active { background-color: #009E73; } /* Bluish Green */
+        body.color-blind-deuteranopia .progress-bar { background-color: #0072B2; } /* Blue */
+        body.color-blind-deuteranopia .validation-error { border-color: #D55E00 !important; } /* Vermillion for errors */
+        body.color-blind-deuteranopia .radio-group-error { border-color: #D55E00; }
+        body.color-blind-deuteranopia .text-red-500 { color: #D55E00 !important; } /* Vermillion for error text */
+
+        body.dyslexia-font { font-family: 'OpenDyslexic', 'Arial', sans-serif !important; line-height: 1.6 !important; letter-spacing: 0.01em; word-spacing: 0.05em; }
+        body.dyslexia-font input, body.dyslexia-font select, body.dyslexia-font button, body.dyslexia-font textarea, body.dyslexia-font label, body.dyslexia-font p, body.dyslexia-font h1, body.dyslexia-font h2, body.dyslexia-font span {
+            font-family: 'OpenDyslexic', 'Arial', sans-serif !important;
+        }
+        /* Ensure OpenDyslexic font is loaded before applying it aggressively */
+        .font-opendyslexic-loaded body.dyslexia-font { /* styles as above */ }
+
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6 md:p-8">
+
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <label for="accessibility-settings" class="sr-only lang-en">Accessibility Settings</label>
+                <label for="accessibility-settings" class="sr-only lang-fr">Paramètres d'accessibilité</label>
+                <select id="accessibility-settings" class="p-2 border rounded-md text-sm">
+                    <option value="default" class="lang-en">Default View</option>
+                    <option value="default" class="lang-fr">Vue par défaut</option>
+                    <option value="large-font" class="lang-en">Large Font</option>
+                    <option value="large-font" class="lang-fr">Grande police</option>
+                    <option value="high-contrast" class="lang-en">High Contrast</option>
+                    <option value="high-contrast" class="lang-fr">Contraste élevé</option>
+                    <option value="color-blind-deuteranopia" class="lang-en">Color Aid (Deuteranopia)</option>
+                    <option value="color-blind-deuteranopia" class="lang-fr">Aide aux couleurs (Deutéranopie)</option>
+                    <option value="dyslexia-font" class="lang-en">Dyslexia Friendly Font</option>
+                    <option value="dyslexia-font" class="lang-fr">Police pour dyslexiques</option>
+                </select>
+            </div>
+            <div>
+                <button id="lang-en-btn" class="btn btn-sm btn-lang active mr-2">English</button>
+                <button id="lang-fr-btn" class="btn btn-sm btn-lang">Français</button>
+            </div>
+        </div>
+
+        <div class="disclaimer">
+            <p class="font-bold lang-en">IMPORTANT DISCLAIMER</p>
+            <p class="font-bold lang-fr">AVIS IMPORTANT</p>
+            <p class="lang-en">This is a non-working prototype of the Labour Force Survey questionnaire. It is for demonstration purposes only and DOES NOT collect, store, or transmit any personal data. All information entered will be lost upon closing or refreshing the page.</p>
+            <p class="lang-fr">Ceci est un prototype non fonctionnel du questionnaire de l'Enquête sur la population active. Il est destiné à des fins de démonstration uniquement et NE recueille, ne stocke ni ne transmet aucune donnée personnelle. Toutes les informations saisies seront perdues à la fermeture ou à l'actualisation de la page.</p>
+        </div>
+
+        <h1 class="text-2xl md:text-3xl font-bold mb-2 text-center">
+            <span class="lang-en">Labour Force Survey - Prototype</span>
+            <span class="lang-fr">Enquête sur la population active - Prototype</span>
+        </h1>
+        <p class="text-sm text-gray-600 mb-6 text-center">
+            <span class="lang-en">Based on 2022 Questionnaire</span>
+            <span class="lang-fr">Basé sur le questionnaire de 2022</span>
+        </p>
+
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar">0%</div>
+        </div>
+
+        <form id="lfs-form">
+            <div id="section-0" class="section">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span class="lang-en">Introduction</span>
+                    <span class="lang-fr">Introduction</span>
+                </h2>
+                <p class="lang-en mb-4">This survey is conducted under the authority of the Statistics Act. Your information is kept confidential.</p>
+                <p class="lang-fr mb-4">Cette enquête est menée en vertu de la Loi sur la statistique. Vos renseignements demeureront confidentiels.</p>
+                <p class="lang-en mb-4">Participation in this survey is voluntary. By proceeding, you acknowledge the terms of this prototype.</p>
+                <p class="lang-fr mb-4">La participation à cette enquête est volontaire. En continuant, vous reconnaissez les termes de ce prototype.</p>
+            </div>
+
+            <div id="section-1" class="section">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span class="lang-en">Section 1: Household Information</span>
+                    <span class="lang-fr">Section 1 : Renseignements sur le ménage</span>
+                </h2>
+
+                <div class="form-group">
+                    <label for="address">
+                        <span class="lang-en">1. What is your full street address (number, street name, apartment/unit)?</span>
+                        <span class="lang-fr">1. Quelle est votre adresse municipale complète (numéro, nom de la rue, appartement/unité) ?</span>
+                    </label>
+                    <input type="text" id="address" name="address" required>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-en">This field is required.</span>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-fr">Ce champ est obligatoire.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="lang-en">2. Is this dwelling:</span>
+                        <span class="lang-fr">2. Ce logement est-il :</span>
+                    </label>
+                    <div class="radio-group">
+                        <div><input type="radio" id="dwelling_owned" name="dwelling_status" value="owned" required> <label for="dwelling_owned" class="font-normal"><span class="lang-en">Owned by you or a member of this household?</span><span class="lang-fr">La propriété de vous-même ou d'un membre de ce ménage ?</span></label></div>
+                        <div><input type="radio" id="dwelling_rented" name="dwelling_status" value="rented"> <label for="dwelling_rented" class="font-normal"><span class="lang-en">Rented (even if no cash rent is paid)?</span><span class="lang-fr">Loué (même si aucun loyer en espèces n'est payé) ?</span></label></div>
+                    </div>
+                     <span class="text-red-500 text-sm hidden validation-msg lang-en">Please select an option.</span>
+                     <span class="text-red-500 text-sm hidden validation-msg lang-fr">Veuillez sélectionner une option.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="num_persons">
+                        <span class="lang-en">3. Including yourself, how many persons usually live at this address as of [reference date]?</span>
+                        <span class="lang-fr">3. En vous incluant, combien de personnes vivent habituellement à cette adresse en date du [date de référence] ?</span>
+                    </label>
+                    <input type="number" id="num_persons" name="num_persons" min="1" required>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-en">Please enter a valid number (1 or more).</span>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-fr">Veuillez entrer un nombre valide (1 ou plus).</span>
+                </div>
+            </div>
+
+            <div id="section-2" class="section">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span class="lang-en">Section 2: Information about Person 1</span>
+                    <span class="lang-fr">Section 2 : Renseignements sur la Personne 1</span>
+                </h2>
+                <p class="mb-4 text-sm text-gray-700">
+                    <span class="lang-en">These questions are about the first person listed for the household.</span>
+                    <span class="lang-fr">Ces questions concernent la première personne inscrite pour le ménage.</span>
+                </p>
+
+                <div class="form-group">
+                    <label for="p1_name">
+                        <span class="lang-en">4. What is Person 1's full name?</span>
+                        <span class="lang-fr">4. Quel est le nom complet de la Personne 1 ?</span>
+                    </label>
+                    <input type="text" id="p1_name" name="p1_name" required pattern="[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+">
+                    <span class="text-red-500 text-sm hidden validation-msg lang-en">Please enter a valid name.</span>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-fr">Veuillez entrer un nom valide.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="p1_dob">
+                        <span class="lang-en">5. What is Person 1's date of birth?</span>
+                        <span class="lang-fr">5. Quelle est la date de naissance de la Personne 1 ?</span>
+                    </label>
+                    <input type="date" id="p1_dob" name="p1_dob" required>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-en">Please enter a valid date of birth.</span>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-fr">Veuillez entrer une date de naissance valide.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="lang-en">6. What is Person 1's sex?</span>
+                        <span class="lang-fr">6. Quel est le sexe de la Personne 1 ?</span>
+                    </label>
+                    <div class="radio-group">
+                        <div><input type="radio" id="p1_sex_male" name="p1_sex" value="male" required> <label for="p1_sex_male" class="font-normal"><span class="lang-en">Male</span><span class="lang-fr">Masculin</span></label></div>
+                        <div><input type="radio" id="p1_sex_female" name="p1_sex" value="female"> <label for="p1_sex_female" class="font-normal"><span class="lang-en">Female</span><span class="lang-fr">Féminin</span></label></div>
+                    </div>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-en">Please select an option.</span>
+                    <span class="text-red-500 text-sm hidden validation-msg lang-fr">Veuillez sélectionner une option.</span>
+                </div>
+            </div>
+
+            <div id="section-3" class="section">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span class="lang-en">Section 3: Labour Force Activity (Person 1)</span>
+                    <span class="lang-fr">Section 3 : Activité sur le marché du travail (Personne 1)</span>
+                </h2>
+                <p class="mb-4 text-sm text-gray-700">
+                    <span class="lang-en">The following questions refer to Person 1's activities last week.</span>
+                    <span class="lang-fr">Les questions suivantes portent sur les activités de la Personne 1 la semaine dernière.</span>
+                </p>
+
+                <div class="form-group">
+                    <label>
+                        <span class="lang-en">7. Last week, did Person 1 work at a job or business (regardless of the number of hours)?</span>
+                        <span class="lang-fr">7. La semaine dernière, la Personne 1 a-t-elle travaillé à un emploi ou à une entreprise (peu importe le nombre d'heures) ?</span>
+                    </label>
+                    <div class="radio-group">
+                        <div><input type="radio" id="p1_worked_yes" name="p1_worked" value="yes" required> <label for="p1_worked_yes" class="font-normal"><span class="lang-en">Yes</span><span class="lang-fr">Oui</span></label></div>
+                        <div><input type="radio" id="p1_worked_no" name="p1_worked" value="no"> <label for="p1_worked_no" class="font-normal"><span class="lang-en">No</span><span class="lang-fr">Non</span></label></div>
+                    </div>
+                </div>
+
+                <div class="form-group hidden" id="p1_hours_worked_group">
+                    <label for="p1_hours_worked">
+                        <span class="lang-en">7a. How many hours did Person 1 actually work last week at all jobs?</span>
+                        <span class="lang-fr">7a. Combien d'heures la Personne 1 a-t-elle réellement travaillées la semaine dernière à tous ses emplois ?</span>
+                    </label>
+                    <input type="number" id="p1_hours_worked" name="p1_hours_worked" min="0" max="168">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="lang-en">8. Last week, did Person 1 have a job or business from which they were absent?</span>
+                        <span class="lang-fr">8. La semaine dernière, la Personne 1 avait-elle un emploi ou une entreprise dont elle était absente ?</span>
+                    </label>
+                    <div class="radio-group">
+                        <div><input type="radio" id="p1_absent_yes" name="p1_absent" value="yes" required> <label for="p1_absent_yes" class="font-normal"><span class="lang-en">Yes</span><span class="lang-fr">Oui</span></label></div>
+                        <div><input type="radio" id="p1_absent_no" name="p1_absent" value="no"> <label for="p1_absent_no" class="font-normal"><span class="lang-en">No</span><span class="lang-fr">Non</span></label></div>
+                    </div>
+                </div>
+                 <div class="form-group hidden" id="p1_absent_reason_group">
+                    <label for="p1_absent_reason">
+                        <span class="lang-en">8a. What was the main reason for being absent from work last week?</span>
+                        <span class="lang-fr">8a. Quelle était la principale raison de son absence du travail la semaine dernière ?</span>
+                    </label>
+                    <input type="text" id="p1_absent_reason" name="p1_absent_reason">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <span class="lang-en">9. Last week, did Person 1 look for work?</span>
+                        <span class="lang-fr">9. La semaine dernière, la Personne 1 a-t-elle cherché du travail ?</span>
+                    </label>
+                    <div class="radio-group">
+                        <div><input type="radio" id="p1_looked_for_work_yes" name="p1_looked_for_work" value="yes" required> <label for="p1_looked_for_work_yes" class="font-normal"><span class="lang-en">Yes</span><span class="lang-fr">Oui</span></label></div>
+                        <div><input type="radio" id="p1_looked_for_work_no" name="p1_looked_for_work" value="no"> <label for="p1_looked_for_work_no" class="font-normal"><span class="lang-en">No</span><span class="lang-fr">Non</span></label></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-4" class="section">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span class="lang-en">End of Prototype</span>
+                    <span class="lang-fr">Fin du prototype</span>
+                </h2>
+                <p class="lang-en">Thank you for reviewing this LFS questionnaire prototype. Remember, no data has been saved or submitted.</p>
+                <p class="lang-fr">Merci d'avoir examiné ce prototype de questionnaire de l'EPA. N'oubliez pas qu'aucune donnée n'a été sauvegardée ni soumise.</p>
+                <p class="mt-4">
+                    <span class="lang-en">You can find the official 2022 LFS questionnaire (3701_Q1_V8) on the Statistics Canada website.</span>
+                    <span class="lang-fr">Vous pouvez trouver le questionnaire officiel de l'EPA 2022 (3701_Q1_V8) sur le site Web de Statistique Canada.</span>
+                </p>
+            </div>
+
+            <div class="mt-8 flex justify-between items-center">
+                <button type="button" id="prev-btn" class="btn btn-secondary">
+                    <span class="lang-en">Previous</span>
+                    <span class="lang-fr">Précédent</span>
+                </button>
+                <div> <button type="button" id="reset-btn" class="btn btn-warning mr-2 hidden">
+                        <span class="lang-en">Start Over</span>
+                        <span class="lang-fr">Recommencer</span>
+                    </button>
+                    <button type="button" id="finish-btn" class="btn btn-primary hidden">
+                        <span class="lang-en">Finish Prototype</span>
+                        <span class="lang-fr">Terminer le prototype</span>
+                    </button>
+                    <button type="button" id="next-btn" class="btn btn-primary">
+                        <span class="lang-en">Next</span>
+                        <span class="lang-fr">Suivant</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('lfs-form');
+            const sections = Array.from(document.querySelectorAll('.section'));
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const finishBtn = document.getElementById('finish-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const langEnBtn = document.getElementById('lang-en-btn');
+            const langFrBtn = document.getElementById('lang-fr-btn');
+            const progressBar = document.getElementById('progress-bar');
+            const accessibilitySettings = document.getElementById('accessibility-settings');
+            const openDyslexicFontCdn = document.getElementById('opendyslexic-font-cdn');
+
+
+            // Conditional field elements
+            const p1WorkedRadios = document.querySelectorAll('input[name="p1_worked"]');
+            const p1HoursWorkedGroup = document.getElementById('p1_hours_worked_group');
+            const p1HoursWorkedInput = document.getElementById('p1_hours_worked');
+            const p1AbsentRadios = document.querySelectorAll('input[name="p1_absent"]');
+            const p1AbsentReasonGroup = document.getElementById('p1_absent_reason_group');
+            const p1AbsentReasonInput = document.getElementById('p1_absent_reason');
+
+            let currentSectionIndex = 0;
+            let currentLang = 'en'; // Default language
+            const ACCESSIBILITY_CLASSES = ['large-font', 'high-contrast', 'color-blind-deuteranopia', 'dyslexia-font'];
+
+            const totalSectionsForProgress = sections.length;
+            
+            // Check if OpenDyslexic font loaded, then add a class to body
+            // This helps avoid applying the font family if the CDN fails or is slow
+            if (openDyslexicFontCdn) {
+                openDyslexicFontCdn.onload = () => {
+                    document.body.classList.add('font-opendyslexic-loaded');
+                };
+                // Fallback if already loaded (e.g. from cache)
+                if (openDyslexicFontCdn.sheet) {
+                     document.body.classList.add('font-opendyslexic-loaded');
+                }
+            }
+
+
+            function clearAllValidationStyles() {
+                form.querySelectorAll('.validation-error').forEach(el => el.classList.remove('validation-error'));
+                form.querySelectorAll('.radio-group-error').forEach(el => el.classList.remove('radio-group-error'));
+                form.querySelectorAll('.validation-msg').forEach(el => el.classList.add('hidden'));
+            }
+            
+            function applyAccessibilitySetting(settingValue) {
+                ACCESSIBILITY_CLASSES.forEach(cls => document.body.classList.remove(cls));
+                if (settingValue && settingValue !== 'default') {
+                    document.body.classList.add(settingValue);
+                }
+            }
+
+            function updateView() {
+                // Language
+                document.querySelectorAll('.lang-en, .lang-fr').forEach(el => {
+                    el.classList.remove('active-lang');
+                    if (el.classList.contains(`lang-${currentLang}`)) {
+                        el.classList.add('active-lang');
+                    }
+                });
+                // Update accessibility dropdown language
+                accessibilitySettings.querySelectorAll('option').forEach(opt => {
+                    opt.classList.remove('active-lang');
+                     if (opt.classList.contains(`lang-${currentLang}`)) {
+                        opt.classList.add('active-lang');
+                    }
+                });
+                // Ensure only options for the current language are visible in the dropdown
+                // This is a bit tricky with select options; typically, you'd rebuild it or have separate selects.
+                // For simplicity, we'll rely on the class to hide text, but the option itself remains.
+                // A better UX would be to filter options, but that's more complex for this prototype.
+
+
+                langEnBtn.classList.toggle('active', currentLang === 'en');
+                langFrBtn.classList.toggle('active', currentLang === 'fr');
+                document.documentElement.lang = currentLang;
+
+                // Sections
+                sections.forEach((section, index) => {
+                    section.classList.toggle('active-section', index === currentSectionIndex);
+                });
+
+                // Navigation Buttons
+                prevBtn.classList.toggle('hidden', currentSectionIndex === 0);
+                const isLastSection = currentSectionIndex === sections.length - 1;
+                nextBtn.classList.toggle('hidden', isLastSection);
+                finishBtn.classList.toggle('hidden', !isLastSection);
+                resetBtn.classList.toggle('hidden', !isLastSection);
+                
+                let displayProgressPercentage = 0;
+                if (totalSectionsForProgress > 1) {
+                    if (currentSectionIndex === 0) {
+                         displayProgressPercentage = 0;
+                    } else if (isLastSection) {
+                        displayProgressPercentage = 100;
+                    } else {
+                        displayProgressPercentage = Math.round(((currentSectionIndex) / (totalSectionsForProgress -1)) * 100);
+                         if(currentSectionIndex === sections.length -1) displayProgressPercentage = 100;
+                    }
+                } else if (totalSectionsForProgress === 1) {
+                    displayProgressPercentage = 100;
+                }
+
+                progressBar.style.width = `${displayProgressPercentage}%`;
+                progressBar.textContent = `${displayProgressPercentage}%`;
+                
+                const activeSection = sections[currentSectionIndex];
+                if (activeSection) {
+                    const firstFocusable = activeSection.querySelector('input:not([type=hidden]), select, button, textarea, [tabindex]:not([tabindex="-1"])');
+                    if (firstFocusable) {
+                        firstFocusable.focus();
+                    }
+                }
+            }
+
+            function validateCurrentSection() {
+                const currentSection = sections[currentSectionIndex];
+                if (!currentSection) return true; 
+                
+                const inputs = currentSection.querySelectorAll('input[required], select[required]');
+                let isValid = true;
+
+                currentSection.querySelectorAll('.validation-error').forEach(el => el.classList.remove('validation-error'));
+                currentSection.querySelectorAll('.radio-group-error').forEach(el => el.classList.remove('radio-group-error'));
+                currentSection.querySelectorAll('.validation-msg').forEach(el => el.classList.add('hidden'));
+
+                inputs.forEach(input => {
+                    const parentGroup = input.closest('.form-group');
+                    const errorMsgEn = parentGroup ? parentGroup.querySelector('.validation-msg.lang-en') : null;
+                    const errorMsgFr = parentGroup ? parentGroup.querySelector('.validation-msg.lang-fr') : null;
+                    
+                    if (input.type === 'radio') { 
+                        const groupName = input.name;
+                        const radioGroupContainer = input.closest('.radio-group');
+                        if (!currentSection.querySelector(`input[name="${groupName}"]:checked`)) {
+                            isValid = false;
+                            if (errorMsgEn && currentLang === 'en') errorMsgEn.classList.remove('hidden');
+                            if (errorMsgFr && currentLang === 'fr') errorMsgFr.classList.remove('hidden');
+                            if (radioGroupContainer) radioGroupContainer.classList.add('radio-group-error');
+                        } else {
+                           if (radioGroupContainer) radioGroupContainer.classList.remove('radio-group-error');
+                        }
+                    } else if (!input.checkValidity()) {
+                        isValid = false;
+                        input.classList.add('validation-error');
+                        if (errorMsgEn && currentLang === 'en') errorMsgEn.classList.remove('hidden');
+                        if (errorMsgFr && currentLang === 'fr') errorMsgFr.classList.remove('hidden');
+                    } else {
+                        input.classList.remove('validation-error');
+                    }
+                });
+                return isValid;
+            }
+
+            nextBtn.addEventListener('click', () => {
+                if (validateCurrentSection() && currentSectionIndex < sections.length - 1) {
+                    currentSectionIndex++;
+                    updateView();
+                } else if (!validateCurrentSection()) {
+                    const firstInvalidField = sections[currentSectionIndex].querySelector('.validation-error, .radio-group-error input[required]');
+                    if (firstInvalidField) {
+                        if(firstInvalidField.type === 'radio'){
+                            firstInvalidField.closest('.radio-group').querySelector('input[type="radio"]')?.focus();
+                        } else {
+                            firstInvalidField.focus();
+                        }
+                    }
+                }
+            });
+
+            prevBtn.addEventListener('click', () => {
+                if (currentSectionIndex > 0) {
+                    clearAllValidationStyles(); 
+                    currentSectionIndex--;
+                    updateView();
+                }
+            });
+            
+            finishBtn.addEventListener('click', () => {
+                if (validateCurrentSection()) { 
+                    alert(currentLang === 'en' ? 'Prototype finished. No data was saved.' : 'Prototype terminé. Aucune donnée n\'a été sauvegardée.');
+                }
+            });
+
+            resetBtn.addEventListener('click', () => {
+                form.reset(); 
+                currentSectionIndex = 0;
+                
+                p1HoursWorkedGroup.classList.add('hidden');
+                p1HoursWorkedInput.required = false;
+                p1HoursWorkedInput.value = '';
+
+                p1AbsentReasonGroup.classList.add('hidden');
+                p1AbsentReasonInput.required = false;
+                p1AbsentReasonInput.value = '';
+
+                accessibilitySettings.value = 'default'; // Reset accessibility dropdown
+                applyAccessibilitySetting('default'); // Apply default accessibility
+
+                clearAllValidationStyles(); 
+                updateView(); 
+            });
+
+            langEnBtn.addEventListener('click', () => {
+                currentLang = 'en';
+                updateView();
+                clearAllValidationStyles(); 
+                validateCurrentSection(); 
+            });
+
+            langFrBtn.addEventListener('click', () => {
+                currentLang = 'fr';
+                updateView();
+                clearAllValidationStyles();
+                validateCurrentSection();
+            });
+
+            accessibilitySettings.addEventListener('change', (e) => {
+                applyAccessibilitySetting(e.target.value);
+            });
+
+            // Conditional logic
+            p1WorkedRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'yes' && e.target.checked) {
+                        p1HoursWorkedGroup.classList.remove('hidden');
+                        p1HoursWorkedInput.required = true;
+                    } else {
+                        p1HoursWorkedGroup.classList.add('hidden');
+                        p1HoursWorkedInput.required = false;
+                        p1HoursWorkedInput.value = ''; 
+                        p1HoursWorkedInput.classList.remove('validation-error');
+                        const msgEn = p1HoursWorkedGroup.querySelector('.validation-msg.lang-en');
+                        const msgFr = p1HoursWorkedGroup.querySelector('.validation-msg.lang-fr');
+                        if(msgEn) msgEn.classList.add('hidden');
+                        if(msgFr) msgFr.classList.add('hidden');
+                    }
+                });
+            });
+            
+            p1AbsentRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'yes' && e.target.checked) {
+                        p1AbsentReasonGroup.classList.remove('hidden');
+                        p1AbsentReasonInput.required = true;
+                    } else {
+                        p1AbsentReasonGroup.classList.add('hidden');
+                        p1AbsentReasonInput.required = false;
+                        p1AbsentReasonInput.value = '';
+                        p1AbsentReasonInput.classList.remove('validation-error');
+                        const msgEn = p1AbsentReasonGroup.querySelector('.validation-msg.lang-en');
+                        const msgFr = p1AbsentReasonGroup.querySelector('.validation-msg.lang-fr');
+                        if(msgEn) msgEn.classList.add('hidden');
+                        if(msgFr) msgFr.classList.add('hidden');
+                    }
+                });
+            });
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (currentSectionIndex === sections.length - 1) { 
+                    finishBtn.click();
+                } else { 
+                    nextBtn.click();
+                }
+            });
+
+            // Initial setup
+            applyAccessibilitySetting(accessibilitySettings.value); // Apply default on load
+            updateView();
+        });
+    </script>
+</body>
+</html>
