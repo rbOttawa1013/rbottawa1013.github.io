@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+            /* border: 2px solid #4b5563; /* gray-600 for light theme */
+            transition: background-color 0.3s ease;
+        }
+        .cell:hover:not(.disabled) {
+            background-color: #e5e7eb; /* gray-200 for light theme */
+        }
+        .cell.disabled {
+            cursor: not-allowed;
+        }
+        .cell.x {
+            color: #ef4444; /* red-500 */
+        }
+        .cell.o {
+            color: #3b82f6; /* blue-500 */
+        }
+        .winning-cell {
+            background-color: #a7f3d0 !important; /* emerald-200 */
+        }
+        /* Custom button styles for a more professional look */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* blue-600 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* gray-600 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        select {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            /* border: 1px solid #d1d5db; /* gray-300 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <h1 class="text-4xl font-bold text-center mb-6 text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">Tic Tac Toe</h1>
+
+        <div id="settings" class="mb-6 space-y-4">
+            <div>
+                <label for="gameMode" class="block text-sm font-medium text-slate-600 mb-1">Game Mode:</label>
+                <select id="gameMode" class="w-full bg-white text-slate-800 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500">
+                    <option value="HH">Human vs Human</option>
+                    <option value="HC">Human vs Computer</option>
+                    <option value="CC">Computer vs Computer</option>
+                </select>
+            </div>
+            <div id="playerSymbolContainer" class="hidden">
+                <label for="playerSymbol" class="block text-sm font-medium text-slate-600 mb-1">Choose Your Symbol (Human):</label>
+                <select id="playerSymbol" class="w-full bg-white text-slate-800 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500">
+                    <option value="X">X (Goes First)</option>
+                    <option value="O">O (Goes Second)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex space-x-4 mb-6">
+            <button id="startGame" class="btn btn-primary w-1/2">Start Game</button>
+            <button id="resetGame" class="btn btn-secondary w-1/2" disabled>Reset Game</button>
+        </div>
+
+        <div class="mb-4 text-center">
+            <p id="status" class="text-lg font-semibold text-slate-700">Select game mode and start.</p>
+            <p id="timer" class="text-md text-slate-500">Time: 00:00</p>
+        </div>
+
+        <div id="board" class="grid grid-cols-3 gap-1 mx-auto w-max bg-slate-300 rounded-lg shadow-inner">
+            </div>
+         <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
+                <p id="modalMessageText" class="text-lg mb-4 text-slate-700"></p>
+                <button id="modalCloseButton" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const gameModeSelect = document.getElementById('gameMode');
+        const playerSymbolContainer = document.getElementById('playerSymbolContainer');
+        const playerSymbolSelect = document.getElementById('playerSymbol');
+        const startGameButton = document.getElementById('startGame');
+        const resetGameButton = document.getElementById('resetGame');
+        const statusDisplay = document.getElementById('status');
+        const timerDisplay = document.getElementById('timer');
+        const boardDiv = document.getElementById('board');
+        const messageModal = document.getElementById('messageModal');
+        const modalMessageText = document.getElementById('modalMessageText');
+        const modalCloseButton = document.getElementById('modalCloseButton');
+
+        // Game State Variables
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = false;
+        let gameMode = 'HH'; // HH, HC, CC
+        let humanPlayerSymbol = 'X'; // For HC mode
+        let computerPlayerSymbol = 'O'; // For HC mode
+
+        let timerInterval;
+        let secondsElapsed = 0;
+
+        const winningCombinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ];
+
+        // --- Message Modal Functions ---
+        function showModal(message) {
+            modalMessageText.textContent = message;
+            messageModal.classList.remove('hidden');
+        }
+
+        modalCloseButton.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+
+        // --- Game Initialization and Setup ---
+
+        // Create board cells
+        function createBoard() {
+            boardDiv.innerHTML = ''; // Clear existing cells
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell', 'border-slate-400'); // Adjusted border color
+                 cell.style.borderWidth = '2px'; // Explicitly set border width if not covered by Tailwind class directly in .cell
+                if (window.innerWidth < 400) { // Smaller cells for smaller screens
+                    cell.style.width = '80px';
+                    cell.style.height = '80px';
+                    cell.style.fontSize = '2.5rem';
+                } else {
+                    cell.style.width = '100px';
+                    cell.style.height = '100px';
+                    cell.style.fontSize = '3rem';
+                }
+                cell.dataset.index = i;
+                cell.addEventListener('click', handleCellClick);
+                boardDiv.appendChild(cell);
+            }
+        }
+        createBoard(); // Initial board creation
+
+        // Update UI based on game mode selection
+        gameModeSelect.addEventListener('change', (e) => {
+            gameMode = e.target.value;
+            if (gameMode === 'HC') {
+                playerSymbolContainer.classList.remove('hidden');
+            } else {
+                playerSymbolContainer.classList.add('hidden');
+            }
+            if (!gameActive) { // Allow changing mode if game not started
+                 resetGame(false); // Soft reset to apply mode without full game reset visuals
+            }
+        });
+
+        // Update player symbols if HC mode
+        playerSymbolSelect.addEventListener('change', (e) => {
+            if (gameMode === 'HC') {
+                humanPlayerSymbol = e.target.value;
+                computerPlayerSymbol = (humanPlayerSymbol === 'X') ? 'O' : 'X';
+                 if (!gameActive) {
+                    resetGame(false);
+                 }
+            }
+        });
+
+        // --- Timer Functions ---
+        function startTimer() {
+            stopTimer(); // Clear any existing timer
+            secondsElapsed = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            const seconds = (secondsElapsed % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = `Time: ${minutes}:${seconds}`;
+        }
+
+
+        // --- Game Logic Functions ---
+        function initializeGame() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            currentPlayer = 'X'; // X always starts traditionally
+
+            // Settings based on game mode
+            gameMode = gameModeSelect.value;
+            if (gameMode === 'HC') {
+                humanPlayerSymbol = playerSymbolSelect.value;
+                computerPlayerSymbol = (humanPlayerSymbol === 'X') ? 'O' : 'X';
+                // currentPlayer will be X by default. If human chose O, computer (X) will play first.
+            }
+
+
+            statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o', 'winning-cell', 'disabled');
+            });
+
+            startGameButton.disabled = true;
+            resetGameButton.disabled = false;
+            gameModeSelect.disabled = true;
+            playerSymbolSelect.disabled = true;
+
+            startTimer();
+
+            // Initial move if computer starts
+            if (gameMode === 'CC') {
+                // Player X (first computer) makes its move.
+                // The computerMove function itself will handle the CVC first move variation.
+                setTimeout(computerMove, 500); // Computer X starts
+            } else if (gameMode === 'HC' && currentPlayer === computerPlayerSymbol) {
+                 // This handles if Human chose 'O', so Computer ('X') should start.
+                setTimeout(computerMove, 500);
+            }
+        }
+
+        function handleCellClick(event) {
+            if (!gameActive) return;
+
+            const clickedCell = event.target;
+            const clickedCellIndex = parseInt(clickedCell.dataset.index);
+
+            // Human player's turn
+            if (gameMode === 'HH' || (gameMode === 'HC' && currentPlayer === humanPlayerSymbol)) {
+                if (board[clickedCellIndex] === '' && gameActive) {
+                    makeMove(clickedCellIndex, currentPlayer);
+                    if (gameActive && gameMode === 'HC' && currentPlayer === computerPlayerSymbol) { // Check if it's now computer's turn
+                        setTimeout(computerMove, 500); // Add a small delay for computer's move
+                    }
+                }
+            }
+        }
+
+        function makeMove(index, player) {
+            if (board[index] !== '' || !gameActive) {
+                return false; // Move not made
+            }
+
+            board[index] = player;
+            const cell = document.querySelector(`.cell[data-index='${index}']`);
+            cell.textContent = player;
+            cell.classList.add(player.toLowerCase(), 'disabled'); // Add player class and disable
+
+            if (checkWin(player)) {
+                endGame(false, player);
+            } else if (board.every(cellContent => cellContent !== '')) { // Corrected board check for draw
+                endGame(true);
+            } else {
+                switchPlayer();
+            }
+            return true; // Move made
+        }
+
+        function switchPlayer() {
+            currentPlayer = (currentPlayer === 'X') ? 'O' : 'X';
+            statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+        }
+
+        function checkWin(player) {
+            return winningCombinations.some(combination => {
+                return combination.every(index => board[index] === player);
+            });
+        }
+
+        function highlightWinningCells(player) {
+            winningCombinations.forEach(combination => {
+                if (combination.every(index => board[index] === player)) {
+                    combination.forEach(index => {
+                        document.querySelector(`.cell[data-index='${index}']`).classList.add('winning-cell');
+                    });
+                }
+            });
+        }
+
+        function endGame(draw, winner = null) {
+            gameActive = false;
+            stopTimer();
+            if (draw) {
+                statusDisplay.textContent = "It's a draw!";
+                showModal("Game Over! It's a draw.");
+            } else {
+                statusDisplay.textContent = `Player ${winner} wins!`;
+                showModal(`Game Over! Player ${winner} is the winner!`);
+                highlightWinningCells(winner);
+            }
+            // Disable all cells
+            document.querySelectorAll('.cell').forEach(cell => cell.classList.add('disabled'));
+            resetGameButton.focus(); // Focus reset button for accessibility
+        }
+
+        function resetGame(fullReset = true) {
+            stopTimer();
+            secondsElapsed = 0;
+            updateTimerDisplay();
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = false;
+            currentPlayer = 'X'; // Reset to X
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o', 'winning-cell', 'disabled');
+            });
+
+            statusDisplay.textContent = 'Select game mode and start.';
+            startGameButton.disabled = false;
+            resetGameButton.disabled = true;
+            gameModeSelect.disabled = false;
+
+            gameMode = gameModeSelect.value; // Re-read game mode
+            if (gameMode === 'HC') {
+                playerSymbolContainer.classList.remove('hidden');
+                playerSymbolSelect.disabled = false;
+                humanPlayerSymbol = playerSymbolSelect.value; // Ensure this is up-to-date
+                computerPlayerSymbol = (humanPlayerSymbol === 'X') ? 'O' : 'X';
+            } else {
+                playerSymbolContainer.classList.add('hidden');
+            }
+
+            if (fullReset) {
+                showModal("Game has been reset. Choose settings and start a new game.");
+            }
+        }
+
+
+        // --- Computer AI Logic ---
+        function computerMove() {
+            if (!gameActive) return;
+
+            let moved = false;
+            const currentComputerSymbol = (gameMode === 'CC') ? currentPlayer : computerPlayerSymbol;
+            const opponentSymbol = (currentComputerSymbol === 'X') ? 'O' : 'X';
+
+            // CVC First Move Variation for Player X to reduce identical games
+            // Check if it's CVC mode, current player is X, and it's the very first move of the game
+            if (gameMode === 'CC' && currentComputerSymbol === 'X' && board.every(cell => cell === '')) {
+                const randomChoice = Math.random();
+                if (randomChoice < 0.4) { // 40% chance to pick a random corner first
+                    const corners = [0, 2, 6, 8];
+                    const availableCorners = corners.filter(index => board[index] === '');
+                    if (availableCorners.length > 0) {
+                        const randomCorner = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+                        makeMove(randomCorner, currentComputerSymbol);
+                        moved = true;
+                    }
+                }
+                // If not moved by special first move (60% chance), proceed to normal logic
+            }
+
+            // 1. Check if computer can win (only if not already moved)
+            if (!moved) {
+                for (let i = 0; i < board.length; i++) {
+                    if (board[i] === '') {
+                        board[i] = currentComputerSymbol;
+                        if (checkWin(currentComputerSymbol)) {
+                            makeMove(i, currentComputerSymbol);
+                            moved = true;
+                            break;
+                        }
+                        board[i] = ''; // Undo test move
+                    }
+                }
+            }
+
+            // 2. Check if opponent can win and block (only if not already moved)
+            if (!moved) {
+                for (let i = 0; i < board.length; i++) {
+                    if (board[i] === '') {
+                        board[i] = opponentSymbol;
+                        if (checkWin(opponentSymbol)) {
+                            board[i] = ''; // Undo test move
+                            makeMove(i, currentComputerSymbol);
+                            moved = true;
+                            break;
+                        }
+                        board[i] = ''; // Undo test move
+                    }
+                }
+            }
+
+            // 3. Try to take center (only if not already moved)
+            if (!moved && board[4] === '') {
+                makeMove(4, currentComputerSymbol);
+                moved = true;
+            }
+
+            // 4. Try to take a corner (only if not already moved)
+            if (!moved) {
+                const corners = [0, 2, 6, 8];
+                const availableCorners = corners.filter(index => board[index] === '');
+                if (availableCorners.length > 0) {
+                    const randomCorner = availableCorners[Math.floor(Math.random() * availableCorners.length)];
+                    makeMove(randomCorner, currentComputerSymbol);
+                    moved = true;
+                }
+            }
+
+            // 5. Take any available side (only if not already moved)
+            if (!moved) {
+                const sides = [1, 3, 5, 7];
+                const availableSides = sides.filter(index => board[index] === '');
+                if (availableSides.length > 0) {
+                    const randomSide = availableSides[Math.floor(Math.random() * availableSides.length)];
+                    makeMove(randomSide, currentComputerSymbol);
+                    moved = true;
+                }
+            }
+            
+            // 6. If somehow no move was made (should not happen if cells are available), pick any first available
+            if (!moved) {
+                 const emptyCells = board.map((val, idx) => val === '' ? idx : null).filter(val => val !== null);
+                 if (emptyCells.length > 0) {
+                    makeMove(emptyCells[0], currentComputerSymbol);
+                    moved = true;
+                 }
+            }
+
+            // If game is CC and still active, and this computer made a move, let the other computer move
+            if (gameActive && gameMode === 'CC' && moved) {
+                 setTimeout(computerMove, 700); // Delay for the *next* computer (which is now currentPlayer due to switchPlayer)
+            }
+            // Note: In HC mode, after computer moves, control returns to human via click.
+        }
+
+        // Event Listeners for Buttons
+        startGameButton.addEventListener('click', initializeGame);
+        resetGameButton.addEventListener('click', () => resetGame(true));
+
+        // Initial setup
+        resetGame(false); // Initialize with default settings without showing modal
+
+        // Adjust board size on resize for smaller screens
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.cell').forEach(cell => {
+                 if (window.innerWidth < 400) {
+                    cell.style.width = '80px';
+                    cell.style.height = '80px';
+                    cell.style.fontSize = '2.5rem';
+                } else {
+                    cell.style.width = '100px';
+                    cell.style.height = '100px';
+                    cell.style.fontSize = '3rem';
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
