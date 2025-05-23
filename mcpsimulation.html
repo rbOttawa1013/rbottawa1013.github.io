@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSO MCP System Simulation with Filtered Use Cases</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background for the page */
+        }
+        .component {
+            border: 2px solid #ef4444; /* red-500 */
+            background-color: #fee2e2; /* red-100 */
+            color: #7f1d1d; /* red-900 */
+            padding: 1rem;
+            margin: 0.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            min-width: 150px;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .component.active {
+            background-color: #fca5a5; /* red-300 */
+            border-color: #b91c1c; /* red-700 */
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .layer-container {
+            border: 2px solid #3b82f6; /* blue-500 */
+            background-color: #eff6ff; /* blue-50 */
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.75rem;
+        }
+        .layer-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e3a8a; /* blue-800 */
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .query-arrow {
+            text-align: center;
+            margin: 0.5rem 0;
+            font-style: italic;
+            color: #4b5563; /* gray-600 */
+        }
+        .brainstorm-box { /* NSO Ideas Box */
+            background-color: #d1fae5; /* emerald-100 */
+            border: 2px solid #059669; /* emerald-600 */
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            color: #065f46; /* emerald-800 */
+        }
+        #simulationLog {
+            height: 200px; 
+            background-color: #ffffff; 
+            border: 1px solid #d1d5db; 
+        }
+        #simulationLog p {
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem; /* text-sm */
+        }
+        .button-primary {
+            background-color: #3b82f6; 
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .button-primary:hover {
+            background-color: #2563eb; 
+        }
+        .button-primary:disabled {
+            background-color: #9ca3af; 
+            cursor: not-allowed;
+        }
+        .input-field, .select-field {
+            border: 1px solid #d1d5db; 
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem; 
+        }
+        .select-field:disabled {
+            background-color: #e5e7eb; /* gray-200 */
+            cursor: not-allowed;
+        }
+        .selection-area {
+            background-color: #e0e7ff; /* indigo-100 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #c7d2fe; /* indigo-200 */
+        }
+        #chatbotResponse pre { 
+            background-color: #f9fafb; 
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            text-align: left;
+            font-size: 0.8rem;
+            white-space: pre-wrap; 
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="container mx-auto max-w-5xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-700">NSO MCP System Simulation</h1>
+
+        <div class="brainstorm-box">
+            <h3 class="font-semibold mb-2 text-center text-emerald-700">NSO - AI Agent Brainstorming (Leveraging MCP)</h3>
+            <ul class="list-disc list-inside text-sm space-y-1">
+                <li>**Data Quality Assessment Agent:** Automatically flags potential inconsistencies or errors in incoming SDMX data feeds based on predefined rules and historical patterns.</li>
+                <li>**Dissemination Channel Optimisation Agent:** Analyzes usage patterns of NSO data products to suggest improvements for data portals or API design.</li>
+                <li>**Small Area Estimation Support Agent:** Assists in generating reliable statistics for granular geographic areas by combining survey data with administrative records, guided by MCP metadata.</li>
+                <li>**Automated SDG Progress Reporting Agent:** Compiles relevant indicators from MCP to generate draft reports on Sustainable Development Goal progress for specific regions.</li>
+                <li>**Confidentiality Protection Advisory Agent:** Reviews proposed data releases and suggests appropriate statistical disclosure control methods based on data sensitivity (as per MCP metadata).</li>
+            </ul>
+        </div>
+
+        <div class="selection-area mb-6">
+            <h2 class="text-xl font-semibold text-center mb-3 text-indigo-700">Configure Simulation</h2>
+            <div class="flex flex-col md:flex-row md:justify-around md:items-center">
+                <div class="flex flex-col mb-3 md:mb-0">
+                    <label for="personaSelect" class="mb-1 font-medium text-gray-700">Select Persona:</label>
+                    <select id="personaSelect" class="select-field">
+                        <option value="">-- Select Persona --</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label for="agentSelect" class="mb-1 font-medium text-gray-700">Select AI Agent / Use Case:</label>
+                    <select id="agentSelect" class="select-field" disabled>
+                        <option value="">-- Select Persona First --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="layer-container">
+            <div class="layer-title">Semantic Kernel Chatbot & Agents</div>
+            <div class="flex flex-col items-center">
+                <div class="component chatbot mb-4 w-full md:w-3/4 lg:w-1/2" id="chatbot">
+                    <h3 class="font-semibold">Semantic Kernel Chatbot</h3>
+                    <div class="mt-2">
+                        <input type="text" id="queryInput" class="input-field w-full md:w-2/3" placeholder="Select Persona & Agent, or type custom query">
+                        <button id="sendQueryBtn" class="button-primary mt-2 md:mt-0">Run Selected Use Case / Query</button>
+                    </div>
+                    <div id="chatbotResponse" class="mt-2 text-sm min-h-[40px] p-2 bg-white rounded"></div>
+                </div>
+
+                <div class="query-arrow text-2xl transform rotate-90 md:rotate-0">⬇️</div>
+
+                <div class="flex flex-col md:flex-row justify-around w-full">
+                    <div class="component agent" id="agent1Display">Agent 1 (Represents Selected)</div>
+                    <div class="component agent" id="agent2">Agent 2 (Generic)</div>
+                    <div class="component agent" id="agentN">Agent N (Generic)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="query-arrow text-lg">Agents ⬇️ MCP Servers (direct query)</div>
+
+        <div class="layer-container">
+            <div class="layer-title">MCP Servers</div>
+            <div class="flex flex-col md:flex-row justify-around">
+                <div class="component mcp-server" id="mcp1">MCP Server 1</div>
+                <div class="component mcp-server" id="mcp2">MCP Server 2</div>
+                <div class="component mcp-server" id="mcpN">MCP Server N</div>
+            </div>
+        </div>
+
+        <div class="query-arrow text-lg">MCP Servers ⬇️ NSO - SDMX Data Sources (direct query)</div>
+
+        <div class="layer-container">
+            <div class="layer-title">NSO (National Statistics Office) - SDMX Data Sources</div>
+            <div class="flex flex-col md:flex-row justify-around">
+                <div class="component sdmx-source" id="sdmx1">NSO SDMX Source 1 (e.g., StatCan)</div>
+                <div class="component sdmx-source" id="sdmx2">NSO SDMX Source 2 (e.g., Eurostat)</div>
+                <div class="component sdmx-source" id="sdmxN">NSO SDMX Source N (e.g., UNData)</div>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold mb-2 text-gray-700">Simulation Log</h3>
+            <div id="simulationLog" class="p-3 border rounded-md bg-gray-50 h-48 overflow-y-auto shadow-inner">
+                <p>Waiting for simulation...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const sendQueryBtn = document.getElementById('sendQueryBtn');
+        const queryInput = document.getElementById('queryInput');
+        const chatbotResponse = document.getElementById('chatbotResponse');
+        const simulationLog = document.getElementById('simulationLog');
+        const personaSelect = document.getElementById('personaSelect');
+        const agentSelect = document.getElementById('agentSelect');
+
+        const chatbotEl = document.getElementById('chatbot');
+        const agent1DisplayEl = document.getElementById('agent1Display');
+        const originalAgent1DisplayText = agent1DisplayEl.textContent;
+
+        const targetMcpserver = document.getElementById('mcp1');
+        const targetSdmxSource = document.getElementById('sdmx1'); 
+
+        let isSimulating = false;
+
+        const personas = [
+            "Data Engineer (NSO)", "Policy Strategist (Government)", "Data Scientist / Analyst (NSO)",
+            "Business Leader / Manager (Industry)", "Informed Citizen / Journalist"
+        ];
+
+        const aiAgents = [
+            { 
+                id: "macroeconomic", name: "Macroeconomic Snapshot Agent", 
+                exampleQuery: "Give me the latest macroeconomic snapshot for Canada, focusing on Q1 2025, using data from the MCP.",
+                exampleResponse: `Canada - Q1 2025 Snapshot (Source: MCP via NSO StatCan):\n- GDP Growth (QoQ): 0.5%\n- Inflation (CPI YoY): 2.8%\n- Unemployment Rate: 5.2%\n- Trade Balance: +$1.2B CAD`,
+                relevantPersonas: ["Policy Strategist (Government)", "Business Leader / Manager (Industry)", "Informed Citizen / Journalist", "Data Scientist / Analyst (NSO)"]
+            },
+            { 
+                id: "demographic", name: "Demographic Profile Agent", 
+                exampleQuery: "What does the age structure of the population in major European economies look like, according to the harmonized data on MCP?",
+                exampleResponse: `European Economies - Age Structure (Source: MCP via NSO Eurostat):\n- Germany: Median Age: 47.8, % 65+: 22.0%\n- France: Median Age: 42.3, % 65+: 20.8%\n- Italy: Median Age: 48.0, % 65+: 23.5%`,
+                relevantPersonas: ["Policy Strategist (Government)", "Informed Citizen / Journalist", "Data Scientist / Analyst (NSO)"]
+            },
+            { 
+                id: "environmental", name: "Environmental Indicator Agent", 
+                exampleQuery: "Based on MCP data, how has the share of renewable energy in electricity production changed for G7 countries over the last five years?",
+                exampleResponse: `G7 Renewable Energy Share in Electricity (Source: MCP via NSO/IEA):\n- Canada: 2020: 67%, 2024: 70% (+3%)\n- Germany: 2020: 45%, 2024: 52% (+7%)\n- Japan: 2020: 20%, 2024: 25% (+5%)`,
+                relevantPersonas: ["Policy Strategist (Government)", "Business Leader / Manager (Industry)", "Informed Citizen / Journalist", "Data Scientist / Analyst (NSO)"]
+            },
+            { 
+                id: "trendanomaly", name: "Statistical Trend & Anomaly Agent", 
+                exampleQuery: "Are there any anomalous trends in reported international trade volumes for agricultural products in Q4 2024, using global data from MCP?",
+                exampleResponse: `Global Agri Trade Anomaly (Q4 2024) (Source: MCP via UN Comtrade):\n- Finding: Wheat exports from Region X show a -15% deviation from 5-year average. Possible factors: drought, policy change.`,
+                relevantPersonas: ["Data Engineer (NSO)", "Data Scientist / Analyst (NSO)", "Business Leader / Manager (Industry)"]
+            },
+            { 
+                id: "comparative", name: "Comparative Analysis & Ranking Agent", 
+                exampleQuery: "How does Canada's investment in R&D compare to other OECD countries in 2023, based on data from MCP?",
+                exampleResponse: `R&D Investment (% of GDP) - 2023 (Source: MCP via NSO/OECD):\n1. S. Korea: 4.8%\n2. Israel: 4.7%\n...\n7. Germany: 3.1%\n15. Canada: 1.7% (Below OECD Avg: 2.5%)`,
+                relevantPersonas: ["Policy Strategist (Government)", "Data Scientist / Analyst (NSO)", "Business Leader / Manager (Industry)", "Informed Citizen / Journalist"]
+            },
+            { 
+                id: "correlation", name: "Multi-Indicator Correlation Agent", 
+                exampleQuery: "Using data from MCP, is there a discernible correlation between female labor force participation and child GNI per capita in developing countries over the last decade?",
+                exampleResponse: `Correlation Analysis (Source: MCP via World Bank/ILO):\n- Finding: Moderate positive correlation (r=0.45) observed between female labor force participation and GNI per capita (U5MR adjusted) in selected developing countries (2014-2023). Further causal analysis needed.`,
+                relevantPersonas: ["Data Engineer (NSO)", "Data Scientist / Analyst (NSO)"]
+            },
+            { 
+                id: "metadata", name: "SDMX Metadata Interpretation Agent", 
+                exampleQuery: "Can you explain the methodology behind the 'Purchasing Power Parity' figures available on the MCP?",
+                exampleResponse: `PPP Methodology (Source: MCP via IMF/World Bank ICP):\n- Definition: PPPs are currency conversion rates that equalize the purchasing power of different currencies by eliminating differences in price levels between countries.\n- Method: Based on comparing prices for a common basket of goods and services...\n- Source: International Comparison Program (ICP).`,
+                relevantPersonas: ["Data Engineer (NSO)", "Data Scientist / Analyst (NSO)", "Informed Citizen / Journalist"]
+            },
+            { 
+                id: "storytelling", name: "Thematic Data Storytelling Agent", 
+                exampleQuery: "Summarise the progress of Southeast Asian nations towards SDG 9 (Industry, Innovation, and Infrastructure) using relevant indicators from MCP.",
+                exampleResponse: `SDG 9 Progress - SE Asia (Source: MCP via UN SDG DB):\n- Overall: Mixed progress. Strong gains in mobile connectivity (9.1.1) and road access (9.1.2).\n- Challenges: R&D investment (9.5.1) remains low in several countries. CO2 emissions from manufacturing (9.4.1) are a concern.`,
+                relevantPersonas: ["Policy Strategist (Government)", "Informed Citizen / Journalist", "Data Scientist / Analyst (NSO)"]
+            },
+            { 
+                id: "whatif", name: "\"What-If\" Scenario Support Agent", 
+                exampleQuery: "If export growth had been 2% lower annually for the past 5 years for Country X (based on MCP data), how might its trade balance have historically differed, assuming other components remained as reported by MCP?",
+                exampleResponse: `What-If: Country X Trade Balance (Source: MCP via NSO):\n- Scenario: -2% annual export growth (2019-2023).\n- Historical Impact (Simulated): Cumulative trade balance would have been approx. $X.Y billion lower. GDP impact estimated at -Z.W% over the period.`,
+                relevantPersonas: ["Policy Strategist (Government)", "Data Scientist / Analyst (NSO)"]
+            }
+        ];
+
+        function populatePersonaDropdown() {
+            personas.forEach(persona => {
+                const option = document.createElement('option');
+                option.value = persona;
+                option.textContent = persona;
+                personaSelect.appendChild(option);
+            });
+        }
+
+        function updateAgentDropdown() {
+            const selectedPersona = personaSelect.value;
+            agentSelect.innerHTML = ''; // Clear existing options
+            queryInput.value = ''; // Clear query input
+            chatbotResponse.innerHTML = ''; // Clear chatbot response
+
+            if (selectedPersona) {
+                agentSelect.disabled = false;
+                let defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.textContent = "-- Select AI Agent --";
+                agentSelect.appendChild(defaultOption);
+
+                const relevantAgents = aiAgents.filter(agent => agent.relevantPersonas.includes(selectedPersona));
+                relevantAgents.forEach(agent => {
+                    const option = document.createElement('option');
+                    option.value = agent.id;
+                    option.textContent = agent.name;
+                    agentSelect.appendChild(option);
+                });
+                if (relevantAgents.length === 0) {
+                    let noAgentOption = document.createElement('option');
+                    noAgentOption.value = "";
+                    noAgentOption.textContent = "-- No specific agents for this persona --";
+                    agentSelect.appendChild(noAgentOption);
+                }
+
+            } else {
+                agentSelect.disabled = true;
+                let placeholderOption = document.createElement('option');
+                placeholderOption.value = "";
+                placeholderOption.textContent = "-- Select Persona First --";
+                agentSelect.appendChild(placeholderOption);
+            }
+        }
+
+
+        agentSelect.addEventListener('change', function() {
+            const selectedAgentId = this.value;
+            if (selectedAgentId) {
+                const selectedAgentData = aiAgents.find(agent => agent.id === selectedAgentId);
+                queryInput.value = selectedAgentData.exampleQuery;
+                queryInput.placeholder = "Using Agent's example query";
+            } else {
+                queryInput.value = '';
+                queryInput.placeholder = "Select Persona & Agent, or type custom query";
+            }
+        });
+        
+        personaSelect.addEventListener('change', updateAgentDropdown);
+
+
+        function logMessage(message) {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            simulationLog.appendChild(p);
+            simulationLog.scrollTop = simulationLog.scrollHeight;
+        }
+
+        function highlight(element, active = true) {
+            if (element) {
+                if (active) element.classList.add('active');
+                else element.classList.remove('active');
+            }
+        }
+
+        function resetHighlights() {
+            document.querySelectorAll('.component').forEach(comp => comp.classList.remove('active'));
+            agent1DisplayEl.textContent = originalAgent1DisplayText;
+        }
+
+        async function startSimulation() {
+            if (isSimulating) return;
+
+            const selectedPersona = personaSelect.value;
+            const selectedAgentId = agentSelect.value;
+            let selectedAgentData = null;
+            let agentName = "Selected Agent";
+
+            if (selectedAgentId) {
+                selectedAgentData = aiAgents.find(agent => agent.id === selectedAgentId);
+                agentName = selectedAgentData ? selectedAgentData.name : "Custom Query Agent";
+            }
+
+
+            if (!selectedPersona) {
+                const prevMsg = chatbotResponse.innerHTML;
+                chatbotResponse.innerHTML = `<p class="text-red-600 font-semibold">Please select a Persona to start the simulation.</p>`;
+                setTimeout(() => { if(chatbotResponse.innerHTML.includes("Please select a Persona")) chatbotResponse.innerHTML = prevMsg; }, 3000);
+                return;
+            }
+            if (!selectedAgentId && !queryInput.value) {
+                const prevMsg = chatbotResponse.innerHTML;
+                chatbotResponse.innerHTML = `<p class="text-red-600 font-semibold">Please select an AI Agent or enter a custom query.</p>`;
+                setTimeout(() => { if(chatbotResponse.innerHTML.includes("Please select an AI Agent")) chatbotResponse.innerHTML = prevMsg; }, 3000);
+                return;
+            }
+
+            isSimulating = true;
+            sendQueryBtn.disabled = true;
+            // chatbotResponse.innerHTML = ''; // Already cleared by dropdown change if agent was selected
+            resetHighlights();
+            simulationLog.innerHTML = '';
+
+            const query = (selectedAgentData && selectedAgentData.exampleQuery) ? selectedAgentData.exampleQuery : queryInput.value || "Generic Custom Query";
+            
+            logMessage(`${selectedPersona} is initiating a task.`);
+            if (selectedAgentData) {
+                logMessage(`Task involves: ${agentName}.`);
+                agent1DisplayEl.textContent = agentName;
+            } else {
+                 agent1DisplayEl.textContent = "Custom Query Agent";
+            }
+            logMessage(`Formulating query: "${query}"`);
+
+            highlight(chatbotEl);
+            logMessage("Chatbot Interface: Processing user request...");
+            await new Promise(resolve => setTimeout(resolve, 700)); 
+
+            highlight(agent1DisplayEl);
+            logMessage(`Chatbot Interface: Engaging ${agent1DisplayEl.textContent} for the query...`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+            highlight(chatbotEl, false);
+
+            logMessage(`${agent1DisplayEl.textContent}: Received query. Preparing to access MCP Servers...`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            highlight(targetMcpserver);
+            logMessage(`${agent1DisplayEl.textContent}: Querying ${targetMcpserver.textContent} via MCP infrastructure...`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+            highlight(agent1DisplayEl, false);
+
+            logMessage(`${targetMcpserver.textContent}: Received query. Fetching from underlying NSO SDMX data source...`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            highlight(targetSdmxSource);
+            logMessage(`${targetMcpserver.textContent}: Querying ${targetSdmxSource.textContent}... (direct query to NSO data)`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+            highlight(targetMcpserver, false);
+
+            logMessage(`${targetSdmxSource.textContent}: Processing query and providing raw NSO statistical data...`);
+            await new Promise(resolve => setTimeout(resolve, 1200)); 
+
+            highlight(targetSdmxSource, false);
+            highlight(targetMcpserver);
+            logMessage(`${targetSdmxSource.textContent}: Sending NSO data back to ${targetMcpserver.textContent}.`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            highlight(targetMcpserver, false);
+            highlight(agent1DisplayEl);
+            logMessage(`${targetMcpserver.textContent}: Forwarding structured NSO data to ${agent1DisplayEl.textContent}.`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            highlight(agent1DisplayEl, false);
+            highlight(chatbotEl);
+            
+            let finalResponseText = `Data processed by ${agent1DisplayEl.textContent} for query: "${query}".\n`;
+            if (selectedAgentData && selectedAgentData.exampleResponse) {
+                finalResponseText += `Outcome:\n<pre>${selectedAgentData.exampleResponse}</pre>`;
+            } else {
+                finalResponseText += `Outcome: [Simulated Generic Result/Insight from NSO Data for your custom query: "${query}"]`;
+            }
+            
+            logMessage(`${agent1DisplayEl.textContent}: Synthesizing response and sending to Chatbot Interface.`);
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            chatbotResponse.innerHTML = finalResponseText; 
+            logMessage(`Chatbot Interface: Displaying response for ${selectedPersona}.`);
+            highlight(chatbotEl, false); 
+
+            isSimulating = false;
+            sendQueryBtn.disabled = false;
+            logMessage("Simulation complete.");
+        }
+
+        window.onload = () => {
+            populatePersonaDropdown();
+            updateAgentDropdown(); // Initialize agent dropdown based on no persona selected
+            logMessage("System ready. Select Persona, AI Agent (or enter custom query), then run simulation.");
+        };
+
+        sendQueryBtn.addEventListener('click', startSimulation);
+
+    </script>
+</body>
+</html>
