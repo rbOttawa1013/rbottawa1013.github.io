@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pension Estimator Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoVXM5RtnEAU1YdcWgkpPHUhXJ3+zQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" xintegrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script type="module">
+        // Firebase App (the core Firebase SDK) is always required and must be listed first
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY", // Replace with your actual config
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pension-dashboard-default';
+
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        // setLogLevel('debug'); // Uncomment for Firestore debugging
+
+        let userId = null;
+        let dbInitialized = false;
+        let estimatesCollectionRef;
+
+        // --- Constants ---
+        const MAX_PENSIONABLE_YEARS = 35;
+        const LIFETIME_PENSION_RATE = 0.02;
+        const BRIDGE_BENEFIT_RATE = 0.00625; 
+        const DEFAULT_YMPE_2025 = 69700; 
+        const YMPE_ANNUAL_INCREMENT = 1800; 
+        const MAX_AUTO_SCENARIOS = 4; 
+        const BASE_DEDUCTION = 1400; // Monthly base deduction
+        const DEDUCTION_INCREMENT_RATE = 0.02; // 2% increase per year of service (NO LONGER USED FOR CALCULATION but kept for reference)
+
+        // --- Authentication ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                console.log("User authenticated with UID:", userId);
+                document.getElementById('userIdDisplay').textContent = `User ID: ${userId}`;
+                estimatesCollectionRef = collection(db, `/artifacts/${appId}/users/${userId}/pensionEstimates`);
+                dbInitialized = true;
+                loadEstimates();
+            } else {
+                console.log("User is signed out. Attempting to sign in.");
+                userId = null;
+                dbInitialized = false;
+                document.getElementById('userIdDisplay').textContent = "User ID: Not authenticated";
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try { await signInWithCustomToken(auth, __initial_auth_token); }
+                    catch (error) { console.error("Error signing in with custom token, trying anonymous:", error); await signInAnonymously(auth); }
+                } else { await signInAnonymously(auth); }
+            }
+        });
+
+        // --- Global State ---
+        let displayedEstimates = [];
+        let allUserEstimates = [];
+        let pensionChart = null;
+        const MAX_DISPLAYED_ESTIMATES = 5;
+
+        // --- Initial Sample Data (if no data in Firestore) ---
+        const sampleEstimates = [
+            { id: 'sample1', estimateName: "Today's value", optionName: "Unreduced pension", date: "2025-05-23", highestAverageSalary: 117972.24, totalYearsPensionableService: 30.7, ympeAtRetirement: DEFAULT_YMPE_2025, forecastedHighestAverageSalary: null, serviceBuybackPensionTransfer: 0, isSample: true },
+            { id: 'sample2', estimateName: "Future Scenario", optionName: "Unreduced pension", date: "2026-09-06", highestAverageSalary: 117199.68, totalYearsPensionableService: 32, ympeAtRetirement: DEFAULT_YMPE_2025 + YMPE_ANNUAL_INCREMENT, forecastedHighestAverageSalary: 117199.68, serviceBuybackPensionTransfer: 0, isSample: true },
+        ];
+
+        // --- Pension Calculation Logic ---
+        function calculatePensionComponents(HAS, YPS, YMPE) {
+            const HASToUse = HAS || 0;
+            const YPSToUse = Math.min(YPS || 0, MAX_PENSIONABLE_YEARS);
+            const YMPEToUse = YMPE || DEFAULT_YMPE_2025;
+            const annualLifetimePension = LIFETIME_PENSION_RATE * YPSToUse * HASToUse;
+            const salaryForBridge = Math.min(HASToUse, YMPEToUse);
+            const annualBridgeBenefit = BRIDGE_BENEFIT_RATE * YPSToUse * salaryForBridge;
+            return { lifetimePension: annualLifetimePension / 12, temporaryBridgeBenefit: annualBridgeBenefit / 12 };
+        }
+
+        // --- Utility Functions ---
+        function calculateTotals(estimate) {
+            const { lifetimePension, temporaryBridgeBenefit } = calculatePensionComponents(
+                estimate.highestAverageSalary, estimate.totalYearsPensionableService, estimate.ympeAtRetirement
+            );
+            estimate.lifetimePension = lifetimePension;
+            estimate.temporaryBridgeBenefit = temporaryBridgeBenefit;
+            estimate.monthlyTotalBeforeDeductions = (estimate.lifetimePension || 0) + (estimate.temporaryBridgeBenefit || 0);
+            estimate.totalDeductions = BASE_DEDUCTION; 
+            estimate.totalMonthlyAfterDeductions = estimate.monthlyTotalBeforeDeductions - (estimate.totalDeductions || 0);
+            estimate.annualGrossSalaryAfterDeductions = (estimate.totalMonthlyAfterDeductions || 0) * 12;
+            return estimate;
+        }
+
+        function formatCurrency(value) {
+            if (value === null || typeof value === 'undefined' || isNaN(value)) return 'N/A';
+            return `$ ${Number(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString + 'T00:00:00'); 
+            if (isNaN(date.getTime())) return dateString; 
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function incrementDateByOneYear(dateString) {
+            if (!dateString) return null;
+            try {
+                const [year, month, day] = dateString.split('-').map(Number);
+                return `${year + 1}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            } catch (e) { console.warn("Could not increment date:", dateString, e); return dateString; }
+        }
+
+        function sortByYearsOfService(estimates) {
+            return estimates.sort((a, b) => (a.totalYearsPensionableService || 0) - (b.totalYearsPensionableService || 0));
+        }
+
+        // --- Chart Rendering ---
+        function renderChart() {
+            const ctx = document.getElementById('pensionChart').getContext('2d');
+            if (pensionChart) pensionChart.destroy();
+            
+            const labels = displayedEstimates.map(est => {
+                const ypsDisplay = (est.totalYearsPensionableService || 0).toFixed(1);
+                return est.estimateName ? `${est.estimateName} (${ypsDisplay} YPS)` : `${ypsDisplay} YPS Scenario`;
+            });
+
+            const lifetimePensionData = displayedEstimates.map(est => est.lifetimePension || 0);
+            const temporaryBridgeBenefitData = displayedEstimates.map(est => est.temporaryBridgeBenefit || 0);
+            pensionChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets: [
+                        { label: 'Lifetime Pension', data: lifetimePensionData, backgroundColor: 'rgba(54, 162, 235, 0.7)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 },
+                        { label: 'Temporary Bridge Benefit', data: temporaryBridgeBenefitData, backgroundColor: 'rgba(255, 206, 86, 0.7)', borderColor: 'rgba(255, 206, 86, 1)', borderWidth: 1 }
+                    ]},
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: value => formatCurrency(value) } } }, plugins: { title: { display: true, text: 'Monthly pension estimates before deductions', font: { size: 16 } }, tooltip: { callbacks: { label: context => `${context.dataset.label || ''}: ${formatCurrency(context.parsed.y)}` } } } }
+            });
+        }
+
+        // --- Table Rendering ---
+        function renderTable() {
+            const tableBody = document.getElementById('estimatesTableBody');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+            const fields = ['estimateName', 'optionName', 'date', 'highestAverageSalary', 'totalYearsPensionableService', 'ympeAtRetirement', 'lifetimePension', 'temporaryBridgeBenefit', 'monthlyTotalBeforeDeductions', 'totalDeductions', 'totalMonthlyAfterDeductions', 'annualGrossSalaryAfterDeductions', 'forecastedHighestAverageSalary', 'serviceBuybackPensionTransfer'];
+            const fieldDisplayNames = { 
+                estimateName: "Estimate name", optionName: "Option name", date: "Date", 
+                lifetimePension: "Calculated Lifetime pension (monthly)", temporaryBridgeBenefit: "Calculated Temporary bridge benefit (monthly)", 
+                monthlyTotalBeforeDeductions: "Monthly total before deductions", totalDeductions: "Calculated Total deductions", 
+                totalMonthlyAfterDeductions: "Total monthly after deductions", 
+                annualGrossSalaryAfterDeductions: "Annual gross salary (after deductions)", 
+                highestAverageSalary: "Highest average salary", 
+                forecastedHighestAverageSalary: "My forecasted highest average salary", 
+                serviceBuybackPensionTransfer: "Service buyback/pension transfer", 
+                totalYearsPensionableService: "Total years of pensionable service", 
+                ympeAtRetirement: "YMPE at Retirement" 
+            };
+            fields.forEach(field => {
+                const tr = document.createElement('tr'); tr.classList.add('border-b');
+                const th = document.createElement('th'); th.scope = 'row'; th.classList.add('px-4', 'py-3', 'font-medium', 'text-gray-900', 'whitespace-nowrap', 'text-left', 'bg-gray-50'); th.textContent = fieldDisplayNames[field] || field; tr.appendChild(th);
+                displayedEstimates.forEach(estimate => {
+                    const td = document.createElement('td'); td.classList.add('px-4', 'py-3', 'text-center');
+                    let value = estimate[field];
+                    if (['lifetimePension', 'temporaryBridgeBenefit', 'monthlyTotalBeforeDeductions', 'totalDeductions', 'totalMonthlyAfterDeductions', 'annualGrossSalaryAfterDeductions', 'highestAverageSalary', 'forecastedHighestAverageSalary', 'ympeAtRetirement'].includes(field)) value = formatCurrency(value);
+                    else if (field === 'date') value = formatDate(value);
+                    else if (value === null || typeof value === 'undefined') value = 'N/A';
+                    td.textContent = value; tr.appendChild(td);
+                });
+                for (let i = displayedEstimates.length; i < MAX_DISPLAYED_ESTIMATES; i++) { const td = document.createElement('td'); td.classList.add('px-4', 'py-3', 'text-center'); td.textContent = 'N/A'; tr.appendChild(td); }
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- Update UI ---
+        function updateDashboard() {
+            const processAndSlice = (estimatesArray) => sortByYearsOfService(estimatesArray.map(est => calculateTotals({...est}))).slice(0, MAX_DISPLAYED_ESTIMATES);
+            if (!dbInitialized && displayedEstimates.length === 0) { displayedEstimates = processAndSlice(sampleEstimates); }
+            else if (dbInitialized && allUserEstimates.length > 0 && displayedEstimates.length === 0) { displayedEstimates = allUserEstimates.slice(0, MAX_DISPLAYED_ESTIMATES).map(est => calculateTotals({...est})); }
+            else { displayedEstimates = sortByYearsOfService(displayedEstimates.map(est => calculateTotals({...est}))); }
+            renderChart(); renderTable(); updateManageEstimatesModal();
+        }
+        
+        // --- Firestore Operations ---
+        async function saveEstimate(estimateData, isAutoGenerated = false) {
+            if (!dbInitialized || !estimatesCollectionRef) { if (!isAutoGenerated) showModal("Error", "Database not initialized."); return null; }
+            const { totalDeductions, annualGrossSalaryAfterDeductions, ...dataToSave } = estimateData; 
+            try {
+                const docRef = await addDoc(estimatesCollectionRef, { ...dataToSave, createdAt: serverTimestamp(), userId: userId });
+                if (!isAutoGenerated) showModal("Success", `Estimate "${dataToSave.estimateName}" saved.`);
+                return { ...dataToSave, id: docRef.id }; 
+            } catch (error) { console.error("Error saving estimate: ", error); if (!isAutoGenerated) showModal("Error", `Save failed: ${error.message}`); return null; }
+        }
+
+        function loadEstimates() {
+            if (!dbInitialized || !estimatesCollectionRef) { updateDashboard(); return; }
+            onSnapshot(query(estimatesCollectionRef, where("userId", "==", userId)), (snapshot) => {
+                allUserEstimates = sortByYearsOfService(snapshot.docs.map(doc => calculateTotals({ ...doc.data(), id: doc.id })));
+                const wereSamplesDisplayed = displayedEstimates.some(e => e.isSample);
+                const displayedEstimateIds = new Set(displayedEstimates.map(e => e.id));
+                if (displayedEstimates.length === 0 || wereSamplesDisplayed) { displayedEstimates = allUserEstimates.slice(0, MAX_DISPLAYED_ESTIMATES); }
+                else {
+                    displayedEstimates = allUserEstimates.filter(est => displayedEstimateIds.has(est.id));
+                    if (displayedEstimates.length < MAX_DISPLAYED_ESTIMATES && displayedEstimates.length < allUserEstimates.length) {
+                        const additionalEstimatesNeeded = MAX_DISPLAYED_ESTIMATES - displayedEstimates.length;
+                        const currentDisplayedIds = new Set(displayedEstimates.map(e => e.id));
+                        const availableToAdd = allUserEstimates.filter(e => !currentDisplayedIds.has(e.id));
+                        displayedEstimates.push(...availableToAdd.slice(0, additionalEstimatesNeeded));
+                    }
+                    displayedEstimates = sortByYearsOfService(displayedEstimates); 
+                }
+                updateDashboard();
+            }, (error) => {
+                console.error("Error loading estimates: ", error); showModal("Error", `Load failed: ${error.message}`);
+                if (displayedEstimates.length === 0) updateDashboard();
+            });
+        }
+
+        async function deleteEstimate(estimateId) {
+            if (!dbInitialized || !estimatesCollectionRef) { showModal("Error", "Database not initialized."); return; }
+            try { await deleteDoc(doc(db, `/artifacts/${appId}/users/${userId}/pensionEstimates`, estimateId)); showModal("Success", "Estimate deleted."); }
+            catch (error) { console.error("Error deleting estimate: ", error); showModal("Error", `Delete failed: ${error.message}`); }
+        }
+        
+        async function updateEstimateInFirestore(estimateId, updatedData) {
+            if (!dbInitialized || !estimatesCollectionRef) { showModal("Error", "Database not initialized."); return; }
+            const { totalDeductions, annualGrossSalaryAfterDeductions, ...dataToSave } = updatedData;
+            try {
+                const estimateRef = doc(db, `/artifacts/${appId}/users/${userId}/pensionEstimates`, estimateId);
+                await setDoc(estimateRef, { ...dataToSave, updatedAt: serverTimestamp() }, { merge: true });
+                showModal("Success", `Estimate "${dataToSave.estimateName}" updated.`);
+            } catch (error) { console.error("Error updating estimate: ", error); showModal("Error", `Update failed: ${error.message}`); }
+        }
+
+        // --- Auto-populate Scenarios ---
+        async function prepopulateIncrementalScenarios(baseEstimate) {
+            let currentYPS = baseEstimate.totalYearsPensionableService;
+            let currentYMPE = baseEstimate.ympeAtRetirement;
+            let currentDate = baseEstimate.date;
+            for (let i = 1; i <= MAX_AUTO_SCENARIOS; i++) {
+                currentYPS += 1;
+                if (currentYPS > MAX_PENSIONABLE_YEARS) break; 
+                currentYMPE += YMPE_ANNUAL_INCREMENT;
+                currentDate = incrementDateByOneYear(currentDate);
+                const newScenario = { ...baseEstimate, estimateName: `${baseEstimate.estimateName || 'Scenario'} (+${i} Yr Service)`, totalYearsPensionableService: currentYPS, ympeAtRetirement: currentYMPE, date: currentDate, id: null, createdAt: null, isSample: false };
+                delete newScenario.id; delete newScenario.createdAt; delete newScenario.updatedAt; 
+                delete newScenario.totalDeductions; 
+                delete newScenario.annualGrossSalaryAfterDeductions; 
+                await saveEstimate(newScenario, true); 
+            }
+            console.log("Auto-population of scenarios attempted.");
+        }
+
+        // --- Modal Handling ---
+        const mainModal = document.getElementById('mainModal');
+        const modalTitleElement = document.getElementById('modalTitle'); 
+        const modalBody = document.getElementById('modalBody');
+        const modalCloseButton = document.getElementById('modalCloseButton');
+        const modalActionButton = document.getElementById('modalActionButton');
+        function showModal(titleText, content, actionButtonText = null, actionCallback = null) {
+            modalTitleElement.textContent = titleText; 
+            modalBody.innerHTML = typeof content === 'string' ? `<p>${content}</p>` : '';
+            if (typeof content !== 'string') modalBody.appendChild(content);
+            modalActionButton.classList.toggle('hidden', !(actionButtonText && actionCallback));
+            if (actionButtonText && actionCallback) { modalActionButton.textContent = actionButtonText; modalActionButton.onclick = () => { actionCallback(); hideModal(); }; }
+            mainModal.classList.remove('hidden'); mainModal.classList.add('flex');
+        }
+        function hideModal() { mainModal.classList.add('hidden'); mainModal.classList.remove('flex'); modalBody.innerHTML = ''; }
+        modalCloseButton.onclick = hideModal;
+        
+        // --- Add/Edit Pension Estimate Modal ---
+        function openAddEditEstimateModal(estimateToEdit = null) {
+            const form = document.createElement('form'); form.id = 'pensionEstimateForm'; form.className = 'space-y-4';
+            const defaultYMPE = estimateToEdit?.ympeAtRetirement || DEFAULT_YMPE_2025;
+            const fields = [ 
+                { id: 'estimateName', label: 'Estimate Name', type: 'text', required: true, value: estimateToEdit?.estimateName || `Scenario ${allUserEstimates.length + 1}` },
+                { id: 'optionName', label: 'Option Name', type: 'text', value: estimateToEdit?.optionName || 'Unreduced pension' },
+                { id: 'date', label: 'Retirement Date (YYYY-MM-DD)', type: 'date', value: estimateToEdit?.date || new Date().toISOString().split('T')[0] },
+                { id: 'highestAverageSalary', label: 'Highest Average Salary ($)', type: 'number', step: '0.01', required: true, value: estimateToEdit?.highestAverageSalary || 0 },
+                { id: 'totalYearsPensionableService', label: 'Total Years of Pensionable Service', type: 'number', step: '0.1', required: true, value: estimateToEdit?.totalYearsPensionableService || 0 },
+                { id: 'ympeAtRetirement', label: `YMPE at Retirement ($) (e.g., ${DEFAULT_YMPE_2025} for 2025)`, type: 'number', step: '0.01', required: true, value: defaultYMPE },
+                { id: 'forecastedHighestAverageSalary', label: 'Forecasted Highest Average Salary ($) (Optional)', type: 'number', step: '0.01', value: estimateToEdit?.forecastedHighestAverageSalary || '' },
+                { id: 'serviceBuybackPensionTransfer', label: 'Service Buyback/Pension Transfer (Years) (Optional)', type: 'number', step: '0.1', value: estimateToEdit?.serviceBuybackPensionTransfer || 0 }
+            ];
+            fields.forEach(field => { 
+                const labelEl = document.createElement('label'); labelEl.htmlFor = field.id; labelEl.className = 'block text-sm font-medium text-gray-700'; labelEl.textContent = field.label;
+                const inputEl = document.createElement('input'); inputEl.type = field.type; inputEl.id = field.id; inputEl.name = field.id; inputEl.className = 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
+                if (field.required) inputEl.required = true; if (field.step) inputEl.step = field.step; inputEl.value = field.value === null ? '' : field.value;
+                form.appendChild(labelEl); form.appendChild(inputEl);
+            });
+
+            const deductionsDisplayDiv = document.createElement('div');
+            const deductionsLabel = document.createElement('label');
+            deductionsLabel.className = 'block text-sm font-medium text-gray-700';
+            deductionsLabel.textContent = 'Calculated Total Deductions (Monthly)';
+            deductionsDisplayDiv.appendChild(deductionsLabel);
+
+            const deductionsValueDisplay = document.createElement('div');
+            deductionsValueDisplay.className = 'mt-1 block w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md shadow-sm sm:text-sm text-gray-700';
+            deductionsValueDisplay.textContent = formatCurrency(BASE_DEDUCTION);
+            deductionsDisplayDiv.appendChild(deductionsValueDisplay);
+            form.appendChild(deductionsDisplayDiv);
+
+            const titleText = estimateToEdit ? 'Edit Pension Estimate' : 'Add New Pension Estimate';
+            const actionText = estimateToEdit ? 'Save Changes' : 'Add Estimate';
+            showModal(titleText, form, actionText, async () => { 
+                const formData = new FormData(form); const newEstimateData = {};
+                fields.forEach(field => { const val = formData.get(field.id); newEstimateData[field.id] = (field.type === 'number' && val !== '') ? parseFloat(val) : (val === '' ? null : val) ; });
+                if (estimateToEdit) { await updateEstimateInFirestore(estimateToEdit.id, {...estimateToEdit, ...newEstimateData}); }
+                else { const savedBaseEstimate = await saveEstimate(newEstimateData); if (savedBaseEstimate) { await prepopulateIncrementalScenarios(savedBaseEstimate); } }
+            });
+        }
+        document.getElementById('addPensionEstimateButton').onclick = () => openAddEditEstimateModal();
+
+        // --- Manage Estimates Modal ---
+        function updateManageEstimatesModal() {
+            const container = document.getElementById('manageEstimatesContainer');
+            if (!container) return; container.innerHTML = '';
+            const sortedAllEstimates = sortByYearsOfService([...allUserEstimates]); 
+            if (sortedAllEstimates.length === 0) { container.innerHTML = '<p class="text-gray-500">No estimates saved. Click "+ Add a pension estimate".</p>'; return; }
+            const ul = document.createElement('ul'); ul.className = 'space-y-3';
+            sortedAllEstimates.forEach(estimate => { 
+                const li = document.createElement('li'); li.className = 'p-3 border rounded-md flex justify-between items-center hover:bg-gray-50';
+                const estimateInfo = document.createElement('div'); 
+                const nameSpan = document.createElement('span'); nameSpan.className = 'font-semibold'; nameSpan.textContent = estimate.estimateName || 'Unnamed'; 
+                const dateSpan = document.createElement('span'); dateSpan.className = 'text-sm text-gray-600 ml-2'; dateSpan.textContent = `(${formatDate(estimate.date) || 'No date'}, ${(estimate.totalYearsPensionableService || 0).toFixed(1)} YPS)`; 
+                const deductionInfoSpan = document.createElement('span');
+                deductionInfoSpan.className = 'text-xs text-gray-500 block sm:inline sm:ml-2'; 
+                const processedEstimate = calculateTotals({...estimate}); 
+                deductionInfoSpan.textContent = `Deductions: ${formatCurrency(processedEstimate.totalDeductions)}`;
+                estimateInfo.appendChild(nameSpan); 
+                estimateInfo.appendChild(dateSpan);
+                estimateInfo.appendChild(deductionInfoSpan); 
+                const buttonsDiv = document.createElement('div'); buttonsDiv.className = 'space-x-2 flex-shrink-0'; 
+                const displayButton = document.createElement('button'); displayButton.textContent = displayedEstimates.find(e => e.id === estimate.id) ? 'Hide' : 'Show'; displayButton.className = 'px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md'; displayButton.onclick = () => toggleDisplayEstimate(estimate);
+                const editButton = document.createElement('button'); editButton.textContent = 'Edit'; editButton.className = 'px-3 py-1 text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded-md'; editButton.onclick = () => { hideModal(); openAddEditEstimateModal(estimate); };
+                const deleteButton = document.createElement('button'); deleteButton.textContent = 'Delete'; deleteButton.className = 'px-3 py-1 text-sm bg-red-500 hover:bg-red-600 text-white rounded-md';
+                deleteButton.onclick = () => { const modalConfirmDiv = document.createElement('div'); modalConfirmDiv.innerHTML = `<p>Are you sure you want to delete estimate "${estimate.estimateName || 'this estimate'}"? This cannot be undone.</p>`; showModal('Confirm Deletion', modalConfirmDiv, 'Delete', () => { deleteEstimate(estimate.id); hideModal(); }); };
+                buttonsDiv.appendChild(displayButton); buttonsDiv.appendChild(editButton); buttonsDiv.appendChild(deleteButton);
+                li.appendChild(estimateInfo); li.appendChild(buttonsDiv); ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        }
+
+        function toggleDisplayEstimate(estimateToToggle) {
+            const indexInDisplayed = displayedEstimates.findIndex(e => e.id === estimateToToggle.id);
+            if (indexInDisplayed > -1) displayedEstimates.splice(indexInDisplayed, 1);
+            else { if (displayedEstimates.length < MAX_DISPLAYED_ESTIMATES) displayedEstimates.push(calculateTotals({...estimateToToggle})); else { showModal("Info", "Max 5 estimates displayed. Remove one to add another."); return; } }
+            updateDashboard(); updateManageEstimatesModal(); 
+        }
+        document.getElementById('manageEstimatesButton').onclick = () => { const contentDiv = document.createElement('div'); contentDiv.id = 'manageEstimatesContainer'; contentDiv.className = 'max-h-96 overflow-y-auto'; showModal('Manage Pension Estimates', contentDiv); updateManageEstimatesModal(); };
+
+        // --- PDF Download / Print ---
+        document.getElementById('downloadButton').onclick = async () => {
+            const downloadButton = document.getElementById('downloadButton');
+            downloadButton.textContent = 'Generating PDF...';
+            downloadButton.disabled = true;
+
+            const { jsPDF } = window.jspdf; // Ensure jsPDF is accessed correctly
+            const printableArea = document.querySelector('.printable-area');
+            
+            // Temporarily make all elements visible for capture if they were hidden for print CSS
+            const noPrintElements = printableArea.querySelectorAll('.no-print');
+            noPrintElements.forEach(el => el.style.display = 'none'); // Hide elements not meant for PDF
+
+            // Ensure chart is rendered before capturing
+            if (pensionChart && pensionChart.ctx) {
+                 // No specific re-render needed if chart is already up-to-date
+            } else {
+                // If chart isn't ready, might need a small delay or ensure it's rendered
+                // For simplicity, we assume it's rendered. Complex cases might need more.
+            }
+
+            try {
+                const canvas = await html2canvas(printableArea, { 
+                    scale: 2, // Increase scale for better quality
+                    useCORS: true, // If there are any external images/fonts
+                    logging: false // Disable html2canvas logging in console
+                });
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Calculate PDF dimensions
+                const pdfWidth = 210; // A4 width in mm
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const aspectRatio = imgHeight / imgWidth;
+                const pdfHeight = pdfWidth * aspectRatio;
+
+                const pdf = new jsPDF({
+                    orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+                    unit: 'mm',
+                    format: [pdfWidth, pdfHeight]
+                });
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('pension_dashboard.pdf');
+                showModal("Success", "PDF generated and download started.");
+
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                showModal("Error", "Could not generate PDF. " + error.message);
+            } finally {
+                 noPrintElements.forEach(el => el.style.display = ''); // Restore visibility
+                 downloadButton.textContent = 'Download (PDF)';
+                 downloadButton.disabled = false;
+            }
+        };
+
+
+        // --- CSV Export ---
+        document.getElementById('exportCsvButton').onclick = () => {
+            const sortedToExport = sortByYearsOfService([...displayedEstimates]);
+            if (sortedToExport.length === 0) { showModal("Info", "No estimates to export."); return; }
+            const headers = ["Estimate Name", "Option Name", "Date", "Highest Average Salary", "Total Years of Pensionable Service", "YMPE at Retirement", "Calculated Lifetime Pension (Monthly)", "Calculated Temporary Bridge Benefit (Monthly)", "Monthly Total Before Deductions", "Calculated Total Deductions", "Total Monthly After Deductions", "Annual Gross Salary (After Deductions)", "Forecasted Highest Average Salary", "Service Buyback/Pension Transfer"];
+            const rows = sortedToExport.map(est => { 
+                const processedEst = calculateTotals({...est}); 
+                return [
+                    processedEst.estimateName, processedEst.optionName, processedEst.date, 
+                    processedEst.highestAverageSalary, processedEst.totalYearsPensionableService, processedEst.ympeAtRetirement, 
+                    processedEst.lifetimePension, processedEst.temporaryBridgeBenefit, 
+                    processedEst.monthlyTotalBeforeDeductions, processedEst.totalDeductions, 
+                    processedEst.totalMonthlyAfterDeductions, processedEst.annualGrossSalaryAfterDeductions, 
+                    processedEst.forecastedHighestAverageSalary, processedEst.serviceBuybackPensionTransfer
+                ].map(val => (val === null || typeof val === 'undefined') ? '' : String(val)); 
+            });
+            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "pension_estimates_sorted.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            showModal("Success", "Estimates exported to CSV (sorted by YPS).");
+        };
+
+        // --- CSV Import ---
+        document.getElementById('importCsvButton').onclick = () => { 
+            const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.csv';
+            fileInput.onchange = async (event) => {
+                const file = event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = async (e) => { const text = e.target.result; try { const importedEstimates = parseCSV(text); if (importedEstimates.length === 0) { showModal("Info", "CSV empty or invalid format."); return; } let importedCount = 0; for (const est of importedEstimates) { if (await saveEstimate(est)) importedCount++; } showModal("Success", `${importedCount} estimates imported and saved.`); } catch (error) { console.error("CSV Parse Error:", error); showModal("Error", `Import Error: ${error.message}. Check CSV format.`); } }; reader.readAsText(file); }
+            }; fileInput.click();
+        };
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== ''); if (lines.length < 2) throw new Error("CSV needs header and data rows.");
+            const csvHeaders = lines[0].split(',').map(h => h.trim().toLowerCase());
+            const headerMap = { "estimate name": "estimateName", "option name": "optionName", "date": "date", "highest average salary": "highestAverageSalary", "total years of pensionable service": "totalYearsPensionableService", "ympe at retirement": "ympeAtRetirement", "forecasted highest average salary": "forecastedHighestAverageSalary", "service buyback/pension transfer": "serviceBuybackPensionTransfer" };
+            const indices = {}; Object.keys(headerMap).forEach(csvKey => { const idx = csvHeaders.indexOf(csvKey); if (idx !== -1) indices[headerMap[csvKey]] = idx; });
+            if (typeof indices.highestAverageSalary === 'undefined' || typeof indices.totalYearsPensionableService === 'undefined' || typeof indices.ympeAtRetirement === 'undefined') { throw new Error("CSV must contain 'Highest Average Salary', 'Total Years of Pensionable Service', and 'YMPE at Retirement' columns."); }
+            const dataRows = lines.slice(1);
+            return dataRows.map(row => {
+                const values = row.split(','); const estimate = { estimateName: "Imported Estimate" };
+                Object.keys(indices).forEach(internalKey => { const csvIdx = indices[internalKey]; let value = values[csvIdx] ? values[csvIdx].trim() : null; if (['highestAverageSalary', 'totalYearsPensionableService', 'ympeAtRetirement', 'forecastedHighestAverageSalary', 'serviceBuybackPensionTransfer'].includes(internalKey)) { value = value !== null && value !== '' ? parseFloat(value) : null; } estimate[internalKey] = value; });
+                estimate.highestAverageSalary = estimate.highestAverageSalary || 0; estimate.totalYearsPensionableService = estimate.totalYearsPensionableService || 0; estimate.ympeAtRetirement = estimate.ympeAtRetirement || DEFAULT_YMPE_2025;
+                return estimate;
+            });
+        }
+
+        // --- Initial Load ---
+        setTimeout(() => { if (!dbInitialized && displayedEstimates.length === 0) updateDashboard(); }, 1500);
+
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal-content { max-height: 80vh; }
+        #chartContainer { position: relative; height:40vh; width:100%; margin-bottom: 2rem; }
+        /* Keep print styles for direct browser printing if ever needed, html2canvas tries to respect them */
+        @media print {
+            body * { visibility: hidden; }
+            .printable-area, .printable-area * { visibility: visible; }
+            .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+            #pensionChart { max-height: 300px !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6 md:p-8">
+    <div class="container mx-auto bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-xl"> <header class="mb-6 printable-area-segment"> <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Pension Estimator</h1>
+            <p id="dashboardDescription" class="text-sm text-gray-600 mt-1">
+                Estimate and compare pension scenarios. Formulas are based on typical Public Service Pension Plan rules (pre-65).
+                Input HAS, YPS, and YMPE to calculate Lifetime Pension and Bridge Benefit. Max 35 YPS applied.
+                Deductions are auto-calculated at a flat $1400 per month.
+                Adding a new estimate may auto-populate subsequent year scenarios. Options are displayed sorted by Years of Pensionable Service.
+            </p>
+            <p id="userIdDisplay" class="text-xs text-gray-500 mt-1 no-print">User ID: Loading...</p>
+        </header>
+
+        <div class="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-2 sm:gap-3 no-print">
+            <button id="addPensionEstimateButton" class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                + Add a pension estimate
+            </button>
+            <button id="manageEstimatesButton" class="w-full lg:w-auto bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                Manage estimates
+            </button>
+            <button id="downloadButton" class="w-full lg:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                Download (PDF) </button>
+            <button id="importCsvButton" class="w-full lg:w-auto bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                Import Estimates (CSV)
+            </button>
+            <button id="exportCsvButton" class="w-full lg:w-auto bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
+                Export Estimates (CSV)
+            </button>
+        </div>
+        
+        <div class="printable-area">
+            <div id="chartContainer" class="mb-8 printable-area-segment"> <canvas id="pensionChart"></canvas>
+            </div>
+            <p class="text-xs text-gray-500 text-center mb-6 -mt-4 printable-area-segment">Click on bars to see details (via tooltips).</p>
+
+            <section class="printable-area-segment"> <h2 class="text-xl font-semibold text-gray-700 mb-4">Benefits summary and calculation details</h2>
+                <div class="overflow-x-auto shadow-md rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 sticky left-0 bg-gray-100 z-10">Detail</th>
+                                <th scope="col" class="px-4 py-3 text-center">Scenario 1</th>
+                                <th scope="col" class="px-4 py-3 text-center">Scenario 2</th>
+                                <th scope="col" class="px-4 py-3 text-center">Scenario 3</th>
+                                <th scope="col" class="px-4 py-3 text-center">Scenario 4</th>
+                                <th scope="col" class="px-4 py-3 text-center">Scenario 5</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estimatesTableBody" class="bg-white"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="mainModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden no-print">
+        <div class="relative mx-auto p-5 border w-full max-w-lg md:max-w-2xl shadow-lg rounded-md bg-white modal-content">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 id="modalTitle" class="text-lg font-medium text-gray-900">Modal Title</h3>
+                <button id="modalCloseButton" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                    <span class="sr-only">Close modal</span>
+                </button>
+            </div>
+            <div id="modalBody" class="py-4 overflow-y-auto" style="max-height: calc(80vh - 150px);"></div>
+            <div class="flex items-center justify-end pt-3 border-t space-x-2">
+                <button id="modalActionButton" class="hidden px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    Action
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
