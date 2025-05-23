@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Service Pension & Tax Calculator (ON 2024) - Enhanced OAS & Modular</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Apply Inter font to the body */
+        body { font-family: 'Inter', sans-serif; }
+
+        /* Specific styling for input groups to align labels and inputs */
+        .input-group label {
+            min-width: 200px; /* Ensures labels have enough space */
+            display: flex;
+            align-items: center; /* Vertically aligns label text with input */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            color: #374151; /* text-gray-700 */
+        }
+
+        /* Grid layout for results area, responsive columns */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Auto-fit columns, min width 280px */
+            gap: 1rem; /* Gap between grid items */
+        }
+
+        /* Styling for individual result cards */
+        .result-card {
+            background-color: #f9fafb; /* bg-gray-50 */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            padding: 1.5rem; /* Increased padding for better spacing */
+            border-radius: 0.75rem; /* Rounded corners */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Subtle shadow */
+        }
+        .result-card h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700; /* font-bold */
+            margin-bottom: 1rem; /* Increased margin */
+            color: #4f46e5; /* text-indigo-700 */
+            border-bottom: 1px solid #e0e7ff; /* Light indigo border */
+            padding-bottom: 0.5rem;
+        }
+        .result-card p {
+            margin-bottom: 0.5rem; /* Increased margin */
+            color: #4b5563; /* text-gray-600 */
+            font-size: 0.95rem; /* Slightly larger font */
+            display: flex;
+            justify-content: space-between; /* Spreads text and amount */
+            align-items: center;
+        }
+        .result-card .amount {
+            font-weight: 600; /* font-semibold */
+            color: #10b981; /* text-green-500 */
+            font-size: 1rem;
+        }
+        .result-card .deduction {
+            font-weight: 600; /* font-semibold */
+            color: #ef4444; /* text-red-500 */
+            font-size: 1rem;
+        }
+
+        /* Styling for info icons and tooltips */
+        .info-icon {
+            display: inline-flex; /* Use flex for centering 'i' */
+            justify-content: center;
+            align-items: center;
+            width: 18px; /* Slightly larger icon */
+            height: 18px;
+            background-color: #6b7280; /* bg-gray-500 */
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            line-height: 1; /* Adjust line-height for vertical centering */
+            cursor: help;
+            margin-left: 8px;
+            flex-shrink: 0; /* Prevent icon from shrinking */
+        }
+        .tooltip {
+            position: relative;
+            display: inline-flex; /* Allows tooltiptext to position relative to this */
+            align-items: center;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px; /* Wider tooltip */
+            background-color: #374151; /* bg-gray-700 */
+            color: #fff;
+            text-align: left;
+            border-radius: 8px; /* More rounded corners */
+            padding: 10px; /* More padding */
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Position above the icon */
+            left: 50%;
+            transform: translateX(-50%); /* Centering trick */
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            font-size: 0.8rem; /* Slightly larger font */
+            line-height: 1.4;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* Stronger shadow */
+        }
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -8px; /* Adjust arrow position */
+            border-width: 8px; /* Larger arrow */
+            border-style: solid;
+            border-color: #374151 transparent transparent transparent;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Styling for section titles */
+        .section-title {
+            font-size: 1.5rem; /* Larger section title */
+            font-weight: 700; /* font-bold */
+            color: #1f2937; /* text-gray-800 */
+            margin-bottom: 1.25rem; /* More space below title */
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e5e7eb; /* Thicker border */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl bg-white shadow-2xl rounded-xl p-6 md:p-10 border border-gray-200">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight">Canadian Public Service Pension & Tax Calculator</h1>
+            <p class="text-gray-600 mt-3 text-lg">Ontario - Estimates for 2024 Rates (incl. Enhanced OAS for 75+)</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8 mb-10">
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="section-title">Personal Information</h2>
+                <div class="space-y-5">
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="gender">Gender:</label>
+                        <select id="gender" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="currentAge">Current Age:</label>
+                        <input type="number" id="currentAge" value="55" min="18" max="100" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="lifeExpectancy">Life Expectancy (years):</label>
+                        <input type="number" id="lifeExpectancy" value="82" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="avgSalary">Average Salary (best 5 yrs):</label>
+                        <input type="number" id="avgSalary" value="80000" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="yearsService">Years of Pensionable Service (max 35):</label>
+                        <input type="number" id="yearsService" value="30" max="35" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="ageAtRetirement">Age at Retirement:</label>
+                        <input type="number" id="ageAtRetirement" value="60" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="section-title">CPP & OAS Choices</h2>
+                <div class="space-y-5">
+                     <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="cppAt65">Est. Annual CPP at age 65:
+                            <div class="tooltip">
+                                <span class="info-icon">i</span>
+                                <span class="tooltiptext">Find this on your My Service Canada Account. Max 2024 CPP is $16,375.20. Average is lower. This should be your personal estimated amount.</span>
+                            </div>
+                        </label>
+                        <input type="number" id="cppAt65" value="12000" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="cppStartAge">Desired CPP Start Age (60-70):</label>
+                        <select id="cppStartAge" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                            <script>
+                                // Dynamically generate options for CPP start age from 60 to 70
+                                for(let i=60; i<=70; i++) {
+                                    document.write(`<option value="${i}" ${i===65 ? 'selected':''}>${i}</option>`);
+                                }
+                            </script>
+                        </select>
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="oasStartAge">Desired OAS Start Age (65-70):</label>
+                        <select id="oasStartAge" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                             <script>
+                                // Dynamically generate options for OAS start age from 65 to 70
+                                for(let i=65; i<=70; i++) {
+                                    document.write(`<option value="${i}" ${i===65 ? 'selected':''}>${i}</option>`);
+                                }
+                            </script>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="section-title">PSHCP Choices (2024 Rates)</h2>
+                <div class="space-y-5">
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="pshcpCoverageType">Coverage Type:</label>
+                        <select id="pshcpCoverageType" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                            <option value="none">None</option>
+                            <option value="single" selected>Single</option>
+                            <option value="family">Family</option>
+                        </select>
+                    </div>
+                    <div class="input-group flex flex-col sm:flex-row sm:items-center">
+                        <label for="pshcpHospitalLevel">Hospital Level:</label>
+                        <select id="pshcpHospitalLevel" class="mt-1 sm:mt-0 block w-full sm:w-auto flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">
+                            <option value="1" selected>Level I</option>
+                            <option value="2">Level II</option>
+                            <option value="3">Level III</option>
+                        </select>
+                    </div>
+                    <div class="input-group flex items-center mt-3">
+                        <input type="checkbox" id="pshcpRelief" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        <label for="pshcpRelief" class="ml-2 block text-sm text-gray-900 flex-grow">Eligible for PSHCP Relief Provision?
+                             <div class="tooltip">
+                                <span class="info-icon">i</span>
+                                <span class="tooltiptext">Typically for those with income below GIS thresholds. Results in lower PSHCP premiums (25:75 cost share vs 50:50).</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="section-title">Other Benefits & Credits</h2>
+                 <div class="space-y-5">
+                    <div class="input-group flex items-center mt-3">
+                            <input type="checkbox" id="sdbCoverage" checked class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <label for="sdbCoverage" class="ml-2 block text-sm text-gray-900 flex-grow">Continue Supplementary Death Benefit (SDB)?</label>
+                    </div>
+                    <div class="input-group flex items-center mt-3">
+                        <input type="checkbox" id="disabilityTaxCredit" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        <label for="disabilityTaxCredit" class="ml-2 block text-sm text-gray-900 flex-grow">Claim Disability Tax Credit (DTC)?
+                            <div class="tooltip">
+                                <span class="info-icon">i</span>
+                                <span class="tooltiptext">Requires CRA approval (Form T2201). Provides federal and provincial non-refundable tax credits.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-10 mt-10 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <button id="calculateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-10 rounded-full shadow-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 text-xl">
+                Calculate Pension & Taxes
+            </button>
+            <button id="resetBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-10 rounded-full shadow-lg transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-50 text-xl">
+                Reset
+            </button>
+        </div>
+
+        <div id="resultsArea" class="mt-12 hidden">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center border-b-2 pb-4 border-indigo-200">Estimated Retirement Income Breakdown (Annual)</h2>
+            
+            <div class="results-grid">
+                <div class="result-card">
+                    <h3 class="text-indigo-700">Public Service Pension (PSP) - Gross</h3>
+                    <p>Lifetime Pension: <span id="lifetimePension" class="amount">$0</span></p>
+                    <p>Bridge Benefit (until 65): <span id="bridgeBenefit" class="amount">$0</span></p>
+                    <p class="font-semibold mt-4 text-gray-800">Gross PSP (Before 65, if applicable): <span id="pspBefore65" class="amount text-lg">$0</span></p>
+                    <p class="font-semibold text-gray-800">Gross PSP (At/After 65): <span id="pspAfter65" class="amount text-lg">$0</span></p>
+                </div>
+
+                <div class="result-card">
+                    <h3 class="text-indigo-700">Government Benefits - Gross</h3>
+                    <p>Adjusted CPP (starts age <span id="cppStartAgeResult">65</span>): <span id="adjCpp" class="amount">$0</span></p>
+                    <p>OAS (starts age <span id="oasStartAgeResult">65</span>) Before Clawback (for Scenario 3 age): <span id="oasBeforeClawback" class="amount">$0</span></p>
+                </div>
+                
+                <div class="result-card">
+                    <h3 class="text-indigo-700">Benefit Deductions & Clawbacks</h3>
+                    <p>PSHCP Premium: <span id="pshcpDeduction" class="deduction">-$0</span></p>
+                    <p>SDB Premium (initial): <span id="sdbDeduction" class="deduction">-$0</span></p>
+                    <p>OAS Clawback (for Scenario 3 age): <span id="oasClawbackResult" class="deduction">-$0</span></p>
+                    <p class="font-semibold mt-4 text-gray-800">Net OAS Received (for Scenario 3 age): <span id="netOasReceived" class="amount text-lg">$0</span></p>
+                </div>
+
+                <div class="result-card md:col-span-3">
+                    <h3 class="text-indigo-700">Tax Calculation Details (Annual - based on Scenario 3 age)</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                        <div>
+                            <p>Gross Taxable Income: <span id="taxableIncome" class="amount">$0</span></p>
+                            <p>Federal BPA: <span id="fedBPA" class="amount">$0</span></p>
+                            <p>Ontario BPA: <span id="onBPA" class="amount">$0</span></p>
+                            <p>Federal Age Amount: <span id="fedAgeAmount" class="amount">$0</span></p>
+                            <p>Ontario Age Amount: <span id="onAgeAmount" class="amount">$0</span></p>
+                        </div>
+                        <div>
+                            <p>Federal DTC Amount: <span id="fedDTCAmount" class="amount">$0</span></p>
+                            <p>Ontario DTC Amount: <span id="onDTCAmount" class="amount">$0</span></p>
+                            <p>Federal Pension Credit: <span id="fedPensionCredit" class="amount">$0</span></p>
+                            <p>Ontario Pension Credit: <span id="onPensionCredit" class="amount">$0</span></p>
+                        </div>
+                         <div>
+                            <p>Federal Tax: <span id="federalTax" class="deduction">-$0</span></p>
+                            <p>Ontario Tax (incl. Surtax): <span id="ontarioTax" class="deduction">-$0</span></p>
+                            <p>Ontario Health Premium: <span id="ontarioHealthPremium" class="deduction">-$0</span></p>
+                            <p class="font-semibold mt-2 text-gray-800">Total Income Tax & OHP: <span id="totalTaxes" class="deduction text-lg">-$0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 bg-green-50 p-8 rounded-lg shadow-lg border border-green-200">
+                 <h3 class="text-xl md:text-2xl font-bold text-green-800 mb-6 text-center">Net Estimated Annual Income After Tax & Deductions</h3>
+                 <div class="space-y-5">
+                    <div id="scenario1Div">
+                        <p class="font-bold text-gray-700">Scenario 1: Retirement Age (<span id="retAgeScen1">0</span>) to Age 64 (if applicable)</p>
+                        <p class="ml-4">Total Net Annual Income: <span id="netIncomeRetTo65" class="amount text-lg">$0</span></p>
+                        <p class="ml-4">Total Net Monthly Income: <span id="netMonthlyIncomeRetTo65" class="amount text-lg">$0</span></p>
+                    </div>
+                    <div id="scenario2Div">
+                        <p class="font-bold text-gray-700">Scenario 2: Age <span id="ageScen2">65</span> up to Full Benefit Start Age (if benefits staggered)</p>
+                        <p class="ml-4">Total Net Annual Income: <span id="netIncome65ToFullStart" class="amount text-lg">$0</span></p>
+                        <p class="ml-4">Total Net Monthly Income: <span id="netMonthlyIncome65ToFullStart" class="amount text-lg">$0</span></p>
+                    </div>
+                     <div id="scenario3Div">
+                        <p class="font-bold text-gray-700">Scenario 3: All Chosen Benefits Active (Age <span id="ageScen3">65+</span>)</p>
+                        <p class="ml-4">Total Net Annual Income: <span id="netIncomeFullBenefits" class="amount text-lg">$0</span></p>
+                        <p class="ml-4">Total Net Monthly Income: <span id="netMonthlyIncomeFullBenefits" class="amount text-lg">$0</span></p>
+                    </div>
+                 </div>
+            </div>
+
+            <div id="visualizationArea" class="mt-10 hidden bg-white p-6 rounded-lg shadow-lg border border-gray-200 mx-auto max-w-3xl h-96">
+                <h2 class="section-title text-center">Income Stream Visualization (Annual Gross)</h2>
+                <canvas id="incomeChart"></canvas>
+                <p class="text-xs text-gray-500 mt-4 text-center">This graph shows the estimated gross annual income components from your retirement age to your life expectancy.</p>
+            </div>
+            
+            <p class="text-xs text-gray-500 mt-24 text-center leading-relaxed">
+                Disclaimer: This calculator provides estimates for illustrative purposes only, based on 2024 rates and user inputs. Tax calculations are simplified and do not cover all possible credits/deductions. Actual amounts may vary. Consult with a financial advisor and official government sources (CRA, Service Canada, Pension Centre) for precise financial planning and decisions. Life expectancy data is based on Statistics Canada 2020-2022 period life tables and is for illustrative purposes only.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // --- Constants for 2024 (Based on official CRA and Service Canada data for 2024) ---
+        const YMPE_2024 = 68500; // Year's Maximum Pensionable Earnings
+        const YMPE_2023 = 66600;
+        const YMPE_2022 = 64900;
+        // Average Maximum Pensionable Earnings (AMPE) for pension calculation
+        const AMPE_2024 = (YMPE_2024 + YMPE_2023 + YMPE_2022) / 3;
+
+        // Old Age Security (OAS) constants
+        const OAS_MAX_MONTHLY_2024_AGE_65_74 = 727.67; // Maximum monthly OAS for ages 65-74
+        const OAS_CLAWBACK_THRESHOLD_2024 = 90997; // Income threshold for OAS clawback
+        const OAS_CLAWBACK_RATE = 0.15; // 15% clawback rate for every dollar above threshold
+
+        // Public Service Health Care Plan (PSHCP) rates for 2024 (monthly premiums)
+        const PSHCP_RATES_2024 = {
+            standard: { // 50:50 cost share
+                single: { '1': 64.11, '2': 80.67, '3': 109.52 },
+                family: { '1': 117.08, '2': 133.64, '3': 162.49 }
+            },
+            relief: { // 25:75 cost share (for eligible low-income individuals)
+                single: { '1': 32.05, '2': 48.61, '3': 77.46 },
+                family: { '1': 58.54, '2': 75.10, '3': 103.95 }
+            }
+        };
+        // Supplementary Death Benefit (SDB) rate per $1,000 of coverage
+        const SDB_RATE_PER_1000 = 0.15;
+
+        // Federal Income Tax Brackets for 2024
+        const FED_TAX_BRACKETS = [
+            { limit: 55867, rate: 0.15 },
+            { limit: 111733, rate: 0.205 },
+            { limit: 173205, rate: 0.26 },
+            { limit: 246752, rate: 0.29 },
+            { limit: Infinity, rate: 0.33 } // Top bracket
+        ];
+        // Federal Non-Refundable Tax Credits (NRTCs)
+        const FED_BPA_MAX = 15705; // Maximum Basic Personal Amount
+        const FED_BPA_MIN = 14156; // Minimum Basic Personal Amount
+        const FED_BPA_REDUCTION_START_INCOME = 173205; // Income at which BPA starts to reduce
+        const FED_BPA_REDUCTION_END_INCOME = 246752; // Income at which BPA reaches minimum
+        const FED_AGE_AMOUNT_MAX = 8790; // Maximum Age Amount (for 65+)
+        const FED_AGE_AMOUNT_THRESHOLD = 44325; // Income threshold for Age Amount reduction
+        const FED_AGE_AMOUNT_REDUCTION_RATE = 0.15; // 15% reduction rate
+        const FED_DTC_AMOUNT = 9872; // Disability Tax Credit amount
+        const FED_PENSION_CREDIT_MAX_INCOME = 2000; // Maximum eligible pension income for pension credit
+        const FED_NRTC_RATE = 0.15; // Federal Non-Refundable Tax Credit rate
+
+        // Ontario Income Tax Brackets for 2024
+        const ON_TAX_BRACKETS = [
+            { limit: 51446, rate: 0.0505 },
+            { limit: 102894, rate: 0.0915 },
+            { limit: 150000, rate: 0.1116 },
+            { limit: 220000, rate: 0.1216 },
+            { limit: Infinity, rate: 0.1316 } // Top bracket
+        ];
+        // Ontario Non-Refundable Tax Credits (NRTCs)
+        const ON_BPA = 12399; // Ontario Basic Personal Amount
+        const ON_AGE_AMOUNT_MAX = 6054; // Maximum Ontario Age Amount (for 65+)
+        const ON_AGE_AMOUNT_THRESHOLD = 45068; // Income threshold for Ontario Age Amount reduction
+        const ON_AGE_AMOUNT_REDUCTION_RATE = 0.15; // 15% reduction rate
+        const ON_DTC_AMOUNT = 10017; // Ontario Disability Tax Credit amount
+        const ON_PENSION_CREDIT_MAX_INCOME = 1714; // Maximum eligible pension income for pension credit
+        const ON_NRTC_RATE = 0.0505; // Ontario Non-Refundable Tax Credit rate
+        // Ontario Surtax thresholds and rates
+        const ON_SURTAX_THRESHOLD_1 = 5554;
+        const ON_SURTAX_RATE_1 = 0.20; // 20% on provincial tax between first and second thresholds
+        const ON_SURTAX_THRESHOLD_2 = 7108;
+        const ON_SURTAX_RATE_2 = 0.36; // Additional 36% on provincial tax above second threshold
+
+        // Simplified Canadian Life Expectancy (Remaining Years) at certain ages (2020-2022 data from StatCan)
+        // Note: This is a simplified table for demonstration. Real-world data is more granular.
+        const CANADIAN_LIFE_EXPECTANCY_2020_2022 = {
+            male: {
+                55: 27.6, // Total life expectancy: 55 + 27.6 = 82.6
+                60: 23.3, // Total life expectancy: 60 + 23.3 = 83.3
+                65: 19.3, // Total life expectancy: 65 + 19.3 = 84.3
+                70: 15.6, // Total life expectancy: 70 + 15.6 = 85.6
+                75: 12.2, // Total life expectancy: 75 + 12.2 = 87.2
+                80: 9.3,  // Total life expectancy: 80 + 9.3 = 89.3
+                85: 6.9,  // Total life expectancy: 85 + 6.9 = 91.9
+                90: 5.0,  // Total life expectancy: 90 + 5.0 = 95.0
+                95: 3.6,  // Total life expectancy: 95 + 3.6 = 98.6
+                100: 2.6  // Total life expectancy: 100 + 2.6 = 102.6
+            },
+            female: {
+                55: 30.6, // Total life expectancy: 55 + 30.6 = 85.6
+                60: 26.0, // Total life expectancy: 60 + 26.0 = 86.0
+                65: 21.7, // Total life expectancy: 65 + 21.7 = 86.7
+                70: 17.7, // Total life expectancy: 70 + 17.7 = 87.7
+                75: 14.1, // Total life expectancy: 75 + 14.1 = 89.1
+                80: 10.9, // Total life expectancy: 80 + 10.9 = 90.9
+                85: 8.2,  // Total life expectancy: 85 + 8.2 = 93.2
+                90: 6.0,  // Total life expectancy: 90 + 6.0 = 96.0
+                95: 4.3,  // Total life expectancy: 95 + 4.3 = 99.3
+                100: 3.1  // Total life expectancy: 100 + 3.1 = 103.1
+            }
+        };
+
+
+        // --- Helper Functions ---
+
+        /**
+         * Safely retrieves the value from an HTML input element.
+         * @param {string} id - The ID of the HTML element.
+         * @param {boolean} isNumeric - True if the value should be parsed as a number.
+         * @param {boolean} isInt - True if the numeric value should be an integer.
+         * @returns {number|string} The parsed value or a default (0 for numeric, "" for string) if element not found or parsing fails.
+         */
+        function getElementValue(id, isNumeric = true, isInt = false) {
+            const element = document.getElementById(id);
+            if (!element) {
+                return isNumeric ? 0 : "";
+            }
+            const value = element.value;
+            if (isNumeric) {
+                const numValue = isInt ? parseInt(value) : parseFloat(value);
+                return isNaN(numValue) ? 0 : numValue; // Return 0 if parsing results in NaN
+            }
+            return value;
+        }
+
+        /**
+         * Checks if an HTML checkbox element is checked.
+         * @param {string} id - The ID of the HTML checkbox element.
+         * @returns {boolean} True if checked, false otherwise or if element not found.
+         */
+        function isChecked(id) {
+            const element = document.getElementById(id);
+            if (!element) {
+                return false;
+            }
+            return element.checked;
+        }
+
+        /**
+         * Calculates the Ontario Health Premium based on taxable income.
+         * @param {number} taxableIncome - The annual taxable income.
+         * @returns {number} The calculated Ontario Health Premium.
+         */
+        function calculateOHP(taxableIncome) {
+            if (taxableIncome <= 20000) return 0;
+            if (taxableIncome <= 25000) return Math.min(300, (taxableIncome - 20000) * 0.06);
+            if (taxableIncome <= 36000) return 300;
+            if (taxableIncome <= 38500) return Math.min(450, 300 + (taxableIncome - 36000) * 0.06);
+            if (taxableIncome <= 48000) return 450;
+            if (taxableIncome <= 50500) return Math.min(600, 450 + (taxableIncome - 48000) * 0.06);
+            if (taxableIncome <= 72000) return 600;
+            if (taxableIncome <= 74500) return Math.min(750, 600 + (taxableIncome - 72000) * 0.06);
+            if (taxableIncome <= 200000) return 750;
+            if (taxableIncome <= 202500) return Math.min(900, 750 + (taxableIncome - 200000) * 0.06);
+            return 900; // Max OHP
+        }
+
+        /**
+         * Calculates tax based on a progressive tax bracket system.
+         * @param {number} income - The income to be taxed.
+         * @param {Array<Object>} brackets - An array of tax bracket objects, each with a 'limit' and 'rate'.
+         * @returns {number} The calculated tax.
+         */
+        function calculateProgressiveTax(income, brackets) {
+            let tax = 0;
+            let previousLimit = 0;
+            for (const bracket of brackets) {
+                if (income > previousLimit) {
+                    // Calculate the portion of income falling within the current bracket
+                    const taxableInBracket = Math.min(income - previousLimit, bracket.limit - previousLimit);
+                    tax += taxableInBracket * bracket.rate;
+                    previousLimit = bracket.limit;
+                } else {
+                    break; // No more income to tax in higher brackets
+                }
+            }
+            return tax;
+        }
+
+        /**
+         * Looks up and interpolates life expectancy based on gender and current age.
+         * @param {string} gender - 'male' or 'female'.
+         * @param {number} currentAge - The current age of the individual.
+         * @returns {number} The estimated total life expectancy.
+         */
+        function getLifeExpectancy(gender, currentAge) {
+            const genderData = CANADIAN_LIFE_EXPECTANCY_2020_2022[gender];
+            if (!genderData) return 85; // Default if gender not found
+
+            const ages = Object.keys(genderData).map(Number).sort((a, b) => a - b);
+
+            // If age is outside the table range, use the closest extreme value
+            if (currentAge <= ages[0]) {
+                return currentAge + genderData[ages[0]];
+            }
+            if (currentAge >= ages[ages.length - 1]) {
+                return currentAge + genderData[ages[ages.length - 1]];
+            }
+
+            // Find the two closest ages in the table for interpolation
+            let lowerAge = ages[0];
+            let upperAge = ages[ages.length - 1];
+            for (let i = 0; i < ages.length - 1; i++) {
+                if (currentAge >= ages[i] && currentAge < ages[i + 1]) {
+                    lowerAge = ages[i];
+                    upperAge = ages[i + 1];
+                    break;
+                }
+            }
+
+            const lowerLE = genderData[lowerAge];
+            const upperLE = genderData[upperAge];
+
+            // Linear interpolation
+            const interpolatedRemainingYears = lowerLE + (upperLE - lowerLE) * ((currentAge - lowerAge) / (upperAge - lowerAge));
+            return Math.round(currentAge + interpolatedRemainingYears); // Return total life expectancy
+        }
+
+        // --- Modular Calculation Functions ---
+
+        /**
+         * Gathers all user inputs from the form.
+         * @returns {Object} An object containing all input values.
+         */
+        function getUserInputs() {
+            return {
+                gender: getElementValue('gender', false),
+                currentAge: getElementValue('currentAge', true, true),
+                lifeExpectancy: getElementValue('lifeExpectancy', true, true),
+                avgSalary: getElementValue('avgSalary'),
+                // Ensure years of service does not exceed 35, as per pension rules
+                yearsService: Math.min(getElementValue('yearsService', true, true), 35),
+                ageAtRetirement: getElementValue('ageAtRetirement', true, true),
+                cppAt65Input: getElementValue('cppAt65'),
+                cppStartAge: getElementValue('cppStartAge', true, true),
+                oasStartAge: getElementValue('oasStartAge', true, true),
+                pshcpCoverageType: getElementValue('pshcpCoverageType', false),
+                pshcpHospitalLevel: getElementValue('pshcpHospitalLevel', false),
+                pshcpRelief: isChecked('pshcpRelief'),
+                sdbSelected: isChecked('sdbCoverage'),
+                dtcSelected: isChecked('disabilityTaxCredit')
+            };
+        }
+
+        /**
+         * Calculates the gross Public Service Pension (PSP) amounts.
+         * @param {number} avgSalary - Average best 5 years salary.
+         * @param {number} yearsService - Years of pensionable service.
+         * @param {number} ageAtRetirement - Age at retirement.
+         * @returns {Object} Contains annual lifetime pension, bridge benefit, and gross PSP before/after age 65.
+         */
+        function calculateGrossPension(avgSalary, yearsService, ageAtRetirement) {
+            // Pension formula components based on AMPE
+            const salaryUpToAMPE = Math.min(avgSalary, AMPE_2024);
+            const salaryOverAMPE = Math.max(0, avgSalary - AMPE_2024);
+
+            // Lifetime pension calculation
+            const lifetimePension = (0.01375 * salaryUpToAMPE * yearsService) + (0.02 * salaryOverAMPE * yearsService);
+            let bridgeBenefit = 0;
+            // Bridge benefit is paid until age 65 if retiring before 65
+            if (ageAtRetirement < 65) {
+                bridgeBenefit = 0.00625 * salaryUpToAMPE * yearsService;
+            }
+
+            return {
+                annualLifetimePension: lifetimePension,
+                annualBridgeBenefit: bridgeBenefit,
+                // Gross PSP before 65 includes the bridge benefit
+                grossPspBefore65: (ageAtRetirement < 65) ? lifetimePension + bridgeBenefit : lifetimePension,
+                // Gross PSP at/after 65 is just the lifetime pension
+                grossPspAfter65: lifetimePension
+            };
+        }
+
+        /**
+         * Calculates the annual PSHCP premium.
+         * @param {string} coverageType - 'none', 'single', or 'family'.
+         * @param {string} hospitalLevel - '1', '2', or '3'.
+         * @param {boolean} isRelief - True if eligible for relief provision.
+         * @returns {number} The annual PSHCP premium.
+         */
+        function calculatePshcpPremium(coverageType, hospitalLevel, isRelief) {
+            if (coverageType === 'none') return 0; // No premium if no coverage selected
+            const rateCategory = isRelief ? PSHCP_RATES_2024.relief : PSHCP_RATES_2024.standard;
+            // Lookup the monthly rate and multiply by 12 for annual
+            if (rateCategory[coverageType] && rateCategory[coverageType][hospitalLevel]) {
+                return rateCategory[coverageType][hospitalLevel] * 12;
+            }
+            return 0; // Fallback
+        }
+
+        /**
+         * Calculates the annual Supplementary Death Benefit (SDB) premium.
+         * SDB coverage is typically twice the average salary, rounded up to the next multiple of $1,000.
+         * @param {number} avgSalary - Average best 5 years salary.
+         * @returns {number} The annual SDB premium.
+         */
+        function calculateSdbPremium(avgSalary) {
+            // Calculate coverage amount, rounded up to nearest $1000
+            const sdbCoverageAmount = Math.ceil(avgSalary * 2 / 1000) * 1000;
+            // Calculate annual premium based on rate per $1000
+            return (sdbCoverageAmount / 1000) * SDB_RATE_PER_1000 * 12;
+        }
+
+        /**
+         * Calculates the adjusted annual CPP amount based on the chosen start age.
+         * @param {number} cppAt65Input - Estimated annual CPP at age 65.
+         * @param {number} cppStartAge - Desired CPP start age (60-70).
+         * @returns {number} The adjusted annual CPP.
+         */
+        function calculateAdjustedCpp(cppAt65Input, cppStartAge) {
+            let adjustedCpp = cppAt65Input;
+            if (cppStartAge < 65) {
+                // Reduction for early CPP (7.2% per year before 65)
+                adjustedCpp *= (1 - (65 - cppStartAge) * 0.072);
+            } else if (cppStartAge > 65) {
+                // Increase for deferred CPP (8.4% per year after 65)
+                adjustedCpp *= (1 + (cppStartAge - 65) * 0.084);
+            }
+            return Math.max(0, adjustedCpp); // Ensure CPP is not negative
+        }
+
+        /**
+         * Calculates the adjusted annual OAS amount based on the chosen start age and current age for enhancement.
+         * Includes the 10% enhancement for individuals aged 75 and over.
+         * @param {number} oasStartAge - Desired OAS start age (65-70).
+         * @param {number} currentAgeForEnhancement - The age used for determining if the 75+ enhancement applies in a given scenario.
+         * @returns {number} The adjusted annual OAS.
+         */
+        function calculateAdjustedOas(oasStartAge, currentAgeForEnhancement) {
+            // If the current age in the scenario is less than the chosen OAS start age, no OAS is received yet.
+            if (currentAgeForEnhancement < oasStartAge) {
+                return 0;
+            }
+            
+            let oas = OAS_MAX_MONTHLY_2024_AGE_65_74 * 12; // Base annual OAS for 65-74
+            if (oasStartAge > 65) {
+                // Apply deferral increase (7.2% per year after 65)
+                oas *= (1 + (oasStartAge - 65) * 0.084);
+            }
+            // Apply 75+ enhancement if the current age in the scenario is 75 or older AND OAS is payable
+            if (currentAgeForEnhancement >= 75 && oas > 0) {
+                oas *= 1.10; // 10% enhancement
+            }
+            return oas;
+        }
+        
+        /**
+         * Calculates the OAS clawback amount.
+         * @param {number} incomeForClawback - Total net income used for OAS clawback calculation.
+         * @param {number} oasPayableBeforeClawback - The OAS amount before any clawback.
+         * @returns {number} The OAS clawback amount.
+         */
+        function calculateOasClawback(incomeForClawback, oasPayableBeforeClawback) {
+            // No clawback if OAS is not payable or income is below threshold
+            if (oasPayableBeforeClawback <= 0 || incomeForClawback <= OAS_CLAWBACK_THRESHOLD_2024) {
+                return 0;
+            }
+            // Calculate clawback: 15 cents for every dollar above the threshold, up to the full OAS amount
+            return Math.min(oasPayableBeforeClawback, (incomeForClawback - OAS_CLAWBACK_THRESHOLD_2024) * OAS_CLAWBACK_RATE);
+        }
+
+        /**
+         * Calculates full federal and provincial (Ontario) income tax and credits for a given scenario.
+         * @param {number} currentAge - The age for which taxes are being calculated (affects age amount, OAS eligibility).
+         * @param {number} grossPsp - Gross Public Service Pension income.
+         * @param {number} cppIncome - Adjusted CPP income.
+         * @param {number} oasIncomeBeforeClawback - OAS income before any clawback.
+         * @param {boolean} dtcSelected - True if Disability Tax Credit is claimed.
+         * @returns {Object} An object containing detailed tax calculation results.
+         */
+        function calculateFullTaxation(currentAge, grossPsp, cppIncome, oasIncomeBeforeClawback, dtcSelected) {
+            // Income used for OAS clawback calculation (includes all major government benefits)
+            const incomeForOASClawback = grossPsp + cppIncome + oasIncomeBeforeClawback;
+            const oasClawbackAmount = calculateOasClawback(incomeForOASClawback, oasIncomeBeforeClawback);
+            const actualOasReceived = Math.max(0, oasIncomeBeforeClawback - oasClawbackAmount);
+            
+            const totalTaxableIncome = grossPsp + cppIncome + actualOasReceived;
+
+            // Federal Basic Personal Amount (BPA) calculation with reduction for high income
+            let fedBPA = FED_BPA_MAX;
+            if (totalTaxableIncome > FED_BPA_REDUCTION_START_INCOME) {
+                fedBPA = (totalTaxableIncome >= FED_BPA_REDUCTION_END_INCOME) ? FED_BPA_MIN :
+                    FED_BPA_MAX - (((totalTaxableIncome - FED_BPA_REDUCTION_START_INCOME) / (FED_BPA_REDUCTION_END_INCOME - FED_BPA_REDUCTION_START_INCOME)) * (FED_BPA_MAX - FED_BPA_MIN));
+            }
+
+            // Federal and Ontario Age Amount calculation (if age 65+)
+            let fedAgeAmt = 0, onAgeAmt = 0;
+            if (currentAge >= 65) {
+                fedAgeAmt = Math.max(0, FED_AGE_AMOUNT_MAX - Math.max(0, totalTaxableIncome - FED_AGE_AMOUNT_THRESHOLD) * FED_AGE_AMOUNT_REDUCTION_RATE);
+                onAgeAmt = Math.max(0, ON_AGE_AMOUNT_MAX - Math.max(0, totalTaxableIncome - ON_AGE_AMOUNT_THRESHOLD) * ON_AGE_AMOUNT_REDUCTION_RATE);
+            }
+            
+            // Disability Tax Credit amounts
+            const fedDtc = dtcSelected ? FED_DTC_AMOUNT : 0;
+            const onDtc = dtcSelected ? ON_DTC_AMOUNT : 0;
+
+            // Pension Income Credit base (applies to eligible pension income like PSP and CPP)
+            const fedPensionCreditBase = Math.min(grossPsp + cppIncome, FED_PENSION_CREDIT_MAX_INCOME);
+            const onPensionCreditBase = Math.min(grossPsp + cppIncome, ON_PENSION_CREDIT_MAX_INCOME);
+
+            // Total Non-Refundable Tax Credit (NRTC) bases
+            const totalFedNrtcBase = fedBPA + fedAgeAmt + fedDtc + fedPensionCreditBase;
+            const totalOnNrtcBase = ON_BPA + onAgeAmt + onDtc + onPensionCreditBase;
+
+            // Calculate Federal Tax
+            const fedTaxBeforeCredits = calculateProgressiveTax(totalTaxableIncome, FED_TAX_BRACKETS);
+            const federalTax = Math.max(0, fedTaxBeforeCredits - (totalFedNrtcBase * FED_NRTC_RATE));
+
+            // Calculate Ontario Tax
+            const onTaxBeforeCredits = calculateProgressiveTax(totalTaxableIncome, ON_TAX_BRACKETS);
+            let ontarioTaxAfterCredits = Math.max(0, onTaxBeforeCredits - (totalOnNrtcBase * ON_NRTC_RATE));
+            
+            // Calculate Ontario Surtax
+            let ontarioSurtax = 0;
+            if (ontarioTaxAfterCredits > ON_SURTAX_THRESHOLD_1) {
+                ontarioSurtax += (ontarioTaxAfterCredits - ON_SURTAX_THRESHOLD_1) * ON_SURTAX_RATE_1;
+            }
+            if (ontarioTaxAfterCredits > ON_SURTAX_THRESHOLD_2) {
+                // Surtax on the portion above the second threshold is applied to the *full* amount above the second threshold
+                // and is in addition to the surtax from the first threshold.
+                ontarioSurtax += (ontarioTaxAfterCredits - ON_SURTAX_THRESHOLD_2) * ON_SURTAX_RATE_2;
+            }
+            const ontarioTax = ontarioTaxAfterCredits + ontarioSurtax;
+            
+            const ontarioHealthPremium = calculateOHP(totalTaxableIncome);
+            
+            return {
+                totalTaxableIncome,
+                oasPayableBeforeClawbackThisScenario: oasIncomeBeforeClawback,
+                oasClawbackAmount,
+                actualOasReceived,
+                fedBPA,
+                onBPA: ON_BPA, // Ontario BPA is a fixed amount, not reduced by income
+                fedAgeAmt,
+                onAgeAmt,
+                fedDtc,
+                onDtc,
+                fedPensionCreditBase,
+                onPensionCreditBase,
+                federalTax,
+                ontarioTax,
+                ontarioHealthPremium
+            };
+        }
+
+        // Global Chart instance to destroy before re-rendering
+        let incomeChartInstance = null;
+
+        /**
+         * Renders the stacked bar chart for income streams.
+         * @param {Array<Object>} chartData - Data for the chart, each object representing an age.
+         */
+        function renderChart(chartData) {
+            const ctx = document.getElementById('incomeChart').getContext('2d');
+
+            // Destroy existing chart instance if it exists
+            if (incomeChartInstance) {
+                incomeChartInstance.destroy();
+            }
+
+            // Prepare data for Chart.js
+            const labels = chartData.map(d => d.age);
+            const lifetimePensionData = chartData.map(d => d.lifetimePension);
+            const bridgeBenefitData = chartData.map(d => d.bridgeBenefit);
+            const cppData = chartData.map(d => d.cpp);
+            const oasData = chartData.map(d => d.oas);
+
+            incomeChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Lifetime Pension',
+                            data: lifetimePensionData,
+                            backgroundColor: 'rgba(79, 70, 229, 0.8)', // Indigo
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Bridge Benefit',
+                            data: bridgeBenefitData,
+                            backgroundColor: 'rgba(129, 140, 248, 0.8)', // Light Indigo
+                            borderColor: 'rgba(129, 140, 248, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'CPP',
+                            data: cppData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'OAS',
+                            data: oasData,
+                            backgroundColor: 'rgba(245, 158, 11, 0.8)', // Amber
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Allow canvas to resize freely
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Age',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Annual Gross Income ($)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                },
+                                // Set min, max, and stepSize for the y-axis (reduced by 10x)
+                                min: 3000,
+                                max: 15000,
+                                stepSize: 1000
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index', // Show all items at the same index
+                            intersect: false, // Show tooltip even if not directly over a bar
+                            callbacks: {
+                                // Custom title for the tooltip (e.g., "Age: 65")
+                                title: function(context) {
+                                    return 'Age: ' + context[0].label;
+                                },
+                                // Custom label for each dataset in the tooltip
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                },
+                                // Custom footer to show total (optional, but useful for stacked bars)
+                                footer: function(context) {
+                                    let total = 0;
+                                    context.forEach(function(item) {
+                                        total += item.parsed.y;
+                                    });
+                                    return 'Total: ' + new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(total);
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        /**
+         * Displays the calculated results in the HTML.
+         * @param {Object} data - The comprehensive results object.
+         */
+        function displayResults(data) {
+            // Display PSP details
+            document.getElementById('lifetimePension').textContent = `$${data.pension.annualLifetimePension.toFixed(2)}`;
+            document.getElementById('bridgeBenefit').textContent = `$${data.pension.annualBridgeBenefit.toFixed(2)}`;
+            document.getElementById('pspBefore65').textContent = `$${data.pension.grossPspBefore65.toFixed(2)}`;
+            document.getElementById('pspAfter65').textContent = `$${data.pension.grossPspAfter65.toFixed(2)}`;
+            
+            // Display CPP and OAS details
+            document.getElementById('cppStartAgeResult').textContent = data.inputs.cppStartAge;
+            document.getElementById('adjCpp').textContent = `$${data.adjustedCpp.toFixed(2)}`;
+            document.getElementById('oasStartAgeResult').textContent = data.inputs.oasStartAge;
+            
+            // Display tax calculation details (using Scenario 3's tax details as the primary display)
+            const taxResultsScen3 = data.scenario3.taxDetails;
+            document.getElementById('oasBeforeClawback').textContent = `$${taxResultsScen3.oasPayableBeforeClawbackThisScenario.toFixed(2)}`;
+            document.getElementById('taxableIncome').textContent = `$${taxResultsScen3.totalTaxableIncome.toFixed(2)}`;
+            document.getElementById('oasClawbackResult').textContent = `-$${taxResultsScen3.oasClawbackAmount.toFixed(2)}`;
+            document.getElementById('netOasReceived').textContent = `$${taxResultsScen3.actualOasReceived.toFixed(2)}`;
+            document.getElementById('fedBPA').textContent = `$${taxResultsScen3.fedBPA.toFixed(2)}`;
+            document.getElementById('onBPA').textContent = `$${taxResultsScen3.onBPA.toFixed(2)}`;
+            document.getElementById('fedAgeAmount').textContent = `$${taxResultsScen3.fedAgeAmt.toFixed(2)}`;
+            document.getElementById('onAgeAmount').textContent = `$${taxResultsScen3.onAgeAmt.toFixed(2)}`;
+            document.getElementById('fedDTCAmount').textContent = `$${taxResultsScen3.fedDtc.toFixed(2)}`;
+            document.getElementById('onDTCAmount').textContent = `$${taxResultsScen3.onDtc.toFixed(2)}`;
+            document.getElementById('fedPensionCredit').textContent = `$${taxResultsScen3.fedPensionCreditBase.toFixed(2)}`;
+            document.getElementById('onPensionCredit').textContent = `$${taxResultsScen3.onPensionCreditBase.toFixed(2)}`;
+            document.getElementById('federalTax').textContent = `-$${taxResultsScen3.federalTax.toFixed(2)}`;
+            document.getElementById('ontarioTax').textContent = `-$${taxResultsScen3.ontarioTax.toFixed(2)}`;
+            document.getElementById('ontarioHealthPremium').textContent = `-$${taxResultsScen3.ontarioHealthPremium.toFixed(2)}`;
+            document.getElementById('totalTaxes').textContent = `-$${(taxResultsScen3.federalTax + taxResultsScen3.ontarioTax + taxResultsScen3.ontarioHealthPremium).toFixed(2)}`;
+            
+            // Display deductions
+            document.getElementById('pshcpDeduction').textContent = `-$${data.annualPshcpPremium.toFixed(2)}`;
+            document.getElementById('sdbDeduction').textContent = `-$${data.annualSdbPremium.toFixed(2)}`;
+
+            // Display scenario net incomes
+            document.getElementById('retAgeScen1').textContent = data.inputs.ageAtRetirement;
+            document.getElementById('netIncomeRetTo65').textContent = `$${data.scenario1.netIncome.toFixed(2)}`;
+            document.getElementById('netMonthlyIncomeRetTo65').textContent = `$${(data.scenario1.netIncome / 12).toFixed(2)}`; // Monthly income
+            document.getElementById('scenario1Div').style.display = data.scenario1.isActive ? 'block' : 'none';
+            
+            document.getElementById('ageScen2').textContent = data.scenario2.age;
+            document.getElementById('netIncome65ToFullStart').textContent = `$${data.scenario2.netIncome.toFixed(2)}`;
+            document.getElementById('netMonthlyIncome65ToFullStart').textContent = `$${(data.scenario2.netIncome / 12).toFixed(2)}`; // Monthly income
+            document.getElementById('scenario2Div').style.display = data.scenario2.isActive ? 'block' : 'none';
+
+            document.getElementById('ageScen3').textContent = data.inputs.lifeExpectancy; // Use life expectancy for scenario 3 age in display
+            document.getElementById('netIncomeFullBenefits').textContent = `$${data.scenario3.netIncome.toFixed(2)}`;
+            document.getElementById('netMonthlyIncomeFullBenefits').textContent = `$${(data.scenario3.netIncome / 12).toFixed(2)}`; // Monthly income
+
+            // Make results area visible
+            document.getElementById('resultsArea').classList.remove('hidden');
+        }
+
+        /**
+         * Resets all form inputs to their default values and hides the results area.
+         */
+        function resetForm() {
+            // Reset input fields to their initial values
+            document.getElementById('gender').value = "male"; // Default gender
+            document.getElementById('currentAge').value = "55"; // Default current age
+            // Recalculate and set default life expectancy
+            document.getElementById('lifeExpectancy').value = getLifeExpectancy(document.getElementById('gender').value, parseInt(document.getElementById('currentAge').value));
+
+            document.getElementById('avgSalary').value = "80000";
+            document.getElementById('yearsService').value = "30";
+            document.getElementById('ageAtRetirement').value = "60";
+            document.getElementById('cppAt65').value = "12000";
+            
+            // Reset select elements to their default selected options
+            document.getElementById('cppStartAge').value = "65";
+            document.getElementById('oasStartAge').value = "65";
+            document.getElementById('pshcpCoverageType').value = "single";
+            document.getElementById('pshcpHospitalLevel').value = "1";
+
+            // Reset checkboxes
+            document.getElementById('pshcpRelief').checked = false;
+            document.getElementById('sdbCoverage').checked = true;
+            document.getElementById('disabilityTaxCredit').checked = false;
+
+            // Hide the results area and visualization
+            document.getElementById('resultsArea').classList.add('hidden');
+            document.getElementById('visualizationArea').classList.add('hidden');
+
+            // Destroy chart instance if it exists
+            if (incomeChartInstance) {
+                incomeChartInstance.destroy();
+                incomeChartInstance = null;
+            }
+        }
+
+        // --- Event Listener for Calculation Button ---
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            try {
+                const inputs = getUserInputs(); // Get all inputs from the form
+
+                // Basic validation for retirement age vs. current age
+                if (inputs.ageAtRetirement < inputs.currentAge) {
+                    // Using a simple message box as alert() is disallowed
+                    const resultsArea = document.getElementById('resultsArea');
+                    resultsArea.classList.remove('hidden');
+                    resultsArea.innerHTML = '<p class="text-red-600 text-center text-lg font-semibold">Error: Retirement Age cannot be less than Current Age.</p>';
+                    document.getElementById('visualizationArea').classList.add('hidden');
+                    return;
+                }
+
+                const pension = calculateGrossPension(inputs.avgSalary, inputs.yearsService, inputs.ageAtRetirement);
+                
+                const annualPshcpPremium = calculatePshcpPremium(inputs.pshcpCoverageType, inputs.pshcpHospitalLevel, inputs.pshcpRelief);
+                const annualSdbPremium = inputs.sdbSelected ? calculateSdbPremium(inputs.avgSalary) : 0;
+
+                const annualAdjustedCpp = calculateAdjustedCpp(inputs.cppAt65Input, inputs.cppStartAge);
+                
+                // Initialize results object to hold all calculated data
+                const results = { inputs, pension, annualPshcpPremium, annualSdbPremium, adjustedCpp: annualAdjustedCpp, scenario1: {}, scenario2: {}, scenario3: {} };
+
+                // --- Scenario 1: Retirement Age to 64 (if applicable) ---
+                results.scenario1.isActive = inputs.ageAtRetirement < 65;
+                if (results.scenario1.isActive) {
+                    const cppScen1 = inputs.ageAtRetirement >= inputs.cppStartAge ? annualAdjustedCpp : 0;
+                    const oasScen1 = calculateAdjustedOas(inputs.oasStartAge, inputs.ageAtRetirement);
+                    const taxDetailsScen1 = calculateFullTaxation(inputs.ageAtRetirement, pension.grossPspBefore65, cppScen1, oasScen1, inputs.dtcSelected);
+                    results.scenario1.netIncome = taxDetailsScen1.totalTaxableIncome - (taxDetailsScen1.federalTax + taxDetailsScen1.ontarioTax + taxDetailsScen1.ontarioHealthPremium) - annualPshcpPremium - annualSdbPremium;
+                    results.scenario1.taxDetails = taxDetailsScen1;
+                } else {
+                    results.scenario1.netIncome = 0;
+                    results.scenario1.taxDetails = {};
+                }
+                
+                // --- Scenario 2: Age 65 up to Full Benefit Start Age (if benefits are staggered) ---
+                results.scenario2.age = Math.max(65, inputs.ageAtRetirement);
+                const cppScen2 = results.scenario2.age >= inputs.cppStartAge ? annualAdjustedCpp : 0;
+                const oasScen2 = calculateAdjustedOas(inputs.oasStartAge, results.scenario2.age);
+                
+                const allBenefitsActiveAtScen2Age = (results.scenario2.age >= inputs.cppStartAge && results.scenario2.age >= inputs.oasStartAge);
+                const lastBenefitStartAge = Math.max(inputs.cppStartAge, inputs.oasStartAge);
+                results.scenario2.isActive = !allBenefitsActiveAtScen2Age && results.scenario2.age < lastBenefitStartAge;
+
+                if (results.scenario2.isActive) {
+                     const taxDetailsScen2 = calculateFullTaxation(results.scenario2.age, pension.grossPspAfter65, cppScen2, oasScen2, inputs.dtcSelected);
+                     results.scenario2.netIncome = taxDetailsScen2.totalTaxableIncome - (taxDetailsScen2.federalTax + taxDetailsScen2.ontarioTax + taxDetailsScen2.ontarioHealthPremium) - annualPshcpPremium - annualSdbPremium;
+                     results.scenario2.taxDetails = taxDetailsScen2;
+                } else {
+                     results.scenario2.netIncome = 0;
+                     results.scenario2.taxDetails = {};
+                }
+
+                // --- Scenario 3: All Chosen Benefits Active ---
+                results.scenario3.age = Math.max(inputs.ageAtRetirement, inputs.cppStartAge, inputs.oasStartAge, 65);
+                const oasScen3 = calculateAdjustedOas(inputs.oasStartAge, results.scenario3.age);
+                const taxDetailsScen3 = calculateFullTaxation(results.scenario3.age, pension.grossPspAfter65, annualAdjustedCpp, oasScen3, inputs.dtcSelected);
+                results.scenario3.netIncome = taxDetailsScen3.totalTaxableIncome - (taxDetailsScen3.federalTax + taxDetailsScen3.ontarioTax + taxDetailsScen3.ontarioHealthPremium) - annualPshcpPremium - annualSdbPremium;
+                results.scenario3.taxDetails = taxDetailsScen3;
+
+                displayResults(results); // Display all calculated results
+
+                // --- Prepare and Render Chart Data ---
+                const chartData = [];
+                const startAgeForChart = Math.max(inputs.ageAtRetirement, 18); // Chart starts at retirement age or 18, whichever is later
+                const endAgeForChart = inputs.lifeExpectancy;
+
+                for (let age = startAgeForChart; age <= endAgeForChart; age++) {
+                    const pspForAge = (age < 65 && inputs.ageAtRetirement < 65) ? pension.grossPspBefore65 : pension.grossPspAfter65;
+                    const cppForAge = (age >= inputs.cppStartAge) ? annualAdjustedCpp : 0;
+                    const oasForAge = calculateAdjustedOas(inputs.oasStartAge, age); // OAS adjusted for age and start age
+
+                    chartData.push({
+                        age: age,
+                        lifetimePension: pension.annualLifetimePension,
+                        bridgeBenefit: (age < 65 && inputs.ageAtRetirement < 65) ? pension.annualBridgeBenefit : 0,
+                        cpp: cppForAge,
+                        oas: oasForAge
+                    });
+                }
+
+                if (chartData.length > 0) {
+                    document.getElementById('visualizationArea').classList.remove('hidden');
+                    renderChart(chartData);
+                } else {
+                    document.getElementById('visualizationArea').classList.add('hidden');
+                }
+
+            } catch (error) {
+                console.error("Error during calculation or display:", error);
+                const resultsArea = document.getElementById('resultsArea');
+                resultsArea.classList.remove('hidden');
+                resultsArea.innerHTML = '<p class="text-red-600 text-center text-lg font-semibold">An unexpected error occurred. Please check your inputs.</p>';
+                document.getElementById('visualizationArea').classList.add('hidden');
+            }
+        });
+
+        // --- Event Listener for Reset Button ---
+        document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+        // --- Event Listeners for dynamic Life Expectancy update ---
+        document.getElementById('currentAge').addEventListener('input', () => {
+            const gender = document.getElementById('gender').value;
+            const currentAge = parseInt(document.getElementById('currentAge').value);
+            if (!isNaN(currentAge)) {
+                document.getElementById('lifeExpectancy').value = getLifeExpectancy(gender, currentAge);
+            }
+        });
+
+        document.getElementById('gender').addEventListener('change', () => {
+            const gender = document.getElementById('gender').value;
+            const currentAge = parseInt(document.getElementById('currentAge').value);
+            if (!isNaN(currentAge)) {
+                document.getElementById('lifeExpectancy').value = getLifeExpectancy(gender, currentAge);
+            }
+        });
+
+        // Initialize life expectancy on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const gender = document.getElementById('gender').value;
+            const currentAge = parseInt(document.getElementById('currentAge').value);
+            if (!isNaN(currentAge)) {
+                document.getElementById('lifeExpectancy').value = getLifeExpectancy(gender, currentAge);
+            }
+        });
+
+    </script>
+</body>
+</html>
