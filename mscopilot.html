@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copilot Agent Operation Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        .component-box {
+            border: 2px solid #cbd5e1; /* slate-300 */
+            padding: 1rem;
+            margin: 0.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            text-align: center;
+            background-color: white;
+            transition: all 0.3s ease-in-out;
+            min-height: 80px; /* Ensure boxes have some height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .component-box.active {
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+        .arrow {
+            position: relative;
+            font-size: 1.5rem; /* text-2xl */
+            color: #64748b; /* slate-500 */
+            margin: 0 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center arrows */
+        }
+        /* Updated Log Table Styles */
+        .log-table th, .log-table td {
+            border: 1px solid #2563eb; /* blue-600 for darker borders within blue theme */
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .log-table th {
+            background-color: #1d4ed8; /* blue-700 for slightly darker header */
+            color: white; /* Ensure header text is white */
+        }
+         .log-table td {
+            color: white; /* Ensure cell text is white */
+        }
+
+        /* Custom scrollbar for log - Blue Theme */
+        #logOutput::-webkit-scrollbar {
+            width: 8px;
+        }
+        #logOutput::-webkit-scrollbar-track {
+            background: #3b82f6; /* blue-500 */
+            border-radius: 10px;
+        }
+        #logOutput::-webkit-scrollbar-thumb {
+            background: #93c5fd; /* blue-300 */
+            border-radius: 10px;
+        }
+        #logOutput::-webkit-scrollbar-thumb:hover {
+            background: #bfdbfe; /* blue-200 */
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto max-w-6xl bg-white p-6 rounded-xl shadow-2xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">Copilot Agent Operation Demo</h1>
+            <p class="text-slate-600 mt-2">Watch a simulated flow of how a copilot agent processes a request.</p>
+        </header>
+
+        <div class="mb-8 p-6 bg-slate-50 rounded-lg shadow">
+            <label for="userInput" class="block text-lg font-medium text-slate-700 mb-2">Enter a sample request:</label>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="text" id="userInput" class="flex-grow p-3 border border-slate-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" value="Write a Python function for factorial with comments.">
+                <button id="simulateButton" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md shadow-md transition duration-150 ease-in-out transform hover:scale-105">
+                    Simulate Operation
+                </button>
+            </div>
+        </div>
+
+        <section id="diagram" class="mb-8 p-6 bg-slate-50 rounded-lg shadow">
+            <h2 class="text-2xl font-semibold text-slate-700 mb-6 text-center">Operational Flow Diagram</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div id="userBox" class="component-box col-span-1 md:col-start-2">
+                    <span class="font-semibold text-slate-700">User</span>
+                </div>
+
+                <div class="hidden md:flex flex-col items-center justify-center col-span-1 md:col-start-2">
+                    <div class="arrow transform -rotate-90">⬇️ <span class="text-xs ml-1">1. Input / 9. Feedback</span></div>
+                </div>
+
+                <div id="uiBox" class="component-box col-span-1 md:col-start-2">
+                    <span class="font-semibold text-slate-700">User Interface</span>
+                    <span class="text-xs text-slate-500">(Input/Output)</span>
+                </div>
+
+                 <div class="hidden md:flex flex-col items-center justify-center col-span-1 md:col-start-2">
+                     <div class="arrow transform -rotate-90">⬇️ <span class="text-xs ml-1">To Agent Core</span></div>
+                </div>
+
+                <div class="md:col-span-3 border-2 border-dashed border-sky-300 p-4 rounded-lg bg-sky-50">
+                    <h3 class="text-center text-sky-700 font-semibold mb-4">Copilot Agent Core</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 items-center">
+                        <div id="contextAnalyzerBox" class="component-box">
+                            <span class="font-semibold text-slate-700">Context Analyzer</span>
+                            <span class="text-xs text-slate-500">2. Context</span>
+                        </div>
+                        <div class="arrow hidden lg:flex">➡️</div> <div id="intentRecognizerBox" class="component-box">
+                            <span class="font-semibold text-slate-700">Intent Recognizer</span>
+                            <span class="text-xs text-slate-500">3. Intent</span>
+                        </div>
+                        
+                        <div class="arrow sm:col-span-2 lg:hidden flex transform sm:rotate-90">⬇️</div>
+                        <div class="arrow hidden lg:flex">➡️</div> <div id="planningEngineBox" class="component-box">
+                            <span class="font-semibold text-slate-700">Planning Engine</span>
+                            <span class="text-xs text-slate-500">4. Plan</span>
+                        </div>
+
+                        <div class="arrow hidden lg:flex lg:col-start-1 transform rotate-90">⬇️</div> <div class="hidden sm:block lg:hidden"></div> <div class="arrow hidden lg:flex lg:col-start-2 transform rotate-90">⬇️</div> <div class="hidden sm:block lg:hidden"></div> <div class="arrow hidden lg:flex lg:col-start-3 transform rotate-90">⬇️</div> <div class="hidden sm:block lg:hidden"></div> <div id="knowledgeAccessBox" class="component-box">
+                            <span class="font-semibold text-slate-700">Knowledge Access & Processing</span>
+                            <span class="text-xs text-slate-500">5. Query</span>
+                        </div>
+                        <div class="arrow hidden lg:flex">➡️</div> <div id="llmBox" class="component-box">
+                            <span class="font-semibold text-slate-700">LLM / DB / APIs</span>
+                            <span class="text-xs text-slate-500">6. Info</span>
+                        </div>
+                        
+                        <div class="arrow sm:col-span-2 lg:hidden flex transform sm:rotate-90">⬇️</div>
+                        <div class="arrow hidden lg:flex">➡️</div> <div id="responseGeneratorBox" class="component-box">
+                            <span class="font-semibold text-slate-700">Response/Action Generator</span>
+                            <span class="text-xs text-slate-500">7. Response</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <div class="flex justify-center mt-4">
+                <div class="arrow transform rotate-90 md:rotate-0 md:self-center">⬆️ <span class="text-xs ml-1 md:hidden">To UI</span></div>
+            </div>
+        </section>
+
+        <section id="commentarySection" class="mb-8 p-6 bg-slate-50 rounded-lg shadow">
+            <h2 class="text-2xl font-semibold text-slate-700 mb-4">Step Commentary</h2>
+            <div id="commentaryText" class="text-slate-600 text-lg min-h-[50px] p-4 bg-white rounded-md border border-slate-200">
+                Click "Simulate Operation" to begin.
+            </div>
+        </section>
+
+        <section id="logSection" class="p-6 bg-blue-600 text-white rounded-lg shadow-inner">
+            <h2 class="text-2xl font-semibold mb-4">Activity Log</h2>
+            <div id="logOutput" class="h-64 overflow-y-auto bg-blue-700 p-4 rounded-md text-sm">
+                <table class="w-full log-table">
+                    <thead>
+                        <tr>
+                            <th class="w-1/4">Timestamp</th>
+                            <th class="w-1/4">Component</th>
+                            <th class="w-1/4">Event</th>
+                            <th class="w-1/4">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const userInputEl = document.getElementById('userInput');
+        const simulateButton = document.getElementById('simulateButton');
+        const commentaryTextEl = document.getElementById('commentaryText');
+        const logTableBodyEl = document.getElementById('logTableBody');
+        const componentBoxes = {
+            userBox: document.getElementById('userBox'),
+            uiBox: document.getElementById('uiBox'),
+            contextAnalyzerBox: document.getElementById('contextAnalyzerBox'),
+            intentRecognizerBox: document.getElementById('intentRecognizerBox'),
+            planningEngineBox: document.getElementById('planningEngineBox'),
+            knowledgeAccessBox: document.getElementById('knowledgeAccessBox'),
+            llmBox: document.getElementById('llmBox'),
+            responseGeneratorBox: document.getElementById('responseGeneratorBox'),
+        };
+
+        let currentStepIndex = 0;
+        let simulationSteps = [];
+        let simulationInterval;
+        let initialCommentaryText = "Enter a request and click 'Simulate Operation' to see the agent's workflow.";
+
+        function generateSimulationSteps(userInput) {
+            return [
+                { id: 0, name: "User Action", diagramId: "userBox", commentary: "User initiates a request by typing into the interface.", log: { component: "User", event: "INPUT_INITIATED", details: `User is about to type: "${userInput}"` } },
+                { id: 1, name: "User Input", diagramId: "uiBox", commentary: "The user types their request into the copilot's input field. The raw input is captured by the User Interface.", log: { component: "User Interface", event: "INPUT_RECEIVED", details: `User typed: "${userInput}"` } },
+                { id: 2, name: "Context Analysis", diagramId: "contextAnalyzerBox", commentary: "The Context Analyzer gathers relevant information: active file type (e.g., .py), cursor position, project context, and conversation history.", log: { component: "Context Analyzer", event: "CONTEXT_GATHERED", details: "Context: Python file, line 42, project 'DemoProject'." } },
+                { id: 3, name: "Intent Recognition", diagramId: "intentRecognizerBox", commentary: "The Intent Recognizer analyzes the input and context to determine the user's goal: e.g., 'generate code for factorial function with comments'.", log: { component: "Intent Recognizer", event: "INTENT_IDENTIFIED", details: "Intent: CODE_GENERATION (factorial, with_comments)." } },
+                { id: 4, name: "Planning", diagramId: "planningEngineBox", commentary: "For complex requests, the Planning Engine breaks the task into sub-tasks: 1. Generate factorial code. 2. Add comments.", log: { component: "Planning Engine", event: "PLAN_CREATED", details: "Sub-tasks: [Generate_Code], [Add_Comments]." } },
+                { id: 5, name: "Knowledge Access", diagramId: "knowledgeAccessBox", commentary: "The Knowledge Access unit formulates queries for the LLM or other knowledge sources based on the plan.", log: { component: "Knowledge Access", event: "QUERY_FORMULATED", details: "Querying LLM for Python factorial function and commenting." } },
+                { id: 6, name: "Information Retrieval/Processing", diagramId: "llmBox", commentary: "The LLM (or other sources) processes the query and generates the requested information (e.g., Python code with comments).", log: { component: "LLM/DB/APIs", event: "INFO_RETRIEVED", details: "Python code for factorial generated with docstrings and inline comments." } },
+                { id: 7, name: "Response Generation", diagramId: "responseGeneratorBox", commentary: "The Response/Action Generator takes the processed information and formats it for presentation or execution (e.g., prepares code for insertion).", log: { component: "Response Generator", event: "RESPONSE_PREPARED", details: "Formatted Python code ready for UI." } },
+                { id: 8, name: "Output to User", diagramId: "uiBox", commentary: "The User Interface presents the generated code or response to the user, possibly as a suggestion or direct insertion.", log: { component: "User Interface", event: "OUTPUT_DISPLAYED", details: "Suggested Python code shown to user." } },
+                { id: 9, name: "User Feedback (Optional)", diagramId: "userBox", commentary: "User reviews the output. Implicit (accept/reject code) or explicit (typed feedback) feedback can refine future interactions.", log: { component: "User", event: "FEEDBACK_LOOP", details: "User accepts suggestion. (Simulation end)" } }
+            ];
+        }
+
+        function highlightComponent(diagramId) {
+            Object.values(componentBoxes).forEach(box => {
+                if (box) box.classList.remove('active'); // Removed extra Tailwind classes, rely on .active style
+            });
+            if (componentBoxes[diagramId]) {
+                componentBoxes[diagramId].classList.add('active');
+            }
+        }
+
+        function updateCommentary(text, isError = false) {
+            commentaryTextEl.innerHTML = ''; // Clear previous
+            const p = document.createElement('p');
+            p.textContent = text;
+            p.classList.add('fade-in');
+            if (isError) {
+                p.classList.add('text-red-600', 'font-semibold');
+            } else {
+                p.classList.remove('text-red-600', 'font-semibold');
+            }
+            commentaryTextEl.appendChild(p);
+        }
+
+        function addLogEntry(logData) {
+            const row = logTableBodyEl.insertRow(0); 
+            row.classList.add('fade-in');
+            const timestampCell = row.insertCell();
+            const componentCell = row.insertCell();
+            const eventCell = row.insertCell();
+            const detailsCell = row.insertCell();
+
+            timestampCell.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            componentCell.textContent = logData.component;
+            eventCell.textContent = logData.event;
+            detailsCell.textContent = logData.details;
+
+            if (logTableBodyEl.rows.length > 50) {
+                logTableBodyEl.deleteRow(logTableBodyEl.rows.length - 1);
+            }
+        }
+
+        function runStep() {
+            if (currentStepIndex < simulationSteps.length) {
+                const step = simulationSteps[currentStepIndex];
+                highlightComponent(step.diagramId);
+                updateCommentary(`Step ${step.id}: ${step.name} - ${step.commentary}`);
+                addLogEntry(step.log);
+                currentStepIndex++;
+            } else {
+                clearInterval(simulationInterval);
+                simulateButton.disabled = false;
+                simulateButton.textContent = "Simulate Operation";
+                updateCommentary("Simulation complete. Enter a new request or run again.");
+                highlightComponent(null); 
+            }
+        }
+
+        simulateButton.addEventListener('click', () => {
+            const userQuery = userInputEl.value.trim();
+            if (!userQuery) {
+                updateCommentary("Please enter a sample request in the input field above.", true);
+                setTimeout(() => { 
+                    if (commentaryTextEl.textContent.startsWith("Please enter a sample request")) { // Check if error message is still there
+                         updateCommentary(initialCommentaryText);
+                    }
+                }, 3000);
+                return;
+            }
+            commentaryTextEl.classList.remove('text-red-600', 'font-semibold'); // Clear error style if any
+
+            clearInterval(simulationInterval);
+            logTableBodyEl.innerHTML = ''; 
+            currentStepIndex = 0;
+            simulationSteps = generateSimulationSteps(userQuery);
+            
+            simulateButton.disabled = true;
+            simulateButton.textContent = "Simulating...";
+
+            runStep(); 
+            simulationInterval = setInterval(runStep, 2500); 
+        });
+
+        updateCommentary(initialCommentaryText);
+    </script>
+</body>
+</html>
