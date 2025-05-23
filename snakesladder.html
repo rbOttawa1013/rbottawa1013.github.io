@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats & Steps: The Yes/No Ladder Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none; /* Prevents pull-to-refresh on mobile */
+        }
+
+        .board-container-wrapper { /* Wrapper for board and side decorative images */
+            display: flex;
+            justify-content: center; /* Center the board and its decorations */
+            align-items: flex-start; /* Align items to the top */
+            width: 100%;
+            margin-top: 20px; 
+            margin-bottom: 20px; 
+        }
+
+        .decorative-image-container {
+            width: 10vw; /* Relative width */
+            max-width: 60px; /* Max width to prevent them from getting too large */
+            height: 90vmin; /* Match game board height */
+            max-height: 600px; /* Match game board max height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 10px; /* Spacing around the board */
+        }
+
+        .decorative-image-container svg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Ensure the SVG scales nicely */
+        }
+
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            width: 90vmin; /* Responsive board size */
+            height: 90vmin;
+            max-width: 600px;
+            max-height: 600px;
+            border: 2px solid #333;
+            /* margin: 20px auto; -- REMOVED, parent .board-container-wrapper handles centering and margins */
+            position: relative; /* For player positioning */
+        }
+        .square {
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Distributes number, icon, text */
+            align-items: center;
+            font-size: 0.7rem; /* Slightly reduced base font for square content */
+            position: relative; 
+            padding: 2px;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-align: center;
+        }
+        .square .number {
+            font-weight: bold;
+            line-height: 1; 
+        }
+        .square .special-text {
+            font-size: 0.55rem; 
+            color: #444; 
+            font-weight: 500;
+            line-height: 1;
+        }
+        .player-piece {
+            width: 40%; 
+            height: 40%;
+            border-radius: 50%;
+            position: absolute;
+            transition: all 0.5s ease-in-out;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem;
+            color: white;
+            font-weight: bold;
+        }
+        .player-1-pos { top: 10%; left: 10%; }
+        .player-2-pos { top: 10%; right: 10%; }
+        .player-3-pos { bottom: 10%; left: 10%; }
+        .player-4-pos { bottom: 10%; right: 10%; }
+
+        .ladder-start { background-color: #90EE90; } 
+        .ladder-end { background-color: #32CD32; }   
+        .snake-start { background-color: #F08080; }  
+        .snake-end { background-color: #CD5C5C; }    
+
+        .special-icon-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 22px; 
+            margin: 1px 0; 
+        }
+        .special-icon {
+            width: 18px; 
+            height: 18px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .dice {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .button-primary { background-color: #4F46E5; color: white; }
+        .button-primary:hover { background-color: #4338CA; }
+        .button-secondary { background-color: #6B7280; color: white; }
+        .button-secondary:hover { background-color: #4B5563; }
+        .button-green { background-color: #10B981; color: white; }
+        .button-green:hover { background-color: #059669; }
+        .button-red { background-color: #EF4444; color: white; }
+        .button-red:hover { background-color: #DC2626; }
+        .button:disabled { background-color: #D1D5DB; cursor: not-allowed; }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) { /* Medium screens and below */
+            .decorative-image-container {
+                width: 8vw;
+                max-width: 40px;
+                margin: 0 5px;
+            }
+        }
+
+        @media (max-width: 640px) { /* Small screens (Tailwind's sm breakpoint) */
+            .game-board { width: 95vw; height: 95vw; margin-top: 10px; }
+            .square { font-size: 0.55rem; } 
+            .square .special-text { font-size: 0.5rem; }
+            .special-icon-container { height: 18px; }
+            .special-icon { width: 14px; height: 14px; }
+            .button { padding: 0.5rem 1rem; font-size: 0.875rem; }
+            .dice { width: 40px; height: 40px; }
+            #controls > div { margin-bottom: 0.5rem; }
+        }
+        
+        @media (max-width: 480px) { /* Extra small screens */
+            .decorative-image-container {
+                display: none; /* Hide decorative images on very small screens */
+            }
+             .board-container-wrapper { /* Adjust board margin when side images are hidden */
+                margin-top: 10px; 
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="gameSetupModal" class="modal">
+        <div class="modal-content space-y-4">
+            <h2 class="text-2xl font-bold text-gray-800">Welcome to Stats & Steps!</h2>
+            <p class="text-gray-600">Select the number of players:</p>
+            <div>
+                <button onclick="startGame(2)" class="button button-primary mr-2">2 Players</button>
+                <button onclick="startGame(3)" class="button button-primary mr-2">3 Players</button>
+                <button onclick="startGame(4)" class="button button-primary">4 Players</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameArea" class="hidden w-full max-w-4xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Stats & Steps Challenge</h1>
+
+        <div class="board-container-wrapper">
+            <div id="leftDecorativeImage" class="decorative-image-container">
+                <svg viewBox="0 0 30 200" class="large-ladder-svg" fill="none" stroke="#A0522D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"> <line x1="7" y1="5" x2="7" y2="195"/>
+                    <line x1="23" y1="5" x2="23" y2="195"/>
+                    <line x1="5" y1="15" x2="25" y2="15"/>
+                    <line x1="5" y1="35" x2="25" y2="35"/>
+                    <line x1="5" y1="55" x2="25" y2="55"/>
+                    <line x1="5" y1="75" x2="25" y2="75"/>
+                    <line x1="5" y1="95" x2="25" y2="95"/>
+                    <line x1="5" y1="115" x2="25" y2="115"/>
+                    <line x1="5" y1="135" x2="25" y2="135"/>
+                    <line x1="5" y1="155" x2="25" y2="155"/>
+                    <line x1="5" y1="175" x2="25" y2="175"/>
+                    <line x1="5" y1="195" x2="25" y2="195"/>
+                </svg>
+            </div>
+
+            <div class="game-board shadow-lg rounded-md overflow-hidden">
+                </div>
+
+            <div id="rightDecorativeImage" class="decorative-image-container">
+                <svg viewBox="0 0 50 200" class="large-snake-svg" fill="none" stroke="#2E8B57" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"> <path d="M40 190 C 15 180, 15 160, 40 150 S 15 130, 40 120 S 15 100, 40 90 S 15 70, 40 60 S 15 40, 40 30 S 15 20, 40 10"/>
+                    <ellipse cx="38" cy="10" rx="6" ry="4" fill="#2E8B57"/>
+                    <circle cx="36.5" cy="9" r="1.2" fill="#FF0000"/> <circle cx="39.5" cy="9" r="1.2" fill="#FF0000"/> <line x1="38" y1="6" x2="38" y2="2" stroke="#FF6347" stroke-width="1.5"/> <line x1="38" y1="2" x2="37" y2="0" stroke="#FF6347" stroke-width="1.5"/>
+                    <line x1="38" y1="2" x2="39" y2="0" stroke="#FF6347" stroke-width="1.5"/>
+                </svg>
+            </div>
+        </div>
+
+        <div id="controls" class="mt-6 p-4 bg-white rounded-lg shadow-md w-full flex flex-col sm:flex-row justify-around items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-gray-700">Current Player</h3>
+                <div id="currentPlayerDisplay" class="w-8 h-8 rounded-full mx-auto mt-1 border-2 border-gray-400"></div>
+                <p id="currentPlayerName" class="text-sm font-medium"></p>
+            </div>
+
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-gray-700">Dice Roll</h3>
+                <div id="diceDisplay" class="dice bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-700 mx-auto mt-1">?</div>
+            </div>
+
+            <div class="text-center">
+                <button id="rollDiceButton" onclick="rollDice()" class="button button-primary">Roll Dice</button>
+            </div>
+        </div>
+
+        <div id="questionArea" class="mt-6 p-4 bg-white rounded-lg shadow-md w-full hidden">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2 text-center">Statistics Question:</h3>
+            <p id="questionText" class="text-gray-600 mb-4 text-center min-h-[40px]"></p>
+            <div class="flex justify-center space-x-4">
+                <button id="yesButton" onclick="handleAnswer(true)" class="button button-green">Yes</button>
+                <button id="noButton" onclick="handleAnswer(false)" class="button button-red">No</button>
+            </div>
+        </div>
+
+        <div id="messageArea" class="mt-4 text-center text-md font-medium text-gray-700 min-h-[24px]"></div>
+        
+        <div class="mt-6 text-center">
+            <button id="restartGameButton" onclick="restartGame()" class="button button-secondary hidden">Restart Game</button>
+        </div>
+    </div>
+    
+    <div id="customModal" class="modal hidden">
+        <div class="modal-content space-y-3">
+            <p id="customModalMessage" class="text-xl font-semibold text-gray-700"></p>
+            <button onclick="closeCustomModal()" class="button button-primary">OK</button>
+        </div>
+    </div>
+
+
+    <script>
+        const boardSize = 100;
+        let players = [];
+        let currentPlayerIndex = 0;
+        let gameActive = false;
+        let currentDiceRoll = 0;
+        let currentQuestion = null;
+
+        const playerColors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500'];
+        const playerNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
+
+        const specials = {
+            1: { end: 38, type: 'ladder', text: 'L:38' }, 4: { end: 14, type: 'ladder', text: 'L:14' },
+            9: { end: 31, type: 'ladder', text: 'L:31' }, 21: { end: 42, type: 'ladder', text: 'L:42' },
+            28: { end: 84, type: 'ladder', text: 'L:84' }, 36: { end: 44, type: 'ladder', text: 'L:44' },
+            51: { end: 67, type: 'ladder', text: 'L:67' }, 71: { end: 91, type: 'ladder', text: 'L:91' },
+            80: { end: 99, type: 'ladder', text: 'L:99' },
+            17: { end: 7, type: 'snake', text: 'S:7' }, 54: { end: 34, type: 'snake', text: 'S:34' },
+            62: { end: 19, type: 'snake', text: 'S:19' }, 64: { end: 60, type: 'snake', text: 'S:60' },
+            87: { end: 24, type: 'snake', text: 'S:24' }, 93: { end: 73, type: 'snake', text: 'S:73' },
+            95: { end: 75, type: 'snake', text: 'S:75' }, 98: { end: 78, type: 'snake', text: 'S:78' }
+        };
+
+        const questions = [
+            { text: "Is the 'mean' of a dataset always one of the data points in the set?", answer: false },
+            { text: "Does a larger sample size generally lead to more reliable statistical inferences?", answer: true },
+            { text: "Is 'correlation' the same as 'causation'?", answer: false },
+            { text: "Is a pie chart suitable for showing trends over time?", answer: false },
+            { text: "Is the 'median' the middle value of a dataset when it's ordered from least to greatest?", answer: true },
+            { text: "Can a probability be greater than 1?", answer: false },
+            { text: "Is a 'bar chart' a good way to compare frequencies of different categories?", answer: true },
+            { text: "Does 'random sampling' mean picking whomever is easiest to reach?", answer: false },
+            { text: "Is the 'range' of a dataset calculated by adding all the values together?", answer: false },
+            { text: "If an event is 'certain' to happen, is its probability 0?", answer: false },
+            { text: "Is 'qualitative data' numerical?", answer: false },
+            { text: "Does a 'bell curve' represent a normal distribution?", answer: true },
+            { text: "Is it possible for all data points in a set to be above the mean?", answer: false },
+            { text: "Is 'mode' the value that appears most frequently in a dataset?", answer: true },
+            { text: "If you flip a fair coin 5 times and get Heads each time, is the next flip more likely to be Tails?", answer: false },
+            { text: "Is an outlier a data point that is very different from other data points in a set?", answer: true },
+            { text: "Is the purpose of inferential statistics to simply describe data?", answer: false },
+            { text: "Can a data set have more than one mode?", answer: true },
+            { text: "Is a 'scatter plot' used to show the relationship between two numerical variables?", answer: true },
+            { text: "Is a sample always a perfect representation of the entire population?", answer: false },
+            { text: "If a treatment shows a statistically significant effect, does it always mean the effect is large or practically important?", answer: false },
+            { text: "Is 'bias' in a survey always intentional?", answer: false },
+            { text: "Is a standard deviation a measure of the spread or dispersion of a set of data?", answer: true },
+            { text: "Can you calculate the mean of categorical data (e.g., favorite colors)?", answer: false },
+            { text: "Are 'flipping a coin and rolling a die' an example of independent events?", answer: true }
+        ];
+
+        const gameBoardEl = document.querySelector('.game-board');
+        const diceDisplayEl = document.getElementById('diceDisplay');
+        const rollDiceButtonEl = document.getElementById('rollDiceButton');
+        const questionAreaEl = document.getElementById('questionArea');
+        const questionTextEl = document.getElementById('questionText');
+        const yesButtonEl = document.getElementById('yesButton');
+        const noButtonEl = document.getElementById('noButton');
+        const messageAreaEl = document.getElementById('messageArea');
+        const currentPlayerDisplayEl = document.getElementById('currentPlayerDisplay');
+        const currentPlayerNameEl = document.getElementById('currentPlayerName');
+        const gameSetupModalEl = document.getElementById('gameSetupModal');
+        const gameAreaEl = document.getElementById('gameArea');
+        const restartGameButtonEl = document.getElementById('restartGameButton');
+        const customModalEl = document.getElementById('customModal');
+        const customModalMessageEl = document.getElementById('customModalMessage');
+
+        function showCustomModal(message) {
+            customModalMessageEl.textContent = message;
+            customModalEl.classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            customModalEl.classList.add('hidden');
+        }
+
+        function startGame(numPlayers) {
+            players = [];
+            for (let i = 0; i < numPlayers; i++) {
+                players.push({ id: i, name: playerNames[i], position: 0, color: playerColors[i] });
+            }
+            currentPlayerIndex = 0;
+            gameActive = true;
+            renderBoard();
+            renderPlayers();
+            updateUI();
+            gameSetupModalEl.classList.add('hidden');
+            gameAreaEl.classList.remove('hidden');
+            restartGameButtonEl.classList.add('hidden');
+            messageAreaEl.textContent = `${players[currentPlayerIndex].name}'s turn. Roll the dice!`;
+        }
+        
+        function restartGame() {
+            gameSetupModalEl.classList.remove('hidden');
+            gameAreaEl.classList.add('hidden');
+            if(gameBoardEl) gameBoardEl.innerHTML = ''; 
+        }
+
+        function renderBoard() {
+            if(!gameBoardEl) return;
+            gameBoardEl.innerHTML = ''; 
+            for (let i = 0; i < 10; i++) { 
+                for (let j = 0; j < 10; j++) { 
+                    let squareValue;
+                    if (i % 2 === 0) { 
+                        squareValue = boardSize - (i * 10) - j;
+                    } else { 
+                        squareValue = boardSize - (i * 10) - (9 - j);
+                    }
+
+                    const square = document.createElement('div');
+                    square.classList.add('square', `bg-gray-${(i+j)%2 === 0 ? 50 : 100}`);
+                    square.id = `square-${squareValue}`;
+                    
+                    const numberSpan = document.createElement('span');
+                    numberSpan.classList.add('number');
+                    numberSpan.textContent = squareValue;
+                    square.appendChild(numberSpan);
+
+                    if (specials[squareValue]) {
+                        const special = specials[squareValue];
+                        square.classList.add(special.type === 'ladder' ? 'ladder-start' : 'snake-start');
+                        
+                        const svgIconContainer = document.createElement('div');
+                        svgIconContainer.classList.add('special-icon-container');
+
+                        const svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                        svgIcon.setAttribute("viewBox", "0 0 24 24"); 
+                        svgIcon.classList.add("special-icon");
+
+                        if (special.type === 'ladder') {
+                            svgIcon.innerHTML = `
+                                <line x1="8" y1="2" x2="8" y2="22" stroke-width="2.5" />
+                                <line x1="16" y1="2" x2="16" y2="22" stroke-width="2.5" />
+                                <line x1="7" y1="5" x2="17" y2="5" stroke-width="2.5" />
+                                <line x1="7" y1="12" x2="17" y2="12" stroke-width="2.5" />
+                                <line x1="7" y1="19" x2="17" y2="19" stroke-width="2.5" />`;
+                            svgIcon.setAttribute("stroke", "#059669"); 
+                            svgIcon.setAttribute("fill", "none");
+                        } else { 
+                            svgIcon.innerHTML = `
+                                <path d="M6 19 C6 13 9 10 12 8 S15 7 18 5 M18 5 C17 8 15 11 12 14 S9 17 6 19" stroke-width="2.5" fill="none" />
+                                <circle cx="18" cy="5" r="1.5" fill="#DC2626"/> 
+                                <circle cx="18.2" cy="4.8" r="0.5" fill="white"/>`; 
+                            svgIcon.setAttribute("stroke", "#DC2626"); 
+                        }
+                        svgIconContainer.appendChild(svgIcon);
+                        square.appendChild(svgIconContainer);
+                        
+                        const specialTextSpan = document.createElement('span');
+                        specialTextSpan.classList.add('special-text');
+                        specialTextSpan.textContent = special.text; 
+                        square.appendChild(specialTextSpan);
+                    }
+                    gameBoardEl.appendChild(square);
+                }
+            }
+             Object.values(specials).forEach(special => {
+                const endSquareVisual = document.getElementById(`square-${special.end}`);
+                if (endSquareVisual) {
+                    endSquareVisual.classList.add(special.type === 'ladder' ? 'ladder-end' : 'snake-end');
+                    const existingSpecialText = endSquareVisual.querySelector('.special-text');
+                    if (existingSpecialText && !specials[special.end]) { 
+                         existingSpecialText.remove();
+                    }
+                }
+            });
+        }
+
+        function renderPlayers() {
+            document.querySelectorAll('.player-piece').forEach(p => p.remove());
+            players.forEach(player => {
+                if (player.position > 0) {
+                    const targetSquare = document.getElementById(`square-${player.position}`);
+                    if (targetSquare) {
+                        const piece = document.createElement('div');
+                        piece.classList.add('player-piece', player.color, `player-${player.id + 1}-pos`);
+                        piece.textContent = `P${player.id + 1}`;
+                        targetSquare.appendChild(piece);
+                    }
+                }
+            });
+        }
+        
+        function updateUI() {
+            if (!gameActive) return;
+            const player = players[currentPlayerIndex];
+            currentPlayerDisplayEl.className = `w-8 h-8 rounded-full mx-auto mt-1 border-2 border-gray-400 ${player.color}`;
+            currentPlayerNameEl.textContent = player.name;
+            rollDiceButtonEl.disabled = false;
+            questionAreaEl.classList.add('hidden');
+            yesButtonEl.disabled = true;
+            noButtonEl.disabled = true;
+        }
+
+        function rollDice() {
+            if (!gameActive) return;
+            currentDiceRoll = Math.floor(Math.random() * 6) + 1;
+            diceDisplayEl.textContent = currentDiceRoll;
+            messageAreaEl.textContent = `Rolled a ${currentDiceRoll}. Answer the question to move.`;
+            displayQuestion();
+            rollDiceButtonEl.disabled = true;
+            questionAreaEl.classList.remove('hidden');
+            yesButtonEl.disabled = false;
+            noButtonEl.disabled = false;
+        }
+
+        function displayQuestion() {
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            currentQuestion = questions[randomIndex];
+            questionTextEl.textContent = currentQuestion.text;
+        }
+
+        function handleAnswer(playerAnswer) {
+            if (!gameActive || !currentQuestion) return;
+            yesButtonEl.disabled = true;
+            noButtonEl.disabled = true;
+            questionAreaEl.classList.add('hidden');
+
+            if (playerAnswer === currentQuestion.answer) {
+                messageAreaEl.textContent = "Correct! Moving your piece...";
+                movePlayer(currentDiceRoll);
+            } else {
+                messageAreaEl.textContent = `Incorrect. The answer was ${currentQuestion.answer ? 'Yes' : 'No'}. No move.`;
+                setTimeout(nextTurn, 1500); 
+            }
+            currentQuestion = null; 
+        }
+
+        function movePlayer(steps) {
+            const player = players[currentPlayerIndex];
+            let newPosition = player.position + steps;
+
+            if (newPosition > boardSize) {
+                newPosition = player.position; 
+                messageAreaEl.textContent = `Rolled ${steps}. Overshot ${boardSize}! Stay put.`;
+            } else if (newPosition === boardSize) {
+                player.position = newPosition;
+                renderPlayers();
+                showCustomModal(`${player.name} reached square ${boardSize} and Wins!`);
+                gameActive = false;
+                rollDiceButtonEl.disabled = true;
+                restartGameButtonEl.classList.remove('hidden');
+                return;
+            } else {
+                 player.position = newPosition;
+            }
+           
+            renderPlayers(); 
+
+            setTimeout(() => { 
+                if (specials[player.position]) {
+                    const special = specials[player.position];
+                    if (special.type === 'ladder') {
+                        messageAreaEl.textContent = `Landed on a Data Dash at ${player.position}! Climbing to ${special.end}.`;
+                    } else {
+                        messageAreaEl.textContent = `Oh no! A Statistical Slip at ${player.position}! Sliding to ${special.end}.`;
+                    }
+                    player.position = special.end;
+                    renderPlayers(); 
+                }
+
+                if (player.position === boardSize) { 
+                    showCustomModal(`${player.name} reached square ${boardSize} and Wins!`);
+                    gameActive = false;
+                    rollDiceButtonEl.disabled = true;
+                    restartGameButtonEl.classList.remove('hidden');
+                } else if (gameActive) {
+                    setTimeout(nextTurn, 1500); 
+                }
+            }, 700);
+        }
+
+        function nextTurn() {
+            if (!gameActive) return;
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            diceDisplayEl.textContent = '?';
+            messageAreaEl.textContent = `${players[currentPlayerIndex].name}'s turn. Roll the dice!`;
+            updateUI();
+        }
+    </script>
+</body>
+</html>
