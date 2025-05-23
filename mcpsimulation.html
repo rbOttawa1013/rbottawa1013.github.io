@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NSO MCP System Simulation with Filtered Use Cases</title>
+    <title>NSO MCP System Simulation with Colored Layers</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -28,20 +28,48 @@
             transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+
+        /* Layer Container Base Style (can be overridden) */
         .layer-container {
-            border: 2px solid #3b82f6; /* blue-500 */
-            background-color: #eff6ff; /* blue-50 */
             padding: 1rem;
             margin-bottom: 1rem;
             border-radius: 0.75rem;
         }
-        .layer-title {
+
+        /* Layer 1: Semantic Kernel Chatbot & Agents */
+        .layer-chatbot-agents {
+            border: 2px solid #6366f1; /* indigo-500 */
+            background-color: #e0e7ff; /* indigo-100 */
+        }
+        .layer-chatbot-agents .layer-title {
+            color: #3730a3; /* indigo-800 */
+        }
+
+        /* Layer 2: MCP Servers */
+        .layer-mcp-servers {
+            border: 2px solid #10b981; /* emerald-500 */
+            background-color: #d1fae5; /* emerald-100 */
+        }
+        .layer-mcp-servers .layer-title {
+            color: #047857; /* emerald-700 */
+        }
+
+        /* Layer 3: NSO - SDMX Data Sources */
+        .layer-nso-sources {
+            border: 2px solid #f59e0b; /* amber-500 */
+            background-color: #fef3c7; /* amber-100 */
+        }
+        .layer-nso-sources .layer-title {
+            color: #b45309; /* amber-700 */
+        }
+        
+        .layer-title { /* General layer title styling, color overridden by specific layer */
             font-size: 1.1rem;
             font-weight: 600;
-            color: #1e3a8a; /* blue-800 */
             margin-bottom: 0.5rem;
             text-align: center;
         }
+
         .query-arrow {
             text-align: center;
             margin: 0.5rem 0;
@@ -93,13 +121,17 @@
             background-color: #e5e7eb; /* gray-200 */
             cursor: not-allowed;
         }
-        .selection-area {
-            background-color: #e0e7ff; /* indigo-100 */
+        .selection-area { /* Persona/Agent selection area */
+            background-color: #f3f4f6; /* gray-100 */
             padding: 1rem;
             border-radius: 0.5rem;
             margin-bottom: 1rem;
-            border: 1px solid #c7d2fe; /* indigo-200 */
+            border: 1px solid #e5e7eb; /* gray-200 */
         }
+        .selection-area .text-indigo-700 { /* Adjust title color for this specific box */
+             color: #4338ca; /* A darker indigo for better contrast on gray-100 */
+        }
+
         #chatbotResponse pre { 
             background-color: #f9fafb; 
             padding: 0.5rem;
@@ -146,7 +178,7 @@
         </div>
 
 
-        <div class="layer-container">
+        <div class="layer-container layer-chatbot-agents">
             <div class="layer-title">Semantic Kernel Chatbot & Agents</div>
             <div class="flex flex-col items-center">
                 <div class="component chatbot mb-4 w-full md:w-3/4 lg:w-1/2" id="chatbot">
@@ -170,7 +202,7 @@
 
         <div class="query-arrow text-lg">Agents ⬇️ MCP Servers (direct query)</div>
 
-        <div class="layer-container">
+        <div class="layer-container layer-mcp-servers">
             <div class="layer-title">MCP Servers</div>
             <div class="flex flex-col md:flex-row justify-around">
                 <div class="component mcp-server" id="mcp1">MCP Server 1</div>
@@ -181,7 +213,7 @@
 
         <div class="query-arrow text-lg">MCP Servers ⬇️ NSO - SDMX Data Sources (direct query)</div>
 
-        <div class="layer-container">
+        <div class="layer-container layer-nso-sources">
             <div class="layer-title">NSO (National Statistics Office) - SDMX Data Sources</div>
             <div class="flex flex-col md:flex-row justify-around">
                 <div class="component sdmx-source" id="sdmx1">NSO SDMX Source 1 (e.g., StatCan)</div>
