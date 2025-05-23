@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Enhanced Retirement Calculator </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .calculator-step {
+            display: none; /* Hidden by default */
+        }
+        .calculator-step.active {
+            display: block; /* Show active step */
+        }
+        .form-input-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151; /* Tailwind gray-700 */
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            box-shadow: sm;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #2563eb; /* Tailwind blue-600 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* Tailwind ring-blue-500 */
+        }
+        .input-suffix-container {
+            position: relative;
+        }
+        .input-suffix {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280; /* Tailwind gray-500 */
+            pointer-events: none;
+        }
+        .radio-group label {
+            margin-right: 1rem;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .radio-group input[type="radio"] {
+            margin-right: 0.375rem;
+            accent-color: #2563eb; /* Tailwind blue-600 */
+            width: 1rem;
+            height: 1rem;
+        }
+        .nav-button, .print-button { 
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .nav-button-primary, .print-button { 
+            background-color: #2563eb; /* Tailwind blue-600 */
+            color: white;
+        }
+        .nav-button-primary:hover, .print-button:hover { 
+            background-color: #1d4ed8; /* Tailwind blue-700 */
+        }
+        .nav-button-secondary {
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            color: #374151; /* Tailwind gray-700 */
+        }
+        .nav-button-secondary:hover {
+            background-color: #d1d5db; /* Tailwind gray-300 */
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #2563eb; /* Tailwind blue-600 */
+            width: 0%; /* Initial width */
+            transition: width 0.3s ease-in-out;
+            border-radius: 0.375rem;
+        }
+        .info-tooltip {
+            display: inline-block;
+            margin-left: 0.25rem;
+            color: #6b7280; /* gray-500 */
+            cursor: help;
+            position: relative;
+        }
+        .info-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #1f2937; /* gray-800 */
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; 
+            left: 50%;
+            margin-left: -110px; 
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            font-weight: normal;
+        }
+        .info-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        #resultsChartContainer {
+            width: 100%;
+            max-width: 700px; 
+            margin: 2rem auto; 
+            padding: 1rem;
+            background-color: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+
+        @media print {
+            body {
+                background-color: #fff; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            header, 
+            .progress-bar-container, 
+            #percRetirementForm > div:not(#step4), 
+            .nav-button, 
+            footer,
+            .print-button-container { 
+                display: none !important;
+            }
+            #step4 {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #resultsArea {
+                border: 1px solid #ccc !important; 
+                padding: 1rem !important;
+                box-shadow: none !important;
+            }
+            #resultsChartContainer {
+                max-width: 100% !important; 
+                page-break-inside: avoid; 
+            }
+            #retirementIncomeChart {
+                display: block !important;
+                max-width: 100% !important;
+                height: auto !important; 
+            }
+            .info-tooltip { 
+                display: none !important;
+            }
+            h1, h2, h3, h4, h5, p, li {
+                color: #000 !important; 
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white shadow-xl rounded-lg w-full max-w-3xl p-6 md:p-8">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-slate-800">Personal Enhanced Retirement Calculator</h1>
+            <p class="text-slate-600 mt-1">Estimate your retirement readiness with inflation, returns, and taxes.</p>
+        </header>
+
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <form id="percRetirementForm">
+            <div id="step1" class="calculator-step active">
+                <h2 class="text-xl font-semibold text-slate-700 mb-6">Step 1: Who is this estimate for?</h2>
+                <div class="form-input-group">
+                    <label for="birthDate" class="form-label">What is your birth date? <span class="info-tooltip">? <span class="tooltip-text">Your date of birth helps determine retirement age and benefit calculations.</span></span></label>
+                    <input type="date" id="birthDate" name="birthDate" class="form-input" required>
+                </div>
+                <div class="form-input-group">
+                    <label class="form-label">What is your gender? <span class="info-tooltip">? <span class="tooltip-text">Gender can sometimes affect life expectancy estimates in financial models.</span></span></label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="gender" value="male" required> Male</label>
+                        <label><input type="radio" name="gender" value="female"> Female</label>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="yearsInCanada" class="form-label">How many years will you have lived in Canada from ages 18 to 65? <span class="info-tooltip">? <span class="tooltip-text">This affects eligibility and amount for Old Age Security (OAS) pension. Assumes 40 years for full OAS.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="yearsInCanada" name="yearsInCanada" class="form-input pr-12" placeholder="40" min="0" max="47" value="40" required>
+                        <span class="input-suffix">yrs</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="retirementAge" class="form-label">At what age do you plan to retire? <span class="info-tooltip">? <span class="tooltip-text">The age you plan to stop working full-time. Common is 65.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="retirementAge" name="retirementAge" class="form-input pr-12" placeholder="65" min="55" max="75" value="65" required>
+                        <span class="input-suffix">yrs</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label class="form-label">Are you entering data here for yourself only or are you including your spouse? <span class="info-tooltip">? <span class="tooltip-text">Currently, calculations are primarily for a single individual. Spouse data is not yet fully integrated into projections.</span></span></label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="filingStatus" value="self" checked> Myself only</label>
+                        <label><input type="radio" name="filingStatus" value="spouse" disabled> I am including my spouse (Future Feature)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step2" class="calculator-step">
+                <h2 class="text-xl font-semibold text-slate-700 mb-6">Step 2: Your Financial Assets (Current Values)</h2>
+                <div class="form-input-group">
+                    <label for="cppQppPercentage" class="form-label">Expected future C/QPP pension (% of max)? <span class="info-tooltip">? <span class="tooltip-text">Max CPP for 2024 is approx $1364.60/month. This will be indexed to inflation in calculations.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="cppQppPercentage" name="cppQppPercentage" class="form-input pr-10" placeholder="75" min="0" max="100" value="75" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="rrspRrif" class="form-label">RRSPs and RRIFs combined: <span class="info-tooltip">? <span class="tooltip-text">These assets will grow based on your investment return assumption.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="rrspRrif" name="rrspRrif" class="form-input pr-14" placeholder="100000" min="0" value="100000" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="dcPensionLif" class="form-label">DC pension plans and LIFs combined: <span class="info-tooltip">? <span class="tooltip-text">These assets will grow based on your investment return assumption.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="dcPensionLif" name="dcPensionLif" class="form-input pr-14" placeholder="50000" min="0" value="50000" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="tfsa" class="form-label">TFSA balance: <span class="info-tooltip">? <span class="tooltip-text">This asset will grow based on your investment return assumption. Withdrawals are tax-free.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="tfsa" name="tfsa" class="form-input pr-14" placeholder="25000" min="0" value="25000" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="nonShelteredAssets" class="form-label">Non-tax-sheltered financial assets: <span class="info-tooltip">? <span class="tooltip-text">E.g., non-registered investments. Growth and income from these may be taxed.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="nonShelteredAssets" name="nonShelteredAssets" class="form-input pr-14" placeholder="10000" min="0" value="10000" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                 <div class="form-input-group">
+                    <label for="dbPensionMonthly" class="form-label">Monthly workplace DB pension (not CPP): <span class="info-tooltip">? <span class="tooltip-text">This will be indexed to inflation in calculations.</span></span></label>
+                    <div class="input-suffix-container">
+                        <input type="number" id="dbPensionMonthly" name="dbPensionMonthly" class="form-input pr-14" placeholder="500" min="0" value="500" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step3" class="calculator-step">
+                <h2 class="text-xl font-semibold text-slate-700 mb-6">Step 3: Income & Financial Assumptions</h2>
+                <div class="form-input-group">
+                    <label for="yearsFullTimeWork" class="form-label">Years remaining to work full-time: <span class="info-tooltip">? <span class="tooltip-text">Calculated based on birth date and retirement age.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="yearsFullTimeWork" name="yearsFullTimeWork" class="form-input pr-12" placeholder="0" min="0" value="0" readonly>
+                        <span class="input-suffix">yrs</span>
+                    </div>
+                </div>
+                 <div class="form-input-group">
+                    <label for="currentAnnualIncome" class="form-label">Current annual pre-tax employment income: <span class="info-tooltip">? <span class="tooltip-text">Not directly used in retirement projection beyond CPP/QPP estimates, but good for context.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="currentAnnualIncome" name="currentAnnualIncome" class="form-input pr-14" placeholder="70000" min="0" value="70000" required>
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label class="form-label">Part-time/contract work after retirement? <span class="info-tooltip">? <span class="tooltip-text">Consider any income you might earn after formal retirement.</span></span></label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="postRetirementWork" value="yes"> Yes</label>
+                        <label><input type="radio" name="postRetirementWork" value="no" checked> No</label>
+                    </div>
+                </div>
+                 <div class="form-input-group" id="postRetirementIncomeGroup" style="display:none;">
+                    <label for="postRetirementAnnualIncome" class="form-label">Est. annual income from post-retirement work (today's dollars): <span class="info-tooltip">? <span class="tooltip-text">This amount will be indexed to inflation.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="postRetirementAnnualIncome" name="postRetirementAnnualIncome" class="form-input pr-14" placeholder="10000" min="0" value="10000">
+                        <span class="input-suffix">CAD</span>
+                    </div>
+                </div>
+                <hr class="my-6">
+                <h3 class="text-lg font-medium text-slate-600 mb-3">Financial Assumptions:</h3>
+                <div class="form-input-group">
+                    <label for="inflationRate" class="form-label">Assumed Annual Inflation Rate: <span class="info-tooltip">? <span class="tooltip-text">Long-term average inflation. Default: 2%. Used to adjust future income/expenses.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="inflationRate" name="inflationRate" class="form-input pr-10" placeholder="2.0" min="0" max="10" step="0.1" value="2.0" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="investmentReturnRate" class="form-label">Assumed Annual Investment Return Rate (pre-tax): <span class="info-tooltip">? <span class="tooltip-text">Average annual return on your investments. Default: 5%.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="investmentReturnRate" name="investmentReturnRate" class="form-input pr-10" placeholder="5.0" min="0" max="15" step="0.1" value="5.0" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="rrspWithdrawalRate" class="form-label">Desired RRSP/RRIF Annual Withdrawal Rate (% of balance): <span class="info-tooltip">? <span class="tooltip-text">Default: 4%. RRIF minimums apply from age 71 and will override if higher.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="rrspWithdrawalRate" name="rrspWithdrawalRate" class="form-input pr-10" placeholder="4.0" min="0" max="20" step="0.1" value="4.0" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                </div>
+                <div class="form-input-group">
+                    <label for="tfsaWithdrawalRate" class="form-label">Desired TFSA Annual Withdrawal Rate (% of balance): <span class="info-tooltip">? <span class="tooltip-text">Default: 5%. TFSA withdrawals are tax-free.</span></span></label>
+                     <div class="input-suffix-container">
+                        <input type="number" id="tfsaWithdrawalRate" name="tfsaWithdrawalRate" class="form-input pr-10" placeholder="5.0" min="0" max="20" step="0.1" value="5.0" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                </div>
+                 <p class="text-sm text-slate-500">Tax calculations use 2024 Federal & Ontario rates. DC/LIF and Non-Sheltered asset withdrawals use a fixed 4% rate for this simplified model.</p>
+            </div>
+
+            <div id="step4" class="calculator-step">
+                <h2 class="text-xl font-semibold text-slate-700 mb-6">Step 4: Your Estimated Retirement Outlook</h2>
+                <div id="resultsArea" class="p-2 md:p-6 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p class="text-slate-700 mb-4">Based on the information provided and simplified assumptions, here is an illustrative projection of your potential retirement income:</p>
+                    
+                    <div id="resultsChartContainer">
+                        <canvas id="retirementIncomeChart"></canvas>
+                    </div>
+
+                    <div id="calculationSummary" class="mt-6 space-y-2 text-sm text-slate-600">
+                        </div>
+                    <p class="mt-6 text-xs text-slate-500">
+                        <strong>Disclaimer:</strong> This is a simplified model for illustrative purposes only. It does not account for all tax nuances, specific investment product fees, or detailed government benefit rules. Actual retirement income can vary significantly. Consult a qualified financial advisor for personalized advice. Tax rates are approximations for Ontario/Federal combined (2024).
+                    </p>
+                    <div class="mt-8 text-center print-button-container">
+                        <button type="button" id="printReportButton" class="print-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer-fill inline-block mr-2" viewBox="0 0 16 16">
+                                <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1"/>
+                                <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/>
+                            </svg>
+                            Print PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between">
+                <button type="button" id="prevButton" class="nav-button nav-button-secondary" style="display: none;">◄ Back</button>
+                <button type="button" id="nextButton" class="nav-button nav-button-primary">Next ►</button>
+                <button type="button" id="calculateButton" class="nav-button nav-button-primary" style="display: none;">View Results</button>
+            </div>
+        </form>
+
+        <footer class="mt-8 text-center">
+            <p class="text-xs text-slate-500">
+                This calculator is for illustrative purposes only and does not constitute financial advice.
+            </p>
+        </footer>
+    </div>
+
+<script>
+    // --- Configuration & Constants ---
+    const CONFIG = {
+        MAX_CPP_MONTHLY_BASE: 1364.60, 
+        MAX_OAS_MONTHLY_BASE: 713.34,  
+        OAS_YEARS_FOR_FULL: 40,
+        PROJECTION_END_AGE: 90,
+        GENERAL_WITHDRAWAL_RATE_OTHER_ASSETS: 0.04, 
+        // 2024 Tax Year Parameters
+        FEDERAL_BPA_2024: 15705,
+        FEDERAL_TAX_BRACKETS_2024: [
+            { limit: 55867, rate: 0.15 },
+            { limit: 111733, rate: 0.205 },
+            { limit: 173205, rate: 0.26 },
+            { limit: 246752, rate: 0.29 },
+            { limit: Infinity, rate: 0.33 }
+        ],
+        ONTARIO_BPA_2024: 12399,
+        ONTARIO_TAX_BRACKETS_2024: [
+            { limit: 51446, rate: 0.0505 },
+            { limit: 102894, rate: 0.0915 },
+            { limit: 150000, rate: 0.1116 },
+            { limit: 220000, rate: 0.1216 },
+            { limit: Infinity, rate: 0.1316 }
+        ],
+        ONTARIO_SURTAX_THRESHOLDS_2024: { // Ontario Surtax on Ontario Basic Tax
+            threshold1: 5554, // Surtax of 20% on ON tax between $5,554 and $7,108
+            rate1: 0.20,
+            threshold2: 7108, // Additional surtax of 36% on ON tax over $7,108
+            rate2: 0.36 
+        },
+        RRIF_MINIMUM_FACTORS: { 
+            71: 5.28, 72: 5.40, 73: 5.53, 74: 5.67, 75: 5.82,
+            76: 5.98, 77: 6.17, 78: 6.36, 79: 6.58, 80: 6.82,
+            81: 7.08, 82: 7.38, 83: 7.71, 84: 8.08, 85: 8.51,
+            86: 8.99, 87: 9.55, 88: 10.21, 89: 10.99, 90: 11.92,
+            91: 13.06, 92: 14.49, 93: 16.34, 94: 18.79,
+        }
+    };
+
+    // --- DOM Elements ---
+    const steps = Array.from(document.querySelectorAll('.calculator-step'));
+    const prevButton = document.getElementById('prevButton');
+    const nextButton = document.getElementById('nextButton');
+    const calculateButton = document.getElementById('calculateButton');
+    const progressBar = document.getElementById('progressBar');
+    const percRetirementForm = document.getElementById('percRetirementForm');
+    const postRetirementWorkRadios = document.querySelectorAll('input[name="postRetirementWork"]');
+    const postRetirementIncomeGroup = document.getElementById('postRetirementIncomeGroup');
+    const printReportButton = document.getElementById('printReportButton');
+    
+    let currentStep = 0;
+    const totalSteps = steps.length;
+    let retirementChartInstance = null;
+    let globalInputs = null;
+    let globalIncomeData = null;
+    let globalProjectionStartAge = null;
+
+
+    // --- Event Listeners & UI Logic ---
+    postRetirementWorkRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            postRetirementIncomeGroup.style.display = this.value === 'yes' ? 'block' : 'none';
+            document.getElementById('postRetirementAnnualIncome').required = (this.value === 'yes');
+        });
+    });
+
+    document.getElementById('birthDate').addEventListener('change', updateYearsFullTimeWork);
+    document.getElementById('retirementAge').addEventListener('input', updateYearsFullTimeWork);
+    document.getElementById('retirementAge').addEventListener('change', updateYearsFullTimeWork);
+    
+    prevButton.addEventListener('click', () => {
+        if (currentStep > 0) {
+            currentStep--;
+            showStep(currentStep);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        if (validateStep(currentStep)) {
+            if (currentStep < totalSteps - 2) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        }
+    });
+    
+    calculateButton.addEventListener('click', () => {
+        if (validateStep(currentStep)) {
+            if (currentStep === totalSteps - 2) {
+                currentStep++;
+                performCalculationController(); 
+                showStep(currentStep);
+            }
+        }
+    });
+
+    if(printReportButton) { 
+        printReportButton.addEventListener('click', () => {
+            // This simply opens the browser's print dialog.
+            // Users can then choose "Save as PDF" if their browser supports it.
+            window.print();
+        });
+    }
+
+
+    // --- UI Helper Functions ---
+    function updateProgressBar() {
+        const progressPercentage = ((currentStep + 1) / totalSteps) * 100;
+        progressBar.style.width = progressPercentage + '%';
+    }
+
+    function updateYearsFullTimeWork() {
+        const birthDateInput = document.getElementById('birthDate').value;
+        const retirementAgeInput = parseInt(document.getElementById('retirementAge').value, 10);
+        const yearsFullTimeWorkInput = document.getElementById('yearsFullTimeWork');
+
+        if (birthDateInput && !isNaN(retirementAgeInput)) {
+            const birthDate = new Date(birthDateInput);
+            const currentYear = new Date().getFullYear();
+            const birthYear = birthDate.getFullYear();
+            let currentAge = currentYear - birthYear;
+            const birthMonth = birthDate.getMonth();
+            const currentMonth = new Date().getMonth();
+            if (currentMonth < birthMonth || (currentMonth === birthMonth && new Date().getDate() < birthDate.getDate())) {
+                currentAge--;
+            }
+            
+            if (retirementAgeInput > currentAge) {
+                yearsFullTimeWorkInput.value = retirementAgeInput - currentAge;
+            } else {
+                yearsFullTimeWorkInput.value = 0;
+            }
+        } else {
+            yearsFullTimeWorkInput.value = '';
+        }
+    }
+
+    function showStep(stepIndex) {
+        steps.forEach((step, index) => {
+            step.classList.toggle('active', index === stepIndex);
+        });
+        prevButton.style.display = stepIndex === 0 ? 'none' : 'inline-block';
+        if (stepIndex === totalSteps - 1) {
+            nextButton.style.display = 'none';
+            calculateButton.style.display = 'none';
+        } else if (stepIndex === totalSteps - 2) {
+            nextButton.style.display = 'none';
+            calculateButton.style.display = 'inline-block';
+        } else {
+            nextButton.style.display = 'inline-block';
+            calculateButton.style.display = 'none';
+        }
+        updateProgressBar();
+    }
+
+    function validateStep(stepIndex) {
+        const currentStepElement = steps[stepIndex];
+        const inputs = currentStepElement.querySelectorAll('input[required], select[required]');
+        for (let input of inputs) {
+            let parentGroup = input.closest('.form-input-group');
+            if (parentGroup && parentGroup.id === 'postRetirementIncomeGroup' && parentGroup.style.display === 'none') {
+                continue;
+            }
+            if (!input.value || (input.type === "radio" && !currentStepElement.querySelector(`input[name="${input.name}"]:checked`))) {
+                const label = currentStepElement.querySelector(`label[for="${input.id}"]`);
+                const labelText = label ? label.innerText.replace('?', '').trim() : (input.name || 'a required field');
+                console.error(`Validation Error: Please fill in or select a value for: ${labelText}.`);
+                alert(`Please fill in or select a value for: ${labelText}.`);
+                input.focus();
+                return false;
+            }
+            if (input.type === "number") {
+                const min = parseFloat(input.min);
+                const max = parseFloat(input.max);
+                const value = parseFloat(input.value);
+                if (isNaN(value)) {
+                    console.error(`Validation Error: Please enter a valid number for ${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'the numeric field'}.`);
+                    alert(`Please enter a valid number for ${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'the numeric field'}.`);
+                    input.focus(); return false;
+                }
+                if (!isNaN(min) && value < min) {
+                    console.error(`Validation Error: ${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'Field'} value cannot be less than ${min}.`);
+                    alert(`${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'Field'} value cannot be less than ${min}.`);
+                    input.focus(); return false;
+                }
+                if (!isNaN(max) && value > max) {
+                     console.error(`Validation Error: ${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'Field'} value cannot be more than ${max}.`);
+                    alert(`${input.labels[0] ? input.labels[0].innerText.replace('?','').trim() : 'Field'} value cannot be more than ${max}.`);
+                    input.focus(); return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // --- Financial Calculation Helper Functions ---
+    function getParsedFormData() {
+        const formData = new FormData(percRetirementForm);
+        const data = Object.fromEntries(formData.entries());
+        
+        const parsedData = {};
+        for (const key in data) {
+            if (['cppQppPercentage', 'rrspRrif', 'dcPensionLif', 'tfsa', 'nonShelteredAssets', 'dbPensionMonthly', 
+                 'yearsInCanada', 'retirementAge', 'yearsFullTimeWork', 'currentAnnualIncome', 
+                 'postRetirementAnnualIncome', 'inflationRate', 'investmentReturnRate', 
+                 'rrspWithdrawalRate', 'tfsaWithdrawalRate'].includes(key)) {
+                parsedData[key] = parseFloat(data[key] || 0);
+            } else {
+                parsedData[key] = data[key];
+            }
+        }
+        parsedData.inflationRate = (parsedData.inflationRate || 0) / 100;
+        parsedData.investmentReturnRate = (parsedData.investmentReturnRate || 0) / 100;
+        parsedData.desiredRrspWithdrawalRate = (parsedData.rrspWithdrawalRate || 0) / 100;
+        parsedData.tfsaWithdrawalRate = (parsedData.tfsaWithdrawalRate || 0) / 100;
+        return parsedData;
+    }
+    
+    function calculatePreRetirementAssetGrowth(initialAssets, yearsToRetirement, investmentReturnRate) {
+        let { rrspRrifBalance, dcLifBalance, tfsaBalance, ntsAssetsBalance } = initialAssets;
+        for (let i = 0; i < yearsToRetirement; i++) {
+            rrspRrifBalance *= (1 + investmentReturnRate);
+            dcLifBalance *= (1 + investmentReturnRate);
+            tfsaBalance *= (1 + investmentReturnRate);
+            ntsAssetsBalance *= (1 + investmentReturnRate);
+        }
+        return { rrspRrifBalance, dcLifBalance, tfsaBalance, ntsAssetsBalance };
+    }
+
+    function getRrifMinimumPercentage(age) {
+        if (age >= 95) return 20.00;
+        if (age >= 71) return CONFIG.RRIF_MINIMUM_FACTORS[age] || 0;
+        if (age < 71 && age > 0 && (90 - age) !== 0) { 
+            return (1 / (90 - age)) * 100;
+        }
+        return 0;
+    }
+    
+    function calculateTaxWithBrackets(taxableIncome, bpa, brackets) {
+        let incomeAfterBPA = Math.max(0, taxableIncome - bpa);
+        let tax = 0;
+        let remainingIncome = incomeAfterBPA;
+        let previousLimit = 0;
+
+        for (const bracket of brackets) {
+            if (remainingIncome <= 0) break;
+            const taxableInBracket = Math.min(remainingIncome, bracket.limit - previousLimit);
+            tax += taxableInBracket * bracket.rate;
+            remainingIncome -= taxableInBracket;
+            previousLimit = bracket.limit;
+            if (bracket.limit === Infinity && remainingIncome > 0) { 
+                 tax += remainingIncome * bracket.rate; 
+                 remainingIncome = 0;
+            }
+        }
+        return Math.max(0, tax);
+    }
+
+
+    function calculateCombinedTax(taxableIncome) {
+        const federalTax = calculateTaxWithBrackets(taxableIncome, CONFIG.FEDERAL_BPA_2024, CONFIG.FEDERAL_TAX_BRACKETS_2024);
+        const ontarioBasicTax = calculateTaxWithBrackets(taxableIncome, CONFIG.ONTARIO_BPA_2024, CONFIG.ONTARIO_TAX_BRACKETS_2024);
+        
+        let ontarioSurtax = 0;
+        // Surtax is on Ontario tax, not taxable income
+        if (ontarioBasicTax > CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold1) {
+            // Tax on amount between threshold1 and threshold2 (or all above threshold1 if below threshold2)
+            const taxOverT1 = ontarioBasicTax - CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold1;
+            let surtaxableAmountT1 = taxOverT1;
+            if (ontarioBasicTax > CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold2) {
+                surtaxableAmountT1 = CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold2 - CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold1;
+            }
+            ontarioSurtax += surtaxableAmountT1 * CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.rate1;
+        }
+        if (ontarioBasicTax > CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold2) {
+            // Additional surtax on amount above threshold2
+            const taxOverT2 = ontarioBasicTax - CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.threshold2;
+            ontarioSurtax += taxOverT2 * CONFIG.ONTARIO_SURTAX_THRESHOLDS_2024.rate2;
+        }
+        
+        const totalOntarioTax = ontarioBasicTax + ontarioSurtax;
+        return federalTax + totalOntarioTax;
+    }
+
+
+    // --- Main Calculation Orchestrator ---
+    function performCalculationController() {
+        globalInputs = getParsedFormData(); 
+        globalProjectionStartAge = globalInputs.retirementAge;
+
+        const initialAssets = {
+            rrspRrifBalance: globalInputs.rrspRrif,
+            dcLifBalance: globalInputs.dcPensionLif,
+            tfsaBalance: globalInputs.tfsa,
+            ntsAssetsBalance: globalInputs.nonShelteredAssets
+        };
+
+        const grownAssets = calculatePreRetirementAssetGrowth(initialAssets, globalInputs.yearsFullTimeWork, globalInputs.investmentReturnRate);
+        let { rrspRrifBalance, dcLifBalance, tfsaBalance, ntsAssetsBalance } = grownAssets;
+
+        let ageLabels = [];
+        globalIncomeData = { 
+            cpp: [], oas: [], dbPension: [], rrspRrif: [], dcLif: [], tfsa: [], nts: [], postRetWork: [],
+            totalGross: [], totalNet: [], totalTax: [], ages: [],
+            rrspRrifBalances: [], tfsaBalances: [] 
+        };
+
+        let currentBenefits = {
+            cppMonthly: CONFIG.MAX_CPP_MONTHLY_BASE,
+            oasMonthly: CONFIG.MAX_OAS_MONTHLY_BASE,
+            dbPensionMonthly: globalInputs.dbPensionMonthly,
+            postRetWorkAnnual: globalInputs.postRetirementAnnualIncome
+        };
+
+        for (let year = 0; year <= (CONFIG.PROJECTION_END_AGE - globalProjectionStartAge); year++) {
+            const age = globalProjectionStartAge + year;
+            ageLabels.push(age);
+            globalIncomeData.ages.push(age);
+
+            if (year > 0) { 
+                currentBenefits.cppMonthly *= (1 + globalInputs.inflationRate);
+                currentBenefits.oasMonthly *= (1 + globalInputs.inflationRate);
+                currentBenefits.dbPensionMonthly *= (1 + globalInputs.inflationRate);
+                if (globalInputs.postRetirementWork === 'yes') {
+                    currentBenefits.postRetWorkAnnual *= (1 + globalInputs.inflationRate);
+                }
+            }
+
+            const annualCpp = (globalInputs.cppQppPercentage / 100) * currentBenefits.cppMonthly * 12;
+            const oasPercentage = Math.min(1, (globalInputs.yearsInCanada / CONFIG.OAS_YEARS_FOR_FULL));
+            const annualOas = (age >= 65) ? (oasPercentage * currentBenefits.oasMonthly * 12) : 0;
+            const annualDbPension = currentBenefits.dbPensionMonthly * 12;
+            const annualPostRetWork = (globalInputs.postRetirementWork === 'yes') ? currentBenefits.postRetWorkAnnual : 0;
+
+            let annualRrspRrif = 0;
+            if (rrspRrifBalance > 0) {
+                let rrspWithdrawalRateForYear = globalInputs.desiredRrspWithdrawalRate;
+                if (age >= 71) {
+                    const rrifMinPercent = getRrifMinimumPercentage(age) / 100;
+                    rrspWithdrawalRateForYear = Math.max(globalInputs.desiredRrspWithdrawalRate, rrifMinPercent);
+                }
+                annualRrspRrif = Math.min(rrspRrifBalance, rrspRrifBalance * rrspWithdrawalRateForYear);
+                rrspRrifBalance -= annualRrspRrif;
+                rrspRrifBalance *= (1 + globalInputs.investmentReturnRate);
+            }
+            
+            let annualTfsa = 0;
+            if (tfsaBalance > 0) {
+                annualTfsa = Math.min(tfsaBalance, tfsaBalance * globalInputs.tfsaWithdrawalRate);
+                tfsaBalance -= annualTfsa;
+                tfsaBalance *= (1 + globalInputs.investmentReturnRate);
+            }
+
+            let annualDcLif = 0;
+            if (dcLifBalance > 0) {
+                annualDcLif = Math.min(dcLifBalance, dcLifBalance * CONFIG.GENERAL_WITHDRAWAL_RATE_OTHER_ASSETS);
+                dcLifBalance -= annualDcLif;
+                dcLifBalance *= (1 + globalInputs.investmentReturnRate);
+            }
+            
+            let annualNts = 0;
+            if (ntsAssetsBalance > 0) {
+                annualNts = Math.min(ntsAssetsBalance, ntsAssetsBalance * CONFIG.GENERAL_WITHDRAWAL_RATE_OTHER_ASSETS);
+                ntsAssetsBalance -= annualNts;
+                ntsAssetsBalance *= (1 + globalInputs.investmentReturnRate);
+            }
+
+            globalIncomeData.cpp.push(annualCpp);
+            globalIncomeData.oas.push(annualOas);
+            globalIncomeData.dbPension.push(annualDbPension);
+            globalIncomeData.rrspRrif.push(annualRrspRrif);
+            globalIncomeData.dcLif.push(annualDcLif);
+            globalIncomeData.tfsa.push(annualTfsa);
+            globalIncomeData.nts.push(annualNts);
+            globalIncomeData.postRetWork.push(annualPostRetWork);
+            
+            globalIncomeData.rrspRrifBalances.push(rrspRrifBalance);
+            globalIncomeData.tfsaBalances.push(tfsaBalance);
+
+
+            const grossAnnualIncome = annualCpp + annualOas + annualDbPension + annualRrspRrif + annualDcLif + annualTfsa + annualNts + annualPostRetWork;
+            const taxableIncome = annualCpp + annualOas + annualDbPension + annualRrspRrif + annualDcLif + annualNts + annualPostRetWork;
+            
+            const taxPaid = calculateCombinedTax(taxableIncome);
+            const netAnnualIncome = (taxableIncome - taxPaid) + annualTfsa; 
+
+            globalIncomeData.totalGross.push(grossAnnualIncome);
+            globalIncomeData.totalNet.push(netAnnualIncome);
+            globalIncomeData.totalTax.push(taxPaid);
+        }
+
+        renderResultsChart(ageLabels, globalIncomeData);
+        renderResultsSummary(0); 
+    }
+
+    // --- Chart and Summary Rendering Functions ---
+    function renderResultsChart(ageLabels, incomeData) {
+        const ctx = document.getElementById('retirementIncomeChart').getContext('2d');
+        if (retirementChartInstance) {
+            retirementChartInstance.destroy();
+        }
+        retirementChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ageLabels,
+                datasets: [
+                    { label: 'CPP/QPP (Gross)', data: incomeData.cpp, backgroundColor: '#2dd4bf' },
+                    { label: 'OAS (Gross)', data: incomeData.oas, backgroundColor: '#60a5fa' },
+                    { label: 'DB Pension (Gross)', data: incomeData.dbPension, backgroundColor: '#facc15' },
+                    { label: 'RRSP/RRIF (Gross)', data: incomeData.rrspRrif, backgroundColor: '#a78bfa' },
+                    { label: 'DC/LIF (Gross)', data: incomeData.dcLif, backgroundColor: '#fb923c' },
+                    { label: 'TFSA Withdrawal', data: incomeData.tfsa, backgroundColor: '#f472b6' },
+                    { label: 'Non-Sheltered (Gross)', data: incomeData.nts, backgroundColor: '#a3a3a3' },
+                    { label: 'Post-Ret. Work (Gross)', data: incomeData.postRetWork, backgroundColor: '#78716c'}
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                onClick: (event, elements) => { 
+                    if (elements.length > 0) {
+                        const activeIndex = elements[0].index;
+                        if (globalIncomeData && activeIndex < globalIncomeData.ages.length) {
+                             renderResultsSummary(activeIndex);
+                        }
+                    }
+                },
+                plugins: {
+                    title: { display: true, text: 'Projected Annual Gross Income Sources (Illustrative)' },
+                    tooltip: { 
+                        mode: 'index', 
+                        intersect: false, 
+                        callbacks: { 
+                            label: function(context) { 
+                                let label = context.dataset.label || ''; 
+                                if (label) { label += ': '; } 
+                                if (context.parsed.y !== null) { 
+                                    label += 'CAD ' + context.parsed.y.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
+                                } 
+                                return label;
+                            },
+                            footer: function(tooltipItems) {
+                                if (tooltipItems.length > 0) {
+                                    const activeIndex = tooltipItems[0].dataIndex;
+                                     if (globalIncomeData && activeIndex < globalIncomeData.ages.length) {
+                                        renderResultsSummary(activeIndex);
+                                    }
+                                }
+                                return ''; 
+                            }
+                        }
+                    },
+                },
+                scales: { 
+                    x: { stacked: true, title: { display: true, text: 'Age' } }, 
+                    y: { stacked: true, title: { display: true, text: 'Annual Income (CAD)' }, beginAtZero: true, ticks: { callback: function(value) { return 'CAD ' + value.toLocaleString(); } } } 
+                }
+            }
+        });
+    }
+
+    function renderResultsSummary(ageIndex) { 
+        if (!globalInputs || !globalIncomeData || ageIndex === null || ageIndex === undefined || ageIndex >= globalIncomeData.ages.length) {
+            if (globalInputs && globalIncomeData && globalIncomeData.totalGross.length > 0) {
+                ageIndex = 0; 
+            } else {
+                document.getElementById('calculationSummary').innerHTML = '<p>Please complete the form to see results.</p>';
+                return;
+            }
+        }
+
+        const summaryDiv = document.getElementById('calculationSummary');
+        const currentAgeForSummary = globalIncomeData.ages[ageIndex];
+        const grossForAge = globalIncomeData.totalGross[ageIndex] || 0;
+        const netForAge = globalIncomeData.totalNet[ageIndex] || 0;
+        const taxForAge = globalIncomeData.totalTax[ageIndex] || 0;
+        const rrspBalanceForAge = globalIncomeData.rrspRrifBalances[ageIndex] || 0; 
+        const tfsaBalanceForAge = globalIncomeData.tfsaBalances[ageIndex] || 0;   
+        
+        const averageTaxRate = grossForAge > 0 ? (taxForAge / grossForAge) * 100 : 0;
+        const netMonthlyIncome = netForAge / 12;
+
+        summaryDiv.innerHTML = `
+            <p><strong>Retirement Age:</strong> ${globalProjectionStartAge} years</p>
+            <p><strong>Projection Period:</strong> Age ${globalProjectionStartAge} to ${CONFIG.PROJECTION_END_AGE}</p>
+            <p><strong>Assumptions:</strong> Inflation: ${globalInputs.inflationRate*100}%, Inv. Return: ${globalInputs.investmentReturnRate*100}%, RRSP Rate: ${globalInputs.rrspWithdrawalRate}%, TFSA Rate: ${globalInputs.tfsaWithdrawalRate}%</p>
+            <hr class="my-2">
+            <h4 class="font-semibold mt-3 mb-1 text-slate-700">Income Summary at Age ${currentAgeForSummary}:</h4>
+            <p><strong>Total Estimated Gross Annual Income:</strong> CAD ${grossForAge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            <p><strong>Estimated Total Tax Paid:</strong> CAD ${taxForAge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            <p><strong>Estimated Average Tax Rate:</strong> ${averageTaxRate.toFixed(1)}%</p>
+            <p class="font-semibold text-blue-600"><strong>Estimated Net Annual Income (After Tax):</strong> CAD ${netForAge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            <p class="font-semibold text-green-600"><strong>Estimated Net Monthly Income (After Tax):</strong> CAD ${netMonthlyIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            
+            <h5 class="font-semibold mt-3 mb-1 text-slate-600">Gross Income Breakdown at Age ${currentAgeForSummary} (Annual):</h5>
+            <ul class="list-disc list-inside ml-4 text-xs">
+                ${globalIncomeData.cpp[ageIndex] > 0 ? `<li>CPP/QPP: CAD ${globalIncomeData.cpp[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.oas[ageIndex] > 0 ? `<li>OAS: CAD ${globalIncomeData.oas[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.dbPension[ageIndex] > 0 ? `<li>DB Pension: CAD ${globalIncomeData.dbPension[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.rrspRrif[ageIndex] > 0 ? `<li>RRSP/RRIF Withdrawal: CAD ${globalIncomeData.rrspRrif[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.dcLif[ageIndex] > 0 ? `<li>DC/LIF Withdrawal: CAD ${globalIncomeData.dcLif[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.tfsa[ageIndex] > 0 ? `<li>TFSA Withdrawal: CAD ${globalIncomeData.tfsa[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (Tax-Free)</li>` : ''}
+                ${globalIncomeData.nts[ageIndex] > 0 ? `<li>Non-Sheltered Assets Withdrawal: CAD ${globalIncomeData.nts[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+                ${globalIncomeData.postRetWork[ageIndex] > 0 ? `<li>Post-Retirement Work: CAD ${globalIncomeData.postRetWork[ageIndex].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>` : ''}
+            </ul>
+
+            <h5 class="font-semibold mt-3 mb-1 text-slate-600">Estimated Asset Balances at End of Year (Age ${currentAgeForSummary}):</h5>
+            <ul class="list-disc list-inside ml-4 text-xs">
+                <li>RRSP/RRIF Balance: CAD ${rrspBalanceForAge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>
+                <li>TFSA Balance: CAD ${tfsaBalanceForAge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</li>
+            </ul>
+
+            <p class="mt-2"><em>Click on a bar in the chart to update this summary for that specific age. RRIF minimum withdrawal rates apply from age 71.</em></p>
+        `;
+    }
+
+    // --- Initialize ---
+    showStep(currentStep);
+    document.getElementById('birthDate').value = '1980-01-01'; 
+    updateYearsFullTimeWork(); 
+</script>
+
+</body>
+</html>
