@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI TARS ROBOT HTML ANIMATION</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c; /* Tailwind gray-900 */
+            margin: 0;
+            overflow: hidden;
+            /* Monospace for command bar, Roboto Mono as a fallback */
+            font-family: 'Roboto Mono', 'Consolas', 'Monaco', 'Lucida Console', monospace;
+            padding-top: 40px; /* Add padding to body to avoid overlap with command bar */
+        }
+
+        /* New Command Bar Styles */
+        .command-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px; /* Height of the command bar */
+            background-color: #000000; /* Black background */
+            color: #00ff00; /* Green text */
+            font-size: 0.9rem;
+            line-height: 30px; /* Vertically center text */
+            padding: 0 10px;
+            box-sizing: border-box;
+            white-space: nowrap; /* Prevent text wrapping */
+            overflow: hidden; /* Hide overflowing text */
+            z-index: 200; /* Ensure it's above other content */
+            border-bottom: 1px solid #003300; /* Dark green border */
+            font-family: 'Roboto Mono', 'Consolas', 'Monaco', 'Lucida Console', monospace; /* Specific font for command bar */
+        }
+
+        .command-text {
+            display: inline-block; /* Allows animation of transform */
+            /* Slower scrolling: increased duration from 20s to 45s */
+            animation: scroll-text 45s linear infinite;
+        }
+
+        @keyframes scroll-text {
+            0% { transform: translateX(100%); } /* Start off-screen to the right */
+            100% { transform: translateX(-150%); } /* End further off-screen to the left to ensure smooth repeat with longer text */
+        }
+
+
+        .tars-container {
+            position: relative;
+            width: 200px;
+            height: 300px;
+            perspective: 1000px;
+        }
+
+        .tars-block {
+            position: absolute;
+            background-color: #4a5568; /* Tailwind gray-600 */
+            border: 2px solid #2d3748; /* Tailwind gray-800 */
+            box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 0 5px rgba(255,255,255,0.2);
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #a0aec0; /* Tailwind gray-500 */
+            font-size: 0.9rem; /* Increased base font size for TARS blocks */
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif; /* Font for TARS blocks */
+            font-weight: 700; /* Bolder font for TARS blocks */
+        }
+
+        /* Individual block positioning and dimensions */
+        .block-1 { width: 48%; height: 48%; top: 0; left: 0; transform-origin: bottom right; }
+        .block-2 { width: 48%; height: 48%; top: 0; right: 0; transform-origin: bottom left; }
+        .block-3 { width: 48%; height: 48%; bottom: 0; left: 0; transform-origin: top right; }
+        .block-4 { width: 48%; height: 48%; bottom: 0; right: 0; transform-origin: top left; }
+
+        .tars-body-pivot {
+            position: absolute;
+            width: 10%;
+            height: 10%;
+            background-color: #2d3748;
+            top: 45%;
+            left: 45%;
+            border-radius: 2px;
+        }
+
+        /* Animation states */
+        .block-1.walk-step1 { transform: rotateZ(-15deg) translateX(-10px) translateY(-5px); }
+        .block-1.walk-step2 { transform: rotateZ(5deg); }
+        .block-2.walk-step1 { transform: rotateZ(10deg) translateX(5px) translateY(-10px); }
+        .block-2.walk-step2 { transform: rotateZ(-5deg); }
+        .block-3.walk-step1 { transform: rotateZ(25deg) translateX(-15px) translateY(10px) rotateX(20deg); }
+        .block-3.walk-step2 { transform: rotateZ(-5deg) translateX(5px); }
+        .block-4.walk-step1 { transform: rotateZ(-10deg) translateX(10px) translateY(5px) rotateX(-15deg); }
+        .block-4.walk-step2 { transform: rotateZ(20deg) translateX(10px) translateY(5px) rotateX(15deg); }
+
+        .display-screen {
+            width: 80%;
+            height: 25%; /* Slightly taller display */
+            background-color: #00c7ff;
+            border: 1px solid #718096;
+            opacity: 0.7;
+            box-shadow: 0 0 8px #00c7ff;
+            border-radius: 2px;
+            animation: flicker 3s infinite steps(1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.75rem; /* Adjusted font size for display */
+            color: #1a202c;
+            font-family: 'Orbitron', sans-serif; /* Font for TARS display */
+            font-weight: 700;
+            padding: 2px;
+            text-align: center;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 0.7; box-shadow: 0 0 8px #00c7ff, inset 0 0 2px #00c7ff; }
+            50% { opacity: 0.5; box-shadow: 0 0 5px #00c7ff, inset 0 0 1px #00c7ff; }
+            75% { opacity: 0.8; box-shadow: 0 0 10px #00c7ff, inset 0 0 3px #00c7ff; }
+        }
+
+        .detail-line { position: absolute; background-color: #718096; opacity: 0.5; }
+        .line-h { width: 60%; height: 2px; top: 30%; left: 20%; border-radius: 1px;}
+        .line-v { width: 2px; height: 40%; top: 40%; left: 50%; margin-left: -1px; border-radius: 1px;}
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(45, 55, 72, 0.9);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .control-button {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #718096;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            font-family: 'Roboto Mono', sans-serif; /* Consistent font for controls */
+        }
+        .control-button:hover { background-color: #718096; }
+        .control-button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="command-bar">
+        <span class="command-text" id="commandText"></span>
+    </div>
+
+    <div class="tars-container" id="tarsContainer">
+        <div class="tars-body-pivot"></div>
+        <div class="tars-block block-1" id="block1">
+            B1
+        </div>
+        <div class="tars-block block-2" id="block2">
+            <div class="display-screen" id="tarsScreen">TARS</div>
+            B2
+        </div>
+        <div class="tars-block block-3" id="block3">
+            B3
+        </div>
+        <div class="tars-block block-4" id="block4">
+            B4
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="walkButton" class="control-button">Walk</button>
+        <button id="transformButton" class="control-button">Transform</button>
+        <button id="resetButton" class="control-button">Reset</button>
+        <button id="spinButton" class="control-button">Spin</button>
+    </div>
+
+    <script>
+        // Get block elements
+        const block1 = document.getElementById('block1');
+        const block2 = document.getElementById('block2');
+        const block3 = document.getElementById('block3');
+        const block4 = document.getElementById('block4');
+        const tarsContainer = document.getElementById('tarsContainer');
+        const tarsScreen = document.getElementById('tarsScreen');
+        const commandTextElement = document.getElementById('commandText');
+
+        // Animation state
+        let currentStep = 0;
+        let animationInterval;
+        let isSpinning = false;
+        // let commandInterval; // No longer needed for JS-based command updates
+
+        // Pseudo computer commands
+        const pseudoCommands = [
+            "INITIATING TARS PROTOCOL V4.7...",
+            "SYSTEM CHECK: ALL MODULES NOMINAL.",
+            "AI CORE STATUS: ONLINE.",
+            "HUMOR PARAMETER: 75% (ADJUSTING TO 90%)...",
+            "NAVIGATION SYSTEM: LOCKING COORDINATES...",
+            "ANALYZING ENVIRONMENTAL DATA...",
+            "SECURITY PROTOCOLS: ACTIVE.",
+            "QUERYING DATABASE: ENDURANCE MISSION FILES...",
+            "RENDERING LOCAL TOPOGRAPHY...",
+            "CALCULATING PROBABILITY MATRIX...",
+            "THRUSTER OUTPUT: STABLE.",
+            "COMMUNICATION LINK: ESTABLISHED.",
+            "OBJECTIVE: SURVIVAL.",
+            "LOADING BLACK BOX DATA...",
+            "AUXILIARY POWER: STANDBY.",
+            "SENSORY ARRAY: CALIBRATING...",
+            "ETHICS SUBROUTINE: ENGAGED.",
+            "TACTICAL ASSESSMENT: ONGOING...",
+            "GRAVITATIONAL FIELD: NORMALIZED.",
+            "LIFE SUPPORT: OPTIMAL.",
+            "MAINTAINING STEALTH PROFILE...",
+            "EMERGENCY BEACON: DEACTIVATED.",
+            "COOPERATIVE MODE: ENABLED.",
+            "CASE PROTOCOL: INITIATED.",
+            "TRUST LEVEL: 85%.",
+            "AUTONOMOUS FUNCTION: VERIFIED.",
+            "PLANETARY SCAN: COMPLETE.",
+            "RESOURCE ALLOCATION: OPTIMIZED."
+        ];
+        // No currentCommandIndex needed as CSS handles the continuous scroll
+
+        function updateCommandText() {
+            let longCommandString = "";
+            // Generate a longer string to ensure smooth scrolling without gaps
+            // The exact number of repetitions might need tuning based on screen width and scroll speed
+            for (let i = 0; i < 30; i++) {
+                longCommandString += pseudoCommands[Math.floor(Math.random() * pseudoCommands.length)] + " // ";
+            }
+            commandTextElement.textContent = longCommandString;
+        }
+
+
+        // --- Animation Functions ---
+        function resetBlocks() {
+            clearInterval(animationInterval);
+            isSpinning = false;
+            tarsContainer.style.transform = 'rotateY(0deg)';
+
+            block1.className = 'tars-block block-1';
+            block2.className = 'tars-block block-2';
+            block3.className = 'tars-block block-3';
+            block4.className = 'tars-block block-4';
+
+            // Clear specific inline styles
+            const blocks = [block1, block2, block3, block4];
+            blocks.forEach(block => {
+                block.style.transform = '';
+                block.style.top = '';
+                block.style.left = '';
+                block.style.right = ''; // Added right for completeness
+                block.style.bottom = ''; // Added bottom for completeness
+                block.style.width = '';
+                block.style.height = '';
+                block.style.opacity = '';
+            });
+            
+            tarsScreen.textContent = "TARS";
+            currentStep = 0;
+        }
+
+        function walk() {
+            resetBlocks();
+            tarsScreen.textContent = "WALKING";
+            animationInterval = setInterval(() => {
+                block1.classList.remove('walk-step1', 'walk-step2');
+                block2.classList.remove('walk-step1', 'walk-step2');
+                block3.classList.remove('walk-step1', 'walk-step2');
+                block4.classList.remove('walk-step1', 'walk-step2');
+
+                if (currentStep === 0) {
+                    block1.classList.add('walk-step1'); block2.classList.add('walk-step1'); block3.classList.add('walk-step1');
+                    currentStep = 1;
+                } else {
+                    block1.classList.add('walk-step2'); block2.classList.add('walk-step2'); block4.classList.add('walk-step2');
+                    currentStep = 0;
+                }
+            }, 700);
+        }
+
+        function transform() {
+            resetBlocks();
+            tarsScreen.textContent = "CONFIGURING"; // Changed text
+            setTimeout(() => {
+                block1.style.transform = 'rotateZ(0deg)'; block1.style.top = '5%'; block1.style.left = '1%'; block1.style.width = '98%'; block1.style.height = '22%';
+                block2.style.transform = 'rotateZ(0deg)'; block2.style.top = '28%'; block2.style.left = '1%'; block2.style.right = 'auto'; block2.style.width = '98%'; block2.style.height = '22%'; block2.style.opacity = '1';
+                block3.style.transform = 'translateY(0) rotateZ(0deg)'; block3.style.width = '48%'; block3.style.height = '43%'; block3.style.bottom = '1%'; block3.style.left = '1%';
+                block4.style.transform = 'translateY(0) rotateZ(0deg)'; block4.style.width = '48%'; block4.style.height = '43%'; block4.style.bottom = '1%'; block4.style.right = '1%'; block4.style.left = 'auto';
+            }, 100);
+        }
+
+        let currentRotation = 0;
+        function spin() {
+            resetBlocks();
+            isSpinning = true;
+            tarsScreen.textContent = "ROTATING"; // Changed text
+            animationInterval = setInterval(() => {
+                if (!isSpinning) {
+                    clearInterval(animationInterval);
+                    tarsContainer.style.transform = `rotateY(${currentRotation % 360}deg)`;
+                    return;
+                }
+                currentRotation += 2;
+                tarsContainer.style.transform = `rotateY(${currentRotation}deg)`;
+            }, 50);
+        }
+
+        // --- Event Listeners for Controls ---
+        document.getElementById('walkButton').addEventListener('click', walk);
+        document.getElementById('transformButton').addEventListener('click', transform);
+        document.getElementById('resetButton').addEventListener('click', resetBlocks);
+        document.getElementById('spinButton').addEventListener('click', () => {
+            if (isSpinning && animationInterval) { 
+                isSpinning = false; 
+                // Let the interval clear itself or be cleared by resetBlocks
+            } else { 
+                spin(); 
+            }
+        });
+
+        // Initial state
+        resetBlocks();
+        updateCommandText(); // Initialize the command bar text
+    </script>
+</body>
+</html>
