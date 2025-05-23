@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eliza - Reflection Space | Eliza - Espace de réflexion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #chatWindow {
+            scroll-behavior: smooth;
+        }
+        .suggestion-chip {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .suggestion-chip:hover {
+            background-color: #d1e2ff;
+        }
+        #chatWindow::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatWindow::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #chatWindow::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        #chatWindow::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .disclaimer {
+            font-size: 0.8rem;
+            padding: 8px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="advisor-container bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
+        <div class="header flex justify-between items-center border-b border-gray-300 pb-4 mb-4">
+            <h1 id="appTitle" class="text-2xl font-bold text-gray-700">Eliza - Reflection Space</h1>
+            <button id="langToggleBtn" class="lang-toggle bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out">
+                Français
+            </button>
+        </div>
+
+        <div id="disclaimerArea" class="disclaimer bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
+            </div>
+
+        <div class="controls flex space-x-3 mb-6">
+            <button id="startBtn" class="start-btn bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out flex-grow">
+                Start Reflection
+            </button>
+            <button id="resetBtn" class="reset-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out flex-grow">
+                Reset
+            </button>
+        </div>
+
+        <div id="chatWindow" class="chat-window h-80 border border-gray-300 rounded-lg p-4 mb-4 overflow-y-auto bg-gray-50">
+            </div>
+
+        <div class="input-area flex items-center space-x-3">
+            <input type="text" id="userInput" class="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none" placeholder="Tell me what's on your mind...">
+            <button id="sendBtn" class="send-btn bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-5 rounded-md shadow-md transition duration-150 ease-in-out">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Language Data ---
+        const languageData = {
+            en: {
+                appTitle: "Eliza - Reflection Space",
+                langToggleBtn: "Français",
+                startBtn: "Start Reflection",
+                resetBtn: "Reset",
+                sendBtn: "Send",
+                userInputPlaceholder: "Tell me what's on your mind...",
+                disclaimer: "<strong>Important:</strong> I am a computer program for reflection and not a real psychologist or therapist. I cannot provide medical advice or diagnosis. If you are in distress, please consult a qualified mental health professional. This is a safe space to explore your thoughts.",
+                welcomeMessage: "Hello. I'm Eliza. Tell me what is on your mind today. You can start by sharing how you're feeling or what you've been thinking about.",
+                resetMessage: "Our conversation has been reset. Feel free to share what's on your mind now.",
+                noMatchMessages: [ // Array of generic Eliza-like responses
+                    "Tell me more about that.",
+                    "Why do you say that?",
+                    "How does that make you feel?",
+                    "Can you elaborate on that?",
+                    "Interesting. Please continue.",
+                    "I see. And then what happened?",
+                    "What are your thoughts on that?",
+                    "How long have you felt this way?"
+                ],
+                suggestionsTitle: "You could also explore topics like:",
+                farewellMessage: "It was good talking with you. Remember to be kind to yourself." // Example, not fully implemented for "end"
+            },
+            fr: {
+                appTitle: "Eliza - Espace de réflexion",
+                langToggleBtn: "English",
+                startBtn: "Commencer la réflexion",
+                resetBtn: "Réinitialiser",
+                sendBtn: "Envoyer",
+                userInputPlaceholder: "Dites-moi ce que vous avez en tête...",
+                disclaimer: "<strong>Important :</strong> Je suis un programme informatique de réflexion et non un psychologue ou thérapeute réel. Je ne peux pas fournir de conseils médicaux ni de diagnostics. Si vous êtes en détresse, veuillez consulter un professionnel de la santé mentale qualifié. Ceci est un espace sécurisé pour explorer vos pensées.",
+                welcomeMessage: "Bonjour. Je suis Eliza. Dites-moi ce qui vous préoccupe aujourd'hui. Vous pouvez commencer par partager ce que vous ressentez ou ce à quoi vous avez pensé.",
+                resetMessage: "Notre conversation a été réinitialisée. N'hésitez pas à partager ce que vous avez en tête maintenant.",
+                noMatchMessages: [
+                    "Dites-m'en plus à ce sujet.",
+                    "Pourquoi dites-vous cela ?",
+                    "Comment cela vous fait-il sentir ?",
+                    "Pouvez-vous développer cela ?",
+                    "Intéressant. Veuillez continuer.",
+                    "Je vois. Et ensuite, que s'est-il passé ?",
+                    "Quelles sont vos pensées à ce sujet ?",
+                    "Depuis combien de temps vous sentez-vous ainsi ?"
+                ],
+                suggestionsTitle: "Vous pourriez aussi explorer des sujets comme :",
+                farewellMessage: "Ce fut un plaisir de parler avec vous. N'oubliez pas d'être indulgent(e) envers vous-même."
+            }
+        };
+
+        // --- Knowledge Base (Sample Eliza-style topics/patterns) ---
+        // Topics trigger specific reflective responses or transformations.
+        const knowledgeBaseData = [
+            {
+                id: "feeling_sad",
+                keywords_en: ["sad", "unhappy", "depressed", "down", "miserable", "crying"],
+                keywords_fr: ["triste", "malheureux", "déprimé", "abattu", "misérable", "pleurer"],
+                responses_en: [
+                    "I'm sorry to hear you're feeling {keyword}. Can you tell me more about that?",
+                    "Why do you say you are {keyword}?",
+                    "What makes you feel {keyword}?",
+                    "It sounds like you are going through a difficult time. When did you start feeling {keyword}?"
+                ],
+                responses_fr: [
+                    "Je suis désolé(e) d'entendre que vous vous sentez {keyword}. Pouvez-vous m'en dire plus à ce sujet ?",
+                    "Pourquoi dites-vous que vous êtes {keyword} ?",
+                    "Qu'est-ce qui vous fait sentir {keyword} ?",
+                    "Il semble que vous traversiez une période difficile. Quand avez-vous commencé à vous sentir {keyword} ?"
+                ],
+                related_keywords_en: ["loneliness", "stress", "coping"],
+                related_keywords_fr: ["solitude", "stress", "adaptation"]
+            },
+            {
+                id: "feeling_anxious",
+                keywords_en: ["anxious", "worried", "stressed", "nervous", "scared", "afraid", "panic"],
+                keywords_fr: ["anxieux", "inquiet", "stressé", "nerveux", "effrayé", "peur", "panique"],
+                responses_en: [
+                    "It's understandable to feel {keyword} sometimes. What do you think is contributing to this feeling?",
+                    "You mentioned feeling {keyword}. What is that like for you?",
+                    "When you feel {keyword}, what goes through your mind?",
+                    "Many people experience feelings like {keyword}. What situations tend to trigger this for you?"
+                ],
+                responses_fr: [
+                    "Il est compréhensible de se sentir {keyword} parfois. Qu'est-ce qui, selon vous, contribue à ce sentiment ?",
+                    "Vous avez mentionné vous sentir {keyword}. Comment est-ce pour vous ?",
+                    "Quand vous vous sentez {keyword}, qu'est-ce qui vous passe par la tête ?",
+                    "Beaucoup de gens éprouvent des sentiments comme {keyword}. Quelles situations ont tendance à déclencher cela chez vous ?"
+                ],
+                related_keywords_en: ["coping with stress", "relaxation", "fear"],
+                related_keywords_fr: ["gérer le stress", "relaxation", "peur"]
+            },
+            {
+                id: "identity_statement_i_am", // Catches "I am [something]"
+                keywords_en: ["i am", "i'm"], // These are triggers, not just keywords
+                keywords_fr: ["je suis", "j'suis"],
+                transform_en: "How does it make you feel to say that you are {statement_remainder}?",
+                transform_fr: "Comment cela vous fait-il sentir de dire que vous êtes {statement_remainder} ?",
+                related_keywords_en: ["self-reflection", "feelings"],
+                related_keywords_fr: ["réflexion sur soi", "sentiments"]
+            },
+            {
+                id: "identity_statement_i_feel", // Catches "I feel [something]"
+                keywords_en: ["i feel", "i'm feeling"],
+                keywords_fr: ["je me sens", "je ressens"],
+                transform_en: "You say you feel {statement_remainder}. Can you tell me more about that feeling?",
+                transform_fr: "Vous dites que vous vous sentez {statement_remainder}. Pouvez-vous m'en dire plus sur ce sentiment ?",
+                related_keywords_en: ["emotions", "understanding feelings"],
+                related_keywords_fr: ["émotions", "comprendre les sentiments"]
+            },
+            {
+                id: "relationships",
+                keywords_en: ["mother", "father", "friend", "partner", "family", "son", "daughter", "husband", "wife", "boyfriend", "girlfriend", "relationship"],
+                keywords_fr: ["mère", "père", "ami", "partenaire", "famille", "fils", "fille", "mari", "femme", "copain", "copine", "relation"],
+                responses_en: [
+                    "Tell me more about your relationship with your {keyword}.",
+                    "Family and relationships can be complex. What's on your mind regarding your {keyword}?",
+                    "How does your {keyword} affect how you feel?"
+                ],
+                responses_fr: [
+                    "Dites-m'en plus sur votre relation avec votre {keyword}.",
+                    "La famille et les relations peuvent être complexes. Qu'avez-vous en tête concernant votre {keyword} ?",
+                    "Comment votre {keyword} affecte-t-il ce que vous ressentez ?"
+                ],
+                related_keywords_en: ["communication", "conflict", "support"],
+                related_keywords_fr: ["communication", "conflit", "soutien"]
+            }
+            // Add more topics/patterns here.
+        ];
+
+        // --- Application State ---
+        let currentLanguage = 'en';
+        let conversationStarted = false;
+
+        // --- DOM Elements ---
+        const appTitleEl = document.getElementById('appTitle');
+        const langToggleBtn = document.getElementById('langToggleBtn');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const userInputEl = document.getElementById('userInput');
+        const chatWindowEl = document.getElementById('chatWindow');
+        const disclaimerAreaEl = document.getElementById('disclaimerArea');
+
+        // --- Functions ---
+
+        function updateUIText() {
+            const lang = languageData[currentLanguage];
+            appTitleEl.textContent = lang.appTitle;
+            langToggleBtn.textContent = lang.langToggleBtn;
+            startBtn.textContent = lang.startBtn;
+            resetBtn.textContent = lang.resetBtn;
+            sendBtn.textContent = lang.sendBtn;
+            userInputEl.placeholder = lang.userInputPlaceholder;
+            disclaimerAreaEl.innerHTML = lang.disclaimer;
+        }
+
+        function toggleLanguage() {
+            currentLanguage = (currentLanguage === 'en') ? 'fr' : 'en';
+            updateUIText();
+            if (conversationStarted && chatWindowEl.lastChild) {
+                 addMessageToChat(currentLanguage === 'en' ? "Language switched to English." : "Langue changée au français.", "system");
+            }
+        }
+        
+        function getRandomResponse(responsesArray, keyword) {
+            const responseTemplate = responsesArray[Math.floor(Math.random() * responsesArray.length)];
+            return responseTemplate.replace(/{keyword}/g, keyword);
+        }
+
+        function getRandomNoMatchResponse() {
+            const responses = languageData[currentLanguage].noMatchMessages;
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
+        function addMessageToChat(message, sender, suggestions = []) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-message', 'mb-3', 'p-3', 'rounded-lg', 'max-w-[85%]', 'break-words', 'leading-relaxed');
+            
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message', 'bg-sky-500', 'text-white', 'ml-auto', 'rounded-br-none', 'shadow');
+                messageDiv.textContent = message;
+            } else if (sender === 'bot') {
+                messageDiv.classList.add('bot-message', 'bg-gray-200', 'text-gray-800', 'mr-auto', 'rounded-bl-none', 'shadow');
+                messageDiv.innerHTML = message; 
+
+                if (suggestions.length > 0) {
+                    const suggestionsContainer = document.createElement('div');
+                    suggestionsContainer.classList.add('bot-suggestions', 'mt-3', 'pt-2', 'border-t', 'border-gray-300');
+                    
+                    const suggestionsTitle = document.createElement('strong');
+                    suggestionsTitle.textContent = languageData[currentLanguage].suggestionsTitle;
+                    suggestionsTitle.classList.add('text-sm', 'text-gray-600', 'block', 'mb-1');
+                    suggestionsContainer.appendChild(suggestionsTitle);
+
+                    const chipsContainer = document.createElement('div');
+                    chipsContainer.classList.add('flex', 'flex-wrap', 'gap-2');
+                    suggestions.forEach(keyword => {
+                        const chip = document.createElement('span');
+                        chip.textContent = keyword;
+                        chip.classList.add('suggestion-chip', 'bg-sky-100', 'text-sky-700', 'text-xs', 'font-semibold', 'px-2.5', 'py-1', 'rounded-full');
+                        chip.onclick = () => {
+                            userInputEl.value = keyword; // You might want to make this more conversational
+                            handleUserInput();
+                        };
+                        chipsContainer.appendChild(chip);
+                    });
+                    suggestionsContainer.appendChild(chipsContainer);
+                    messageDiv.appendChild(suggestionsContainer);
+                }
+            } else { // system message
+                 messageDiv.classList.add('system-message', 'bg-amber-100', 'text-amber-700', 'text-sm', 'text-center', 'italic', 'my-2', 'py-1', 'shadow-sm');
+                 messageDiv.textContent = message;
+            }
+            chatWindowEl.appendChild(messageDiv);
+            chatWindowEl.scrollTop = chatWindowEl.scrollHeight;
+        }
+
+        function startConversation() {
+            if (!conversationStarted) {
+                addMessageToChat(languageData[currentLanguage].welcomeMessage, 'bot');
+                conversationStarted = true;
+                userInputEl.disabled = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        function resetConversation() {
+            chatWindowEl.innerHTML = '';
+            // Re-add disclaimer on reset
+            disclaimerAreaEl.innerHTML = languageData[currentLanguage].disclaimer; // Ensure disclaimer is visible
+            addMessageToChat(languageData[currentLanguage].resetMessage, 'bot');
+            conversationStarted = true; 
+            userInputEl.value = '';
+            userInputEl.disabled = false;
+            sendBtn.disabled = false;
+        }
+
+        function findElizaMatch(query) {
+            const lowerQuery = query.toLowerCase();
+            let matchedRule = null;
+            let matchedKeyword = "";
+            let statementRemainder = "";
+
+            for (const rule of knowledgeBaseData) {
+                const keywords = (currentLanguage === 'en' ? rule.keywords_en : rule.keywords_fr);
+                for (const kw of keywords) {
+                    const kwLower = kw.toLowerCase();
+                    const regex = new RegExp(`\\b${kwLower}\\b`, 'i'); // Match whole word
+                    
+                    if (rule.id.startsWith("identity_statement_")) { // Special handling for "I am", "I feel"
+                        const prefixRegex = new RegExp(`^${kwLower}\\s+(.+)`, 'i');
+                        const match = lowerQuery.match(prefixRegex);
+                        if (match && match[1]) {
+                            matchedRule = rule;
+                            statementRemainder = match[1].trim();
+                            matchedKeyword = kwLower; // The prefix itself
+                            break;
+                        }
+                    } else if (regex.test(lowerQuery)) {
+                        matchedRule = rule;
+                        matchedKeyword = kw; // Use original casing for {keyword} replacement if needed, or kwLower
+                        break;
+                    }
+                }
+                if (matchedRule) break;
+            }
+
+            if (matchedRule) {
+                if (matchedRule.transform_en || matchedRule.transform_fr) { // Transformation rule
+                    let transformTemplate = currentLanguage === 'en' ? matchedRule.transform_en : matchedRule.transform_fr;
+                    return {
+                        response: transformTemplate.replace(/{statement_remainder}/g, statementRemainder),
+                        suggestions: currentLanguage === 'en' ? matchedRule.related_keywords_en : matchedRule.related_keywords_fr
+                    };
+                } else if (matchedRule.responses_en || matchedRule.responses_fr) { // Standard keyword rule
+                    const responses = currentLanguage === 'en' ? matchedRule.responses_en : matchedRule.responses_fr;
+                    return {
+                        response: getRandomResponse(responses, matchedKeyword),
+                        suggestions: currentLanguage === 'en' ? matchedRule.related_keywords_en : matchedRule.related_keywords_fr
+                    };
+                }
+            }
+            return null; // No specific rule matched
+        }
+
+
+        function handleUserInput() {
+            const query = userInputEl.value.trim();
+            if (!query) return;
+
+            if (!conversationStarted) {
+                startConversation();
+            }
+
+            addMessageToChat(query, 'user');
+            userInputEl.value = '';
+
+            const elizaResponse = findElizaMatch(query);
+
+            if (elizaResponse) {
+                addMessageToChat(elizaResponse.response, 'bot', elizaResponse.suggestions || []);
+            } else {
+                addMessageToChat(getRandomNoMatchResponse(), 'bot');
+            }
+        }
+        
+        function init() {
+            updateUIText(); // This will also set the initial disclaimer
+            userInputEl.disabled = true;
+            sendBtn.disabled = true;
+
+            langToggleBtn.addEventListener('click', toggleLanguage);
+            startBtn.addEventListener('click', startConversation);
+            resetBtn.addEventListener('click', resetConversation);
+            sendBtn.addEventListener('click', handleUserInput);
+            userInputEl.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    handleUserInput();
+                }
+            });
+             // Initial system message, distinct from welcome message
+            addMessageToChat(currentLanguage === 'en' ? "Click 'Start Reflection' to begin your session." : "Cliquez sur 'Commencer la réflexion' pour débuter votre session.", "system");
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
