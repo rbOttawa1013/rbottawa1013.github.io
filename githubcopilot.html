@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Copilot Flow Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* GitHub dark background */
+            color: #c9d1d9; /* GitHub dark text */
+        }
+        .component {
+            border: 2px solid #30363d; /* GitHub dark border */
+            background-color: #161b22; /* GitHub dark component background */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 0.5rem;
+            text-align: center;
+            transition: all 0.3s ease-in-out;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .component-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        .component-details {
+            font-size: 0.75rem;
+            color: #8b949e; /* GitHub dark secondary text */
+        }
+        .active {
+            border-color: #58a6ff; /* GitHub blue */
+            box-shadow: 0 0 15px rgba(88, 166, 255, 0.5);
+            transform: scale(1.05);
+        }
+        .arrow {
+            position: relative;
+            text-align: center;
+            margin: 10px 0;
+            color: #8b949e;
+        }
+        .log-area {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px dashed #30363d;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 1rem;
+            text-align: center;
+            padding-top: 1rem;
+        }
+        .button {
+            background-color: #238636; /* GitHub green */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: none;
+        }
+        .button:hover {
+            background-color: #2ea043;
+        }
+        .button-secondary {
+            background-color: #30363d;
+        }
+        .button-secondary:hover {
+            background-color: #484f58;
+        }
+        .pathway-box {
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px dashed #58a6ff;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white">GitHub Copilot Flow Simulator</h1>
+            <p class="text-gray-400 mt-2">Visualize the data flow when GitHub Copilot generates suggestions.</p>
+        </header>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button id="startButton" class="button">Start Simulation</button>
+            <button id="resetButton" class="button button-secondary">Reset Simulation</button>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="section-title text-xl">Data Pathways Overview</h2>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs pathway-box p-3 rounded-lg">
+                <div class="component pathway-box !border-blue-500 !bg-blue-900/30">Prompts & Suggestions</div>
+                <div class="component pathway-box !border-purple-500 !bg-purple-900/30">User Engagement Data (UED)</div>
+                <div class="component pathway-box !border-green-500 !bg-green-900/30">Authentication</div>
+                <div class="component pathway-box !border-yellow-500 !bg-yellow-900/30">Code Matching</div>
+                <div class="component pathway-box !border-red-500 !bg-red-900/30">Training Data</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            <div class="md:col-span-1">
+                <h2 class="section-title">Client</h2>
+                <div id="ide" class="component">
+                    <div class="component-title">IDE Extensions</div>
+                    <div class="component-details">(VS Code, Visual Studio, Neovim, JetBrains)</div>
+                    <div class="component-details mt-1">User types code / triggers Copilot</div>
+                </div>
+            </div>
+
+            <div class="md:col-span-1">
+                <h2 class="section-title">GitHub Managed</h2>
+                <div id="copilotProxy" class="component">
+                    <div class="component-title">Copilot Proxy</div>
+                    <div class="component-details">Routes requests, manages cache</div>
+                </div>
+                <div class="arrow">⬇️⬆️</div>
+                <div id="githubCom" class="component">
+                    <div class="component-title">GitHub.com</div>
+                    <div class="component-details">Authentication Service</div>
+                    <div class="component-details">Repository Training Data (for fine-tuning)</div>
+                </div>
+                 <div class="arrow">⬇️</div>
+                <div id="fineTuneOrchestrator" class="component">
+                    <div class="component-title">Fine Tuning Orchestrator</div>
+                    <div class="component-details">Manages model fine-tuning</div>
+                </div>
+                <div class="arrow">⬇️⬆️</div>
+                 <div id="copilotUsageTelemetry" class="component">
+                    <div class="component-title">Copilot Usage Telemetry</div>
+                    <div class="component-details">Collects usage data (UED)</div>
+                </div>
+                <div class="arrow">⬇️⬆️</div>
+                <div id="copilotCodeRefIndex" class="component">
+                    <div class="component-title">Copilot Code Reference Index</div>
+                    <div class="component-details">Checks against public code</div>
+                </div>
+            </div>
+
+            <div class="md:col-span-1">
+                <h2 class="section-title">Azure Managed</h2>
+                <div id="azureOpenAIInference" class="component">
+                    <div class="component-title">Azure OpenAI Service: Inference</div>
+                    <div class="component-details">Global & Custom Models (GPT-3.5-turbo)</div>
+                    <div class="component-details mt-1 text-red-400">Security Boundary</div>
+                </div>
+                 <div class="arrow">⬇️⬆️</div>
+                <div id="azureOpenAIFineTune" class="component">
+                    <div class="component-title">Azure OpenAI Service: Fine Tuning</div>
+                    <div class="component-details">Model training and updates</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="section-title text-xl">Simulation Log</h2>
+            <div id="logArea" class="log-area">
+                <div class="text-gray-500">Click "Start Simulation" to see the flow.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const components = {
+            ide: document.getElementById('ide'),
+            copilotProxy: document.getElementById('copilotProxy'),
+            githubCom: document.getElementById('githubCom'),
+            fineTuneOrchestrator: document.getElementById('fineTuneOrchestrator'),
+            copilotUsageTelemetry: document.getElementById('copilotUsageTelemetry'),
+            copilotCodeRefIndex: document.getElementById('copilotCodeRefIndex'),
+            azureOpenAIInference: document.getElementById('azureOpenAIInference'),
+            azureOpenAIFineTune: document.getElementById('azureOpenAIFineTune')
+        };
+        const logArea = document.getElementById('logArea');
+        const startButton = document.getElementById('startButton');
+        const resetButton = document.getElementById('resetButton');
+
+        let simulationTimeoutIds = [];
+
+        function clearTimeouts() {
+            simulationTimeoutIds.forEach(clearTimeout);
+            simulationTimeoutIds = [];
+        }
+
+        function logStep(message, delay = 0) {
+            return new Promise(resolve => {
+                const timeoutId = setTimeout(() => {
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    const timestamp = new Date().toLocaleTimeString();
+                    entry.innerHTML = `<span class="text-cyan-400">[${timestamp}]</span> ${message}`;
+                    logArea.appendChild(entry);
+                    logArea.scrollTop = logArea.scrollHeight;
+                    resolve();
+                }, delay);
+                simulationTimeoutIds.push(timeoutId);
+            });
+        }
+
+        function highlightComponent(id, active = true) {
+            if (components[id]) {
+                if (active) {
+                    components[id].classList.add('active');
+                } else {
+                    components[id].classList.remove('active');
+                }
+            }
+        }
+
+        function resetSimulation() {
+            clearTimeouts();
+            Object.values(components).forEach(comp => comp.classList.remove('active'));
+            logArea.innerHTML = '<div class="text-gray-500">Simulation reset. Click "Start Simulation" to run again.</div>';
+            startButton.disabled = false;
+        }
+
+        async function startSimulation() {
+            resetSimulation();
+            startButton.disabled = true;
+            logArea.innerHTML = ''; // Clear previous logs
+
+            await logStep("Simulation started: User types code in IDE or requests suggestion.");
+            highlightComponent('ide');
+
+            await logStep("IDE extension sends prompt data to Copilot Proxy.", 1000);
+            highlightComponent('copilotProxy');
+
+            await logStep("Copilot Proxy initiates authentication with GitHub.com.", 1000);
+            highlightComponent('githubCom');
+            await logStep("GitHub.com Authentication Service verifies user.", 1000);
+            highlightComponent('githubCom', false); // Auth done
+
+            await logStep("Copilot Proxy forwards processed prompt to Azure OpenAI Service for Inference.", 1000);
+            highlightComponent('azureOpenAIInference');
+
+            await logStep("Azure OpenAI (Inference) generates code suggestions using AI models.", 2000);
+            // Simulate model thinking
+
+            await logStep("Azure OpenAI (Inference) returns suggestions to Copilot Proxy.", 1000);
+            highlightComponent('azureOpenAIInference', false);
+
+
+            await logStep("Copilot Proxy may check suggestions against Copilot Code Reference Index (for public code).", 1000);
+            highlightComponent('copilotCodeRefIndex');
+            await logStep("Code Reference Index check complete.", 1000);
+            highlightComponent('copilotCodeRefIndex', false);
+
+
+            await logStep("Copilot Proxy sends suggestions back to the IDE extension.", 1000);
+            highlightComponent('copilotProxy', false);
+            highlightComponent('ide'); // Highlight IDE again as it receives suggestion
+
+            await logStep("IDE displays suggestions to the user.", 1000);
+            highlightComponent('ide', false); // Suggestion displayed
+
+            await logStep("User engagement data (e.g., accepted/rejected suggestion) sent to Copilot Usage Telemetry.", 1500);
+            highlightComponent('copilotUsageTelemetry');
+            await logStep("Telemetry data recorded.", 1000);
+            highlightComponent('copilotUsageTelemetry', false);
+
+            await logStep("--- Background Processes ---", 1000);
+            await logStep("Repository Training Data from GitHub.com is used by Fine Tuning Orchestrator.", 1000);
+            highlightComponent('githubCom');
+            highlightComponent('fineTuneOrchestrator');
+
+            await logStep("Fine Tuning Orchestrator coordinates with Azure OpenAI Service for Fine Tuning models.", 1500);
+            highlightComponent('azureOpenAIFineTune');
+            
+            await logStep("Fine-tuned models are updated in Azure OpenAI Service.", 1500);
+            highlightComponent('githubCom', false);
+            highlightComponent('fineTuneOrchestrator', false);
+            highlightComponent('azureOpenAIFineTune', false);
+
+            await logStep("Simulation Complete.", 1000);
+            startButton.disabled = false;
+        }
+
+        startButton.addEventListener('click', startSimulation);
+        resetButton.addEventListener('click', resetSimulation);
+
+        // Initial message
+        logStep("Page loaded. Click 'Start Simulation' to begin.", 0);
+    </script>
+</body>
+</html>
