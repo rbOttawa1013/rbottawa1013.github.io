@@ -6,61 +6,104 @@
     <title>About Us</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-        }
-        .container {
-            width: 80%;
-            margin: auto;
-            overflow: hidden;
+            background: linear-gradient(135deg, #e3f0ff 0%, #b3cffb 100%);
+            color: #1a237e;
+            min-height: 100vh;
         }
         header {
-            background: #333;
+            background-color: #1976d2;
             color: #fff;
-            padding-top: 30px;
-            min-height: 70px;
-            border-bottom: #77aaff 3px solid;
+            padding: 2rem 0 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.09);
         }
-        header a {
-            color: #fff;
-            text-decoration: none;
-            text-transform: uppercase;
-            font-size: 16px;
-        }
-        .content {
-            padding: 20px;
+        main {
+            max-width: 420px;
+            margin: 2.5rem auto;
             background: #fff;
-            margin-top: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(25, 118, 210, 0.10);
+            padding: 2rem 2rem 1.5rem 2rem;
+        }
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        h2 {
+            margin-top: 1.6rem;
+            font-size: 1.32rem;
+            color: #1565c0;
+            font-weight: 600;
+        }
+        h3 {
+            margin-top: 1.2rem;
+            font-size: 1.1rem;
+            color: #1976d2;
+            font-weight: 500;
+        }
+        p {
+            font-size: 1.08rem;
+            margin-bottom: 1.1rem;
+        }
+        .button-link {
+            display: inline-block;
+            text-decoration: none;
+            color: #fff;
+            background: linear-gradient(90deg, #1976d2 60%, #1565c0 100%);
+            padding: 0.7rem 1.1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 1.02rem;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);
+            transition: background 0.2s, transform 0.2s;
+            margin-top: 0.6rem;
+        }
+        .button-link:hover {
+            background: linear-gradient(90deg, #1565c0 60%, #1976d2 100%);
+            transform: translateY(-2px) scale(1.03);
         }
         .disclaimer {
-            font-size: 14px;
+            font-size: 0.96rem;
             color: #666;
-            margin-top: 20px;
+            margin-top: 1.7rem;
+            border-top: 1px solid #e3f0ff;
+            padding-top: 1.2rem;
+        }
+        @media (max-width: 480px) {
+            main {
+                padding: 1.2rem 0.5rem;
+            }
+            h1 {
+                font-size: 1.4rem;
+            }
+            h2 {
+                font-size: 1.08rem;
+            }
         }
     </style>
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1>About Us</h1>
-        </div>
+        <h1>About Us</h1>
     </header>
-    <div class="container">
-        <div class="content">
-            <h2>Our Mission</h2>
-            <p>Welcome to our website! Our mission is to provide demonstrations of AI generate application.</p>
-            <h2>Our Team</h2>
-            <p>We are a group of dedicated professionals committed to excellence.</p>
-            <h2>Contact Us</h2>
-            <p>If you have any questions, feel free to reach out to us </p>
-            <div class="disclaimer">
-                <h3>Disclaimer</h3>
-                <p>The information provided on this website is for general informational purposes only. All information on the site is provided in good faith, however, we make no representation or warranty of any kind, express or implied, regarding the accuracy, adequacy, validity, reliability, availability, or completeness of any information on the site.</p>
-                <p>Under no circumstance shall we have any liability to you for any loss or damage of any kind incurred as a result of the use of the site or reliance on any information provided on the site. Your use of the site and your reliance on any information on the site is solely at your own risk.</p>
-            </div>
+    <main>
+        <h2>Our Mission</h2>
+        <p>Welcome to our website! Our mission is to provide demonstrations of AI-generated applications.</p>
+        <h2>Our Team</h2>
+        <p>We are a group of dedicated professionals committed to excellence.</p>
+        <h2>Contact Us</h2>
+        <p>If you have any questions, feel free to reach out to us.</p>
+        <a class="button-link" href="mailto:contact@example.com">Email Us</a>
+        <div class="disclaimer">
+            <h3>Disclaimer</h3>
+            <p>The information provided on this website is for general informational purposes only. All information on the site is provided in good faith; however, we make no representation or warranty of any kind regarding the accuracy, adequacy, validity, reliability, or completeness of any information on the site.</p>
+            <p>Under no circumstance shall we have any liability to you for any loss or damage of any kind incurred as a result of the use of the site or reliance on any information provided on the site. Your use of the site and your reliance on any information on the site is solely at your own risk.</p>
         </div>
-    </div>
+    </main>
 </body>
 </html>
