@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,7 +11,7 @@
             font-family: 'Inter', sans-serif;
         }
         .decision-card {
-            min-height: 150px; /* Ensure card has a minimum height */
+            min-height: 150px;
         }
         .lang-btn.active {
             background-color: #2563eb; /* blue-600 */
@@ -20,13 +20,48 @@
         .lang-btn {
             transition: background-color 0.3s ease, color 0.3s ease;
         }
+        /* Custom slider track and thumb for better aesthetics */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0; /* slate-200 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #2563eb; /* blue-600 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #2563eb; /* blue-600 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4 sm:p-6">
     <div class="bg-white shadow-xl rounded-lg p-6 sm:p-8 w-full max-w-2xl">
         <header class="mb-6 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">Management Decision Maker</h1>
-            <p class="text-slate-600 mt-2">Get clear, ambiguous, or firm decisions instantly.</p>
+            <h1 id="main-title" class="text-3xl sm:text-4xl font-bold text-slate-800">Management Decision Maker</h1>
+            <p id="tool-description" class="text-slate-600 mt-2">Get clear, ambiguous, or firm decisions instantly.</p>
         </header>
 
         <div class="mb-6 flex justify-center space-x-3">
@@ -38,7 +73,34 @@
             </button>
         </div>
 
-        <div id="decision-area" class="decision-card bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6 flex flex-col items-center justify-center text-center">
+        <div id="sliders-container" class="mb-8 p-4 border border-slate-200 rounded-lg bg-slate-50">
+            <h3 id="sliders-title" class="text-lg font-semibold text-slate-700 mb-4 text-center">Adjust Decision Likelihood</h3>
+            <div class="space-y-4">
+                <div>
+                    <label id="label-approval-chance" for="approval-chance" class="block text-sm font-medium text-slate-700 mb-1">Approval Chance:</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="approval-chance" name="approval-chance" min="0" max="100" value="33" class="w-full">
+                        <span id="approval-chance-value" class="text-sm text-slate-600 w-10 text-right">33%</span>
+                    </div>
+                </div>
+                <div>
+                    <label id="label-ambiguous-chance" for="ambiguous-chance" class="block text-sm font-medium text-slate-700 mb-1">Ambiguous Chance:</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="ambiguous-chance" name="ambiguous-chance" min="0" max="100" value="34" class="w-full">
+                        <span id="ambiguous-chance-value" class="text-sm text-slate-600 w-10 text-right">34%</span>
+                    </div>
+                </div>
+                <div>
+                    <label id="label-denial-chance" for="denial-chance" class="block text-sm font-medium text-slate-700 mb-1">Denial Chance:</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="denial-chance" name="denial-chance" min="0" max="100" value="33" class="w-full">
+                        <span id="denial-chance-value" class="text-sm text-slate-600 w-10 text-right">33%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="decision-area" class="decision-card bg-slate-100 border border-slate-200 rounded-lg p-6 mb-6 flex flex-col items-center justify-center text-center">
             <p id="decision-category" class="text-lg sm:text-xl font-semibold mb-2"></p>
             <p id="decision-expression" class="text-xl sm:text-2xl text-slate-700"></p>
             <p id="placeholder-text" class="text-slate-500 text-lg">Click the button below to get a decision.</p>
@@ -51,154 +113,280 @@
         </div>
 
         <footer class="mt-8 text-center">
-            <p class="text-xs text-slate-500">
+            <p id="disclaimer-text" class="text-xs text-slate-500">
                 This tool provides a randomized selection of pre-defined expressions.
             </p>
         </footer>
     </div>
 
     <script>
-        // --- Expression Data ---
-        // You can expand this list significantly. The request was for 500 expressions.
-        // For brevity and demonstration, a smaller sample is provided here.
-        // Structure: expressions[language][category] = [array of strings]
+        // --- UI String Translations ---
+        const uiStrings = {
+            en: {
+                title: "Management Decision Maker",
+                description: "Get clear, ambiguous, or firm decisions instantly.",
+                getDecisionButton: "Get Decision",
+                placeholder: "Click the button below to get a decision.",
+                disclaimer: "This tool provides a randomized selection of pre-defined expressions.",
+                categoryApproval: "Approval",
+                categoryDenial: "Denial",
+                categoryAmbiguous: "Ambiguous",
+                langButtonEN: "English",
+                langButtonFR: "Français",
+                slidersTitle: "Adjust Decision Likelihood",
+                labelApprovalChance: "Approval Chance:",
+                labelAmbiguousChance: "Ambiguous Chance:",
+                labelDenialChance: "Denial Chance:"
+            },
+            fr: {
+                title: "Outil d'Aide à la Décision Managériale",
+                description: "Obtenez instantanément des décisions claires, ambiguës ou fermes.",
+                getDecisionButton: "Obtenir une Décision",
+                placeholder: "Cliquez sur le bouton ci-dessous pour obtenir une décision.",
+                disclaimer: "Cet outil fournit une sélection aléatoire d'expressions prédéfinies.",
+                categoryApproval: "Approbation",
+                categoryDenial: "Refus",
+                categoryAmbiguous: "Ambigu",
+                langButtonEN: "English",
+                langButtonFR: "Français",
+                slidersTitle: "Ajuster la Probabilité de Décision",
+                labelApprovalChance: "Chance d'Approbation :",
+                labelAmbiguousChance: "Chance d'Ambiguïté :",
+                labelDenialChance: "Chance de Refus :"
+            }
+        };
+
+        // --- Expression Data (Expanded) ---
         const expressions = {
             en: {
                 approval: [
-                    "Absolutely, proceed with confidence.",
-                    "This is a green light. Go ahead.",
-                    "Approved. Excellent initiative.",
-                    "Yes, this aligns perfectly with our goals.",
-                    "Full support for this proposal.",
-                    "Consider it done. Approved.",
-                    "This has my unequivocal approval.",
-                    "A resounding yes!",
-                    "We're on board. Proceed as planned.",
-                    "This is exactly what we were looking for. Approved.",
-                    "Permission granted. Move forward.",
-                    "The decision is affirmative.",
-                    "No objections here. Approved.",
-                    "This looks promising. Approved.",
-                    "Let's make it happen. Approved."
+                    "Absolutely, proceed with confidence.", "This is a green light. Go ahead.", "Approved. Excellent initiative.", "Yes, this aligns perfectly with our goals.", "Full support for this proposal.",
+                    "Consider it done. Approved.", "This has my unequivocal approval.", "A resounding yes!", "We're on board. Proceed as planned.", "This is exactly what we were looking for. Approved.",
+                    "Permission granted. Move forward.", "The decision is affirmative.", "No objections here. Approved.", "This looks promising. Approved.", "Let's make it happen. Approved.",
+                    "I wholeheartedly endorse this.", "This is a go. Well done.", "You have my full backing on this.", "Excellent work, approved.", "This meets all requirements. Approved.",
+                    "Proceed with vigor.", "A clear yes from my side.", "This is the right direction. Approved.", "I concur. Let's move forward.", "This proposal is sound. Approved.",
+                    "We are giving this the green signal.", "Consider this authorized.", "My stamp of approval is on it.", "This is a positive outcome. Approved.", "The path is clear. Proceed."
                 ],
                 denial: [
-                    "Regrettably, this cannot be approved at this time.",
-                    "This proposal does not meet our current criteria.",
-                    "Denied. We need to explore other options.",
-                    "Unfortunately, this is not feasible right now.",
-                    "We will have to pass on this opportunity.",
-                    "This request is declined.",
-                    "After careful consideration, we cannot proceed.",
-                    "This doesn't align with our strategic direction.",
-                    "The answer is no for now.",
-                    "We are unable to support this initiative.",
-                    "This is not the right fit for us.",
-                    "Request denied due to resource constraints.",
-                    "We've decided against this.",
-                    "This will not be moving forward.",
-                    "I'm afraid that's a no."
+                    "Regrettably, this cannot be approved at this time.", "This proposal does not meet our current criteria.", "Denied. We need to explore other options.", "Unfortunately, this is not feasible right now.", "We will have to pass on this opportunity.",
+                    "This request is declined.", "After careful consideration, we cannot proceed.", "This doesn't align with our strategic direction.", "The answer is no for now.", "We are unable to support this initiative.",
+                    "This is not the right fit for us.", "Request denied due to resource constraints.", "We've decided against this.", "This will not be moving forward.", "I'm afraid that's a no.",
+                    "This is not viable under current circumstances.", "We must decline this proposal.", "The resources are not available for this.", "This does not align with our priorities.", "Unfortunately, we cannot accommodate this request.",
+                    "This is a non-starter.", "We're not in a position to approve this.", "The risks outweigh the benefits. Denied.", "This requires a different approach. Denied.", "Our current focus prevents us from pursuing this.",
+                    "We will not be proceeding with this.", "This has been reviewed and declined.", "The decision is to not move forward.", "This is not something we can take on.", "I have to say no to this."
                 ],
                 ambiguous: [
-                    "Let's revisit this with more data.",
-                    "Interesting. We need to discuss the implications further.",
-                    "This requires more thought. Let's table it for now.",
-                    "I see potential, but also some concerns. Let's analyze.",
-                    "Not a clear yes or no at this stage. More information needed.",
-                    "Let's put a pin in this and circle back.",
-                    "This warrants further investigation before a decision.",
-                    "The situation is nuanced. Let's explore alternatives.",
-                    "I'm on the fence. We need to weigh the pros and cons.",
-                    "This could go either way. Let's consult the team.",
-                    "Further deliberation is required.",
-                    "Let's schedule a follow-up to dive deeper.",
-                    "The path forward isn't immediately clear.",
-                    "This presents both opportunities and challenges.",
-                    "A decision is pending further review."
+                    "Let's revisit this with more data.", "Interesting. We need to discuss the implications further.", "This requires more thought. Let's table it for now.", "I see potential, but also some concerns. Let's analyze.", "Not a clear yes or no at this stage. More information needed.",
+                    "Let's put a pin in this and circle back.", "This warrants further investigation before a decision.", "The situation is nuanced. Let's explore alternatives.", "I'm on the fence. We need to weigh the pros and cons.", "This could go either way. Let's consult the team.",
+                    "Further deliberation is required.", "Let's schedule a follow-up to dive deeper.", "The path forward isn't immediately clear.", "This presents both opportunities and challenges.", "A decision is pending further review.",
+                    "Let's monitor the situation before committing.", "This needs more refinement before a final call.", "I'm hesitant to give a definitive answer yet.", "There are too many variables at play currently.", "Let's explore the 'what ifs' more thoroughly.",
+                    "This is promising, but needs a stronger case.", "My instinct says maybe, but my logic needs more.", "Let's keep this on the back burner for now.", "The timing might not be optimal. Let's re-evaluate soon.", "I need more context to make an informed decision.",
+                    "This is not a straightforward decision.", "Let's gather more perspectives on this.", "The jury is still out on this one.", "I'm leaning, but not decided. More input needed.", "Let's consider the long-term impact more closely."
                 ]
             },
             fr: {
                 approval: [
-                    "Absolument, procédez avec confiance.",
-                    "C'est un feu vert. Allez-y.",
-                    "Approuvé. Excellente initiative.",
-                    "Oui, cela correspond parfaitement à nos objectifs.",
-                    "Soutien total pour cette proposition.",
-                    "Considérez que c'est fait. Approuvé.",
-                    "Cela a mon approbation sans équivoque.",
-                    "Un oui retentissant !",
-                    "Nous sommes partants. Procédez comme prévu.",
-                    "C'est exactement ce que nous recherchions. Approuvé.",
-                    "Permission accordée. Avancez.",
-                    "La décision est affirmative.",
-                    "Aucune objection ici. Approuvé.",
-                    "Cela semble prometteur. Approuvé.",
-                    "Faisons en sorte que cela se produise. Approuvé."
+                    "Absolument, procédez avec confiance.", "C'est un feu vert. Allez-y.", "Approuvé. Excellente initiative.", "Oui, cela correspond parfaitement à nos objectifs.", "Soutien total pour cette proposition.",
+                    "Considérez que c'est fait. Approuvé.", "Cela a mon approbation sans équivoque.", "Un oui retentissant !", "Nous sommes partants. Procédez comme prévu.", "C'est exactement ce que nous recherchions. Approuvé.",
+                    "Permission accordée. Avancez.", "La décision est affirmative.", "Aucune objection ici. Approuvé.", "Cela semble prometteur. Approuvé.", "Faisons en sorte que cela se produise. Approuvé.",
+                    "J'approuve cela sans réserve.", "C'est parti. Bien joué.", "Vous avez tout mon soutien là-dessus.", "Excellent travail, approuvé.", "Ceci répond à toutes les exigences. Approuvé.",
+                    "Procédez avec vigueur.", "Un oui clair de ma part.", "C'est la bonne direction. Approuvé.", "Je suis d'accord. Avançons.", "Cette proposition est solide. Approuvée.",
+                    "Nous donnons le feu vert à cela.", "Considérez ceci comme autorisé.", "Mon cachet d'approbation y est apposé.", "C'est un résultat positif. Approuvé.", "La voie est libre. Procédez."
                 ],
                 denial: [
-                    "Malheureusement, cela ne peut pas être approuvé pour le moment.",
-                    "Cette proposition ne répond pas à nos critères actuels.",
-                    "Refusé. Nous devons explorer d'autres options.",
-                    "Malheureusement, ce n'est pas réalisable actuellement.",
-                    "Nous devrons laisser passer cette opportunité.",
-                    "Cette demande est refusée.",
-                    "Après mûre réflexion, nous ne pouvons pas procéder.",
-                    "Cela ne correspond pas à notre orientation stratégique.",
-                    "La réponse est non pour l'instant.",
-                    "Nous ne sommes pas en mesure de soutenir cette initiative.",
-                    "Ce n'est pas ce qui nous convient.",
-                    "Demande refusée en raison de contraintes de ressources.",
-                    "Nous avons décidé de ne pas donner suite.",
-                    "Cela n'ira pas plus loin.",
-                    "Je crains que ce ne soit un non."
+                    "Malheureusement, cela ne peut pas être approuvé pour le moment.", "Cette proposition ne répond pas à nos critères actuels.", "Refusé. Nous devons explorer d'autres options.", "Malheureusement, ce n'est pas réalisable actuellement.", "Nous devrons laisser passer cette opportunité.",
+                    "Cette demande est refusée.", "Après mûre réflexion, nous ne pouvons pas procéder.", "Cela ne correspond pas à notre orientation stratégique.", "La réponse est non pour l'instant.", "Nous ne sommes pas en mesure de soutenir cette initiative.",
+                    "Ce n'est pas ce qui nous convient.", "Demande refusée en raison de contraintes de ressources.", "Nous avons décidé de ne pas donner suite.", "Cela n'ira pas plus loin.", "Je crains que ce ne soit un non.",
+                    "Ce n'est pas viable dans les circonstances actuelles.", "Nous devons refuser cette proposition.", "Les ressources ne sont pas disponibles pour cela.", "Cela ne correspond pas à nos priorités.", "Malheureusement, nous ne pouvons pas accéder à cette demande.",
+                    "C'est un non-sens.", "Nous ne sommes pas en position d'approuver cela.", "Les risques l'emportent sur les avantages. Refusé.", "Cela nécessite une approche différente. Refusé.", "Notre objectif actuel nous empêche de poursuivre cela.",
+                    "Nous n'allons pas poursuivre avec cela.", "Ceci a été examiné et refusé.", "La décision est de ne pas aller de l'avant.", "Ce n'est pas quelque chose que nous pouvons entreprendre.", "Je dois dire non à cela."
                 ],
                 ambiguous: [
-                    "Revenons-y avec plus de données.",
-                    "Intéressant. Nous devons discuter plus en détail des implications.",
-                    "Cela demande plus de réflexion. Mettons cela de côté pour l'instant.",
-                    "Je vois du potentiel, mais aussi des préoccupations. Analysons.",
-                    "Pas un oui ou non clair à ce stade. Plus d'informations nécessaires.",
-                    "Mettons cela en attente et revenons-y plus tard.",
-                    "Cela justifie une enquête plus approfondie avant toute décision.",
-                    "La situation est nuancée. Explorons des alternatives.",
-                    "Je suis mitigé. Nous devons peser le pour et le contre.",
-                    "Cela pourrait aller dans un sens comme dans l'autre. Consultons l'équipe.",
-                    "Une délibération plus approfondie est requise.",
-                    "Planifions un suivi pour approfondir.",
-                    "La voie à suivre n'est pas immédiatement claire.",
-                    "Cela présente à la fois des opportunités et des défis.",
-                    "Une décision est en attente d'un examen plus approfondi."
+                    "Revenons-y avec plus de données.", "Intéressant. Nous devons discuter plus en détail des implications.", "Cela demande plus de réflexion. Mettons cela de côté pour l'instant.", "Je vois du potentiel, mais aussi des préoccupations. Analysons.", "Pas un oui ou non clair à ce stade. Plus d'informations nécessaires.",
+                    "Mettons cela en attente et revenons-y plus tard.", "Cela justifie une enquête plus approfondie avant toute décision.", "La situation est nuancée. Explorons des alternatives.", "Je suis mitigé. Nous devons peser le pour et le contre.", "Cela pourrait aller dans un sens comme dans l'autre. Consultons l'équipe.",
+                    "Une délibération plus approfondie est requise.", "Planifions un suivi pour approfondir.", "La voie à suivre n'est pas immédiatement claire.", "Cela présente à la fois des opportunités et des défis.", "Une décision est en attente d'un examen plus approfondi.",
+                    "Surveillons la situation avant de nous engager.", "Cela nécessite plus de peaufinage avant une décision finale.", "J'hésite à donner une réponse définitive pour le moment.", "Il y a trop de variables en jeu actuellement.", "Explorons plus à fond les 'et si'.",
+                    "C'est prometteur, mais nécessite un argumentaire plus solide.", "Mon instinct dit peut-être, mais ma logique a besoin de plus.", "Gardons cela sous le coude pour l'instant.", "Le moment n'est peut-être pas optimal. Réévaluons bientôt.", "J'ai besoin de plus de contexte pour prendre une décision éclairée.",
+                    "Ce n'est pas une décision simple.", "Recueillons plus de points de vue à ce sujet.", "Le jury délibère encore sur cette question.", "Je penche, mais ne suis pas décidé. Plus d'informations nécessaires.", "Considérons plus attentivement l'impact à long terme."
                 ]
             }
         };
 
         // --- DOM Elements ---
+        const mainTitleEl = document.getElementById('main-title');
+        const toolDescriptionEl = document.getElementById('tool-description');
         const langEnBtn = document.getElementById('lang-en');
         const langFrBtn = document.getElementById('lang-fr');
         const getDecisionBtn = document.getElementById('get-decision-btn');
         const decisionCategoryEl = document.getElementById('decision-category');
         const decisionExpressionEl = document.getElementById('decision-expression');
         const placeholderTextEl = document.getElementById('placeholder-text');
+        const disclaimerTextEl = document.getElementById('disclaimer-text');
+
+        const slidersTitleEl = document.getElementById('sliders-title');
+        const labelApprovalChanceEl = document.getElementById('label-approval-chance');
+        const labelAmbiguousChanceEl = document.getElementById('label-ambiguous-chance');
+        const labelDenialChanceEl = document.getElementById('label-denial-chance');
+
+        const sliderControls = [
+            { el: document.getElementById('approval-chance'), valueEl: document.getElementById('approval-chance-value'), key: 'approval' },
+            { el: document.getElementById('ambiguous-chance'), valueEl: document.getElementById('ambiguous-chance-value'), key: 'ambiguous' },
+            { el: document.getElementById('denial-chance'), valueEl: document.getElementById('denial-chance-value'), key: 'denial' }
+        ];
+        
+        // To store the state of sliders before the current user input
+        let previousSliderValues = [];
 
         // --- State ---
-        let currentLanguage = 'en'; // Default language
-        const categories = ['approval', 'denial', 'ambiguous'];
+        let currentLanguage = 'en'; 
+        const categories = ['approval', 'ambiguous', 'denial']; 
         const categoryColors = {
             approval: 'text-green-600',
             denial: 'text-red-600',
             ambiguous: 'text-amber-600'
         };
-        const categoryNames = {
-            en: { approval: "Approval", denial: "Denial", ambiguous: "Ambiguous" },
-            fr: { approval: "Approbation", denial: "Refus", ambiguous: "Ambigu" }
-        };
-
 
         // --- Functions ---
 
-        // Function to set the language
+        function updateSliderValueDisplay(sliderElement, valueElement) {
+            valueElement.textContent = `${sliderElement.value}%`;
+        }
+
+        function updateAllSliderDisplays() {
+            sliderControls.forEach(control => {
+                updateSliderValueDisplay(control.el, control.valueEl);
+            });
+        }
+        
+        function initializePreviousSliderValues() {
+            sliderControls.forEach((sc, index) => {
+                previousSliderValues[index] = parseInt(sc.el.value);
+            });
+        }
+
+        function handleSliderChange(changedSliderElement) {
+            const changedIndex = sliderControls.findIndex(sc => sc.el === changedSliderElement);
+            const newValue = parseInt(changedSliderElement.value);
+            const oldValue = previousSliderValues[changedIndex];
+            const delta = newValue - oldValue;
+
+            if (delta === 0) {
+                updateAllSliderDisplays(); // Ensure display is sync even if value didn't change programmatically
+                previousSliderValues[changedIndex] = newValue; // Update previous value
+                return;
+            }
+
+            let currentValues = [...previousSliderValues];
+            currentValues[changedIndex] = newValue; // Reflect the user's direct change
+
+            const nextIndex = (changedIndex + 1) % 3;
+            const prevIndex = (changedIndex + 2) % 3; // This is the one "after" next
+
+            if (delta > 0) { // Changed slider increased, others must decrease
+                let amountToDecrease = delta;
+
+                let decreaseForNext = Math.min(amountToDecrease, currentValues[nextIndex]);
+                currentValues[nextIndex] -= decreaseForNext;
+                amountToDecrease -= decreaseForNext;
+
+                if (amountToDecrease > 0) {
+                    let decreaseForPrev = Math.min(amountToDecrease, currentValues[prevIndex]);
+                    currentValues[prevIndex] -= decreaseForPrev;
+                }
+            } else { // Changed slider decreased, others must increase
+                let amountToIncrease = -delta;
+
+                let increaseForNext = Math.min(amountToIncrease, 100 - currentValues[nextIndex]);
+                currentValues[nextIndex] += increaseForNext;
+                amountToIncrease -= increaseForNext;
+
+                if (amountToIncrease > 0) {
+                    let increaseForPrev = Math.min(amountToIncrease, 100 - currentValues[prevIndex]);
+                    currentValues[prevIndex] += increaseForPrev;
+                }
+            }
+
+            // Normalization to ensure sum is 100
+            let sum = currentValues.reduce((acc, val) => acc + val, 0);
+            let correction = 100 - sum;
+
+            if (correction !== 0) {
+                // Prioritize adjusting sliders other than the one the user changed,
+                // starting with prevIndex (the one last in the cascade adjustment order).
+                const orderOfAdjustmentPreference = [prevIndex, nextIndex, changedIndex];
+                for (const indexToAdjust of orderOfAdjustmentPreference) {
+                    if (correction === 0) break;
+                    
+                    let currentVal = currentValues[indexToAdjust];
+                    let adjustmentAmount = 0;
+
+                    if (correction > 0) { // Need to add to sum
+                        adjustmentAmount = Math.min(correction, 100 - currentVal);
+                    } else { // Need to subtract from sum
+                        adjustmentAmount = Math.max(correction, 0 - currentVal);
+                    }
+                    
+                    currentValues[indexToAdjust] += adjustmentAmount;
+                    correction -= adjustmentAmount;
+                }
+            }
+            
+            // Final check, if sum is still not 100 (e.g. due to extreme initial values or rounding), force it.
+            // This usually means the changed slider's value was incompatible with others reaching 0/100.
+             sum = currentValues.reduce((acc, val) => acc + val, 0);
+             if (sum !== 100) {
+                let diffToForce = 100 - sum;
+                // Apply to the changed slider as a last resort if others are at limits
+                if (currentValues[changedIndex] + diffToForce >= 0 && currentValues[changedIndex] + diffToForce <= 100) {
+                     currentValues[changedIndex] += diffToForce;
+                } else if (currentValues[prevIndex] + diffToForce >= 0 && currentValues[prevIndex] + diffToForce <= 100) {
+                    // If changed slider can't take it, try prev
+                    currentValues[prevIndex] += diffToForce;
+                } else if (currentValues[nextIndex] + diffToForce >= 0 && currentValues[nextIndex] + diffToForce <= 100) {
+                    // Then try next
+                     currentValues[nextIndex] += diffToForce;
+                }
+             }
+
+
+            // Update slider elements and previous values
+            sliderControls.forEach((sc, index) => {
+                sc.el.value = currentValues[index];
+                previousSliderValues[index] = currentValues[index];
+            });
+
+            updateAllSliderDisplays();
+        }
+
+
+        function updateUIText() {
+            const translations = uiStrings[currentLanguage];
+
+            document.title = translations.title;
+            mainTitleEl.textContent = translations.title;
+            toolDescriptionEl.textContent = translations.description;
+            getDecisionBtn.textContent = translations.getDecisionButton;
+            disclaimerTextEl.textContent = translations.disclaimer;
+            langEnBtn.textContent = uiStrings.en.langButtonEN;
+            langFrBtn.textContent = uiStrings.fr.langButtonFR;
+
+            slidersTitleEl.textContent = translations.slidersTitle;
+            labelApprovalChanceEl.textContent = translations.labelApprovalChance;
+            labelAmbiguousChanceEl.textContent = translations.labelAmbiguousChance;
+            labelDenialChanceEl.textContent = translations.labelDenialChance;
+
+            if (placeholderTextEl.style.display !== 'none' || !placeholderTextEl.style.display) {
+                 placeholderTextEl.textContent = translations.placeholder;
+            }
+
+            if (decisionCategoryEl.dataset.categoryKey) {
+                const currentCategoryKey = decisionCategoryEl.dataset.categoryKey;
+                decisionCategoryEl.textContent = translations[`category${currentCategoryKey.charAt(0).toUpperCase() + currentCategoryKey.slice(1)}`];
+            }
+        }
+
         function setLanguage(lang) {
             currentLanguage = lang;
-            // Update button styles
             if (lang === 'en') {
                 langEnBtn.classList.add('active', 'bg-blue-600', 'text-white');
                 langEnBtn.classList.remove('hover:bg-slate-200');
@@ -210,48 +398,41 @@
                 langEnBtn.classList.remove('active', 'bg-blue-600', 'text-white');
                 langEnBtn.classList.add('hover:bg-slate-200');
             }
-            // Update placeholder text if no decision has been made yet
-            if (placeholderTextEl.style.display !== 'none') {
-                 placeholderTextEl.textContent = currentLanguage === 'en' ? "Click the button below to get a decision." : "Cliquez sur le bouton ci-dessous pour obtenir une décision.";
-            }
-            // Update button text
-            getDecisionBtn.textContent = currentLanguage === 'en' ? "Get Decision" : "Obtenir une Décision";
-            // If a decision is already displayed, re-translate it (optional, or just wait for next click)
-            // For simplicity, we'll let the next "Get Decision" click show the new language.
-            // Or, if you want to immediately translate an existing decision:
-            if (decisionCategoryEl.textContent) {
-                const currentCategoryKey = Object.keys(categoryNames.en).find(key => categoryNames.en[key] === decisionCategoryEl.dataset.keyEn) || 
-                                         Object.keys(categoryNames.fr).find(key => categoryNames.fr[key] === decisionCategoryEl.dataset.keyFr);
-                if (currentCategoryKey) {
-                    decisionCategoryEl.textContent = categoryNames[currentLanguage][currentCategoryKey];
-                    // Note: Re-translating the specific expression would require storing its index or the expression itself.
-                    // For this version, we'll just update the category. The expression will update on the next click.
-                }
-            }
+            updateUIText();
         }
 
-        // Function to get and display a random decision
+        function getWeightedRandomCategory() {
+            const weights = sliderControls.map(s => parseInt(s.el.value));
+            const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+            if (totalWeight === 0) {
+                const randomIndex = Math.floor(Math.random() * categories.length);
+                return categories[randomIndex];
+            }
+            
+            let randomNum = Math.random() * totalWeight;
+            for (let i = 0; i < categories.length; i++) {
+                if (randomNum < weights[i]) {
+                    return categories[i]; 
+                }
+                randomNum -= weights[i];
+            }
+            return categories[categories.length - 1];
+        }
+
+
         function displayDecision() {
-            // Hide placeholder
             placeholderTextEl.style.display = 'none';
 
-            // 1. Randomly select a category
-            const randomCategoryIndex = Math.floor(Math.random() * categories.length);
-            const selectedCategoryKey = categories[randomCategoryIndex];
-
-            // 2. Get expressions for the selected category and current language
+            const selectedCategoryKey = getWeightedRandomCategory();
             const expressionsForCategory = expressions[currentLanguage][selectedCategoryKey];
-
-            // 3. Randomly select an expression
             const randomExpressionIndex = Math.floor(Math.random() * expressionsForCategory.length);
             const selectedExpression = expressionsForCategory[randomExpressionIndex];
 
-            // 4. Display the decision
-            decisionCategoryEl.textContent = categoryNames[currentLanguage][selectedCategoryKey];
-            decisionCategoryEl.dataset.keyEn = categoryNames['en'][selectedCategoryKey]; // Store English key for potential re-translation
-            decisionCategoryEl.dataset.keyFr = categoryNames['fr'][selectedCategoryKey]; // Store French key
+            const translatedCategoryName = uiStrings[currentLanguage][`category${selectedCategoryKey.charAt(0).toUpperCase() + selectedCategoryKey.slice(1)}`];
+            decisionCategoryEl.textContent = translatedCategoryName;
+            decisionCategoryEl.dataset.categoryKey = selectedCategoryKey;
 
-            // Apply category-specific color
             decisionCategoryEl.className = `text-lg sm:text-xl font-semibold mb-2 ${categoryColors[selectedCategoryKey]}`;
             decisionExpressionEl.textContent = selectedExpression;
         }
@@ -261,8 +442,14 @@
         langFrBtn.addEventListener('click', () => setLanguage('fr'));
         getDecisionBtn.addEventListener('click', displayDecision);
 
+        sliderControls.forEach(control => {
+            control.el.addEventListener('input', () => handleSliderChange(control.el));
+        });
+
         // --- Initial Setup ---
-        setLanguage(currentLanguage); // Set initial language styles and button text
+        initializePreviousSliderValues(); // Initialize previous values based on HTML
+        setLanguage(currentLanguage);
+        updateAllSliderDisplays(); 
 
     </script>
 </body>
