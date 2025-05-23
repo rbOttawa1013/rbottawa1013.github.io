@@ -1,23 +1,100 @@
+Here’s a polished and professional version of your index.html page, using a modern blue color scheme and improved layout with CSS. This example keeps your content but adds a header, better spacing, and styled buttons/links for a clean, appealing look:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home Page</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e3f0ff 0%, #b3cffb 100%);
+            color: #1a237e;
+            min-height: 100vh;
+        }
+        header {
+            background-color: #1976d2;
+            color: #fff;
+            padding: 2rem 0 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(26, 35, 126, 0.09);
+        }
+        main {
+            max-width: 420px;
+            margin: 2.5rem auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(25, 118, 210, 0.10);
+            padding: 2rem 2rem 1.5rem 2rem;
+        }
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        p {
+            font-size: 1.08rem;
+            margin-bottom: 1.5rem;
+        }
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: #fff;
+            background: linear-gradient(90deg, #1976d2 60%, #1565c0 100%);
+            padding: 0.8rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 1.02rem;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);
+            transition: background 0.2s, transform 0.2s;
+        }
+        .nav-links a:hover {
+            background: linear-gradient(90deg, #1565c0 60%, #1976d2 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
+        @media (max-width: 480px) {
+            main {
+                padding: 1.2rem 0.5rem;
+            }
+            h1 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Website (v3)!</h1>
-    <p>Click the link below to learn more about us:</p>
-    <a href="about.html">About Us</a>
-       <br>
-    <a href="./ps_pension_calculator.html">View our PS Pension Calculator</a>
-    <br>
-    <a href="./perc_calculator.html">View our Personal Pension Calculator </a>
-     <br>
-    <a href="./eliza_chatbot.html">View our Eliza Chatbot</a>
-    <br>
-    <a href="./tarsrobot.html">View our TARS AI Robot </a>
-      <br>
-    <a href="./decision_maker.html">View our Management Decision Maker </a>
+    <header>
+        <h1>Welcome to My Website (v3)!</h1>
+    </header>
+    <main>
+        <p>Click the links below to learn more about us and explore our tools:</p>
+        <div class="nav-links">
+            <a href="about.html">About Us</a>
+            <a href="./ps_pension_calculator.html">PS Pension Calculator</a>
+            <a href="./perc_calculator.html">Personal Pension Calculator</a>
+            <a href="./eliza_chatbot.html">Eliza Chatbot</a>
+            <a href="./tarsrobot.html">TARS AI Robot</a>
+            <a href="./decision_maker.html">Management Decision Maker</a>
+        </div>
+    </main>
 </body>
 </html>
+```
+
+**How this improves the page:**
+- Uses a blue gradient background and blue highlights for a modern look.
+- Adds a header for emphasis.
+- Centers your content, adds padding, and uses consistent spacing.
+- Links look like buttons and animate slightly on hover.
+- Mobile responsive.
+
+Just replace your current `index.html` content with this code!
