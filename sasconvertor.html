@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAS to Python Transpiler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .code-area {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            min-height: 200px;
+            border: 1px solid #D1D5DB; /* gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.5rem;
+            white-space: pre;
+            overflow-x: auto;
+            background-color: #F9FAFB; /* gray-50 */
+        }
+        .code-area:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-color: #60A5FA; /* blue-400 */
+            box-shadow: 0 0 0 2px #BFDBFE; /* blue-200 */
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center; /* Center content in button */
+        }
+        .btn-primary {
+            background-color: #3B82F6; /* blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563EB; /* blue-600 */
+        }
+        .btn-secondary {
+            background-color: #6B7280; /* gray-500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4B5563; /* gray-600 */
+        }
+        .btn-danger {
+            background-color: #EF4444; /* red-500 */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #DC2626; /* red-600 */
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #10B981; /* emerald-500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem; /* rounded-md */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            font-size: 0.9rem;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-8 px-4">
+    <div class="w-full max-w-4xl bg-white p-6 sm:p-8 rounded-lg shadow-xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">SAS to Python Transpiler</h1>
+            <p class="text-gray-600 mt-2">Convert basic SAS procedures and DATA steps to Python (using Pandas).</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label for="sasCode" class="block text-sm font-medium text-gray-700 mb-1">SAS Code Input:</label>
+                <textarea id="sasCode" class="code-area w-full h-64 md:h-96" placeholder="Paste your SAS code here..."></textarea>
+            </div>
+            <div>
+                <label for="pythonCode" class="block text-sm font-medium text-gray-700 mb-1">Generated Python Code:</label>
+                <textarea id="pythonCode" class="code-area w-full h-64 md:h-96" readonly placeholder="Python code will appear here..."></textarea>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4 mb-6">
+            <button id="transpileButton" class="btn btn-primary w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 2a1 1 0 00-1 1v1.362A7.002 7.002 0 003.932 7.5H2.54A1 1 0 002 8.862V10a1 1 0 00.068.348l2.094 4.188A1 1 0 005 15h10a1 1 0 00.838-.464l2.094-4.188A1 1 0 0018 10v-1.138a1 1 0 00-.54-.862h-1.393a7.002 7.002 0 00-5.068-3.138V3a1 1 0 00-1-1zm0 4a3 3 0 100 6 3 3 0 000-6z" clip-rule="evenodd" />
+                </svg>
+                Transpile
+            </button>
+            <button id="copyButton" class="btn btn-secondary w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                    <path d="M3 5a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2-1a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V5a1 1 0 00-1-1H5z" />
+                </svg>
+                Copy Code
+            </button>
+            <button id="resetButton" class="btn btn-danger w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Reset Fields
+            </button>
+        </div>
+        
+        <div id="toastMessage" class="toast">Copied to clipboard!</div> <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            <h3 class="font-semibold mb-2">Important Notes:</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li>This transpiler handles a limited subset of SAS: `PROC PRINT`, `PROC SORT`, `PROC MEANS`, `PROC FREQ`, basic `DATA` steps, and `DATALINES`.</li>
+                <li>SAS macros, complex functions beyond `UPCASE` and `SUBSTR`, and advanced options are not supported.</li>
+                <li>The generated Python code assumes pandas DataFrames are loaded with names corresponding to SAS datasets (e.g., `mydata` in SAS becomes `mydata_df` in Python).</li>
+                <li>SAS libnames (e.g., `work.mydata`) are simplified (e.g., `mydata_df`).</li>
+                <li>Always review and test the generated Python code thoroughly.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // --- Transpiler Logic ---
+
+        // Converts SAS dataset name to a Python-friendly DataFrame name
+        function sasToPandasDfNameJs(sasName) {
+            if (!sasName) return null;
+            // Remove libname if present (e.g., work.mydata -> mydata)
+            const parts = sasName.split('.');
+            const baseName = parts.length > 1 ? parts[1] : parts[0];
+            return `${baseName.toLowerCase()}_df`; // Append _df
+        }
+
+        // Converts a SAS expression to its Python equivalent
+        function convertSasExpressionToPyJs(sasExpr, dfName, isCondition = false) {
+            let pyExpr = sasExpr.trim();
+            if (!pyExpr) return '';
+
+            // Handle common SAS functions (case-insensitive for function names)
+            // UPCASE(var) -> dfName['var'].str.upper()
+            pyExpr = pyExpr.replace(/UPCASE\s*\(\s*(\w+)\s*\)/gi, (match, varName) => `${dfName}['${varName}'].str.upper()`);
+            // SUBSTR(var, start, length) -> dfName['var'].str.slice(start-1, start-1+length)
+            // Note: SAS SUBSTR is 1-indexed, Python slice is 0-indexed.
+            pyExpr = pyExpr.replace(/SUBSTR\s*\(\s*(\w+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/gi, (match, varName, start, length) => {
+                const pyStart = parseInt(start, 10) - 1;
+                const pyEnd = pyStart + parseInt(length, 10);
+                return `${dfName}['${varName}'].str.slice(${pyStart}, ${pyEnd})`;
+            });
+             // TRIM(var) -> dfName['var'].str.strip()
+            pyExpr = pyExpr.replace(/TRIM\s*\(\s*(\w+)\s*\)/gi, (match, varName) => `${dfName}['${varName}'].str.strip()`);
+            // LENGTH(var) -> dfName['var'].str.len()
+            pyExpr = pyExpr.replace(/LENGTH\s*\(\s*(\w+)\s*\)/gi, (match, varName) => `${dfName}['${varName}'].str.len()`);
+
+
+            // Replace SAS variable names with Python DataFrame column access
+            // This regex tries to identify words that are likely variable names.
+            // It avoids keywords, numbers, and already quoted strings.
+            const varPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+            const sasKeywords = new Set(['AND', 'OR', 'NOT', 'EQ', 'NE', 'GT', 'LT', 'GE', 'LE', 
+                                         'IF', 'THEN', 'ELSE', 'DO', 'END', 'PROC', 'DATA', 'SET', 
+                                         'BY', 'VAR', 'TABLES', 'RUN', 'OUT', 'NOPRINT', 'DATALINES',
+                                         'UPCASE', 'SUBSTR', 'TRIM', 'LENGTH']); // Add function names to keywords
+
+            pyExpr = pyExpr.replace(varPattern, (match, word) => {
+                if (sasKeywords.has(word.toUpperCase())) return word; // Keep SAS keywords as is for now
+                if (/^-?\d+(\.\d*)?$/.test(word)) return word; // Keep numbers
+                if ((word.startsWith("'") && word.endsWith("'")) || 
+                    (word.startsWith('"') && word.endsWith('"'))) return word; // Keep existing strings
+                return `${dfName}['${word}']`; // Convert to df['col']
+            });
+
+            // Replace SAS comparison and logical operators
+            const operatorMap = {
+                "\\s+EQ\\s+": " == ",
+                "\\s+NE\\s+": " != ",
+                "\\s+GT\\s+": " > ",
+                "\\s+LT\\s+": " < ",
+                "\\s+GE\\s+": " >= ",
+                "\\s+LE\\s+": " <= ",
+                "\\s+AND\\s+": " & ",  // For pandas boolean indexing
+                "\\s+OR\\s+": " | ",   // For pandas boolean indexing
+                // SAS single equals for comparison in IF needs to be ==
+            };
+
+            for (const [sasOp, pyOp] of Object.entries(operatorMap)) {
+                pyExpr = pyExpr.replace(new RegExp(sasOp, 'gi'), pyOp);
+            }
+            
+            // Special handling for single '=' in conditions (SAS uses = for comparison in IF)
+            if (isCondition) {
+                 // Only replace '=' if it's not part of '==', '!=', '>=', '<='
+                pyExpr = pyExpr.replace(/(?<![=<>!])\s*=\s*(?!=)/g, " == ");
+            }
+
+
+            return pyExpr.trim();
+        }
+
+        // Parses DATALINES section into Python code for DataFrame creation
+        function parseDataLines(fullDataStepContent) {
+            const inputMatch = fullDataStepContent.match(/INPUT\s+(.+?);/i);
+            if (!inputMatch) return null; // No INPUT statement found
+
+            const varDefs = inputMatch[1].trim().split(/\s+/);
+            const columns = [];
+            const dtypes = {}; // Store 'str' or 'num'
+
+            for (let i = 0; i < varDefs.length; i++) {
+                let varName = varDefs[i];
+                let isString = false;
+                if (varName.endsWith('$')) {
+                    varName = varName.slice(0, -1);
+                    isString = true;
+                } else if (varDefs[i+1] === '$') { // Handle 'var $' format
+                    isString = true;
+                    i++; // Skip the '$' token
+                }
+                columns.push(varName);
+                dtypes[varName] = isString ? 'str' : 'num'; // Use 'num' for potential numeric
+            }
+
+            const datalinesKeywordMatch = fullDataStepContent.match(/(DATALINES|CARDS)\s*;/i);
+            if (!datalinesKeywordMatch) return null; // No DATALINES or CARDS keyword
+
+            const dataStartIdx = datalinesKeywordMatch.index + datalinesKeywordMatch[0].length;
+            // Data ends at the next semicolon that is on a line by itself or at the end of the block
+            const dataEndMatch = fullDataStepContent.substring(dataStartIdx).match(/^\s*;|;\s*$/m);
+            let dataLinesStr;
+            if (dataEndMatch) {
+                dataLinesStr = fullDataStepContent.substring(dataStartIdx, dataStartIdx + dataEndMatch.index);
+            } else {
+                 // If no terminating semicolon for datalines is found, take rest of the block. This might be fragile.
+                dataLinesStr = fullDataStepContent.substring(dataStartIdx);
+            }
+            
+            const dataRows = dataLinesStr.trim().split('\n').map(line => line.trim()).filter(line => line);
+            
+            if (dataRows.length === 0) return null; // No data lines
+
+            const dataForDf = {};
+            columns.forEach(col => dataForDf[col] = []);
+
+            dataRows.forEach(rowStr => {
+                const values = rowStr.split(/\s+/); // Split by one or more spaces
+                columns.forEach((col, i) => {
+                    let value = values[i] !== undefined ? values[i] : null; // SAS missing is dot, pandas uses NaN or None
+                    if (value === '.') value = null; // Convert SAS missing numeric to null
+
+                    if (dtypes[col] === 'str') {
+                        dataForDf[col].push(value === null ? null : String(value));
+                    } else { // 'num'
+                        const numVal = parseFloat(value);
+                        dataForDf[col].push(isNaN(numVal) ? null : numVal);
+                    }
+                });
+            });
+
+            const pyLines = ['pd.DataFrame({'];
+            columns.forEach((col, i) => {
+                // Properly format strings and nulls for Python list
+                const colValues = dataForDf[col].map(val => {
+                    if (val === null) return 'None'; // Or np.nan if numpy is assumed earlier
+                    if (dtypes[col] === 'str') return `'${String(val).replace(/'/g, "\\'")}'`; // Escape single quotes
+                    return val;
+                }).join(', ');
+                pyLines.push(`    '${col}': [${colValues}]${i < columns.length - 1 ? ',' : ''}`);
+            });
+            pyLines.push('})');
+            return pyLines.join('\n');
+        }
+
+
+        // Transpiles a single SAS block (e.g., a PROC step or DATA step)
+        function transpileSasBlockJs(sasBlockContent) {
+            sasBlockContent = sasBlockContent.trim();
+            if (!sasBlockContent) return '# Empty SAS block';
+
+            const pyCodeLines = [];
+
+            // Handle DATA step with DATALINES
+            const dataLinesMatch = sasBlockContent.match(/^DATA\s+([\w.]+)\s*;\s*(INPUT[\s\S]+?(?:DATALINES|CARDS)\s*;[\s\S]*?;)/i);
+            if (dataLinesMatch) {
+                const outputDsSas = dataLinesMatch[1];
+                const fullDataStep = dataLinesMatch[0]; // Entire matched DATA step block
+                const pyOutputDf = sasToPandasDfNameJs(outputDsSas);
+
+                pyCodeLines.push(`# SAS DATA Step: ${outputDsSas}`);
+                const dfCode = parseDataLines(fullDataStep);
+                if (dfCode) {
+                    pyCodeLines.push(`${pyOutputDf} = ${dfCode}`);
+                    pyCodeLines.push(`print(f'DataFrame ${pyOutputDf} created from DATALINES.')`);
+                    pyCodeLines.push(`# print(${pyOutputDf}.head())`);
+                    pyCodeLines.push(`# print(${pyOutputDf}.info())`);
+                } else {
+                    pyCodeLines.push(`# Error: Could not fully parse DATALINES section for ${outputDsSas}.`);
+                    pyCodeLines.push(`${pyOutputDf} = pd.DataFrame() # Fallback`);
+                }
+                return pyCodeLines.join('\n');
+            }
+
+            // Handle PROC PRINT
+            let matchPrint = sasBlockContent.match(/^PROC\s+PRINT\s+DATA\s*=\s*([\w.]+)\s*(?:\(([^)]+)\))?\s*;/i);
+            if (matchPrint) {
+                const sasDs = matchPrint[1];
+                const options = matchPrint[2]; // e.g., OBS=10
+                const pyDf = sasToPandasDfNameJs(sasDs);
+                pyCodeLines.push(`# SAS: ${sasBlockContent}`);
+                pyCodeLines.push(`if '${pyDf}' in locals() and isinstance(locals().get('${pyDf}'), pd.DataFrame):`);
+                let printTarget = pyDf;
+                if (options && options.toUpperCase().startsWith('OBS=')) {
+                    const obsCount = parseInt(options.split('=')[1], 10);
+                    if (!isNaN(obsCount)) {
+                        pyCodeLines.push(`    print(f'--- First ${obsCount} observations of ${pyDf} ---')`);
+                        pyCodeLines.push(`    print(locals()['${pyDf}'].head(${obsCount}).to_string())`);
+                    } else {
+                         pyCodeLines.push(`    print(f'--- Contents of ${pyDf} ---')`);
+                         pyCodeLines.push(`    print(locals()['${pyDf}'].to_string())`);
+                    }
+                } else {
+                    pyCodeLines.push(`    print(f'--- Contents of ${pyDf} ---')`);
+                    pyCodeLines.push(`    print(locals()['${pyDf}'].to_string())`);
+                }
+                pyCodeLines.push(`else:`);
+                pyCodeLines.push(`    print(f'Error: DataFrame ${pyDf} not found or not a pandas DataFrame.')`);
+                return pyCodeLines.join('\n');
+            }
+
+            // Handle PROC SORT
+            let matchSort = sasBlockContent.match(/^PROC\s+SORT\s+DATA\s*=\s*([\w.]+)\s*(?:OUT\s*=\s*([\w.]+))?\s*;\s*BY\s+(.+?)\s*;/i);
+            if (matchSort) {
+                const inputDsSas = matchSort[1];
+                const outputDsSas = matchSort[2] || inputDsSas; // If OUT is not specified, SAS overwrites
+                const byClauseSas = matchSort[3].trim();
+                const pyInputDf = sasToPandasDfNameJs(inputDsSas);
+                const pyOutputDf = sasToPandasDfNameJs(outputDsSas);
+
+                const byVarsPy = [];
+                const ascendingListPy = [];
+                const sasByParts = byClauseSas.split(/\s+/).filter(v => v);
+                let i = 0;
+                while (i < sasByParts.length) {
+                    let isDescending = false;
+                    if (sasByParts[i].toUpperCase() === 'DESCENDING') {
+                        isDescending = true;
+                        i++;
+                    }
+                    if (i < sasByParts.length) {
+                        byVarsPy.push(sasByParts[i]);
+                        ascendingListPy.push(!isDescending);
+                        i++;
+                    } else if (isDescending && byVarsPy.length > 0) { 
+                        // Case: VAR1 DESCENDING (DESCENDING applies to VAR1)
+                        // This is a bit simplified; SAS allows DESCENDING before var.
+                        // This parser assumes "DESCENDING var" or "var" (implies ascending)
+                        // If only "DESCENDING" is left, it's an error or applies to the last var if not already set.
+                        // For now, this logic is basic.
+                    }
+                }
+                
+                const byVarsStrPy = JSON.stringify(byVarsPy);
+                const ascendingStrPy = JSON.stringify(ascendingListPy);
+
+                pyCodeLines.push(`# SAS: ${sasBlockContent}`);
+                pyCodeLines.push(`if '${pyInputDf}' in locals() and isinstance(locals().get('${pyInputDf}'), pd.DataFrame):`);
+                pyCodeLines.push(`    ${pyOutputDf} = locals()['${pyInputDf}'].sort_values(by=${byVarsStrPy}, ascending=${ascendingStrPy})`);
+                pyCodeLines.push(`    print(f'DataFrame ${pyInputDf} sorted into ${pyOutputDf}.')`);
+                if (pyInputDf !== pyOutputDf) { // If OUT created a new DataFrame
+                     pyCodeLines.push(`    # ${pyInputDf} remains unchanged unless OUT=${pyInputDf}`);
+                } else { // SAS overwrites the input dataset
+                     pyCodeLines.push(`    # ${pyInputDf} is now the sorted DataFrame.`);
+                }
+                pyCodeLines.push(`else:`);
+                pyCodeLines.push(`    print(f'Error: DataFrame ${pyInputDf} not found for sorting.')`);
+                return pyCodeLines.join('\n');
+            }
+
+            // Handle PROC MEANS
+            let matchMeans = sasBlockContent.match(/^PROC\s+MEANS\s+DATA\s*=\s*([\w.]+)\s*;\s*(?:VAR\s+([\w\s]+)\s*;)?\s*(?:CLASS\s+([\w\s]+)\s*;)?/i);
+            if (matchMeans) {
+                const sasDs = matchMeans[1];
+                const varListSas = matchMeans[2];
+                const classListSas = matchMeans[3];
+                const pyDf = sasToPandasDfNameJs(sasDs);
+
+                pyCodeLines.push(`# SAS: ${sasBlockContent}`);
+                pyCodeLines.push(`if '${pyDf}' in locals() and isinstance(locals().get('${pyDf}'), pd.DataFrame):`);
+                let targetDf = `locals()['${pyDf}']`;
+                if (varListSas) {
+                    const variablesSas = varListSas.trim().split(/\s+/).map(v => `'${v.trim()}'`);
+                    targetDf = `locals()['${pyDf}'][[${variablesSas.join(', ')}]]`;
+                    pyCodeLines.push(`    print(f'--- Descriptive Statistics for variables {variablesSas.join(', ')} in ${pyDf} ---')`);
+                } else {
+                    pyCodeLines.push(`    print(f'--- Descriptive Statistics for all numeric variables in ${pyDf} ---')`);
+                }
+
+                if (classListSas) {
+                    const classVarsSas = classListSas.trim().split(/\s+/).map(v => `'${v.trim()}'`);
+                    pyCodeLines.push(`    means_output = ${targetDf}.groupby([${classVarsSas.join(', ')}]).describe()`);
+                } else {
+                    pyCodeLines.push(`    means_output = ${targetDf}.describe()`);
+                }
+                pyCodeLines.push(`    print(means_output.to_string())`);
+                pyCodeLines.push(`else:`);
+                pyCodeLines.push(`    print(f'Error: DataFrame ${pyDf} not found for PROC MEANS.')`);
+                return pyCodeLines.join('\n');
+            }
+            
+            // Handle PROC FREQ
+            let matchFreq = sasBlockContent.match(/^PROC\s+FREQ\s+DATA\s*=\s*([\w.]+)\s*;\s*TABLES\s+([\w\s\*\/]+)\s*;/i);
+            if (matchFreq) {
+                const sasDs = matchFreq[1];
+                const tablesSpec = matchFreq[2].trim();
+                const pyDfInput = sasToPandasDfNameJs(sasDs);
+                
+                pyCodeLines.push(`# SAS: ${sasBlockContent}`);
+                pyCodeLines.push(`if '${pyDfInput}' in locals() and isinstance(locals().get('${pyDfInput}'), pd.DataFrame):`);
+
+                const tableParts = tablesSpec.split('/');
+                const varsPart = tableParts[0].trim();
+                let outDsSas = null;
+                let noprint = false;
+
+                if (tableParts.length > 1) {
+                    const optionsPart = tableParts[1].trim().toUpperCase();
+                    if (optionsPart.includes('NOPRINT')) noprint = true;
+                    const outMatch = optionsPart.match(/OUT\s*=\s*(\w+)/);
+                    if (outMatch) outDsSas = outMatch[1];
+                }
+                const pyDfOutput = outDsSas ? sasToPandasDfNameJs(outDsSas) : null;
+
+
+                if (varsPart.includes('*')) { // Crosstabulation
+                    const [var1Sas, var2Sas] = varsPart.split('*').map(v => v.trim());
+                    const crosstabResult = `pd.crosstab(locals()['${pyDfInput}']['${var1Sas}'], locals()['${pyDfInput}']['${var2Sas}'])`;
+                    if (pyDfOutput) {
+                        pyCodeLines.push(`    ${pyDfOutput} = ${crosstabResult}`);
+                        pyCodeLines.push(`    print(f'Crosstabulation of ${var1Sas} by ${var2Sas} from ${pyDfInput} stored in ${pyDfOutput}.')`);
+                        if (!noprint) {
+                            pyCodeLines.push(`    print(f'--- Crosstabulation: ${var1Sas} * ${var2Sas} ---')`);
+                            pyCodeLines.push(`    print(locals()['${pyDfOutput}'].to_string())`);
+                        }
+                    } else if (!noprint) {
+                        pyCodeLines.push(`    print(f'--- Crosstabulation: ${var1Sas} * ${var2Sas} ---')`);
+                        pyCodeLines.push(`    print(${crosstabResult}.to_string())`);
+                    }
+                } else { // One-way frequency
+                    const varNameSas = varsPart.trim();
+                    if (pyDfOutput) {
+                        pyCodeLines.push(`    # For ${pyDfOutput}, creating COUNT and PERCENT columns for ${varNameSas}`);
+                        pyCodeLines.push(`    counts_df = locals()['${pyDfInput}']['${varNameSas}'].value_counts(dropna=False).reset_index()`);
+                        pyCodeLines.push(`    counts_df.columns = ['${varNameSas}', 'COUNT']`);
+                        pyCodeLines.push(`    percent_df = (locals()['${pyDfInput}']['${varNameSas}'].value_counts(normalize=True, dropna=False) * 100).reset_index()`);
+                        pyCodeLines.push(`    percent_df.columns = ['${varNameSas}', 'PERCENT']`);
+                        pyCodeLines.push(`    ${pyDfOutput} = pd.merge(counts_df, percent_df, on='${varNameSas}')`);
+                        pyCodeLines.push(`    print(f'Frequency table for ${varNameSas} from ${pyDfInput} stored in ${pyDfOutput}.')`);
+                        if (!noprint) {
+                            pyCodeLines.push(`    print(f'--- Frequency Table for ${varNameSas} (from ${pyDfOutput}) ---')`);
+                            pyCodeLines.push(`    print(locals()['${pyDfOutput}'].to_string())`);
+                        }
+                    } else if (!noprint) {
+                        pyCodeLines.push(`    print(f'--- Frequency Table for ${varNameSas} ---')`);
+                        pyCodeLines.push(`    print('Counts:')`);
+                        pyCodeLines.push(`    print(locals()['${pyDfInput}']['${varNameSas}'].value_counts(dropna=False).to_string())`);
+                        pyCodeLines.push(`    print('\\nPercentages:')`);
+                        pyCodeLines.push(`    print((locals()['${pyDfInput}']['${varNameSas}'].value_counts(normalize=True, dropna=False) * 100).to_string(name='PERCENT'))`);
+                    }
+                }
+                pyCodeLines.push(`else:`);
+                pyCodeLines.push(`    print(f'Error: DataFrame ${pyDfInput} not found for PROC FREQ.')`);
+                return pyCodeLines.join('\n');
+            }
+
+            // Handle DATA step with SET and simple IF/assignment
+            const dataStepHeaderMatch = sasBlockContent.match(/^DATA\s+([\w.]+)\s*;\s*SET\s+([\w.]+)\s*;/i);
+            if (dataStepHeaderMatch) {
+                const outputDsSas = dataStepHeaderMatch[1];
+                const inputDsSas = dataStepHeaderMatch[2];
+                const pyOutputDf = sasToPandasDfNameJs(outputDsSas);
+                const pyInputDf = sasToPandasDfNameJs(inputDsSas);
+
+                pyCodeLines.push(`# SAS: DATA ${outputDsSas}; SET ${inputDsSas}; ...`);
+                pyCodeLines.push(`if '${pyInputDf}' in locals() and isinstance(locals().get('${pyInputDf}'), pd.DataFrame):`);
+                pyCodeLines.push(`    ${pyOutputDf} = locals()['${pyInputDf}'].copy()`);
+
+                // Extract statements after SET
+                const setStmtEndIndex = dataStepHeaderMatch[0].length;
+                const remainingSasStmtsBlock = sasBlockContent.substring(setStmtEndIndex).trim();
+                // Split remaining block into individual SAS statements (ending with ';')
+                const sasIndividualStmts = remainingSasStmtsBlock.split(';').map(s => s.trim()).filter(s => s);
+
+                for (const stmtSas of sasIndividualStmts) {
+                    const matchIfStmt = stmtSas.match(/^IF\s+(.+)/i);
+                    if (matchIfStmt) {
+                        const conditionSas = matchIfStmt[1].trim();
+                        // Pass pyOutputDf as the DataFrame name for expression conversion
+                        const conditionPy = convertSasExpressionToPyJs(conditionSas, pyOutputDf, true);
+                        pyCodeLines.push(`    # SAS IF: ${conditionSas}`);
+                        pyCodeLines.push(`    ${pyOutputDf} = locals()['${pyOutputDf}'][(${conditionPy})].copy() # Apply filter`);
+                        continue;
+                    }
+
+                    const matchAssignStmt = stmtSas.match(/^(\w+)\s*=\s*(.+)/i);
+                    if (matchAssignStmt) {
+                        const newVarSas = matchAssignStmt[1];
+                        const expressionSas = matchAssignStmt[2].trim();
+                        const expressionPy = convertSasExpressionToPyJs(expressionSas, pyOutputDf);
+                        pyCodeLines.push(`    # SAS Assignment: ${newVarSas} = ${expressionSas}`);
+                        pyCodeLines.push(`    locals()['${pyOutputDf}']['${newVarSas}'] = ${expressionPy}`);
+                        continue;
+                    }
+                    pyCodeLines.push(`    # SAS statement not translated in DATA step: ${stmtSas}`);
+                }
+                pyCodeLines.push(`    print(f'DATA step processed: ${pyInputDf} -> ${pyOutputDf}.')`);
+                pyCodeLines.push(`else:`);
+                pyCodeLines.push(`    print(f'Error: DataFrame ${pyInputDf} not found for DATA step.')`);
+                return pyCodeLines.join('\n');
+            }
+            
+            // Fallback for unsupported PROCs or syntax
+            if (sasBlockContent.toUpperCase().startsWith("PROC GPLOT")) {
+                 pyCodeLines.push(`# SAS: ${sasBlockContent}`);
+                 pyCodeLines.push(`# PROC GPLOT is not directly translatable. Consider using Matplotlib or Seaborn in Python.`);
+                 pyCodeLines.push(`print("PROC GPLOT translation not supported. Use Python plotting libraries like Matplotlib or Seaborn.")`);
+                 return pyCodeLines.join('\n');
+            }
+
+
+            pyCodeLines.push(`# SAS Code Block not translated: ${sasBlockContent.split('\n')[0]}...`);
+            pyCodeLines.push(`print('Unsupported SAS procedure or syntax: "${sasBlockContent.replace(/"/g, '\\"').split('\n')[0]}..."')`);
+            return pyCodeLines.join('\n');
+        }
+
+        // Main function to transpile the entire SAS code string
+        function transpileSasToPythonJs(sasCodeStr) {
+            try {
+                // Preprocessing: Remove comments and normalize libnames in specific contexts
+                let processedSasCode = sasCodeStr.replace(/\/\*[\s\S]*?\*\//g, ''); // Remove block comments
+                processedSasCode = processedSasCode.replace(/^\s*\*.*?;/gm, '');    // Remove line comments starting with *
+                processedSasCode = processedSasCode.replace(/\s+/g, ' ').trim(); // Normalize whitespace
+
+                // Simpler libname removal: only for DATA=, SET, OUT= contexts for now
+                // e.g., DATA=work.myds -> DATA=myds
+                processedSasCode = processedSasCode.replace(/\b(DATA|SET|OUT)\s*=\s*[\w]+\.([\w]+)\b/gi, '$1=$2');
+
+
+                const blocks = [];
+                let currentBlock = '';
+                // Split by 'RUN;' or by ';' if it's a DATA step with DATALINES
+                // This splitting logic is basic and might need refinement for complex SAS code structures.
+                // A more robust way would be to parse based on PROC/DATA keywords and their terminators.
+                
+                // Improved block splitting:
+                // A block is a DATA step or a PROC step. DATA steps end with RUN; or a datalines terminator ';'.
+                // PROC steps end with RUN; or QUIT;.
+                // This regex attempts to find DATA...; ... DATALINES; ... ; RUN; or PROC...; ... RUN;/QUIT;
+                // It's still regex-based and has limitations.
+                const sasStatements = processedSasCode.split(';');
+                let tempBlock = "";
+                for (let stmt of sasStatements) {
+                    stmt = stmt.trim();
+                    if (!stmt) continue;
+                    tempBlock += stmt + ";";
+                    if (stmt.toUpperCase() === "RUN" || stmt.toUpperCase() === "QUIT" || 
+                        (tempBlock.toUpperCase().includes("DATALINES") && stmt.trim() === "")) { // End of datalines is a lone ;
+                        if (tempBlock.toUpperCase().includes("DATALINES") && stmt.trim() === "") {
+                            // If it's the end of datalines, the block is complete.
+                        }
+                        blocks.push(tempBlock.trim());
+                        tempBlock = "";
+                    }
+                }
+                if (tempBlock.trim()) { // Add any remaining part as a block
+                    blocks.push(tempBlock.trim());
+                }
+
+
+                const pythonScriptParts = [
+                    'import pandas as pd',
+                    'import numpy as np',
+                    '',
+                    '# --- SAS Transpiled Code Start ---',
+                    '# Note: Ensure input DataFrames (e.g., mydata_df) are loaded in your Python environment if not created by DATALINES.',
+                    ''
+                ];
+
+                if (blocks.length === 0 && sasCodeStr.trim()) {
+                    pythonScriptParts.push('# SAS code found, but no valid blocks detected based on RUN/QUIT or DATALINES structure.');
+                    pythonScriptParts.push(`print('Invalid or incomplete SAS code structure: "${sasCodeStr.replace(/"/g, '\\"')}"')`);
+                } else {
+                    blocks.forEach((block, i) => {
+                        if(block.trim()){ // Ensure block is not just whitespace
+                            pythonScriptParts.push(`# --- SAS Block ${i + 1} ---`);
+                            pythonScriptParts.push(transpileSasBlockJs(block));
+                            pythonScriptParts.push(''); // Newline between blocks
+                        }
+                    });
+                }
+
+                pythonScriptParts.push('# --- SAS Transpiled Code End ---');
+                return pythonScriptParts.join('\n');
+            } catch (error) {
+                console.error("Transpilation Error:", error);
+                return `# Error during transpilation: ${error.message}\n# Please check your SAS code and the console for details.`;
+            }
+        }
+
+        // --- DOM Elements ---
+        const sasCodeInput = document.getElementById('sasCode');
+        const pythonCodeOutput = document.getElementById('pythonCode');
+        const transpileButton = document.getElementById('transpileButton');
+        const copyButton = document.getElementById('copyButton');
+        const resetButton = document.getElementById('resetButton');
+        const toastMessage = document.getElementById('toastMessage');
+
+        // Sample SAS code to prefill the input textarea
+        const sampleSas = `
+* Sample SAS code for testing;
+DATA mydata;
+    INPUT ID Name $ Age Score;
+    DATALINES;
+    1 Alice 25 85
+    2 Bob 30 90
+    3 Charlie 22 78
+    4 David 35 92
+    5 Eve 28 88
+    ;
+RUN;
+
+PROC PRINT DATA=mydata (OBS=3);
+RUN;
+
+PROC SORT DATA=mydata OUT=sorted_mydata;
+    BY Age DESCENDING Score;
+RUN;
+
+PROC PRINT DATA=sorted_mydata;
+RUN;
+
+PROC MEANS DATA=mydata;
+    VAR Age Score;
+    CLASS Name; /* Example of CLASS statement */
+RUN;
+
+PROC FREQ DATA=mydata;
+    TABLES Age Score / OUT=freq_out NOPRINT;
+RUN;
+
+PROC PRINT DATA=freq_out;
+RUN;
+
+DATA filtered_data;
+    SET mydata;
+    IF Age > 25 AND Score >= 90 OR UPCASE(Name) = 'ALICE';
+    Bonus = Score * 0.10;
+    FirstInitial = SUBSTR(Name, 1, 1);
+RUN;
+
+PROC PRINT DATA=filtered_data;
+RUN;
+
+* This PROC will show as unsupported;
+PROC GPLOT DATA=mydata;
+    PLOT Age*Score;
+RUN;
+        `;
+        sasCodeInput.value = sampleSas.trim();
+
+        // --- Event Listeners ---
+        transpileButton.addEventListener('click', () => {
+            const sasCode = sasCodeInput.value;
+            if (!sasCode.trim()) {
+                pythonCodeOutput.value = '# Please enter some SAS code to transpile.';
+                return;
+            }
+            pythonCodeOutput.value = transpileSasToPythonJs(sasCode);
+        });
+
+        copyButton.addEventListener('click', async () => {
+            const codeToCopy = pythonCodeOutput.value;
+            if (!codeToCopy.trim() || codeToCopy.startsWith('# Please enter some SAS code')) {
+                toastMessage.textContent = 'Nothing to copy!';
+                toastMessage.style.backgroundColor = '#F59E0B'; // Amber for warning
+            } else {
+                try {
+                    await navigator.clipboard.writeText(codeToCopy);
+                    toastMessage.textContent = 'Python code copied to clipboard!';
+                    toastMessage.style.backgroundColor = '#10B981'; // Emerald for success
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                    toastMessage.textContent = 'Could not copy. Please try manually.';
+                    toastMessage.style.backgroundColor = '#EF4444'; // Red for error
+                    // Fallback: select text for manual copy
+                    pythonCodeOutput.select();
+                    pythonCodeOutput.setSelectionRange(0, 99999); // For mobile devices
+                }
+            }
+            toastMessage.classList.add('show');
+            setTimeout(() => toastMessage.classList.remove('show'), 2500);
+        });
+
+        resetButton.addEventListener('click', () => {
+            sasCodeInput.value = sampleSas.trim(); // Reset to sample or empty: sasCodeInput.value = '';
+            pythonCodeOutput.value = '';
+            toastMessage.textContent = 'Fields reset!';
+            toastMessage.style.backgroundColor = '#3B82F6'; // Blue for info
+            toastMessage.classList.add('show');
+            setTimeout(() => toastMessage.classList.remove('show'), 1500);
+        });
+
+        // Initial transpile if sample code is present
+        if (sasCodeInput.value.trim()) {
+            pythonCodeOutput.value = transpileSasToPythonJs(sasCodeInput.value);
+        }
+
+    </script>
+</body>
+</html>
