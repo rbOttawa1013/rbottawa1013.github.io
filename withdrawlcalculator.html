@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Withdrawal Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom tooltip for Chart.js */
+        .chartjs-tooltip {
+            opacity: 1;
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 3px;
+            -webkit-transition: all .1s ease;
+            transition: all .1s ease;
+            pointer-events: none;
+            -webkit-transform: translate(-50%, 0);
+            transform: translate(-50%, 0);
+            padding: 4px 6px;
+            font-size: 12px;
+        }
+        .chartjs-tooltip-key {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white shadow-xl rounded-lg p-6 md:p-10">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-600">Monte Carlo Withdrawal Calculator</h1>
+            <p class="text-gray-600 mt-2">Estimate safe withdrawal strategies using Monte Carlo simulation.</p>
+        </header>
+
+        <section id="inputsSection" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <h2 class="text-xl font-semibold text-blue-500 mb-3 border-b pb-2">Portfolio & Growth</h2>
+                <div class="mb-4">
+                    <label for="startingBalance" class="block text-sm font-medium text-gray-700 mb-1">Starting Balance ($):</label>
+                    <input type="number" id="startingBalance" value="1000000" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="estimatedAnnualGrowthRate" class="block text-sm font-medium text-gray-700 mb-1">Avg. Annual Growth Rate (e.g., 6 or 6.0%):</label>
+                    <input type="text" id="estimatedAnnualGrowthRate" value="6.0%" placeholder="e.g., 6 or 6.0%" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="estimatedVariation" class="block text-sm font-medium text-gray-700 mb-1">Growth Variation (Std. Dev., e.g., 10 or 10.0%):</label>
+                    <input type="text" id="estimatedVariation" value="10.0%" placeholder="e.g., 10 or 10.0%" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold text-blue-500 mb-3 border-b pb-2">Withdrawal Plan</h2>
+                <div class="mb-4">
+                    <label for="estimatedInflationRate" class="block text-sm font-medium text-gray-700 mb-1">Estimated Annual Inflation (e.g., 2.5 or 2.5%):</label>
+                    <input type="text" id="estimatedInflationRate" value="2.5%" placeholder="e.g., 2.5 or 2.5%" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="startYear" class="block text-sm font-medium text-gray-700 mb-1">Start Year:</label>
+                        <input type="number" id="startYear" value="2025" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="endYear" class="block text-sm font-medium text-gray-700 mb-1">End Year:</label>
+                        <input type="number" id="endYear" value="2054" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="desiredBalanceAtEndYear" class="block text-sm font-medium text-gray-700 mb-1">Desired Balance at End Year ($):</label>
+                    <input type="number" id="desiredBalanceAtEndYear" value="0" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                 <h2 class="text-xl font-semibold text-blue-500 mb-3 border-b pb-2">Strategy & Simulation</h2>
+                <div class="mb-4">
+                    <label for="linearWithdrawalRateOfInitial" class="block text-sm font-medium text-gray-700 mb-1">Linear Withdrawal: Initial Rate (e.g., 4 or 4.0% of starting balance):</label>
+                    <input type="text" id="linearWithdrawalRateOfInitial" value="4.0%" placeholder="e.g., 4 or 4.0%" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="monteCarloTrials" class="block text-sm font-medium text-gray-700 mb-1">Monte Carlo Trials:</label>
+                    <input type="number" id="monteCarloTrials" value="5000" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </section>
+
+        <div class="text-center mb-8">
+            <button id="calculateButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105">
+                Calculate Strategies
+            </button>
+        </div>
+
+        <div id="loader" class="loader hidden"></div>
+        
+        <div id="messages" class="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md hidden"></div>
+
+
+        <section id="resultsSection" class="hidden mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-blue-600 mb-3">Linear Withdrawal Strategy</h3>
+                    <p id="linearType" class="text-sm text-gray-500 mb-2"></p>
+                    <p class="mb-1"><strong>Success Rate:</strong> <span id="linearSuccessRate" class="font-bold text-lg"></span>%</p>
+                    <p class="mb-1"><strong>First Year Withdrawal:</strong> $<span id="linearFirstYearWithdrawal"></span></p>
+                    <p class="mb-1"><strong>Median Trial End Balance:</strong> $<span id="linearMedianEndBalance"></span></p>
+                    <div class="mt-4 h-64 md:h-80"><canvas id="linearChart"></canvas></div>
+                </div>
+
+                <div class="bg-gray-50 p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold text-green-600 mb-3">Amortized Withdrawal Strategy</h3>
+                     <p id="amortizedType" class="text-sm text-gray-500 mb-2"></p>
+                    <p class="mb-1"><strong>Success Rate:</strong> <span id="amortizedSuccessRate" class="font-bold text-lg"></span>%</p>
+                    <p class="mb-1"><strong>Calculated First Year Withdrawal:</strong> $<span id="amortizedFirstYearWithdrawal"></span></p>
+                    <p class="mb-1"><strong>(Equivalent Initial Rate:</strong> <span id="amortizedInitialRate"></span>%)</p>
+                    <p class="mb-1"><strong>Median Trial End Balance:</strong> $<span id="amortizedMedianEndBalance"></span></p>
+                    <div class="mt-4 h-64 md:h-80"><canvas id="amortizedChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+         <footer class="mt-10 text-center text-sm text-gray-500">
+            <p>Disclaimer: This calculator is for illustrative purposes only and does not constitute financial advice. Investment outcomes are uncertain.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Chart instances
+        let linearChartInstance = null;
+        let amortizedChartInstance = null;
+
+        // --- Helper function to parse percentage inputs ---
+        function parsePercentageInput(rawValueString) {
+            if (typeof rawValueString !== 'string' || rawValueString.trim() === '') {
+                return NaN; // Not a valid string or empty
+            }
+            const trimmedValue = rawValueString.trim();
+            let numericValue;
+            if (trimmedValue.endsWith('%')) {
+                numericValue = parseFloat(trimmedValue.substring(0, trimmedValue.length - 1));
+            } else {
+                numericValue = parseFloat(trimmedValue);
+            }
+
+            if (isNaN(numericValue)) {
+                return NaN;
+            }
+            return numericValue / 100; // Convert to decimal
+        }
+
+
+        // --- Core Calculation Logic (from previous script) ---
+        function generateNormalRandom(mean, stdDev) {
+            let u1 = 0, u2 = 0;
+            while (u1 === 0) u1 = Math.random();
+            u2 = Math.random();
+            const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+            return mean + stdDev * z0;
+        }
+
+        function calculateWithdrawalsMonteCarlo({
+            startingBalance,
+            estimatedAnnualGrowthRate, // Expected in decimal format, e.g., 0.06
+            estimatedVariation,        // Expected in decimal format, e.g., 0.10
+            estimatedInflationRate,    // Expected in decimal format, e.g., 0.025
+            startYear,
+            endYear,
+            desiredBalanceAtEndYear,
+            linearWithdrawalRateOfInitial, // Expected in decimal format, e.g., 0.04
+            monteCarloTrials = 10000
+        }) {
+            const results = {
+                inputs: { ...arguments[0] }, // Store the already parsed decimal inputs
+                numberOfYears: 0,
+                linearWithdrawal: null,
+                amortizedWithdrawal: null,
+                warnings: []
+            };
+
+            // Validation now assumes inputs are already parsed to decimals
+            if (startingBalance <= 0) results.warnings.push("Starting balance must be positive.");
+            if (estimatedVariation < 0) results.warnings.push("Variation (standard deviation) cannot be negative (after parsing)."); // Should be fine if parsed correctly
+            if (endYear <= startYear) results.warnings.push("End year must be after start year.");
+            if (desiredBalanceAtEndYear < 0) results.warnings.push("Desired end balance cannot be negative.");
+            if (monteCarloTrials <= 0) results.warnings.push("Monte Carlo trials must be positive.");
+            
+            // These checks are for the decimal format
+            if (estimatedInflationRate < -1 || estimatedInflationRate > 1) results.warnings.push("Inflation rate seems unrealistic (check input, e.g., 2.5% becomes 0.025).");
+            if (estimatedAnnualGrowthRate < -1 || estimatedAnnualGrowthRate > 1) results.warnings.push("Avg. Annual Growth Rate seems unrealistic (check input).");
+            if (estimatedVariation > 1) results.warnings.push("Growth Variation (Std. Dev) seems high after parsing (e.g. 10% becomes 0.10). Max is 1.0 for 100%.");
+             if (linearWithdrawalRateOfInitial < 0 || linearWithdrawalRateOfInitial > 1) results.warnings.push("Linear withdrawal rate seems unrealistic (must be between 0% and 100%).");
+
+
+            if (results.warnings.length > 0) {
+                // Only set error if there are warnings that are truly problematic for calculation
+                // Some warnings might be informational.
+                // For now, any warning will be treated as potentially problematic for display.
+                results.error = "Invalid input parameters after parsing. Please check highlighted fields or messages.";
+                // Don't return immediately, let it try to calculate if possible, but messages will show.
+            }
+
+            const numberOfYears = endYear - startYear + 1;
+            results.numberOfYears = numberOfYears;
+
+            const runSimulation = (initialWithdrawalAmountGetter) => {
+                const trialEndBalances = [];
+                const trialPaths = [];
+                let successfulTrials = 0;
+                let actualInitialWithdrawal = 0; // This will be a $ amount
+
+                if (typeof initialWithdrawalAmountGetter === 'function') {
+                    // Pass decimal rates to this getter
+                    actualInitialWithdrawal = initialWithdrawalAmountGetter(startingBalance, estimatedAnnualGrowthRate, numberOfYears, desiredBalanceAtEndYear);
+                } else { // For linear, it's a fixed $ amount based on decimal rate * startingBalance
+                    actualInitialWithdrawal = initialWithdrawalAmountGetter;
+                }
+
+                if(isNaN(actualInitialWithdrawal) || actualInitialWithdrawal < 0) actualInitialWithdrawal = 0;
+
+
+                for (let trial = 0; trial < monteCarloTrials; trial++) {
+                    let currentBalance = startingBalance;
+                    const path = [];
+                    let yearFailed = -1;
+
+                    for (let i = 0; i < numberOfYears; i++) {
+                        const year = startYear + i;
+                        // Inflation adjustment is based on the $ amount of initial withdrawal
+                        let currentYearNominalWithdrawal = actualInitialWithdrawal * Math.pow(1 + estimatedInflationRate, i);
+                        
+                        const annualReturn = generateNormalRandom(estimatedAnnualGrowthRate, estimatedVariation);
+                        const growthAmount = currentBalance * annualReturn;
+                        currentBalance += growthAmount;
+
+                        let actualWithdrawalForYear = currentYearNominalWithdrawal;
+                        if (currentBalance < currentYearNominalWithdrawal) {
+                            actualWithdrawalForYear = Math.max(0, currentBalance);
+                        }
+                        currentBalance -= actualWithdrawalForYear;
+                         if (currentBalance < 0) currentBalance = 0; 
+
+                        path.push({
+                            year,
+                            balanceAtYearEnd: parseFloat(currentBalance.toFixed(2)),
+                            withdrawalTaken: parseFloat(actualWithdrawalForYear.toFixed(2)),
+                            nominalTargetWithdrawal: parseFloat(currentYearNominalWithdrawal.toFixed(2)),
+                            annualReturn: parseFloat(annualReturn.toFixed(4)),
+                            growthAmount: parseFloat(growthAmount.toFixed(2))
+                        });
+
+                        if (currentBalance <= 0 && i < numberOfYears - 1) {
+                            yearFailed = year;
+                            break;
+                        }
+                    }
+                    trialPaths.push({ finalBalance: currentBalance, path, yearFailed });
+                    trialEndBalances.push(currentBalance);
+
+                    if (yearFailed === -1 && currentBalance >= desiredBalanceAtEndYear) {
+                        successfulTrials++;
+                    } else if (yearFailed === -1 && currentBalance < desiredBalanceAtEndYear && desiredBalanceAtEndYear > 0 && currentBalance > 0) {
+                        // Succeeded in not running out, but didn't meet goal
+                    } else if (yearFailed !== -1 && desiredBalanceAtEndYear > 0) {
+                        // Ran out and wanted some left
+                    } else if (yearFailed === -1 && desiredBalanceAtEndYear === 0 && currentBalance >= 0) {
+                        successfulTrials++; 
+                    }
+                }
+
+                trialPaths.sort((a, b) => a.finalBalance - b.finalBalance);
+                const medianTrialIndex = Math.floor(trialPaths.length / 2);
+                const successfulTrialPaths = trialPaths.filter(p => p.yearFailed === -1 && p.finalBalance >= desiredBalanceAtEndYear);
+                let medianPathForGraph = [];
+                let medianEndBalanceForDisplay = 0;
+
+                if (successfulTrialPaths.length > 0) {
+                    successfulTrialPaths.sort((a,b) => a.finalBalance - b.finalBalance);
+                    medianPathForGraph = successfulTrialPaths[Math.floor(successfulTrialPaths.length / 2)].path;
+                    medianEndBalanceForDisplay = successfulTrialPaths[Math.floor(successfulTrialPaths.length / 2)].finalBalance;
+                } else if (trialPaths.length > 0) { 
+                    medianPathForGraph = trialPaths[medianTrialIndex].path;
+                    medianEndBalanceForDisplay = trialPaths[medianTrialIndex].finalBalance;
+                     if(!results.warnings.includes("Median path shown is from all trials as successful trials criteria were not met by enough simulations.")) {
+                        results.warnings.push("Median path shown is from all trials as successful trials criteria were not met by enough simulations.");
+                     }
+                }
+
+
+                return {
+                    firstYearWithdrawalAmount: parseFloat(actualInitialWithdrawal.toFixed(2)), // This is a $ amount
+                    successRate: (successfulTrials / monteCarloTrials) * 100,
+                    medianTrialEndBalance: parseFloat(medianEndBalanceForDisplay.toFixed(2)),
+                    simulationYears: medianPathForGraph,
+                    numberOfSuccessfulTrials: successfulTrials,
+                };
+            };
+
+            // Linear withdrawal: initialLinearWithdrawalRateOfInitial is already a decimal here
+            if (typeof linearWithdrawalRateOfInitial === 'number' && linearWithdrawalRateOfInitial >= 0 && linearWithdrawalRateOfInitial <=1) {
+                const initialLinearDollarAmount = startingBalance * linearWithdrawalRateOfInitial;
+                results.linearWithdrawal = runSimulation(initialLinearDollarAmount); // Pass the calculated $ amount
+                results.linearWithdrawal.type = `Linear: ${(linearWithdrawalRateOfInitial * 100).toFixed(1)}% of initial balance, inflation-adjusted.`;
+                results.linearWithdrawal.initialWithdrawalRateAsDecimal = linearWithdrawalRateOfInitial; // Store the decimal rate used
+            } else {
+                results.linearWithdrawal = { type: "Not calculated (invalid linear withdrawal rate after parsing)", successRate: 0, simulationYears: [], firstYearWithdrawalAmount: 0, medianTrialEndBalance: 0 };
+                 if(!results.warnings.includes("Linear withdrawal rate was invalid after parsing. Linear strategy not calculated.")) {
+                    results.warnings.push("Linear withdrawal rate was invalid after parsing. Linear strategy not calculated.");
+                 }
+            }
+
+            const calculateInitialAmortizedWithdrawal = (currentStartingBalance, avgGrowthDecimal, numYears, desiredEndBalance) => {
+                const r_nominal = avgGrowthDecimal; // Already decimal
+                if (currentStartingBalance * Math.pow(1 + r_nominal, numYears) < desiredEndBalance && numYears > 0) {
+                    if(!results.warnings.includes("Amortized: Desired end balance may be too high for the average growth rate.")) {
+                       results.warnings.push("Amortized: Desired end balance may be too high for the average growth rate; could result in zero initial withdrawal.");
+                    }
+                    return 0;
+                }
+                const pvDesiredEnd = numYears > 0 ? desiredEndBalance / Math.pow(1 + r_nominal, numYears) : desiredEndBalance;
+                let principalToAmortize = currentStartingBalance - pvDesiredEnd;
+
+                if (principalToAmortize <= 0) return 0;
+
+                let pmtAmount;
+                if (r_nominal === 0) {
+                    pmtAmount = numYears > 0 ? principalToAmortize / numYears : principalToAmortize;
+                } else {
+                     if (numYears === 0) return principalToAmortize > 0 ? principalToAmortize : 0;
+                    const ratePowerN = Math.pow(1 + r_nominal, numYears);
+                    if (ratePowerN - 1 === 0) { 
+                        pmtAmount = principalToAmortize / numYears; 
+                    } else {
+                        pmtAmount = principalToAmortize * (r_nominal * ratePowerN) / (ratePowerN - 1);
+                    }
+                }
+                return pmtAmount > 0 ? pmtAmount : 0;
+            };
+
+            results.amortizedWithdrawal = runSimulation(calculateInitialAmortizedWithdrawal);
+            results.amortizedWithdrawal.type = `Amortized: Calculated initial withdrawal, inflation-adjusted.`;
+            // The firstYearWithdrawalAmount is already calculated by runSimulation
+            const initialAmortizedRateDecimal = results.amortizedWithdrawal.firstYearWithdrawalAmount / startingBalance;
+            results.amortizedWithdrawal.initialCalculatedRateAsDecimal = (isNaN(initialAmortizedRateDecimal) || !isFinite(initialAmortizedRateDecimal)) ? 0 : parseFloat(initialAmortizedRateDecimal.toFixed(4));
+            
+            return results;
+        }
+
+        // --- DOM Manipulation and Charting ---
+        const calculateButton = document.getElementById('calculateButton');
+        const loader = document.getElementById('loader');
+        const messagesDiv = document.getElementById('messages');
+        const resultsSection = document.getElementById('resultsSection');
+
+        const inputFieldsConfig = [
+            { id: 'startingBalance', type: 'number' },
+            { id: 'estimatedAnnualGrowthRate', type: 'percentage' },
+            { id: 'estimatedVariation', type: 'percentage' },
+            { id: 'estimatedInflationRate', type: 'percentage' },
+            { id: 'startYear', type: 'number' },
+            { id: 'endYear', type: 'number' },
+            { id: 'desiredBalanceAtEndYear', type: 'number' },
+            { id: 'linearWithdrawalRateOfInitial', type: 'percentage' },
+            { id: 'monteCarloTrials', type: 'number' }
+        ];
+
+
+        calculateButton.addEventListener('click', () => {
+            messagesDiv.innerHTML = '';
+            messagesDiv.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            loader.classList.remove('hidden'); 
+
+            inputFieldsConfig.forEach(field => document.getElementById(field.id).classList.remove('border-red-500'));
+
+            const inputs = {};
+            let formValid = true;
+            let tempWarnings = []; // Collect parsing warnings here
+
+            inputFieldsConfig.forEach(field => {
+                const el = document.getElementById(field.id);
+                const rawValue = el.value;
+                let parsedValue;
+
+                if (field.type === 'percentage') {
+                    parsedValue = parsePercentageInput(rawValue);
+                } else { // type 'number'
+                    parsedValue = parseFloat(rawValue);
+                }
+
+                if (rawValue.trim() === '' || isNaN(parsedValue)) {
+                    el.classList.add('border-red-500');
+                    formValid = false;
+                    tempWarnings.push(`Invalid or empty value for ${el.previousElementSibling.textContent.replace(':','').trim()}.`);
+                }
+                inputs[field.id] = parsedValue;
+            });
+            
+            if (!formValid) {
+                displayMessages(tempWarnings, 'error');
+                loader.classList.add('hidden');
+                return;
+            }
+
+             if (inputs.endYear <= inputs.startYear) {
+                document.getElementById('startYear').classList.add('border-red-500');
+                document.getElementById('endYear').classList.add('border-red-500');
+                displayMessages(["End Year must be after Start Year."], 'error');
+                loader.classList.add('hidden');
+                return;
+            }
+
+            setTimeout(() => {
+                // inputs object now contains decimal values for percentages
+                const results = calculateWithdrawalsMonteCarlo(inputs);
+                loader.classList.add('hidden'); 
+
+                let allMessages = [];
+                let messageType = 'warning'; // Default to warning
+
+                if(results.error) { // Error from core logic (should be rare if frontend validation is good)
+                    allMessages.push(`Error: ${results.error}`);
+                    messageType = 'error';
+                }
+                if(results.warnings && results.warnings.length > 0) {
+                    allMessages = allMessages.concat(results.warnings.map(w => `Warning: ${w}`));
+                }
+                
+                if (tempWarnings.length > 0 && formValid) { // Display parsing warnings if form was otherwise valid
+                     allMessages = allMessages.concat(tempWarnings.map(w => `Input Notice: ${w}`));
+                }
+
+
+                if (allMessages.length > 0) {
+                    displayMessages(allMessages, messageType);
+                }
+                
+                if (results.linearWithdrawal || results.amortizedWithdrawal) {
+                     displayResults(results); // results.inputs already contains parsed decimal values
+                     resultsSection.classList.remove('hidden');
+                } else if (!results.error && (!results.warnings || results.warnings.length === 0) && tempWarnings.length === 0) {
+                    displayMessages(["Calculation completed, but no specific strategy data was generated. Check inputs."], 'warning');
+                }
+            }, 50);
+        });
+
+        function displayMessages(messagesArray, type = 'error') {
+            messagesDiv.innerHTML = messagesArray.map(msg => `<p>${msg}</p>`).join('');
+            messagesDiv.classList.remove('hidden', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-yellow-100', 'border-yellow-400', 'text-yellow-700', 'bg-blue-100', 'border-blue-400', 'text-blue-700');
+            if (type === 'error') {
+                messagesDiv.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+            } else if (type === 'warning') {
+                messagesDiv.classList.add('bg-yellow-100', 'border-yellow-400', 'text-yellow-700');
+            } else { // notice or info
+                 messagesDiv.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+        }
+
+
+        function displayResults(results) {
+            // Linear Withdrawal
+            if (results.linearWithdrawal) {
+                document.getElementById('linearType').textContent = results.linearWithdrawal.type || 'N/A';
+                document.getElementById('linearSuccessRate').textContent = results.linearWithdrawal.successRate.toFixed(2);
+                document.getElementById('linearFirstYearWithdrawal').textContent = results.linearWithdrawal.firstYearWithdrawalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('linearMedianEndBalance').textContent = results.linearWithdrawal.medianTrialEndBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                if (results.linearWithdrawal.simulationYears && results.linearWithdrawal.simulationYears.length > 0) {
+                    createOrUpdateChart('linearChart', results.linearWithdrawal.simulationYears, 'Linear Strategy - Median Trial Balance', 'rgb(59, 130, 246)', results.inputs.startingBalance);
+                } else {
+                    if(linearChartInstance) linearChartInstance.destroy();
+                    linearChartInstance = null;
+                    const canvas = document.getElementById('linearChart');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0,0, canvas.width, canvas.height);
+                    ctx.textAlign = 'center';
+                    ctx.font = '14px Inter';
+                    ctx.fillText('No simulation data for linear strategy.', canvas.width / 2, canvas.height / 2);
+                }
+            }
+
+            // Amortized Withdrawal
+            if (results.amortizedWithdrawal) {
+                document.getElementById('amortizedType').textContent = results.amortizedWithdrawal.type || 'N/A';
+                document.getElementById('amortizedSuccessRate').textContent = results.amortizedWithdrawal.successRate.toFixed(2);
+                document.getElementById('amortizedFirstYearWithdrawal').textContent = results.amortizedWithdrawal.firstYearWithdrawalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                // Use the initialCalculatedRateAsDecimal which is stored as decimal
+                document.getElementById('amortizedInitialRate').textContent = (results.amortizedWithdrawal.initialCalculatedRateAsDecimal * 100).toFixed(1);
+                document.getElementById('amortizedMedianEndBalance').textContent = results.amortizedWithdrawal.medianTrialEndBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                if (results.amortizedWithdrawal.simulationYears && results.amortizedWithdrawal.simulationYears.length > 0) {
+                    createOrUpdateChart('amortizedChart', results.amortizedWithdrawal.simulationYears, 'Amortized Strategy - Median Trial Balance', 'rgb(16, 185, 129)', results.inputs.startingBalance);
+                } else {
+                     if(amortizedChartInstance) amortizedChartInstance.destroy();
+                     amortizedChartInstance = null;
+                     const canvas = document.getElementById('amortizedChart');
+                     const ctx = canvas.getContext('2d');
+                     ctx.clearRect(0,0, canvas.width, canvas.height);
+                     ctx.textAlign = 'center';
+                     ctx.font = '14px Inter';
+                     ctx.fillText('No simulation data for amortized strategy.', canvas.width / 2, canvas.height / 2);
+                }
+            }
+        }
+
+        function createOrUpdateChart(canvasId, simulationData, chartTitle, color, startingBalance) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const labels = simulationData.map(d => d.year);
+            const balanceData = simulationData.map(d => d.balanceAtYearEnd);
+            const withdrawalData = simulationData.map(d => d.withdrawalTaken);
+
+            const displayLabels = [simulationData.length > 0 ? simulationData[0].year -1 : (new Date().getFullYear() -1) , ...labels];
+            const displayBalanceData = [startingBalance, ...balanceData];
+
+
+            let chartInstance = canvasId === 'linearChart' ? linearChartInstance : amortizedChartInstance;
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: displayLabels,
+                    datasets: [{
+                        label: 'Portfolio Balance ($)',
+                        data: displayBalanceData,
+                        borderColor: color,
+                        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                        tension: 0.1,
+                        fill: true,
+                        yAxisID: 'yBalance',
+                    },
+                    {
+                        label: 'Annual Withdrawal ($)',
+                        data: [0, ...withdrawalData], 
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                        tension: 0.1,
+                        fill: false,
+                        yAxisID: 'yWithdrawal',
+                        borderDash: [5, 5], 
+                    }
+                ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: chartTitle, // Use passed chartTitle
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        },
+                        yBalance: { 
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Portfolio Balance ($)'
+                            },
+                            ticks: {
+                                callback: function(value) { return '$' + value.toLocaleString(); }
+                            }
+                        },
+                        yWithdrawal: { 
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Annual Withdrawal ($)'
+                            },
+                            ticks: {
+                                callback: function(value) { return '$' + value.toLocaleString(); }
+                            },
+                            grid: { 
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
+            });
+
+            if (canvasId === 'linearChart') {
+                linearChartInstance = chartInstance;
+            } else {
+                amortizedChartInstance = chartInstance;
+            }
+        }
+    </script>
+
+</body>
+</html>
