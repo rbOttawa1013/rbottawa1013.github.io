@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRSP Meltdown & CPP Deferral Calculator (Ontario)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 5px solid #3498db;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+        th { background-color: #f2f2f2; text-align: center; }
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; }
+        .input-group input { width: 100%; padding: 0.5rem; border-radius: 0.25rem; border: 1px solid #ccc; }
+        .results-container { margin-top: 2rem; padding: 1rem; background-color: #f9f9f9; border-radius: 0.5rem; }
+        .summary-table th, .summary-table td { text-align: left; }
+        .commentary { margin-top: 1.5rem; padding: 1rem; border-radius: 0.375rem; }
+        .chart-container { margin-top: 2rem; padding: 1rem; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="container mx-auto max-w-5xl bg-white p-6 md:p-8 rounded-lg shadow-xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-700">RRSP Meltdown & CPP Deferral Calculator</h1>
+            <p class="text-gray-600">For Ontario Residents - Comparing retirement income strategies.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <section class="p-4 border rounded-md bg-gray-50">
+                <h2 class="text-xl font-semibold mb-3 text-blue-600">Your Financial Details</h2>
+                <div class="input-group">
+                    <label for="currentAge">Current Age:</label>
+                    <input type="number" id="currentAge" value="60">
+                </div>
+                <div class="input-group">
+                    <label for="retirementAge">Retirement Age (usually 65 for this model):</label>
+                    <input type="number" id="retirementAge" value="65" disabled>
+                </div>
+                <div class="input-group">
+                    <label for="lifeExpectancy">Life Expectancy (e.g., 90, 95):</label>
+                    <input type="number" id="lifeExpectancy" value="90">
+                </div>
+                <div class="input-group">
+                    <label for="initialRRSPBalance">Current RRSP Balance ($):</label>
+                    <input type="number" id="initialRRSPBalance" value="300000">
+                </div>
+                <div class="input-group">
+                    <label for="cppAt65Monthly">Estimated CPP at Age 65 (Monthly, $):</label>
+                    <input type="number" id="cppAt65Monthly" value="1000">
+                </div>
+                 <div class="input-group">
+                    <label for="otherTaxableIncome">Other Annual Taxable Income (Current $, indexed):</label>
+                    <input type="number" id="otherTaxableIncome" value="0">
+                </div>
+            </section>
+
+            <section class="p-4 border rounded-md bg-gray-50">
+                <h2 class="text-xl font-semibold mb-3 text-blue-600">Assumptions & Scenario 2 Details</h2>
+                <div class="input-group">
+                    <label for="inflationRate">Annual Inflation Rate (%):</label>
+                    <input type="number" step="0.1" id="inflationRate" value="2.1">
+                </div>
+                <div class="input-group">
+                    <label for="rorRRSP">Annual Rate of Return on RRSP (%):</label>
+                    <input type="number" step="0.1" id="rorRRSP" value="4.0">
+                </div>
+                <hr class="my-4">
+                <h3 class="text-lg font-medium mb-2">For Scenario 2 (RRSP Meltdown & Delayed CPP):</h3>
+                <div class="input-group">
+                    <label for="cppStartAgeS2">Age to Start CPP (for detailed table & main comparison):</label>
+                    <input type="number" id="cppStartAgeS2" value="69" min="66" max="70">
+                </div>
+                <div class="input-group">
+                    <label for="rrspMeltdownAnnualWithdrawal">Annual RRSP Meltdown Withdrawal ($) (During years 65 to CPP Start Age - 1):</label>
+                    <input type="number" id="rrspMeltdownAnnualWithdrawal" value="20000">
+                </div>
+                 <div class="input-group">
+                    <label for="rrspWithdrawalS1Post71">Scenario 1: Annual RRSP Withdrawal Post-71 ($) (if 0, RRIF min approx.):</label>
+                    <input type="number" id="rrspWithdrawalS1Post71" value="0">
+                </div>
+                <div class="input-group">
+                    <label for="rrspWithdrawalS2PostMeltdownPost71">Scenario 2: Annual RRSP Withdrawal Post-Meltdown & Post-71 ($) (if 0, RRIF min approx.):</label>
+                    <input type="number" id="rrspWithdrawalS2PostMeltdownPost71" value="0">
+                </div>
+            </section>
+        </div>
+
+        <div class="text-center mb-8">
+            <button id="calculateButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md transition duration-150 ease-in-out">
+                Calculate Scenarios & Show Graphs
+            </button>
+        </div>
+        
+        <div id="loader" class="hidden loader"></div>
+
+        <div id="resultsArea" class="space-y-8">
+            </div>
+        
+        <div class="mt-8 p-4 border rounded-md bg-yellow-50 text-yellow-800 text-sm">
+            <h4 class="font-semibold">Important Notes & Simplifications:</h4>
+            <ul class="list-disc list-inside ml-4">
+                <li>All calculations are estimates and for illustrative purposes.</li>
+                <li>Tax laws and benefit amounts can change. Base year for rates/amounts is 2025.</li>
+                <li>Ontario Health Premium is not included in this calculation.</li>
+                <li>RRIF minimum withdrawals: If post-71 RRSP withdrawals are set to $0, a simplified RRIF minimum (based on age 71 factor, not precise graduated scale) is used. For more precise RRIF minimums, input a specific withdrawal amount.</li>
+                <li>Pension Income Tax Credit: Applied to CPP and assumed to apply to RRSP/RRIF withdrawals for individuals aged 65+. In reality, RRSP withdrawals must typically be from a RRIF or annuity to qualify for the pension income amount.</li>
+                <li>Federal Basic Personal Amount (BPA) phase-out for high incomes is simplified. The maximum BPA is used and indexed.</li>
+                <li>This model does not account for TFSA interactions or non-registered investments beyond the RRSP.</li>
+                <li>Consult a qualified financial advisor for personalized advice.</li>
+            </ul>
+        </div>
+    </div>
+
+<script>
+    // Register ChartDataLabels plugin globally
+    Chart.register(ChartDataLabels);
+
+    // --- Constants (Base Year 2025) ---
+    const BASE_YEAR = 2025;
+
+    const FED_TAX_BRACKETS_BASE = [57375, 114750, 177882, 253414];
+    const FED_TAX_RATES = [0.15, 0.205, 0.26, 0.29, 0.33];
+    const FED_BPA_BASE = 16164; 
+    const FED_PENSION_CREDIT_MAX_AMOUNT_BASE = 2000;
+    const FED_PENSION_CREDIT_RATE = 0.15;
+
+    const ON_TAX_BRACKETS_BASE = [52886, 105775, 150000, 220000];
+    const ON_TAX_RATES = [0.0505, 0.0915, 0.1116, 0.1216, 0.1316];
+    const ON_BPA_BASE = 12399; 
+    const ON_PENSION_CREDIT_MAX_AMOUNT_BASE = 1700; 
+    const ON_PENSION_CREDIT_RATE = 0.0505;
+
+    const OAS_MAX_MONTHLY_BASE = 727.67; 
+    const OAS_CLAWBACK_THRESHOLD_BASE = 93454; 
+    const OAS_CLAWBACK_MAX_INCOME_BASE = 151668; 
+    const OAS_CLAWBACK_RATE = 0.15;
+
+    const CPP_DEFERRAL_RATE_PER_MONTH = 0.007;
+
+    function getRRIFMinFactor(age) {
+        if (age < 71) return 0;
+        if (age > 94) return 0.20; 
+        return 1 / (90 - age);
+    }
+
+    // --- Helper Functions ---
+    function $(id) { return document.getElementById(id); }
+
+    function parseFloatInput(id, defaultValue = 0) {
+        const val = parseFloat($(id).value);
+        return isNaN(val) ? defaultValue : val;
+    }
+
+    function indexValue(baseValue, currentYear, inflationRate) {
+        if (currentYear < BASE_YEAR) return baseValue * Math.pow(1 + inflationRate / 100, currentYear - BASE_YEAR);
+        if (currentYear === BASE_YEAR) return baseValue;
+        return baseValue * Math.pow(1 + inflationRate / 100, currentYear - BASE_YEAR);
+    }
+
+    function formatCurrency(value) {
+        return value.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
+    }
+
+    function calculateProgressiveTax(taxableIncome, baseBrackets, rates, baseBpa, 
+                                     basePensionMaxAmount, pensionCreditRate, 
+                                     eligiblePensionIncome, currentYear, inflationRate) {
+        const indexedBpa = indexValue(baseBpa, currentYear, inflationRate);
+        const indexedPensionMaxClaimable = indexValue(basePensionMaxAmount, currentYear, inflationRate);
+        const indexedBrackets = baseBrackets.map(b => indexValue(b, currentYear, inflationRate));
+
+        let tax = 0;
+        let incomeRemaining = taxableIncome;
+        let lastBracketMax = 0;
+
+        for (let i = 0; i < rates.length; i++) {
+            const currentBracketLimit = (i < indexedBrackets.length) ? indexedBrackets[i] : Infinity;
+            const incomeInThisBracket = Math.max(0, Math.min(incomeRemaining, currentBracketLimit - lastBracketMax));
+            tax += incomeInThisBracket * rates[i];
+            incomeRemaining -= incomeInThisBracket;
+            lastBracketMax = currentBracketLimit;
+            if (incomeRemaining <= 0) break;
+        }
+        
+        const bpaCreditValue = indexedBpa * rates[0];
+        tax = Math.max(0, tax - bpaCreditValue);
+
+        const actualPensionForCredit = Math.min(eligiblePensionIncome, indexedPensionMaxClaimable);
+        const pensionCreditValue = actualPensionForCredit * pensionCreditRate; 
+        tax = Math.max(0, tax - pensionCreditValue);
+        return tax;
+    }
+
+    let activeCharts = []; 
+
+    function destroyActiveCharts() {
+        activeCharts.forEach(chart => chart.destroy());
+        activeCharts = [];
+    }
+
+
+    // --- Main Calculation Logic ---
+    $('calculateButton').addEventListener('click', () => {
+        $('loader').classList.remove('hidden');
+        $('resultsArea').innerHTML = ''; 
+        destroyActiveCharts(); 
+
+
+        setTimeout(() => { 
+            try {
+                const inputs = {
+                    currentAge: parseFloatInput('currentAge'),
+                    retirementAge: 65, 
+                    lifeExpectancy: parseFloatInput('lifeExpectancy', 90),
+                    initialRRSPBalance: parseFloatInput('initialRRSPBalance', 0),
+                    cppAt65Monthly: parseFloatInput('cppAt65Monthly', 0),
+                    otherTaxableIncomeBase: parseFloatInput('otherTaxableIncome', 0),
+                    inflationRate: parseFloatInput('inflationRate', 2.1),
+                    rorRRSP: parseFloatInput('rorRRSP', 4.0) / 100, 
+                    cppStartAgeS2UserSelected: parseFloatInput('cppStartAgeS2', 69), 
+                    rrspMeltdownAnnualWithdrawalBase: parseFloatInput('rrspMeltdownAnnualWithdrawal', 0),
+                    rrspWithdrawalS1Post71Base: parseFloatInput('rrspWithdrawalS1Post71', 0),
+                    rrspWithdrawalS2PostMeltdownPost71Base: parseFloatInput('rrspWithdrawalS2PostMeltdownPost71', 0),
+                };
+
+                const scenario1Results = runScenario(inputs, 1, 65); 
+                const scenario2UserSelectedResults = runScenario(inputs, 2, inputs.cppStartAgeS2UserSelected);
+                
+                const chartDataSource = [];
+                chartDataSource.push({
+                    cppStartAge: 65, 
+                    isScenario1: true,
+                    lifetimeIncome: scenario1Results.totalLifetimeAfterTaxIncome,
+                    oasClawback: scenario1Results.totalOASClawback,
+                    rrspBalance: scenario1Results.finalRRSPBalance
+                });
+
+                for (let cppAge = 66; cppAge <= 70; cppAge++) {
+                    const loopResults = runScenario(inputs, 2, cppAge);
+                    chartDataSource.push({
+                        cppStartAge: cppAge,
+                        isScenario1: false,
+                        lifetimeIncome: loopResults.totalLifetimeAfterTaxIncome,
+                        oasClawback: loopResults.totalOASClawback,
+                        rrspBalance: loopResults.finalRRSPBalance
+                    });
+                }
+                
+                const scenario1Title = 'Scenario 1: CPP & OAS at 65';
+                const scenario2UserSelectedTitle = `Scenario 2: RRSP Meltdown, Delayed CPP to Age ${inputs.cppStartAgeS2UserSelected}`;
+
+                displayResults(scenario1Title, scenario1Results);
+                displayResults(scenario2UserSelectedTitle, scenario2UserSelectedResults);
+                displaySummaryComparison(scenario1Results, scenario2UserSelectedResults, inputs.cppStartAgeS2UserSelected);
+                
+                displayCharts(chartDataSource);
+
+            } catch (error) {
+                console.error("Calculation Error:", error);
+                $('resultsArea').innerHTML = `<p class="text-red-500">An error occurred: ${error.message}. Please check console.</p>`;
+            } finally {
+                $('loader').classList.add('hidden');
+            }
+        }, 50); 
+    });
+
+    function runScenario(inputs, scenarioType, cppStartAgeForScenario) {
+        let annualData = [];
+        let currentRRSPBalance = inputs.initialRRSPBalance;
+        let totalLifetimeAfterTaxIncome = 0;
+        let totalOASClawback = 0;
+        let totalIncomeTax = 0;
+
+        const cppAt65AnnualBase = inputs.cppAt65Monthly * 12;
+
+        for (let age = inputs.retirementAge; age <= inputs.lifeExpectancy; age++) {
+            const currentYear = BASE_YEAR + (age - inputs.retirementAge); 
+            
+            const inflation = inputs.inflationRate;
+            const otherTaxableIncome = indexValue(inputs.otherTaxableIncomeBase, currentYear, inflation);
+            const oasMaxAnnual = indexValue(OAS_MAX_MONTHLY_BASE * 12, currentYear, inflation);
+            const oasClawbackThreshold = indexValue(OAS_CLAWBACK_THRESHOLD_BASE, currentYear, inflation);
+            const oasClawbackMaxIncome = indexValue(OAS_CLAWBACK_MAX_INCOME_BASE, currentYear, inflation);
+
+            let cppAnnual = 0;
+            let rrspWithdrawal = 0;
+
+            if (scenarioType === 1) { 
+                cppAnnual = indexValue(cppAt65AnnualBase, currentYear, inflation);
+                if (age >= 72) {
+                     rrspWithdrawal = inputs.rrspWithdrawalS1Post71Base > 0 ? 
+                                      indexValue(inputs.rrspWithdrawalS1Post71Base, currentYear, inflation) :
+                                      (currentRRSPBalance > 0 ? currentRRSPBalance * getRRIFMinFactor(age -1) : 0); 
+                } else if (age >= 65 && inputs.rrspWithdrawalS1Post71Base > 0) { 
+                     rrspWithdrawal = indexValue(inputs.rrspWithdrawalS1Post71Base, currentYear, inflation);
+                }
+            } else { 
+                if (age < cppStartAgeForScenario) { 
+                    cppAnnual = 0;
+                    rrspWithdrawal = indexValue(inputs.rrspMeltdownAnnualWithdrawalBase, currentYear, inflation);
+                } else { 
+                    const monthsDelayed = (cppStartAgeForScenario - 65) * 12;
+                    const deferralFactor = 1 + (monthsDelayed * CPP_DEFERRAL_RATE_PER_MONTH);
+                    cppAnnual = indexValue(cppAt65AnnualBase * deferralFactor, currentYear, inflation);
+                    
+                    if (age >= 72) {
+                        rrspWithdrawal = inputs.rrspWithdrawalS2PostMeltdownPost71Base > 0 ?
+                                         indexValue(inputs.rrspWithdrawalS2PostMeltdownPost71Base, currentYear, inflation) :
+                                         (currentRRSPBalance > 0 ? currentRRSPBalance * getRRIFMinFactor(age-1) : 0);
+                    } else if (age >= cppStartAgeForScenario && inputs.rrspWithdrawalS2PostMeltdownPost71Base > 0) {
+                        rrspWithdrawal = indexValue(inputs.rrspWithdrawalS2PostMeltdownPost71Base, currentYear, inflation);
+                    }
+                }
+            }
+            
+            rrspWithdrawal = Math.min(rrspWithdrawal, currentRRSPBalance);
+            if (currentRRSPBalance <=0) rrspWithdrawal = 0;
+
+            const incomeOAS = oasMaxAnnual;
+            const grossIncomeBeforeOAS = cppAnnual + rrspWithdrawal + otherTaxableIncome;
+            const totalIncomeWithOAS = grossIncomeBeforeOAS + incomeOAS;
+
+            let oasClawbackAmount = 0;
+            if (totalIncomeWithOAS > oasClawbackThreshold) {
+                oasClawbackAmount = Math.min(
+                    (totalIncomeWithOAS - oasClawbackThreshold) * OAS_CLAWBACK_RATE,
+                    incomeOAS 
+                );
+                if (totalIncomeWithOAS >= oasClawbackMaxIncome) {
+                    oasClawbackAmount = incomeOAS;
+                }
+            }
+            const adjustedOAS = Math.max(0, incomeOAS - oasClawbackAmount);
+            const taxableIncome = cppAnnual + adjustedOAS + rrspWithdrawal + otherTaxableIncome;
+            const eligiblePensionIncome = cppAnnual + (age >= 65 ? rrspWithdrawal : 0);
+
+            const federalTax = calculateProgressiveTax(taxableIncome, FED_TAX_BRACKETS_BASE, FED_TAX_RATES, 
+                                                     FED_BPA_BASE, FED_PENSION_CREDIT_MAX_AMOUNT_BASE, FED_PENSION_CREDIT_RATE,
+                                                     eligiblePensionIncome, currentYear, inflation);
+            const ontarioTax = calculateProgressiveTax(taxableIncome, ON_TAX_BRACKETS_BASE, ON_TAX_RATES,
+                                                     ON_BPA_BASE, ON_PENSION_CREDIT_MAX_AMOUNT_BASE, ON_PENSION_CREDIT_RATE,
+                                                     eligiblePensionIncome, currentYear, inflation);
+            const totalTax = federalTax + ontarioTax;
+            const afterTaxIncome = taxableIncome - totalTax;
+
+            currentRRSPBalance -= rrspWithdrawal;
+            currentRRSPBalance *= (1 + inputs.rorRRSP);
+            currentRRSPBalance = Math.max(0, currentRRSPBalance); 
+
+            annualData.push({
+                year: currentYear, age: age, cpp: cppAnnual, oasInitial: incomeOAS, oasClawback: oasClawbackAmount,
+                oasNet: adjustedOAS, rrspWithdrawal: rrspWithdrawal, otherIncome: otherTaxableIncome,
+                taxableIncome: taxableIncome, federalTax: federalTax, ontarioTax: ontarioTax, totalTax: totalTax,
+                afterTaxIncome: afterTaxIncome, endRRSPBalance: currentRRSPBalance
+            });
+
+            totalLifetimeAfterTaxIncome += afterTaxIncome;
+            totalOASClawback += oasClawbackAmount;
+            totalIncomeTax += totalTax;
+        }
+        return { annualData, totalLifetimeAfterTaxIncome, totalOASClawback, totalIncomeTax, finalRRSPBalance: currentRRSPBalance };
+    }
+
+    function displayResults(title, results) { 
+        let tableHtml = `<div class="results-container">
+            <h2 class="text-xl font-semibold mb-3 text-center text-blue-600">${title}</h2>
+            <div class="overflow-x-auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Year</th><th>Age</th><th>CPP</th><th>OAS (Net)</th><th>RRSP W/D</th><th>Other Inc.</th>
+                        <th>Taxable Inc.</th><th>Fed Tax</th><th>ON Tax</th><th>Total Tax</th><th>OAS Clawback</th>
+                        <th>After-Tax Inc.</th><th>End RRSP ($)</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        results.annualData.forEach(row => {
+            tableHtml += `<tr>
+                <td>${row.year}</td><td>${row.age}</td><td>${formatCurrency(row.cpp)}</td><td>${formatCurrency(row.oasNet)}</td>
+                <td>${formatCurrency(row.rrspWithdrawal)}</td><td>${formatCurrency(row.otherIncome)}</td>
+                <td>${formatCurrency(row.taxableIncome)}</td><td>${formatCurrency(row.federalTax)}</td>
+                <td>${formatCurrency(row.ontarioTax)}</td><td>${formatCurrency(row.totalTax)}</td>
+                <td>${formatCurrency(row.oasClawback)}</td><td>${formatCurrency(row.afterTaxIncome)}</td>
+                <td>${formatCurrency(row.endRRSPBalance)}</td>
+            </tr>`;
+        });
+        tableHtml += `</tbody></table></div>`;
+        tableHtml += `<div class="mt-4 p-3 bg-blue-100 rounded-md text-blue-800">
+            <h3 class="font-semibold text-lg">Summary for ${title}:</h3>
+            <p>Total Lifetime After-Tax Income: <strong>${formatCurrency(results.totalLifetimeAfterTaxIncome)}</strong></p>
+            <p>Total Income Tax Paid: <strong>${formatCurrency(results.totalIncomeTax)}</strong></p>
+            <p>Total OAS Clawback: <strong>${formatCurrency(results.totalOASClawback)}</strong></p>
+            <p>RRSP Balance at end of projection (Age ${results.annualData[results.annualData.length-1].age}): <strong>${formatCurrency(results.finalRRSPBalance)}</strong></p>
+        </div></div>`;
+        $('resultsArea').innerHTML += tableHtml;
+    }
+
+    function displaySummaryComparison(s1, s2UserSelected, cppStartAgeS2UserSelected) {
+        const scenario2Title = `Scenario 2 (Delayed CPP to Age ${cppStartAgeS2UserSelected})`;
+        let summaryHtml = `<div class="results-container mt-8">
+            <h2 class="text-2xl font-bold mb-4 text-center text-green-700">Overall Comparison (S1 vs S2 at selected CPP Age ${cppStartAgeS2UserSelected})</h2>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Scenario 1 (CPP @ 65)</th>
+                        <th>${scenario2Title}</th>
+                        <th>Difference (S2 - S1)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Total Lifetime After-Tax Income</td>
+                        <td>${formatCurrency(s1.totalLifetimeAfterTaxIncome)}</td>
+                        <td>${formatCurrency(s2UserSelected.totalLifetimeAfterTaxIncome)}</td>
+                        <td class="${s2UserSelected.totalLifetimeAfterTaxIncome >= s1.totalLifetimeAfterTaxIncome ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">${formatCurrency(s2UserSelected.totalLifetimeAfterTaxIncome - s1.totalLifetimeAfterTaxIncome)}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Income Tax Paid</td>
+                        <td>${formatCurrency(s1.totalIncomeTax)}</td>
+                        <td>${formatCurrency(s2UserSelected.totalIncomeTax)}</td>
+                        <td class="${s2UserSelected.totalIncomeTax <= s1.totalIncomeTax ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">${formatCurrency(s2UserSelected.totalIncomeTax - s1.totalIncomeTax)}</td>
+                    </tr>
+                    <tr>
+                        <td>Total OAS Clawback</td>
+                        <td>${formatCurrency(s1.totalOASClawback)}</td>
+                        <td>${formatCurrency(s2UserSelected.totalOASClawback)}</td>
+                        <td class="${s2UserSelected.totalOASClawback <= s1.totalOASClawback ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">${formatCurrency(s2UserSelected.totalOASClawback - s1.totalOASClawback)}</td>
+                    </tr>
+                    <tr>
+                        <td>Final RRSP Balance (Age ${s1.annualData[s1.annualData.length-1].age})</td>
+                        <td>${formatCurrency(s1.finalRRSPBalance)}</td>
+                        <td>${formatCurrency(s2UserSelected.finalRRSPBalance)}</td>
+                        <td class="${s2UserSelected.finalRRSPBalance >= s1.finalRRSPBalance ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">${formatCurrency(s2UserSelected.finalRRSPBalance - s1.finalRRSPBalance)}</td>
+                    </tr>
+                </tbody>
+            </table>`;
+
+        let commentaryText = '<div class="commentary bg-blue-50 border border-blue-200 text-blue-800">';
+        commentaryText += `<h3 class="font-semibold text-lg mb-2">Outcome Commentary (Comparing S1 with S2 at CPP Start Age ${cppStartAgeS2UserSelected}):</h3>`;
+        if (s2UserSelected.totalLifetimeAfterTaxIncome > s1.totalLifetimeAfterTaxIncome) {
+            commentaryText += `<p>Scenario 2 (Delaying CPP to age ${cppStartAgeS2UserSelected} with RRSP meltdown) results in approximately <strong>${formatCurrency(s2UserSelected.totalLifetimeAfterTaxIncome - s1.totalLifetimeAfterTaxIncome)} more</strong> total lifetime after-tax income compared to Scenario 1.</p>`;
+        } else if (s1.totalLifetimeAfterTaxIncome > s2UserSelected.totalLifetimeAfterTaxIncome) {
+            commentaryText += `<p>Scenario 1 (CPP & OAS at 65) results in approximately <strong>${formatCurrency(s1.totalLifetimeAfterTaxIncome - s2UserSelected.totalLifetimeAfterTaxIncome)} more</strong> total lifetime after-tax income compared to Scenario 2 (CPP at ${cppStartAgeS2UserSelected}).</p>`;
+        } else {
+            commentaryText += `<p>Both scenarios result in approximately the same total lifetime after-tax income when Scenario 2 CPP starts at age ${cppStartAgeS2UserSelected}.</p>`;
+        }
+         if (s2UserSelected.totalIncomeTax < s1.totalIncomeTax) {
+            commentaryText += `<p>Scenario 2 also leads to paying approximately <strong>${formatCurrency(s1.totalIncomeTax - s2UserSelected.totalIncomeTax)} less</strong> in total income taxes over the projection period.</p>`;
+        } else if (s1.totalIncomeTax < s2UserSelected.totalIncomeTax) {
+            commentaryText += `<p>However, Scenario 2 results in paying approximately <strong>${formatCurrency(s2UserSelected.totalIncomeTax - s1.totalIncomeTax)} more</strong> in total income taxes.</p>`;
+        }
+
+        if (s2UserSelected.totalOASClawback < s1.totalOASClawback) {
+            commentaryText += `<p>The total OAS clawback is reduced by approximately <strong>${formatCurrency(s1.totalOASClawback - s2UserSelected.totalOASClawback)}</strong> in Scenario 2.</p>`;
+        } else if (s1.totalOASClawback < s2UserSelected.totalOASClawback) {
+            commentaryText += `<p>The total OAS clawback is higher by approximately <strong>${formatCurrency(s2UserSelected.totalOASClawback - s1.totalOASClawback)}</strong> in Scenario 2.</p>`;
+        }
+        
+        if (s2UserSelected.finalRRSPBalance > s1.finalRRSPBalance) {
+            commentaryText += `<p>The projected RRSP balance at the end of the period is higher by approximately <strong>${formatCurrency(s2UserSelected.finalRRSPBalance - s1.finalRRSPBalance)}</strong> in Scenario 2.</p>`;
+        } else if (s1.finalRRSPBalance > s2UserSelected.finalRRSPBalance) {
+            commentaryText += `<p>The projected RRSP balance at the end of the period is lower by approximately <strong>${formatCurrency(s1.finalRRSPBalance - s2UserSelected.finalRRSPBalance)}</strong> in Scenario 2.</p>`;
+        }
+
+
+        commentaryText += `<p class="mt-2"><strong>Overall (for S2 at CPP Start Age ${cppStartAgeS2UserSelected}):</strong> Based on these projections, `;
+        if (s2UserSelected.totalLifetimeAfterTaxIncome > s1.totalLifetimeAfterTaxIncome) {
+            commentaryText += `Scenario 2 (delaying CPP to ${cppStartAgeS2UserSelected} and utilizing an RRSP meltdown) appears to be more financially advantageous.`;
+        } else if (s1.totalLifetimeAfterTaxIncome > s2UserSelected.totalLifetimeAfterTaxIncome) {
+            commentaryText += `Scenario 1 (starting CPP and OAS at 65) appears to be more financially advantageous compared to Scenario 2 with CPP starting at ${cppStartAgeS2UserSelected}.`;
+        } else {
+            commentaryText += `both scenarios offer very similar outcomes when Scenario 2 CPP starts at age ${cppStartAgeS2UserSelected}.`;
+        }
+        commentaryText += ` The graphs below will show how Scenario 2 performs across various CPP start ages. Consider your personal risk tolerance, health, and income needs. These calculations are illustrative.</p>`;
+        commentaryText += '</div>';
+        summaryHtml += commentaryText + `</div>`;
+        $('resultsArea').innerHTML += summaryHtml;
+    }
+
+    function displayCharts(chartDataSource) {
+        const chartLabels = chartDataSource.map(d => d.isScenario1 ? `S1 @${d.cppStartAge}` : `S2 @${d.cppStartAge}`);
+        const baselineIncomeS1 = chartDataSource.find(d => d.isScenario1).lifetimeIncome;
+        
+        const chartAreaDiv = document.createElement('div');
+        chartAreaDiv.className = 'results-container mt-8 space-y-6';
+        chartAreaDiv.innerHTML = `<h2 class="text-2xl font-bold mb-4 text-center text-purple-700">Trend Analysis Across CPP Start Ages</h2>`;
+
+        const canvasLifetimeIncome = document.createElement('canvas');
+        const canvasOASClawback = document.createElement('canvas');
+        const canvasRRSPBalance = document.createElement('canvas');
+
+        chartAreaDiv.appendChild(createChartContainer(canvasLifetimeIncome, "Total Lifetime After-Tax Income vs. CPP Start Age"));
+        chartAreaDiv.appendChild(createChartContainer(canvasOASClawback, "Total OAS Clawback vs. CPP Start Age"));
+        chartAreaDiv.appendChild(createChartContainer(canvasRRSPBalance, "Final RRSP Balance vs. CPP Start Age"));
+        
+        $('resultsArea').appendChild(chartAreaDiv);
+
+        // Chart 1: Total Lifetime After-Tax Income
+        activeCharts.push(new Chart(canvasLifetimeIncome.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Total Lifetime After-Tax Income',
+                    data: chartDataSource.map(d => d.lifetimeIncome),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                scales: { 
+                    y: { 
+                        beginAtZero: false, 
+                        ticks: { callback: value => formatCurrency(value) } 
+                    } 
+                },
+                plugins: {
+                    datalabels: {
+                        align: 'top',
+                        anchor: 'end',
+                        color: '#333',
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (value, context) => {
+                            const dataPoint = chartDataSource[context.dataIndex];
+                            if (dataPoint.isScenario1) {
+                                return 'Baseline';
+                            }
+                            if (baselineIncomeS1 === 0) return 'N/A'; // Avoid division by zero
+                            const percentageIncrease = ((value - baselineIncomeS1) / baselineIncomeS1) * 100;
+                            return (percentageIncrease >= 0 ? '+' : '') + percentageIncrease.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }));
+
+        // Chart 2: Total OAS Clawback
+        activeCharts.push(new Chart(canvasOASClawback.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Total OAS Clawback',
+                    data: chartDataSource.map(d => d.oasClawback),
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: { 
+                scales: { y: { beginAtZero: true, ticks: { callback: value => formatCurrency(value) } } },
+                plugins: { datalabels: { display: false } } // No specific datalabels for this chart
+            }
+        }));
+
+        // Chart 3: Final RRSP Balance
+        activeCharts.push(new Chart(canvasRRSPBalance.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Final RRSP Balance',
+                    data: chartDataSource.map(d => d.rrspBalance),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: { 
+                scales: { y: { beginAtZero: false, ticks: { callback: value => formatCurrency(value) } } },
+                plugins: { datalabels: { display: false } } // No specific datalabels for this chart
+            }
+        }));
+    }
+
+    function createChartContainer(canvasElement, titleText) {
+        const container = document.createElement('div');
+        container.className = 'chart-container';
+        const title = document.createElement('h3');
+        title.className = 'text-lg font-semibold mb-2 text-center';
+        title.textContent = titleText;
+        container.appendChild(title);
+        container.appendChild(canvasElement);
+        return container;
+    }
+
+</script>
+</body>
+</html>
