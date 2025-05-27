@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Racer Adventure!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+            background: linear-gradient(135deg, #e0f2fe 0%, #3b82f6 100%);
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #1e40af;
+        }
+        .lang-toggle {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .lang-toggle:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        .banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1.5rem 3rem;
+            border-radius: 1rem;
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: white;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            transition: opacity 0.5s ease-in-out;
+        }
+        .go-banner {
+            background-color: rgba(16, 185, 129, 0.95);
+        }
+        .winner-banner {
+            background-color: rgba(59, 130, 246, 0.95);
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 2px solid #e5e7eb;
+        }
+        .main-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 80rem;
+        }
+        .control-panel label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        .control-panel input[type="number"], .control-panel select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            color: #374151;
+            font-weight: 500;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .control-panel input[type="number"]:focus, .control-panel select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+        .control-panel button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-action {
+            background-color: #10b981;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-action:hover {
+            background-color: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #message-box {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 200;
+            display: none;
+            font-weight: 500;
+            transition: opacity 0.3s ease;
+        }
+        .message-error {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
+        .message-success {
+            background-color: #d1fae5;
+            color: #047857;
+            border: 1px solid #10b981;
+        }
+        .racer-controls {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .racer-controls h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1f2937;
+            text-align: center;
+        }
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <header class="header">
+        <h1 id="app-title">Maze Racer Adventure!</h1>
+        <button id="langToggle" class="lang-toggle">Français</button>
+    </header>
+
+    <div id="message-box"></div>
+
+    <div class="w-full max-w-5xl p-6 md:p-8 main-container">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 mb-8 control-panel">
+            <div>
+                <label for="rows" id="rows-label">Maze Rows (N):</label>
+                <input type="number" id="rows" value="12" min="5" max="30" class="rounded border-gray-300">
+            </div>
+            <div>
+                <label for="cols" id="cols-label">Maze Columns (M):</label>
+                <input type="number" id="cols" value="16" min="5" max="40" class="rounded border-gray-300">
+            </div>
+            <div>
+                <label for="complexity" id="complexity-label">Maze Difficulty:</label>
+                <select id="complexity" class="rounded border-gray-300">
+                    <option value="low" data-lang-key="difficulty-easy">Easy</option>
+                    <option value="medium" selected data-lang-key="difficulty-medium">Medium</option>
+                    <option value="high" data-lang-key="difficulty-hard">Hard</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 control-panel">
+            <div class="racer-controls">
+                <h3 id="turtle-setup">🐢 Turtle's Setup</h3>
+                <div>
+                    <label for="turtleSpeed" id="turtle-speed-label">Speed:</label>
+                    <select id="turtleSpeed">
+                        <option value="0" data-lang-key="speed-slow">Slow</option>
+                        <option value="1" selected data-lang-key="speed-medium">Medium</option>
+                        <option value="2" data-lang-key="speed-fast">Fast</option>
+                    </select>
+                </div>
+                <div class="mt-3">
+                    <label for="turtleIntelligence" id="turtle-intelligence-label">Smartness:</label>
+                    <select id="turtleIntelligence">
+                        <option value="low" data-lang-key="intel-low">A Bit Clumsy</option>
+                        <option value="medium" data-lang-key="intel-medium">Pretty Smart</option>
+                        <option value="high" selected data-lang-key="intel-high">Super Genius!</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="racer-controls">
+                <h3 id="rabbit-setup">🐇 Rabbit's Setup</h3>
+                <div>
+                    <label for="rabbitSpeed" id="rabbit-speed-label">Speed:</label>
+                    <select id="rabbitSpeed">
+                        <option value="0" data-lang-key="speed-slow">Slow</option>
+                        <option value="1" selected data-lang-key="speed-medium">Medium</option>
+                        <option value="2" data-lang-key="speed-fast">Fast</option>
+                    </select>
+                </div>
+                <div class="mt-3">
+                    <label for="rabbitIntelligence" id="rabbit-intelligence-label">Smartness:</label>
+                    <select id="rabbitIntelligence">
+                        <option value="low" data-lang-key="intel-low">A Bit Clumsy</option>
+                        <option value="medium" data-lang-key="intel-medium">Pretty Smart</option>
+                        <option value="high" selected data-lang-key="intel-high">Super Genius!</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+            <button id="generateBtn" class="btn-primary" data-lang-key="generate-btn">Make New Maze!</button>
+            <button id="startBtn" class="btn-action" disabled data-lang-key="start-btn">Start Race!</button>
+            <button id="resetBtn" class="btn-secondary" disabled data-lang-key="reset-btn">Reset Racers</button>
+        </div>
+
+        <div class="relative w-full aspect-[4/3] max-w-full mx-auto">
+            <canvas id="mazeCanvas"></canvas>
+            <div id="goBanner" class="banner go-banner" data-lang-key="go-banner">Go Go Go!</div>
+            <div id="winnerBanner" class="banner winner-banner"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p id="footer-text">© 2025 Maze Racer Adventure</p>
+    </footer>
+
+    <script>
+        // Language translations
+        const translations = {
+            en: {
+                'app-title': 'Maze Racer Adventure!',
+                'rows-label': 'Maze Rows (N):',
+                'cols-label': 'Maze Columns (M):',
+                'complexity-label': 'Maze Difficulty:',
+                'difficulty-easy': 'Easy',
+                'difficulty-medium': 'Medium',
+                'difficulty-hard': 'Hard',
+                'turtle-setup': '🐢 Turtle\'s Setup',
+                'turtle-speed-label': 'Speed:',
+                'turtle-intelligence-label': 'Smartness:',
+                'rabbit-setup': '🐇 Rabbit\'s Setup',
+                'rabbit-speed-label': 'Speed:',
+                'rabbit-intelligence-label': 'Smartness:',
+                'speed-slow': 'Slow',
+                'speed-medium': 'Medium',
+                'speed-fast': 'Fast',
+                'intel-low': 'A Bit Clumsy',
+                'intel-medium': 'Pretty Smart',
+                'intel-high': 'Super Genius!',
+                'generate-btn': 'Make New Maze!',
+                'start-btn': 'Start Race!',
+                'reset-btn': 'Reset Racers',
+                'go-banner': 'Go Go Go!',
+                'turtle-winner': '🐢 Turtle is the Winner!',
+                'rabbit-winner': '🐇 Rabbit is the Winner!',
+                'invalid-input': 'Please use 5-30 rows and 5-40 columns.',
+                'maze-error': 'Cannot start race: Maze problem!',
+                'maze-impossible': 'Oh no! This maze seems impossible to solve.',
+                'footer-text': '© 2025 Maze Racer Adventure',
+                'lang-toggle': 'Français'
+            },
+            fr: {
+                'app-title': 'Aventure de Course dans le Labyrinthe !',
+                'rows-label': 'Lignes du Labyrinthe (N) :',
+                'cols-label': 'Colonnes du Labyrinthe (M) :',
+                'complexity-label': 'Difficulté du Labyrinthe :',
+                'difficulty-easy': 'Facile',
+                'difficulty-medium': 'Moyen',
+                'difficulty-hard': 'Difficile',
+                'turtle-setup': '🐢 Configuration de la Tortue',
+                'turtle-speed-label': 'Vitesse :',
+                'turtle-intelligence-label': 'Intelligence :',
+                'rabbit-setup': '🐇 Configuration du Lapin',
+                'rabbit-speed-label': 'Vitesse :',
+                'rabbit-intelligence-label': 'Intelligence :',
+                'speed-slow': 'Lent',
+                'speed-medium': 'Moyen',
+                'speed-fast': 'Rapide',
+                'intel-low': 'Un Peu Maladroit',
+                'intel-medium': 'Assez Intelligent',
+                'intel-high': 'Super Génie !',
+                'generate-btn': 'Créer un Nouveau Labyrinthe !',
+                'start-btn': 'Démarrer la Course !',
+                'reset-btn': 'Réinitialiser les Coureurs',
+                'go-banner': 'Allez, Allez, Allez !',
+                'turtle-winner': '🐢 La Tortue est la Gagnante !',
+                'rabbit-winner': '🐇 Le Lapin est le Gagnant !',
+                'invalid-input': 'Veuillez utiliser 5-30 lignes et 5-40 colonnes.',
+                'maze-error': 'Impossible de démarrer la course : problème de labyrinthe !',
+                'maze-impossible': 'Oh non ! Ce labyrinthe semble impossible à résoudre.',
+                'footer-text': '© 2025 Aventure de Course dans le Labyrinthe',
+                'lang-toggle': 'English'
+            }
+        };
+
+        let currentLang = 'en';
+
+        function updateLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-lang-key]').forEach(element => {
+                const key = element.getAttribute('data-lang-key');
+                element.textContent = translations[lang][key];
+            });
+            document.querySelectorAll('option[data-lang-key]').forEach(option => {
+                const key = option.getAttribute('data-lang-key');
+                option.textContent = translations[lang][key];
+            });
+            document.querySelectorAll('label[id]').forEach(label => {
+                const key = label.id;
+                label.textContent = translations[lang][key];
+            });
+            document.querySelector('#app-title').textContent = translations[lang]['app-title'];
+            document.querySelector('#footer-text').textContent = translations[lang]['footer-text'];
+            document.querySelector('#langToggle').textContent = translations[lang]['lang-toggle'];
+        }
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const rowsInput = document.getElementById('rows');
+        const colsInput = document.getElementById('cols');
+        const complexityInput = document.getElementById('complexity');
+        const turtleSpeedInput = document.getElementById('turtleSpeed');
+        const turtleIntelligenceInput = document.getElementById('turtleIntelligence');
+        const rabbitSpeedInput = document.getElementById('rabbitSpeed');
+        const rabbitIntelligenceInput = document.getElementById('rabbitIntelligence');
+        const generateBtn = document.getElementById('generateBtn');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const goBanner = document.getElementById('goBanner');
+        const winnerBanner = document.getElementById('winnerBanner');
+        const messageBox = document.getElementById('message-box');
+        const langToggle = document.getElementById('langToggle');
+
+        // --- Maze & Race Configuration ---
+        let maze = [];
+        let rows, cols;
+        let cellSize;
+        let solutionPath = [];
+        let turtlePos, rabbitPos;
+        let turtlePathIdx, rabbitPathIdx;
+        let turtleActualPath = [];
+        let rabbitActualPath = [];
+        let animationFrameId;
+        let raceInProgress = false;
+        let winnerDeclared = false;
+
+        const WALL_COLOR = '#374151';
+        const PATH_COLOR = '#f9fafb';
+        const START_COLOR = '#10b981';
+        const END_COLOR = '#ef4444';
+        const TURTLE_TRACE_COLOR = 'rgba(16, 185, 129, 0.6)';
+        const RABBIT_TRACE_COLOR = 'rgba(59, 130, 246, 0.6)';
+        const BASE_SPEED_DELAYS = [600, 300, 120];
+
+        const MEDIUM_INTELLIGENCE_STALL_CHANCE = 0.30;
+        const MEDIUM_INTELLIGENCE_SHORT_JUMP_CHANCE = 0.10;
+        const LOW_INTELLIGENCE_STALL_CHANCE = 0.50;
+        const LOW_INTELLIGENCE_BACKTRACK_CHANCE = 0.20;
+        const LOW_INTELLIGENCE_CONFUSION_STALL_TURNS = 1;
+
+        // --- Utility Functions ---
+        function showMessage(messageKey, isError = true) {
+            messageBox.textContent = translations[currentLang][messageKey];
+            messageBox.className = isError ? 'message-error' : 'message-success';
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3500);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- Maze Generation (Recursive Backtracker) ---
+        function createGrid(r, c) {
+            maze = [];
+            for (let i = 0; i < r; i++) {
+                maze[i] = [];
+                for (let j = 0; j < c; j++) {
+                    maze[i][j] = {
+                        r: i, c: j,
+                        north: true, south: true, east: true, west: true,
+                        visited: false, isSolutionPath: false,
+                        tracedByTurtle: false, tracedByRabbit: false,
+                    };
+                }
+            }
+        }
+
+        function generateMaze() {
+            rows = parseInt(rowsInput.value);
+            cols = parseInt(colsInput.value);
+
+            if (isNaN(rows) || isNaN(cols) || rows < 5 || cols < 5 || rows > 30 || cols > 40) {
+                showMessage("invalid-input");
+                return;
+            }
+
+            createGrid(rows, cols);
+            const stack = [];
+            let current = maze[0][0];
+            current.visited = true;
+            let visitedCells = 1;
+
+            while (visitedCells < rows * cols) {
+                const neighbors = [];
+                if (current.r > 0 && !maze[current.r - 1][current.c].visited) neighbors.push(maze[current.r - 1][current.c]);
+                if (current.r < rows - 1 && !maze[current.r + 1][current.c].visited) neighbors.push(maze[current.r + 1][current.c]);
+                if (current.c < cols - 1 && !maze[current.r][current.c + 1].visited) neighbors.push(maze[current.r][current.c + 1]);
+                if (current.c > 0 && !maze[current.r][current.c - 1].visited) neighbors.push(maze[current.r][current.c - 1]);
+
+                if (neighbors.length > 0) {
+                    stack.push(current);
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    if (next.r < current.r) { current.north = false; next.south = false; }
+                    else if (next.r > current.r) { current.south = false; next.north = false; }
+                    else if (next.c < current.c) { current.west = false; next.east = false; }
+                    else if (next.c > current.c) { current.east = false; next.west = false; }
+                    current = next;
+                    current.visited = true;
+                    visitedCells++;
+                } else if (stack.length > 0) {
+                    current = stack.pop();
+                }
+            }
+
+            const complexity = complexityInput.value;
+            let wallsToRemovePercentage = 0;
+            if (complexity === 'low') wallsToRemovePercentage = 0.30;
+            else if (complexity === 'medium') wallsToRemovePercentage = 0.15;
+            else if (complexity === 'high') wallsToRemovePercentage = 0.05;
+
+            const internalWalls = [];
+            for (let r_idx = 0; r_idx < rows; r_idx++) {
+                for (let c_idx = 0; c_idx < cols; c_idx++) {
+                    if (r_idx < rows - 1 && maze[r_idx][c_idx].south) internalWalls.push({r: r_idx, c: c_idx, dir: 'south'});
+                    if (c_idx < cols - 1 && maze[r_idx][c_idx].east) internalWalls.push({r: r_idx, c: c_idx, dir: 'east'});
+                }
+            }
+            shuffleArray(internalWalls);
+            const numWallsToRemove = Math.floor(internalWalls.length * wallsToRemovePercentage);
+
+            for (let i = 0; i < numWallsToRemove; i++) {
+                const wall = internalWalls[i];
+                try {
+                    if (wall.dir === 'south' && maze[wall.r][wall.c].south) {
+                        maze[wall.r][wall.c].south = false;
+                        if (wall.r + 1 < rows) maze[wall.r+1][wall.c].north = false;
+                    } else if (wall.dir === 'east' && maze[wall.r][wall.c].east) {
+                        maze[wall.r][wall.c].east = false;
+                        if (wall.c + 1 < cols) maze[wall.r][wall.c+1].west = false;
+                    }
+                } catch (e) { console.error("Error removing extra wall:", e, wall); }
+            }
+
+            for (let r_idx = 0; r_idx < rows; r_idx++) {
+                for (let c_idx = 0; c_idx < cols; c_idx++) {
+                    maze[r_idx][c_idx].visited = false;
+                    maze[r_idx][c_idx].isSolutionPath = false;
+                    maze[r_idx][c_idx].tracedByRabbit = false;
+                    maze[r_idx][c_idx].tracedByTurtle = false;
+                }
+            }
+
+            solveMazeOptimal();
+            drawMaze();
+            startBtn.disabled = false;
+            startBtn.classList.remove('btn-disabled');
+            resetBtn.disabled = false;
+            resetBtn.classList.remove('btn-disabled');
+            generateBtn.textContent = translations[currentLang]['generate-btn'];
+            winnerDeclared = false;
+            hideBanners();
+        }
+
+        // --- Maze Solving (BFS for the optimal path) ---
+        function solveMazeOptimal() {
+            solutionPath = [];
+            const q = [];
+            if (!maze || maze.length === 0 || !maze[0] || maze[0].length === 0) {
+                showMessage("maze-error");
+                return;
+            }
+            const startNode = maze[0][0];
+            const endNode = maze[rows - 1][cols - 1];
+
+            q.push([startNode]);
+            startNode.visited = true;
+
+            while (q.length > 0) {
+                const currentPath = q.shift();
+                const currentCell = currentPath[currentPath.length - 1];
+
+                if (currentCell === endNode) {
+                    solutionPath = currentPath;
+                    solutionPath.forEach(cell => cell.isSolutionPath = true);
+                    return;
+                }
+                const { r, c } = currentCell;
+                const neighbors = [];
+                if (!currentCell.north && r > 0 && !maze[r - 1][c].visited) neighbors.push(maze[r - 1][c]);
+                if (!currentCell.south && r < rows - 1 && !maze[r + 1][c].visited) neighbors.push(maze[r + 1][c]);
+                if (!currentCell.west && c > 0 && !maze[r][c - 1].visited) neighbors.push(maze[r][c - 1]);
+                if (!currentCell.east && c < cols - 1 && !maze[r][c + 1].visited) neighbors.push(maze[r][c + 1]);
+
+                for (const neighbor of neighbors) {
+                    if (!neighbor.visited) {
+                        neighbor.visited = true;
+                        const newPath = [...currentPath, neighbor];
+                        q.push(newPath);
+                    }
+                }
+            }
+            if (solutionPath.length === 0) {
+                showMessage("maze-impossible");
+            }
+        }
+
+        // --- Drawing ---
+        function drawMaze() {
+            const container = canvas.parentElement;
+            if (!container) return;
+            const containerWidth = container.clientWidth;
+            const containerHeight = Math.max(container.clientHeight, containerWidth * (rows/cols) * 0.75, 200);
+
+            if (cols === undefined || rows === undefined || cols === 0 || rows === 0) return;
+
+            cellSize = Math.floor(Math.min(containerWidth / cols, containerHeight / rows));
+            if (cellSize <= 0) cellSize = 10;
+
+            canvas.width = cols * cellSize;
+            canvas.height = rows * cellSize;
+
+            ctx.fillStyle = PATH_COLOR;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let r_idx = 0; r_idx < rows; r_idx++) {
+                for (let c_idx = 0; c_idx < cols; c_idx++) {
+                    const cell = maze[r_idx][c_idx];
+                    const x = c_idx * cellSize;
+                    const y = r_idx * cellSize;
+
+                    if (cell.tracedByRabbit) {
+                        ctx.fillStyle = RABBIT_TRACE_COLOR;
+                        ctx.fillRect(x + cellSize*0.1, y + cellSize*0.1, cellSize*0.8, cellSize*0.8);
+                    } else if (cell.tracedByTurtle) {
+                        ctx.fillStyle = TURTLE_TRACE_COLOR;
+                        ctx.fillRect(x + cellSize*0.1, y + cellSize*0.1, cellSize*0.8, cellSize*0.8);
+                    }
+
+                    ctx.strokeStyle = WALL_COLOR;
+                    ctx.lineWidth = Math.max(1, Math.floor(cellSize / 10));
+                    ctx.lineCap = "round";
+
+                    if (cell.north) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); ctx.stroke(); }
+                    if (cell.south) { ctx.beginPath(); ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
+                    if (cell.east) { ctx.beginPath(); ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
+                    if (cell.west) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
+                }
+            }
+
+            ctx.fillStyle = START_COLOR;
+            ctx.fillRect(0, 0, cellSize, cellSize);
+            ctx.fillStyle = END_COLOR;
+            ctx.fillRect((cols - 1) * cellSize, (rows - 1) * cellSize, cellSize, cellSize);
+
+            const emojiSize = Math.max(10, cellSize * 0.75);
+            ctx.font = `${emojiSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (turtlePos) {
+                ctx.fillText('🐢', turtlePos.c * cellSize + cellSize / 2, turtlePos.r * cellSize + cellSize / 2);
+            }
+            if (rabbitPos) {
+                ctx.fillText('🐇', rabbitPos.c * cellSize + cellSize / 2, rabbitPos.r * cellSize + cellSize / 2);
+            }
+        }
+
+        // --- Race Logic ---
+        function startRace() {
+            if (solutionPath.length === 0) {
+                showMessage("maze-error");
+                return;
+            }
+            if (raceInProgress) return;
+
+            raceInProgress = true;
+            winnerDeclared = false;
+            hideBanners();
+            showGoBanner();
+
+            turtlePos = { ...solutionPath[0] };
+            rabbitPos = { ...solutionPath[0] };
+            turtlePathIdx = 0;
+            rabbitPathIdx = 0;
+            turtleActualPath = [turtlePos];
+            rabbitActualPath = [rabbitPos];
+
+            maze[turtlePos.r][turtlePos.c].tracedByTurtle = true;
+            maze[rabbitPos.r][rabbitPos.c].tracedByRabbit = true;
+
+            startBtn.disabled = true;
+            startBtn.classList.add('btn-disabled');
+            generateBtn.disabled = true;
+            generateBtn.classList.add('btn-disabled');
+            resetBtn.disabled = false;
+            resetBtn.classList.remove('btn-disabled');
+
+            animateRace();
+        }
+
+        function animateRace() {
+            if (!raceInProgress || winnerDeclared) {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            const turtleSpeedSetting = parseInt(turtleSpeedInput.value);
+            const rabbitSpeedSetting = parseInt(rabbitSpeedInput.value);
+            const turtleIntel = turtleIntelligenceInput.value;
+            const rabbitIntel = rabbitIntelligenceInput.value;
+
+            const turtleDelay = BASE_SPEED_DELAYS[turtleSpeedSetting];
+            const rabbitDelay = BASE_SPEED_DELAYS[rabbitSpeedSetting];
+
+            let turtleMovedThisFrame = false;
+            let rabbitMovedThisFrame = false;
+
+            if (turtlePathIdx < solutionPath.length - 1) {
+                if (!turtlePos.lastMoveTime || Date.now() - turtlePos.lastMoveTime >= turtleDelay) {
+                    let currentTurtleAction = 'move_forward';
+                    if (turtleIntel === 'medium') {
+                        if (Math.random() < MEDIUM_INTELLIGENCE_STALL_CHANCE) {
+                            currentTurtleAction = 'stall';
+                        } else if (Math.random() < MEDIUM_INTELLIGENCE_SHORT_JUMP_CHANCE && turtlePathIdx < solutionPath.length - 2) {
+                            currentTurtleAction = 'jump_forward';
+                        }
+                    } else if (turtleIntel === 'low') {
+                        if (Math.random() < LOW_INTELLIGENCE_STALL_CHANCE) {
+                            currentTurtleAction = 'stall';
+                        } else if (Math.random() < LOW_INTELLIGENCE_BACKTRACK_CHANCE && turtlePathIdx > 0) {
+                            currentTurtleAction = 'backtrack';
+                        }
+                        if (currentTurtleAction !== 'stall' && Math.random() < 0.15) {
+                            currentTurtleAction = 'stall';
+                        }
+                    }
+
+                    switch (currentTurtleAction) {
+                        case 'move_forward':
+                            turtlePathIdx++;
+                            break;
+                        case 'jump_forward':
+                            turtlePathIdx = Math.min(turtlePathIdx + 2, solutionPath.length - 1);
+                            break;
+                        case 'backtrack':
+                            turtlePathIdx = Math.max(0, turtlePathIdx - 1);
+                            break;
+                        case 'stall':
+                            break;
+                    }
+
+                    turtlePos = { ...solutionPath[turtlePathIdx] };
+                    maze[turtlePos.r][turtlePos.c].tracedByTurtle = true;
+                    if (!turtleActualPath.find(p => p.r === turtlePos.r && p.c === turtlePos.c)) {
+                        turtleActualPath.push(turtlePos);
+                    }
+                    turtlePos.lastMoveTime = Date.now();
+                    turtleMovedThisFrame = true;
+                }
+            }
+
+            if (rabbitPathIdx < solutionPath.length - 1) {
+                if (!rabbitPos.lastMoveTime || Date.now() - rabbitPos.lastMoveTime >= rabbitDelay) {
+                    let currentRabbitAction = 'move_forward';
+                    if (rabbitIntel === 'medium') {
+                        if (Math.random() < MEDIUM_INTELLIGENCE_STALL_CHANCE) {
+                            currentRabbitAction = 'stall';
+                        } else if (Math.random() < MEDIUM_INTELLIGENCE_SHORT_JUMP_CHANCE && rabbitPathIdx < solutionPath.length - 2) {
+                            currentRabbitAction = 'jump_forward';
+                        }
+                    } else if (rabbitIntel === 'low') {
+                        if (Math.random() < LOW_INTELLIGENCE_STALL_CHANCE) {
+                            currentRabbitAction = 'stall';
+                        } else if (Math.random() < LOW_INTELLIGENCE_BACKTRACK_CHANCE && rabbitPathIdx > 0) {
+                            currentRabbitAction = 'backtrack';
+                        }
+                        if (currentRabbitAction !== 'stall' && Math.random() < 0.15) {
+                            currentRabbitAction = 'stall';
+                        }
+                    }
+
+                    switch (currentRabbitAction) {
+                        case 'move_forward':
+                            rabbitPathIdx++;
+                            break;
+                        case 'jump_forward':
+                            rabbitPathIdx = Math.min(rabbitPathIdx + 2, solutionPath.length - 1);
+                            break;
+                        case 'backtrack':
+                            rabbitPathIdx = Math.max(0, rabbitPathIdx - 1);
+                            break;
+                        case 'stall':
+                            break;
+                    }
+
+                    rabbitPos = { ...solutionPath[rabbitPathIdx] };
+                    maze[rabbitPos.r][rabbitPos.c].tracedByRabbit = true;
+                    if (!rabbitActualPath.find(p => p.r === rabbitPos.r && p.c === rabbitPos.c)) {
+                        rabbitActualPath.push(rabbitPos);
+                    }
+                    rabbitPos.lastMoveTime = Date.now();
+                    rabbitMovedThisFrame = true;
+                }
+            }
+
+            if (turtleMovedThisFrame || rabbitMovedThisFrame) {
+                drawMaze();
+            }
+
+            if (!winnerDeclared) {
+                if (rabbitPos.r === rows - 1 && rabbitPos.c === cols - 1) {
+                    showWinnerBanner(translations[currentLang]['rabbit-winner']);
+                    winnerDeclared = true;
+                } else if (turtlePos.r === rows - 1 && turtlePos.c === cols - 1) {
+                    showWinnerBanner(translations[currentLang]['turtle-winner']);
+                    winnerDeclared = true;
+                }
+            }
+
+            if (winnerDeclared) {
+                raceInProgress = false;
+                startBtn.disabled = true;
+                startBtn.classList.add('btn-disabled');
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('btn-disabled');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            if (raceInProgress) {
+                animationFrameId = requestAnimationFrame(animateRace);
+            }
+        }
+
+        function resetRace() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            raceInProgress = false;
+            winnerDeclared = false;
+            hideBanners();
+
+            turtlePos = null;
+            rabbitPos = null;
+            turtlePathIdx = 0;
+            rabbitPathIdx = 0;
+            turtleActualPath = [];
+            rabbitActualPath = [];
+
+            if (maze.length > 0 && rows > 0 && cols > 0) {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (maze[r] && maze[r][c]) {
+                            maze[r][c].tracedByTurtle = false;
+                            maze[r][c].tracedByRabbit = false;
+                        }
+                    }
+                }
+                drawMaze();
+            } else {
+                if (canvas.width > 0 && canvas.height > 0) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    initializeAppUIOnly();
+                }
+            }
+
+            const noMazeOrSolution = maze.length === 0 || solutionPath.length === 0;
+            startBtn.disabled = noMazeOrSolution;
+            if (startBtn.disabled) startBtn.classList.add('btn-disabled'); else startBtn.classList.remove('btn-disabled');
+            generateBtn.disabled = false;
+            generateBtn.classList.remove('btn-disabled');
+            resetBtn.disabled = noMazeOrSolution;
+            if (resetBtn.disabled) resetBtn.classList.add('btn-disabled'); else resetBtn.classList.remove('btn-disabled');
+        }
+
+        // --- Banners ---
+        function showGoBanner() {
+            goBanner.textContent = translations[currentLang]['go-banner'];
+            goBanner.style.display = 'block';
+            setTimeout(() => {
+                goBanner.style.display = 'none';
+            }, 1800);
+        }
+
+        function showWinnerBanner(message) {
+            winnerBanner.textContent = message;
+            winnerBanner.style.display = 'block';
+        }
+
+        function hideBanners() {
+            goBanner.style.display = 'none';
+            winnerBanner.style.display = 'none';
+        }
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', () => {
+            resetRace();
+            generateMaze();
+        });
+        startBtn.addEventListener('click', startRace);
+        resetBtn.addEventListener('click', resetRace);
+        langToggle.addEventListener('click', () => {
+            const newLang = currentLang === 'en' ? 'fr' : 'en';
+            updateLanguage(newLang);
+        });
+
+        function resizeCanvasAndDraw() {
+            if (maze.length > 0 && rows > 0 && cols > 0) {
+                drawMaze();
+            } else {
+                initializeAppUIOnly();
+            }
+        }
+        window.addEventListener('resize', resizeCanvasAndDraw);
+
+        function initializeAppUIOnly() {
+            const container = canvas.parentElement;
+            if (container) {
+                let r = parseInt(rowsInput.value) || 12;
+                let c = parseInt(colsInput.value) || 16;
+                let initialWidth = container.clientWidth || 600;
+                let initialHeight = initialWidth * (r / c) * 0.8;
+                if (initialWidth === 0) {
+                    initialWidth = Math.min(window.innerWidth * 0.85, 600);
+                    initialHeight = initialWidth * 0.75;
+                }
+                initialHeight = Math.max(initialHeight, 250);
+
+                canvas.width = initialWidth;
+                canvas.height = initialHeight;
+
+                ctx.fillStyle = '#eff6ff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#374151';
+                ctx.textAlign = 'center';
+                ctx.font = `bold 18px 'Inter', sans-serif`;
+                if (canvas.width > 0 && canvas.height > 0) {
+                    ctx.fillText(translations[currentLang]['app-title'], canvas.width/2, canvas.height/2);
+                }
+            } else {
+                canvas.width = 600;
+                canvas.height = 450;
+            }
+            resetBtn.disabled = true;
+            resetBtn.classList.add('btn-disabled');
+            startBtn.disabled = true;
+            startBtn.classList.add('btn-disabled');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAppUIOnly();
+            updateLanguage('en');
+        });
+    </script>
+</body>
+</html>
