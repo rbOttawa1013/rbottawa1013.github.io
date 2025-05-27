@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPMN Process Flows</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for BPMN elements if needed, though Tailwind will be primary */
+        .bpmn-task { fill: #a0d2eb; stroke: #367588; stroke-width: 1.5; }
+        .bpmn-task-text { font-size: 10px; font-family: Arial, sans-serif; fill: #000; }
+        .bpmn-event-start { fill: #90ee90; stroke: #006400; stroke-width: 1.5; }
+        .bpmn-event-end { fill: #f08080; stroke: #8b0000; stroke-width: 1.5; }
+        .bpmn-flow { stroke: #333; stroke-width: 1.5; fill: none; }
+        .bpmn-message-flow { stroke: #333; stroke-width: 1.5; stroke-dasharray: 5,5; fill: none; }
+        .bpmn-swimlane { fill: #f5f5f5; stroke: #666; stroke-width: 1; }
+        .bpmn-pool { fill: #e0e0e0; stroke: #333; stroke-width: 1.5; }
+        .bpmn-label { font-size: 12px; font-family: Arial, sans-serif; fill: #000; }
+        .bpmn-data-object { fill: #fffacd; stroke: #ccc188; stroke-width: 1; }
+        .slide {
+            min-height: 80vh; /* Ensure slides take up significant viewport height */
+            display: none; /* Initially hide all slides */
+        }
+        .slide.active {
+            display: block; /* Show active slide */
+        }
+        /* Ensure SVG text is selectable */
+        svg text {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+    </style>
+</head>
+<body class="bg-gray-200 font-sans">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800">BPMN Process Flows</h1>
+        </header>
+
+        <div id="slides-container" class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Process Flow 1: Development of Roles & Responsibilities (R&R) Documentation</h2>
+                <div class="mb-4 p-3 bg-indigo-50 rounded-md">
+                    <h3 class="text-lg font-medium text-indigo-600">Objective:</h3>
+                    <p class="text-gray-700">Achieve clarity on Roles and Responsibilities and redistribute/add work activities.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-indigo-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="750" viewBox="0 0 1200 750" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText">
+                                  <rect x="0" y="0" width="110" height="40"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="730" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Departmental Governance Documentation Process</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="120" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="150" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="165" text-anchor="middle" class="bpmn-label text-xs">(Mandate)</text>
+                            <path d="M 115 120 H 180" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <rect x="180" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="125" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText)">Initiate R&R Process</text>
+                            <path d="M 300 120 H 350" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <rect x="350" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="125" text-anchor="middle" class="bpmn-task-text">Draft R&R Document</text>
+                            <path d="M 470 120 H 520" class="bpmn-flow" marker-end="url(#arrow)"/>
+                            <path d="M410 140 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="160" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="173" text-anchor="middle" class="bpmn-label text-xs">Draft R&R</text>
+
+                            <rect x="520" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="580" y="125" text-anchor="middle" class="bpmn-task-text">Distribute Draft R&R</text>
+                            <path d="M 580 140 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow)"/>
+                            <text x="380" y="190" class="bpmn-label text-xs">Draft to MACs</text>
+                            <path d="M 600 140 V 385 H 180" class="bpmn-message-flow" marker-end="url(#arrow)"/>
+                            <text x="390" y="300" class="bpmn-label text-xs">Draft to SAM/ITOs</text>
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            
+                            <rect x="180" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="275" text-anchor="middle" class="bpmn-task-text">Review Draft R&R</text>
+                            <path d="M 300 270 H 350" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <rect x="350" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="275" text-anchor="middle" class="bpmn-task-text">Provide Comments</text>
+                            <path d="M 470 270 H 520" class="bpmn-flow" marker-end="url(#arrow)"/>
+                            <path d="M410 290 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="310" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="323" text-anchor="middle" class="bpmn-label text-xs">MACs Fbk</text>
+
+                            <rect x="520" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="580" y="275" text-anchor="middle" class="bpmn-task-text">Send Feedback to VEMO</text>
+                            <path d="M 580 250 V 190 H 700" class="bpmn-message-flow" marker-end="url(#arrow)"/>
+                            <text x="630" y="220" class="bpmn-label text-xs">MACs Fbk to VEMO</text>
+
+                            <rect x="20" y="350" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">SAM/ITOs</text>
+
+                            <rect x="180" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="425" text-anchor="middle" class="bpmn-task-text">Review Draft R&R</text>
+                            <path d="M 300 420 H 350" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <rect x="350" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="425" text-anchor="middle" class="bpmn-task-text">Provide Comments</text>
+                            <path d="M 470 420 H 520" class="bpmn-flow" marker-end="url(#arrow)"/>
+                             <path d="M410 440 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="460" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="473" text-anchor="middle" class="bpmn-label text-xs">SAM Fbk</text>
+
+                            <rect x="520" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="580" y="425" text-anchor="middle" class="bpmn-task-text">Send Feedback to VEMO</text>
+                            <path d="M 580 400 V 190 H 720" class="bpmn-message-flow" marker-end="url(#arrow)"/>
+                            <text x="640" y="300" class="bpmn-label text-xs">SAM Fbk to VEMO</text>
+
+                            <rect x="700" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="760" y="118" text-anchor="middle" class="bpmn-task-text">Consolidate Feedback</text>
+                            <text x="760" y="132" text-anchor="middle" class="bpmn-task-text">& Revise Document</text>
+                            <path d="M 820 120 H 870" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <rect x="870" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="930" y="125" text-anchor="middle" class="bpmn-task-text">Finalize R&R Document</text>
+                            <path d="M 990 120 H 1040" class="bpmn-flow" marker-end="url(#arrow)"/>
+                            <path d="M930 140 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="910" y="160" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="930" y="173" text-anchor="middle" class="bpmn-label text-xs">Final R&R</text>
+
+                            <rect x="1040" y="100" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="1100" y="118" text-anchor="middle" class="bpmn-task-text">Submit Final R&R</text>
+                            <text x="1100" y="132" text-anchor="middle" class="bpmn-task-text">for Approval</text>
+                            <path d="M 1100 140 V 535 H 180" class="bpmn-message-flow" marker-end="url(#arrow)"/>
+                            <text x="640" y="350" class="bpmn-label text-xs">Final R&R to FPB</text>
+
+                            <rect x="20" y="500" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="520" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Field Planning Board</text>
+
+                            <rect x="180" y="530" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="555" text-anchor="middle" class="bpmn-task-text">Review & Approve</text>
+                            <path d="M240 570 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="590" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="603" text-anchor="middle" class="bpmn-label text-xs">Approved R&R</text>
+                            <path d="M 240 530 V 190 H 700" class="bpmn-message-flow" marker-end="url(#arrow)"/> <text x="450" y="360" class="bpmn-label text-xs">Approval to VEMO</text>
+
+                            <rect x="700" y="150" width="120" height="40" rx="5" class="bpmn-task"/> <text x="760" y="175" text-anchor="middle" class="bpmn-task-text">Disseminate Approved R&R</text>
+                            <path d="M 820 170 H 870" class="bpmn-flow" marker-end="url(#arrow)"/>
+
+                            <circle cx="900" cy="170" r="15" class="bpmn-event-end"/>
+                            <text x="900" y="200" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="900" y="215" text-anchor="middle" class="bpmn-label text-xs">(Published)</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-indigo-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Primary author and coordinator (Accountable/Responsible per Executive Summary).</li>
+                            <li><strong>MACs:</strong> Contributor/Reviewer (Consulted).</li>
+                            <li><strong>SAM (and ITOs):</strong> Contributor/Reviewer (Consulted).</li>
+                            <li><strong>Field Planning Board:</strong> Approver (implied governance body).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-indigo-600">Start Event:</h3>
+                        <p class="text-gray-700">Mandate to clarify R&R based on the approved hybrid VEMO model (Field Planning Board, March 25, 2025).</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-indigo-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Initiate R&R documentation process. (Input: Approved proposal for the hybrid VEMO model)</li>
+                            <li>Task: Draft Roles & Responsibilities document. (Output: Draft R&R Document)</li>
+                            <li>Task: Distribute Draft R&R Document for review. (Output Message Flow: Draft R&R Document sent to MACs, SAM, and ITOs)</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Provide comments/feedback - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Draft R&R Document from VEMO</li>
+                            <li>Task: Review Draft R&R Document.</li>
+                            <li>Task: Provide comments/feedback. (Output: MACs Feedback on R&R Draft)</li>
+                            <li>Task: Send MACs Feedback on R&R Draft to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: SAM (and ITOs)</strong> (Responsibility: Provide comments/feedback - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Draft R&R Document from VEMO</li>
+                            <li>Task: Review Draft R&R Document.</li>
+                            <li>Task: Provide comments/feedback. (Output: SAM/ITOs Feedback on R&R Draft)</li>
+                            <li>Task: Send SAM/ITOs Feedback on R&R Draft to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flows: MACs Feedback on R&R Draft, SAM/ITOs Feedback on R&R Draft</li>
+                            <li>Task: Consolidate feedback and revise document. (Output Updated: Draft R&R Document)</li>
+                            <li>Task: Finalize Roles & Responsibilities Documentation. (Output: Final R&R Document)</li>
+                            <li>Task: Submit Final R&R Document for approval by Field Planning Board. (Output Message Flow: Final R&R Document to Field Planning Board)</li>
+                        </ul>
+                        <p><strong>Swimlane: Field Planning Board</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Review and approve Final R&R Document. (Output: Approved R&R Document)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Disseminate Approved R&R Document to Product Teams and other stakeholders. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-indigo-600">End Event:</h3>
+                        <p class="text-gray-700">Final R&R Document approved by Field Planning Board and published.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-indigo-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Timeliness of Final R&R Document completion (e.g., days from start to approval).</li>
+                            <li>Completeness and clarity of the document based on stakeholder acceptance (e.g., survey score).</li>
+                            <li>Number of review cycles required.</li>
+                            <li>Stakeholder approval rate by Field Planning Board (e.g., percentage approved without revisions).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-teal-700">Process Flow 2: Development of Vendor/Licensing/Procurement Process Map/Roadmap</h2>
+                <div class="mb-4 p-3 bg-teal-50 rounded-md">
+                    <h3 class="text-lg font-medium text-teal-600">Objective:</h3>
+                    <p class="text-gray-700">Provide clarity on processes for teams/clients engaging in vendor, licensing, and procurement activities.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-teal-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText2">
+                                  <rect x="0" y="0" width="110" height="40"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="680" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Process Improvement Initiative</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Need Identified)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow2)"/>
+
+                            <rect x="180" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="105" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText2)">Initiate Map Dev.</text>
+                            <path d="M 300 100 H 350" class="bpmn-flow" marker-end="url(#arrow2)"/>
+
+                            <rect x="350" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="105" text-anchor="middle" class="bpmn-task-text">Request SME Info</text>
+                            <path d="M 410 120 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="300" y="180" class="bpmn-label text-xs">Request to MACs</text>
+                            <path d="M 410 120 V 385 H 180" class="bpmn-message-flow" marker-end="url(#arrow2)"/> <text x="300" y="300" class="bpmn-label text-xs">Request to SAM/ITOs</text>
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            
+                            <rect x="180" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="275" text-anchor="middle" class="bpmn-task-text">Compile SME Info</text>
+                            <path d="M 300 270 H 350" class="bpmn-flow" marker-end="url(#arrow2)"/>
+                             <path d="M240 290 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="310" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="323" text-anchor="middle" class="bpmn-label text-xs">MACs Info</text>
+
+                            <rect x="350" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="275" text-anchor="middle" class="bpmn-task-text">Send Info to VEMO</text>
+                            <path d="M 410 250 V 160 H 520" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="450" y="200" class="bpmn-label text-xs">MACs Info to VEMO</text>
+
+                            <rect x="20" y="350" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">SAM/ITOs</text>
+
+                            <rect x="180" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="425" text-anchor="middle" class="bpmn-task-text">Compile SME Info</text>
+                            <path d="M 300 420 H 350" class="bpmn-flow" marker-end="url(#arrow2)"/>
+                            <path d="M240 440 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="460" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="473" text-anchor="middle" class="bpmn-label text-xs">SAM Info</text>
+
+                            <rect x="350" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="425" text-anchor="middle" class="bpmn-task-text">Send Info to VEMO</text>
+                            <path d="M 410 400 V 160 H 540" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="460" y="300" class="bpmn-label text-xs">SAM Info to VEMO</text>
+
+                            <rect x="520" y="130" width="120" height="40" rx="5" class="bpmn-task"/> <text x="580" y="155" text-anchor="middle" class="bpmn-task-text">Draft Process Map</text>
+                            <path d="M 640 150 H 690" class="bpmn-flow" marker-end="url(#arrow2)"/>
+                            <path d="M580 170 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="560" y="190" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="580" y="203" text-anchor="middle" class="bpmn-label text-xs">Draft Map</text>
+
+                            <rect x="690" y="130" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="750" y="155" text-anchor="middle" class="bpmn-task-text">Distribute Draft Map</text>
+                            <path d="M 750 170 V 235 H 520" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="630" y="200" class="bpmn-label text-xs">Draft Map to Reviewers</text>
+                            <path d="M 750 170 V 385 H 520" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+
+
+                            <rect x="20" y="500" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="520" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs, SAM, ITOs (Review)</text>
+
+                            <rect x="520" y="250" width="120" height="40" rx="5" class="bpmn-task"/> <text x="580" y="275" text-anchor="middle" class="bpmn-task-text">Review Draft Map</text>
+                            <path d="M 640 270 H 690" class="bpmn-flow" marker-end="url(#arrow2)"/>
+                            <rect x="690" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="750" y="275" text-anchor="middle" class="bpmn-task-text">Provide Feedback</text>
+                            <path d="M 750 250 V 190 H 870" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="800" y="220" class="bpmn-label text-xs">Feedback to VEMO</text>
+
+                            <rect x="520" y="400" width="120" height="40" rx="5" class="bpmn-task"/> <text x="580" y="425" text-anchor="middle" class="bpmn-task-text">Review Draft Map</text>
+                            <path d="M 640 420 H 690" class="bpmn-flow" marker-end="url(#arrow2)"/>
+                            <rect x="690" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="750" y="425" text-anchor="middle" class="bpmn-task-text">Provide Feedback</text>
+                            <path d="M 750 400 V 190 H 890" class="bpmn-message-flow" marker-end="url(#arrow2)"/>
+                            <text x="810" y="300" class="bpmn-label text-xs">Feedback to VEMO</text>
+
+
+                            <rect x="870" y="130" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="930" y="148" text-anchor="middle" class="bpmn-task-text">Consolidate Fbk</text>
+                            <text x="930" y="162" text-anchor="middle" class="bpmn-task-text">& Revise Map</text>
+                            <path d="M 990 150 H 1040" class="bpmn-flow" marker-end="url(#arrow2)"/>
+
+                            <rect x="1040" y="130" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="1100" y="155" text-anchor="middle" class="bpmn-task-text">Finalize Map</text>
+                            <path d="M 1100 170 V 80 H 930" class="bpmn-flow" marker-end="url(#arrow2)"/> <path d="M1100 110 v -20 l 15 15 h -30 l 15 -15" class="bpmn-data-object" /> <rect x="1080" y="70" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="1100" y="83" text-anchor="middle" class="bpmn-label text-xs">Final Map</text>
+
+
+                            <rect x="870" y="60" width="120" height="40" rx="5" class="bpmn-task"/> <text x="930" y="85" text-anchor="middle" class="bpmn-task-text">Disseminate Final Map</text>
+                            <path d="M 930 100 V 535 H 180" class="bpmn-message-flow" marker-end="url(#arrow2)"/> <text x="550" y="350" class="bpmn-label text-xs">Map to Product Teams</text>
+                            <path d="M 990 80 H 1040" class="bpmn-flow" marker-end="url(#arrow2)"/>
+
+                            <circle cx="1070" cy="80" r="15" class="bpmn-event-end"/>
+                            <text x="1070" y="110" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="1070" y="125" text-anchor="middle" class="bpmn-label text-xs">(Communicated)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-teal-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Primary author and coordinator (Accountable/Responsible).</li>
+                            <li><strong>MACs:</strong> Subject Matter Expert, Contributor/Reviewer (Consulted).</li>
+                            <li><strong>SAM (and ITOs):</strong> Subject Matter Expert, Contributor/Reviewer (Consulted).</li>
+                            <li><strong>Product Teams:</strong> Informed, Recipient.</li>
+                        </ul>
+                    </div>
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-teal-600">Start Event:</h3>
+                        <p class="text-gray-700">Need identified for clear process guidance for vendor/licensing/procurement activities.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-teal-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Initiate Process Map/Roadmap development.</li>
+                            <li>Task: Request subject matter information. (Output Message Flow: Request for Process Subject Matter Information sent to MACs, SAM, ITOs)</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Provide subject matter information and comments/feedback - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Request for Process Subject Matter Information.</li>
+                            <li>Task: Compile subject matter information on MACs’ procurement processes. (Output: MACs Process Information)</li>
+                            <li>Task: Send MACs Process Information to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: SAM (and ITOs)</strong> (Responsibility: Provide subject matter information and comments/feedback - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Request for Process Subject Matter Information.</li>
+                            <li>Task: Compile subject matter information on SAM/ITOs’ processes. (Output: SAM/ITOs Process Information)</li>
+                            <li>Task: Send SAM/ITOs Process Information to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flows: MACs Process Information, SAM/ITOs Process Information.</li>
+                            <li>Task: Draft Process Map/Roadmap. (Output: Draft Process Map/Roadmap)</li>
+                            <li>Task: Distribute Draft Process Map/Roadmap for review. (Output Message Flow: Draft Process Map/Roadmap sent to MACs, SAM, ITOs)</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs, SAM, ITOs (Parallel Review)</strong> (Responsibility: Provide comments/feedback - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Draft Process Map/Roadmap.</li>
+                            <li>Task: Review Draft Process Map/Roadmap.</li>
+                            <li>Task: Provide comments/feedback. (Output: Feedback on Process Map Draft from each)</li>
+                            <li>Task: Send Feedback on Process Map Draft to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flows: Feedback on Process Map Draft.</li>
+                            <li>Task: Consolidate feedback and revise Process Map/Roadmap.</li>
+                            <li>Task: Finalize Process Map/Roadmap. (Output: Final Process Map/Roadmap)</li>
+                            <li>Task: Disseminate Final Process Map/Roadmap to Product Teams and clients. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-teal-600">End Event:</h3>
+                        <p class="text-gray-700">Final Process Map/Roadmap approved and communicated to stakeholders.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-teal-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Timeliness of Final Process Map/Roadmap completion (e.g., days to completion).</li>
+                            <li>Actionability and clarity of the roadmap for end-users (e.g., user survey score).</li>
+                            <li>Reduction in process-related queries post-publication (e.g., percentage decrease in queries).</li>
+                            <li>Stakeholder adoption rate (e.g., percentage of teams using the roadmap).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-purple-700">Process Flow 3: Creation of Vendor Profile Dashboard</h2>
+                 <div class="mb-4 p-3 bg-purple-50 rounded-md">
+                    <h3 class="text-lg font-medium text-purple-600">Objective:</h3>
+                    <p class="text-gray-700">Increase data collection, reporting, and advice from VEMO functions.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-purple-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText3">
+                                  <rect x="0" y="0" width="110" height="40"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="680" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Data & Reporting Enhancement Initiative for VEMO Functions</text>
+
+                            <rect x="20" y="50" width="1160" height="200" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Objective Set)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow3)"/>
+
+                            <rect x="180" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="105" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText3)">Define Dashboard Req.</text>
+                            <path d="M 300 100 H 350" class="bpmn-flow" marker-end="url(#arrow3)"/>
+
+                            <rect x="350" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="105" text-anchor="middle" class="bpmn-task-text">Initiate Dashboard Creation</text>
+                            <path d="M 470 100 H 520" class="bpmn-flow" marker-end="url(#arrow3)"/>
+                            
+                            <rect x="520" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="580" y="98" text-anchor="middle" class="bpmn-task-text">Request SME Info</text>
+                            <text x="580" y="112" text-anchor="middle" class="bpmn-task-text text-xs">(Conditional)</text>
+                            <path d="M 510 100 l -15 -15 l -15 15 l 15 15 z" fill="#fff" stroke="#333" stroke-width="1"/>
+                            <text x="480" y="103" class="bpmn-label text-xs">Info Needed?</text>
+
+                            <path d="M 580 120 V 285 H 180" class="bpmn-message-flow" marker-end="url(#arrow3)"/>
+                            <text x="380" y="200" class="bpmn-label text-xs">Request to MACs (Cond.)</text>
+                            <path d="M 600 120 V 435 H 180" class="bpmn-message-flow" marker-end="url(#arrow3)"/>
+                            <text x="390" y="350" class="bpmn-label text-xs">Request to SAM/ITOs (Cond.)</text>
+                            <path d="M 640 100 H 690" class="bpmn-flow" marker-end="url(#arrow3)"/> <rect x="20" y="250" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="270" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            
+                            <rect x="180" y="300" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="318" text-anchor="middle" class="bpmn-task-text">Provide App. Info</text>
+                             <text x="240" y="332" text-anchor="middle" class="bpmn-task-text text-xs">(Conditional)</text>
+                            <path d="M 300 320 H 350" class="bpmn-flow" marker-end="url(#arrow3)"/>
+                            <path d="M240 340 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="360" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="373" text-anchor="middle" class="bpmn-label text-xs">MACs Data</text>
+
+                            <rect x="350" y="300" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="325" text-anchor="middle" class="bpmn-task-text">Send Data to VEMO</text>
+                            <path d="M 410 300 V 180 H 690" class="bpmn-message-flow" marker-end="url(#arrow3)"/>
+                            <text x="540" y="240" class="bpmn-label text-xs">MACs Data to VEMO (Cond.)</text>
+
+                            <rect x="20" y="400" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="420" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">SAM/ITOs</text>
+
+                            <rect x="180" y="450" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="468" text-anchor="middle" class="bpmn-task-text">Provide App. Info</text>
+                            <text x="240" y="482" text-anchor="middle" class="bpmn-task-text text-xs">(Conditional)</text>
+                            <path d="M 300 470 H 350" class="bpmn-flow" marker-end="url(#arrow3)"/>
+                            <path d="M240 490 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="510" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="523" text-anchor="middle" class="bpmn-label text-xs">SAM Data</text>
+
+                            <rect x="350" y="450" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="475" text-anchor="middle" class="bpmn-task-text">Send Data to VEMO</text>
+                            <path d="M 410 450 V 180 H 710" class="bpmn-message-flow" marker-end="url(#arrow3)"/>
+                            <text x="550" y="320" class="bpmn-label text-xs">SAM Data to VEMO (Cond.)</text>
+
+                            <rect x="20" y="550" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="570" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            <text x="200" y="600" class="bpmn-label">Informed on dashboard creation (per RACI)</text>
+                            <text x="200" y="615" class="bpmn-label text-xs">(Implied updates from VEMO)</text>
+
+
+                            <rect x="690" y="150" width="120" height="40" rx="5" class="bpmn-task"/> <text x="750" y="175" text-anchor="middle" class="bpmn-task-text">Consolidate Data</text>
+                            <path d="M 810 170 H 860" class="bpmn-flow" marker-end="url(#arrow3)"/>
+
+                            <rect x="860" y="150" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="920" y="168" text-anchor="middle" class="bpmn-task-text">Create & Maintain</text>
+                            <text x="920" y="182" text-anchor="middle" class="bpmn-task-text">Dashboard</text>
+                            <path d="M 980 170 H 1030" class="bpmn-flow" marker-end="url(#arrow3)"/>
+                            <path d="M920 130 v -20 l -15 15 h 30 l -15 -15" class="bpmn-data-object" />
+                            <rect x="900" y="90" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="920" y="103" text-anchor="middle" class="bpmn-label text-xs">Dashboard</text>
+
+                            <rect x="1030" y="80" width="120" height="40" rx="5" class="bpmn-task"/> <text x="1090" y="105" text-anchor="middle" class="bpmn-task-text">Plan Launch (Summer 2025)</text>
+                            <path d="M 1090 120 V 150" class="bpmn-flow" marker-end="url(#arrow3)"/>
+
+                            <rect x="1030" y="150" width="120" height="40" rx="5" class="bpmn-task"/> <text x="1090" y="175" text-anchor="middle" class="bpmn-task-text">Disseminate Access</text>
+                            <path d="M 1090 190 V 585 H 500" class="bpmn-message-flow" marker-end="url(#arrow3)"/> <text x="750" y="400" class="bpmn-label text-xs">Access to Stakeholders</text>
+                            <path d="M 1150 170 H 1100 L 1100 210 H 1150" class="bpmn-flow" marker-end="url(#arrow3)"/> <circle cx="1090" cy="230" r="15" class="bpmn-event-end"/>
+                            <text x="1090" y="260" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="1090" y="275" text-anchor="middle" class="bpmn-label text-xs">(Dashboard Launched)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-purple-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Owner, Developer, Maintainer (Accountable/Responsible per RACI).</li>
+                            <li><strong>MACs:</strong> Information Provider (Consulted, if applicable).</li>
+                            <li><strong>SAM (and ITOs):</strong> Information Provider (Consulted, if applicable).</li>
+                            <li><strong>Product Teams:</strong> Informed (per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-purple-600">Start Event:</h3>
+                        <p class="text-gray-700">Objective to increase data collection; planning launch for Summer 2025.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-purple-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Define requirements for Vendor Profile Dashboard focusing on STC Top 5 Vendors. (Input: Need for increased data collection, reporting, advice)</li>
+                            <li>Task: Initiate creation of the Vendor Profile Dashboard.</li>
+                            <li>Task (Conditional): Request subject matter information, if applicable. (Output Message Flow, Conditional: Request for Vendor Dashboard Data sent to MACs, SAM, ITOs)</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Provide subject matter information, if applicable - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow, Conditional: Request for Vendor Dashboard Data.</li>
+                            <li>Task: Provide applicable information/data. (Output Data Object Created, Conditional: MACs Vendor Data for Dashboard)</li>
+                            <li>Task: Send MACs Vendor Data for Dashboard to VEMO. (Output Message Flow, Conditional)</li>
+                        </ul>
+                         <p><strong>Swimlane: SAM (and ITOs)</strong> (Responsibility: Provide subject matter information, if applicable - Consulted)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow, Conditional: Request for Vendor Dashboard Data.</li>
+                            <li>Task: Provide applicable information/data. (Output Data Object Created, Conditional: SAM/ITOs Vendor Data for Dashboard)</li>
+                            <li>Task: Send SAM/ITOs Vendor Data for Dashboard to VEMO. (Output Message Flow, Conditional)</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams</strong> (Responsibility: Informed on dashboard creation - per RACI)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input (Implied): Updates from VEMO on dashboard progress.</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input (Data Objects, Conditional): MACs Vendor Data for Dashboard, SAM/ITOs Vendor Data for Dashboard.</li>
+                            <li>Task: Consolidate received data.</li>
+                            <li>Task: Create and maintain the Vendor Profile Dashboard. (Output Data Object Created/Maintained: Vendor Profile Dashboard)</li>
+                            <li>Task: Plan launch (Summer 2025).</li>
+                            <li>Task: Disseminate Vendor Profile Dashboard access to stakeholders. (Output Message Flow: Dashboard access details to Product Teams and other stakeholders)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-purple-600">End Event:</h3>
+                        <p class="text-gray-700">Vendor Profile Dashboard launched (Summer 2025).</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-purple-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Dashboard launch by Summer 2025 (e.g., on-time completion).</li>
+                            <li>Accuracy and relevance of dashboard data (e.g., data error rate).</li>
+                            <li>User adoption/usage of the dashboard post-launch (e.g., number of active users).</li>
+                            <li>Data refresh frequency (e.g., updates per month).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-red-700">Process Flow 4: Departmental Procurement Strategy Development, Execution & Alignment</h2>
+                <div class="mb-4 p-3 bg-red-50 rounded-md">
+                    <h3 class="text-lg font-medium text-red-600">Objective:</h3>
+                    <p class="text-gray-700">Execute STC and GC procurement strategies and align departmental procurement with overall direction.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-red-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText4">
+                                  <rect x="0" y="0" width="110" height="50"/> </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Strategic Procurement Process</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Business Need)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="180" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="100" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText4)">Develop/Maintain Overall Vendor Mgt. Strategy</text>
+                            <path d="M240 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="163" text-anchor="middle" class="bpmn-label text-xs">Overall Strat.</text>
+                            <path d="M 300 105 H 350" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="350" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="100" text-anchor="middle" class="bpmn-task-text">Contribute to Vendor Roadmaps</text>
+                            <path d="M 470 105 H 520" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="520" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="580" y="100" text-anchor="middle" class="bpmn-task-text">Collaborate on Dept. Strat. Def.</text>
+                            <path d="M 240 270 V 130 H 520" class="bpmn-message-flow" marker-end="url(#arrow4)"/>
+                            <text x="380" y="200" class="bpmn-label text-xs">Prod/Svc Req.</text>
+                            <path d="M 580 130 V 405 H 180" class="bpmn-message-flow" marker-end="url(#arrow4)"/>
+                            <text x="380" y="280" class="bpmn-label text-xs">Strategic Insights</text>
+
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            
+                            <rect x="180" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="270" text-anchor="middle" class="bpmn-task-text">Define Prod/Svc Requirements</text>
+                             <path d="M240 300 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="320" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="333" text-anchor="middle" class="bpmn-label text-xs">Reqs.</text>
+                            <path d="M 300 275 H 350" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="350" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="270" text-anchor="middle" class="bpmn-task-text">Contribute Insights for Dept. Strat.</text>
+                            <path d="M 410 300 V 405 H 180" class="bpmn-message-flow" marker-end="url(#arrow4)"/>
+                             <text x="300" y="350" class="bpmn-label text-xs">Insights to MACs</text>
+
+                            <rect x="20" y="350" width="1160" height="250" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+
+                            <rect x="180" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="420" text-anchor="middle" class="bpmn-task-text">Define STC & Dept. Proc. Strategy</text>
+                            <path d="M240 450 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="470" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="483" text-anchor="middle" class="bpmn-label text-xs">Dept. Strat.</text>
+                            <path d="M 300 425 H 350" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="350" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="420" text-anchor="middle" class="bpmn-task-text">Execute Dept. Proc. Strategy</text>
+                            <text x="410" y="435" text-anchor="middle" class="bpmn-label text-xs">(RFPs, Bids, Neg.)</text>
+                             <path d="M410 450 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="470" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="483" text-anchor="middle" class="bpmn-label text-xs">RFPs etc.</text>
+                            <path d="M 410 450 V 635 H 180" class="bpmn-message-flow" marker-end="url(#arrow4)"/>
+                            <text x="300" y="550" class="bpmn-label text-xs">Consult ITOS/SAM</text>
+                            <path d="M 470 425 H 520" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="520" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="580" y="420" text-anchor="middle" class="bpmn-task-text">Manage Contracts, Invoicing, Compliance</text>
+                            <path d="M 640 425 H 690" class="bpmn-flow" marker-end="url(#arrow4)"/>
+                            
+                            <rect x="690" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="750" y="420" text-anchor="middle" class="bpmn-task-text">Disseminate Proc. Outcomes</text>
+                            <path d="M 750 450 V 150 H 600" class="bpmn-message-flow" marker-end="url(#arrow4)"/> <path d="M 750 450 V 300 H 500" class="bpmn-message-flow" marker-end="url(#arrow4)"/> <path d="M 750 450 V 685 H 500" class="bpmn-message-flow" marker-end="url(#arrow4)"/> <text x="600" y="300" class="bpmn-label text-xs">Outcomes to Stakeholders</text>
+                            <path d="M 810 425 H 860" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+
+                            <rect x="20" y="600" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="620" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+
+                            <rect x="180" y="650" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="670" text-anchor="middle" class="bpmn-task-text">Provide Technical Input/Impact</text>
+                            <path d="M 240 650 V 450 H 350" class="bpmn-message-flow" marker-end="url(#arrow4)"/> <text x="290" y="550" class="bpmn-label text-xs">Tech. Feedback</text>
+                            <path d="M 300 675 H 350" class="bpmn-flow" marker-end="url(#arrow4)"/>
+
+                            <rect x="350" y="650" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="670" text-anchor="middle" class="bpmn-task-text">Ensure SAM Activities Align</text>
+                            
+                            <circle cx="890" cy="425" r="15" class="bpmn-event-end"/>
+                            <text x="890" y="455" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="890" y="470" text-anchor="middle" class="bpmn-label text-xs">(Contract Awarded)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-red-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Strategy Contributor, Alignment Role (Responsible per RACI).</li>
+                            <li><strong>Product Teams (CCPD, ADCPD, DSPD):</strong> Requirements Definer, Strategy Contributor (Accountable/Responsible per RACI).</li>
+                            <li><strong>MACs:</strong> Procurement Strategy Definer, Execution Lead (Accountable/Responsible per RACI).</li>
+                            <li><strong>ITOS/SAM:</strong> Technical Consultant, Alignment Role (Responsible per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-red-600">Start Event:</h3>
+                        <p class="text-gray-700">Business need from Product Team or strategic sourcing need identified by VEMO.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-red-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Develop and maintain Overall Vendor Management Strategy; align with STC procurement direction)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Develop and maintain Overall Vendor Management Strategy. (Output: Overall Vendor Management Strategy)</li>
+                            <li>Task: Proactively contribute to Vendor Roadmaps in partnership with Product Teams.</li>
+                            <li>Task: Collaborate in defining departmental procurement strategies with MACs and Product Teams. (Input: Product/Service Requirements from Product Teams; Output Information Shared: Strategic vendor insights)</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams</strong> (Responsibility: Define Product/Service Requirements; align with STC procurement direction)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Define Product/Service Requirements. (Output: Product/Service Requirements)</li>
+                            <li>Task: Contribute insights for departmental procurement strategy definition.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Execute departmental procurement strategy; align with STC procurement direction)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Define STC procurement direction and departmental procurement strategy (in collaboration). (Input: Overall Vendor Management Strategy from VEMO, Product/Service Requirements from Product Teams; Output: Departmental Procurement Strategy)</li>
+                            <li>Task: Execute Departmental Procurement Strategy (vendor identification, RFPs/RFIs, bid evaluations, negotiations). (Output: RFPs, Bid Evaluations, Contracts)</li>
+                            <li>Task: Manage contracts, invoicing, compliance.</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Consulted on procurement execution; align with STC procurement direction)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Consultation Request from MACs for technical input.</li>
+                            <li>Task: Provide technical input/impact assessment. (Output Message Flow: Technical Feedback to MACs)</li>
+                            <li>Task: Ensure SAM activities align with procurement direction.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Disseminate procurement outcomes to stakeholders. (Output Message Flow: Procurement outcomes to Product Teams, VEMO, ITOS/SAM)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-red-600">End Event:</h3>
+                        <p class="text-gray-700">Contract awarded, service procured, managed, and aligned.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-red-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Cycle time for procurement processes.</li>
+                            <li>Cost savings/value realization.</li>
+                            <li>Compliance rate with procurement policies.</li>
+                            <li>Stakeholder satisfaction.</li>
+                            <li>Alignment with GC procurement policies.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-orange-700">Process Flow 5: Vendor Issue Escalation Management</h2>
+                <div class="mb-4 p-3 bg-orange-50 rounded-md">
+                    <h3 class="text-lg font-medium text-orange-600">Objective:</h3>
+                    <p class="text-gray-700">Effectively manage and resolve escalated vendor support and interaction issues.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-orange-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                             <defs>
+                                <marker id="arrow5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText5">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Operational Support & Vendor Management</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Issue Encountered)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <rect x="180" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="105" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText5)">Identify Vendor Issue</text>
+                            <path d="M 300 100 H 350" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <rect x="350" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="105" text-anchor="middle" class="bpmn-task-text">Attempt Initial Resolution</text>
+                            <path d="M 470 100 H 520" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <path d="M 520 100 l 20 -20 l 20 20 l -20 20 z" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                            <text x="540" y="75" text-anchor="middle" class="bpmn-label text-xs">Unresolved?</text>
+                            <path d="M 560 100 H 610" class="bpmn-flow" marker-end="url(#arrow5)"/> <text x="580" y="115" text-anchor="middle" class="bpmn-label text-xs">Yes</text>
+                            <rect x="610" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="670" y="105" text-anchor="middle" class="bpmn-task-text">Escalate Issue</text>
+                            <path d="M670 120 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="650" y="140" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="670" y="153" text-anchor="middle" class="bpmn-label text-xs">Esc. Report</text>
+                            <path d="M 670 120 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <text x="420" y="180" class="bpmn-label text-xs">Report to ITOS/SAM</text>
+                            <path d="M 670 120 V 385 H 180" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <text x="420" y="300" class="bpmn-label text-xs">Report to VEMO (C)</text>
+                            <path d="M 670 120 V 535 H 180" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <text x="420" y="450" class="bpmn-label text-xs">Report to MACs (I)</text>
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+                            
+                            <rect x="180" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="275" text-anchor="middle" class="bpmn-task-text">Investigate Escalated Issue</text>
+                            <path d="M 300 270 H 350" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <rect x="350" y="250" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="275" text-anchor="middle" class="bpmn-task-text">Liaise with Vendor for Resolution</text>
+                            <path d="M 470 270 H 520" class="bpmn-flow" marker-end="url(#arrow5)"/>
+                            
+                            <path d="M 520 270 l 20 -20 l 20 20 l -20 20 z" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                            <text x="540" y="245" text-anchor="middle" class="bpmn-label text-xs">VEMO Coord?</text>
+                            <path d="M 560 270 V 385 H 300" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <text x="430" y="330" class="bpmn-label text-xs">Yes, Req. Support</text>
+                            <path d="M 540 290 V 310 H 610" class="bpmn-flow" marker-end="url(#arrow5)"/> <text x="570" y="305" text-anchor="middle" class="bpmn-label text-xs">No</text>
+
+
+                            <rect x="20" y="350" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+
+                            <rect x="300" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="360" y="420" text-anchor="middle" class="bpmn-task-text">Coordinate Commercial Vendor Engagement</text>
+                            <text x="360" y="435" text-anchor="middle" class="bpmn-label text-xs">(If requested, excl. SSC)</text>
+                            <path d="M 420 425 H 470" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <rect x="470" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="530" y="425" text-anchor="middle" class="bpmn-task-text">Monitor & Support Resolution</text>
+                            <path d="M 530 400 V 290 H 610" class="bpmn-flow" marker-end="url(#arrow5)"/> <rect x="20" y="500" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="520" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            <text x="200" y="550" class="bpmn-label">Informed on issue escalation (per RACI)</text>
+
+                            <rect x="610" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="670" y="270" text-anchor="middle" class="bpmn-task-text">Document Resolution & Disseminate</text>
+                            <path d="M 670 300 V 150 H 750" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <path d="M 670 300 V 450 H 750" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <path d="M 670 300 V 550 H 750" class="bpmn-message-flow" marker-end="url(#arrow5)"/> <text x="780" y="350" class="bpmn-label text-xs">Resolution to Stakeholders</text>
+                            <path d="M 730 275 H 780" class="bpmn-flow" marker-end="url(#arrow5)"/>
+
+                            <circle cx="810" cy="275" r="15" class="bpmn-event-end"/>
+                            <text x="810" y="305" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="810" y="320" text-anchor="middle" class="bpmn-label text-xs">(Issue Resolved)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-orange-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>Product Teams:</strong> Issue Identifier, Escalation Accountable (A per RACI).</li>
+                            <li><strong>ITOS/SAM:</strong> Issue Resolution Responsible (R per RACI).</li>
+                            <li><strong>VEMO:</strong> Consulted or Accountable/Responsible for coordination if requested (C or A/R per RACI).</li>
+                            <li><strong>MACs:</strong> Informed (I per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-orange-600">Start Event:</h3>
+                        <p class="text-gray-700">Product Team encounters an unresolved vendor support/interaction issue.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-orange-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: Product Teams</strong> (Responsibility: Vendor interaction; accountable for issue escalation)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Identify vendor support/interaction issue.</li>
+                            <li>Task: Attempt initial resolution.</li>
+                            <li>Task (Gateway): If issue unresolved, escalate. (Output: Issue Escalation Report; Output Message Flow: Report to ITOS/SAM (R), VEMO (C), MACs (I))</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Responsible for issue escalation resolution)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Issue Escalation Report.</li>
+                            <li>Task: Investigate escalated issue.</li>
+                            <li>Task: Liaise with vendor for resolution.</li>
+                            <li>Task (Gateway): If resolution requires further VEMO coordination for commercial vendors: Task: Request issue escalation support from VEMO. (Output Message Flow: Request for Escalation Support to VEMO)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Consulted on issue escalation; A/R for coordinating commercial vendor engagement)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Issue Escalation Report OR Request for Escalation Support from ITOS/SAM.</li>
+                            <li>Task (If support requested): Coordinate further engagement with commercial vendors (excluding SSC).</li>
+                            <li>Task: Monitor and support issue resolution.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Informed on issue escalation)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Issue Escalation Report.</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Document resolution and disseminate outcomes to stakeholders. (Output Message Flow: Resolution Report to Product Teams, VEMO, MACs)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-orange-600">End Event:</h3>
+                        <p class="text-gray-700">Escalated issue resolved and documented.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-orange-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Time to resolution for escalated issues.</li>
+                            <li>Reduction in recurring escalations.</li>
+                            <li>Satisfaction of Product Teams with resolution process.</li>
+                            <li>Escalation frequency.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-yellow-700">Process Flow 6: Coordination of Information and Awareness Sessions</h2>
+                <div class="mb-4 p-3 bg-yellow-50 rounded-md">
+                    <h3 class="text-lg font-medium text-yellow-600">Objective:</h3>
+                    <p class="text-gray-700">Increase departmental awareness of roles and assistance in vendor, licensing, and procurement activities.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-yellow-600 mb-2">BPMN Diagram:</h3>
+                     <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="750" viewBox="0 0 1200 750" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText6">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="730" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Departmental Awareness and Training Initiative</text>
+
+                            <rect x="20" y="50" width="1160" height="200" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Need for Awareness)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+                            <rect x="180" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="105" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText6)">Initiate Session Planning</text>
+                            <path d="M 300 100 H 350" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+                            <rect x="350" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="100" text-anchor="middle" class="bpmn-task-text">Develop Awareness Deck (Iterative)</text>
+                            <path d="M 410 130 V 285 H 180" class="bpmn-message-flow" marker-end="url(#arrow6)"/> <text x="300" y="200" class="bpmn-label text-xs">Req. Content (SAM/ITOs)</text>
+                            <path d="M 410 130 V 435 H 180" class="bpmn-message-flow" marker-end="url(#arrow6)"/> <text x="300" y="350" class="bpmn-label text-xs">Req. Content (MACs)</text>
+                            <path d="M410 50 v -20 l -15 15 h 30 l -15 -15" class="bpmn-data-object" />
+                            <rect x="390" y="10" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="23" text-anchor="middle" class="bpmn-label text-xs">Draft Deck</text>
+
+                            <rect x="20" y="250" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="270" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">SAM/ITOs</text>
+                            
+                            <rect x="180" y="300" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="325" text-anchor="middle" class="bpmn-task-text">Provide SME Info for Deck</text>
+                            <path d="M 300 320 H 350" class="bpmn-flow" marker-end="url(#arrow6)"/>
+                            <path d="M240 340 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="360" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="373" text-anchor="middle" class="bpmn-label text-xs">SAM Content</text>
+
+                            <rect x="350" y="300" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="325" text-anchor="middle" class="bpmn-task-text">Send Content to VEMO</text>
+                            <path d="M 410 300 V 150 H 520" class="bpmn-message-flow" marker-end="url(#arrow6)"/>
+                            <text x="450" y="220" class="bpmn-label text-xs">SAM Content to VEMO</text>
+
+                            <rect x="20" y="400" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="420" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+
+                            <rect x="180" y="450" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="475" text-anchor="middle" class="bpmn-task-text">Provide SME Info for Deck</text>
+                            <path d="M 300 470 H 350" class="bpmn-flow" marker-end="url(#arrow6)"/>
+                            <path d="M240 490 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="510" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="523" text-anchor="middle" class="bpmn-label text-xs">MACs Content</text>
+
+                            <rect x="350" y="450" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="475" text-anchor="middle" class="bpmn-task-text">Send Content to VEMO</text>
+                            <path d="M 410 450 V 150 H 540" class="bpmn-message-flow" marker-end="url(#arrow6)"/>
+                            <text x="460" y="300" class="bpmn-label text-xs">MACs Content to VEMO</text>
+
+                            <rect x="520" y="130" width="120" height="50" rx="5" class="bpmn-task"/> <text x="580" y="150" text-anchor="middle" class="bpmn-task-text">Consolidate & Finalize Deck</text>
+                            <path d="M580 100 v -20 l -15 15 h 30 l -15 -15" class="bpmn-data-object" />
+                            <rect x="560" y="60" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="580" y="73" text-anchor="middle" class="bpmn-label text-xs">Final Deck</text>
+                            <path d="M 640 155 H 690" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+                            <rect x="690" y="130" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="750" y="150" text-anchor="middle" class="bpmn-task-text">Coordinate & Schedule Debriefs</text>
+                            <path d="M 810 155 H 860" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+                            <rect x="860" y="130" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="920" y="150" text-anchor="middle" class="bpmn-task-text">Deliver Sessions (w/ Partners)</text>
+                            <path d="M 980 155 H 1030" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+                            <rect x="1030" y="130" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="1090" y="150" text-anchor="middle" class="bpmn-task-text">Disseminate Schedules & Materials</text>
+                            <path d="M 1090 180 V 585 H 180" class="bpmn-message-flow" marker-end="url(#arrow6)"/>
+                            <text x="600" y="380" class="bpmn-label text-xs">Materials to Prod. Teams</text>
+                            <path d="M 1090 180 L 1090 210" class="bpmn-flow" marker-end="url(#arrow6)"/>
+
+
+                            <rect x="20" y="550" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="570" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            <text x="200" y="600" class="bpmn-label">Informed on sessions</text>
+
+                            <circle cx="1090" cy="230" r="15" class="bpmn-event-end"/>
+                            <text x="1090" y="260" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="1090" y="275" text-anchor="middle" class="bpmn-label text-xs">(Debriefs Launched)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-yellow-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Coordinator, Lead Developer (A/R per RACI).</li>
+                            <li><strong>SAM/ITOs:</strong> Partner, Content Contributor (R per RACI).</li>
+                            <li><strong>MACs:</strong> Partner, Content Contributor (R per RACI).</li>
+                            <li><strong>Product Teams:</strong> Informed (per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-yellow-600">Start Event:</h3>
+                        <p class="text-gray-700">Need for increased departmental awareness; launching Field debriefs in Fall 2025.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-yellow-600">Process Steps & Flows:</h3>
+                     <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Coordinate information and awareness sessions)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Initiate planning for sessions.</li>
+                            <li>Task: Develop Awareness Session Deck in partnership with SAM/ITOs and MACs. (Output Message Flow: Request for Content Contribution; Output Data Object: Draft Awareness Session Deck)</li>
+                        </ul>
+                        <p><strong>Swimlane: SAM (and ITOs)</strong> (Responsibility: Partnership in sessions)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Request for Content Contribution.</li>
+                            <li>Task: Provide subject matter information for deck. (Output: SAM/ITOs Content for Awareness Deck)</li>
+                            <li>Task: Send SAM/ITOs Content for Awareness Deck to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Partnership in sessions)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Request for Content Contribution.</li>
+                            <li>Task: Provide subject matter information for deck. (Output: MACs Content for Awareness Deck)</li>
+                            <li>Task: Send MACs Content for Awareness Deck to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Data Objects: SAM/ITOs Content, MACs Content.</li>
+                            <li>Task: Consolidate contributions and finalize Awareness Session Deck. (Output: Final Awareness Session Deck)</li>
+                            <li>Task: Coordinate and schedule Field debriefs (Fall 2025).</li>
+                            <li>Task: Deliver sessions in partnership with SAM/ITOs and MACs.</li>
+                            <li>Task: Disseminate session schedules and materials to Product Teams. (Output Message Flow)</li>
+                        </ul>
+                         <p><strong>Swimlane: Product Teams</strong> (Responsibility: Informed on sessions)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input (Implied): Session schedules, deck.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-yellow-600">End Event:</h3>
+                        <p class="text-gray-700">Field debriefs launched and awareness sessions conducted (Fall 2025).</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-yellow-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Sessions launched by Fall 2025.</li>
+                            <li>Attendance rates for sessions.</li>
+                            <li>Post-session survey feedback.</li>
+                            <li>Observed improvement in inter-departmental collaboration.</li>
+                            <li>Knowledge retention.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700">Process Flow 7: Development of Framework/Guidelines for Vendor Decision-Making</h2>
+                <div class="mb-4 p-3 bg-green-50 rounded-md">
+                    <h3 class="text-lg font-medium text-green-600">Objective:</h3>
+                    <p class="text-gray-700">Standardize vendor selection processes and increase departmental awareness.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-green-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText7">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Strategic Guidance Development</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Need Identified)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="180" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="105" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText7)">Initiate Framework Dev.</text>
+                            <path d="M 300 100 H 350" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="350" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="100" text-anchor="middle" class="bpmn-task-text">Draft Framework (w/ CCPD)</text>
+                            <path d="M410 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="163" text-anchor="middle" class="bpmn-label text-xs">Draft Frmwk</text>
+                            <path d="M 410 130 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow7)"/>
+                            <text x="300" y="180" class="bpmn-label text-xs">Collaborate w/ CCPD</text>
+                            <path d="M 470 105 H 520" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="520" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="580" y="100" text-anchor="middle" class="bpmn-task-text">Distribute Draft for Consultation</text>
+                            <path d="M 580 130 V 385 H 180" class="bpmn-message-flow" marker-end="url(#arrow7)"/> <text x="380" y="250" class="bpmn-label text-xs">Draft to MACs</text>
+                            <path d="M 580 130 V 535 H 180" class="bpmn-message-flow" marker-end="url(#arrow7)"/> <text x="380" y="400" class="bpmn-label text-xs">Draft to ITOS/SAM</text>
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams (CCPD)</text>
+                            
+                            <rect x="180" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="270" text-anchor="middle" class="bpmn-task-text">Collaborate on Drafting</text>
+                            <path d="M 300 275 H 350" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="350" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="270" text-anchor="middle" class="bpmn-task-text">Review & Provide Decisive Input</text>
+                            <path d="M 410 225 V 130 H 690" class="bpmn-message-flow" marker-end="url(#arrow7)"/> <text x="550" y="180" class="bpmn-label text-xs">CCPD Input</text>
+
+                            <rect x="20" y="350" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            
+                            <rect x="180" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="420" text-anchor="middle" class="bpmn-task-text">Review & Provide Feedback (Proc.)</text>
+                            <path d="M 300 425 H 350" class="bpmn-flow" marker-end="url(#arrow7)"/>
+                            <path d="M240 450 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="470" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="483" text-anchor="middle" class="bpmn-label text-xs">MACs Fbk</text>
+
+                            <rect x="350" y="400" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="425" text-anchor="middle" class="bpmn-task-text">Send Feedback to VEMO</text>
+                            <path d="M 410 400 V 130 H 710" class="bpmn-message-flow" marker-end="url(#arrow7)"/>
+                            <text x="550" y="280" class="bpmn-label text-xs">MACs Fbk to VEMO</text>
+
+                            <rect x="20" y="500" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="520" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+
+                            <rect x="180" y="550" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="570" text-anchor="middle" class="bpmn-task-text">Review & Provide Feedback (Tech.)</text>
+                            <path d="M 300 575 H 350" class="bpmn-flow" marker-end="url(#arrow7)"/>
+                            <path d="M240 600 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="620" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="633" text-anchor="middle" class="bpmn-label text-xs">ITOS Fbk</text>
+
+                            <rect x="350" y="550" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="575" text-anchor="middle" class="bpmn-task-text">Send Feedback to VEMO</text>
+                            <path d="M 410 550 V 130 H 730" class="bpmn-message-flow" marker-end="url(#arrow7)"/>
+                            <text x="560" y="350" class="bpmn-label text-xs">ITOS Fbk to VEMO</text>
+
+                            <rect x="690" y="80" width="120" height="50" rx="5" class="bpmn-task"/> <text x="750" y="100" text-anchor="middle" class="bpmn-task-text">Consolidate Fbk, Revise (w/ CCPD Appr.)</text>
+                            <path d="M 810 105 H 860" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="860" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="920" y="105" text-anchor="middle" class="bpmn-task-text">Finalize Framework</text>
+                            <path d="M920 120 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="900" y="140" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="920" y="153" text-anchor="middle" class="bpmn-label text-xs">Final Frmwk</text>
+                            <path d="M 980 100 H 1030" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <rect x="1030" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="1090" y="105" text-anchor="middle" class="bpmn-task-text">Disseminate Final Framework</text>
+                            <path d="M 1090 120 V 250 H 500" class="bpmn-message-flow" marker-end="url(#arrow7)"/>
+                            <text x="750" y="180" class="bpmn-label text-xs">Framework to Stakeholders</text>
+                            <path d="M 1090 120 L 1090 150" class="bpmn-flow" marker-end="url(#arrow7)"/>
+
+                            <circle cx="1090" cy="170" r="15" class="bpmn-event-end"/>
+                            <text x="1090" y="200" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="1090" y="215" text-anchor="middle" class="bpmn-label text-xs">(Framework Disseminated)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-green-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Lead Drafter (Responsible per RACI).</li>
+                            <li><strong>Product Teams (CCPD, led by Martin Scantland):</strong> Partner, Accountable (A per RACI).</li>
+                            <li><strong>MACs:</strong> Consultant (C per RACI).</li>
+                            <li><strong>ITOS/SAM:</strong> Consultant (C per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-green-600">Start Event:</h3>
+                        <p class="text-gray-700">Need for standardized vendor decision-making criteria identified.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-green-600">Process Steps & Flows:</h3>
+                     <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Draft Framework/guidelines in partnership)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Initiate framework development.</li>
+                            <li>Task: Draft Framework/guidelines in partnership with Martin Scantland (CCPD). (Output: Draft Vendor Decision-Making Framework)</li>
+                            <li>Task: Distribute Draft Vendor Decision-Making Framework for consultation. (Output Message Flow to MACs, ITOS/SAM)</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams (CCPD, led by Martin Scantland)</strong> (Responsibility: Collaborate and approve framework)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Collaborate with VEMO on drafting.</li>
+                            <li>Task: Review and provide decisive input on Draft Framework.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Consulted on framework development)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Draft Framework.</li>
+                            <li>Task: Review and provide feedback (procurement perspective). (Output: MACs Feedback on Framework)</li>
+                            <li>Task: Send MACs Feedback to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Consulted on framework development)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Draft Framework.</li>
+                            <li>Task: Review and provide feedback (technical perspective). (Output: ITOS/SAM Feedback on Framework)</li>
+                            <li>Task: Send ITOS/SAM Feedback to VEMO. (Output Message Flow)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flows: MACs Feedback, ITOS/SAM Feedback.</li>
+                            <li>Task: Consolidate feedback, revise Draft Framework with CCPD approval.</li>
+                            <li>Task: Finalize Framework/guidelines. (Output: Final Vendor Decision-Making Framework)</li>
+                            <li>Task: Disseminate Final Framework to Product Teams and stakeholders. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-green-600">End Event:</h3>
+                        <p class="text-gray-700">Final Vendor Decision-Making Framework approved and disseminated.</p>
+                    </div>
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-green-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Timely completion of the Framework.</li>
+                            <li>Clarity and usability of the Framework.</li>
+                            <li>Consistency in vendor selection processes.</li>
+                            <li>Framework adoption rate.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Process Flow 8: Strategic Vendor Review Meeting Process</h2>
+                <div class="mb-4 p-3 bg-blue-50 rounded-md">
+                    <h3 class="text-lg font-medium text-blue-600">Objective:</h3>
+                    <p class="text-gray-700">Manage strategic and critical vendor relationships to sustain key partnerships.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-blue-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                           <defs>
+                                <marker id="arrow8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText8">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Vendor Relationship Management</text>
+
+                            <rect x="20" y="50" width="1160" height="200" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Scheduled/Ad-hoc)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="180" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="100" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText8)">Plan & Schedule Meeting</text>
+                            <path d="M 300 105 H 350" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="350" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="100" text-anchor="middle" class="bpmn-task-text">Prepare Agenda, Gather Input</text>
+                            <path d="M410 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="163" text-anchor="middle" class="bpmn-label text-xs">Agenda</text>
+                            <path d="M 410 130 V 285 H 180" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 410 130 V 435 H 180" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 410 130 V 585 H 180" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <text x="300" y="200" class="bpmn-label text-xs">Invite/Agenda to Attendees</text>
+                            <path d="M 470 105 H 520" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="520" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="580" y="105" text-anchor="middle" class="bpmn-task-text">Conduct/Facilitate Meeting</text>
+                            <path d="M 640 100 H 690" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="20" y="250" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="270" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            
+                            <rect x="180" y="300" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="320" text-anchor="middle" class="bpmn-task-text">Provide Input on Performance</text>
+                            <path d="M 240 300 V 130 H 350" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 300 325 H 350" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="350" y="300" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="325" text-anchor="middle" class="bpmn-task-text">Attend Meeting</text>
+                            <path d="M 410 300 V 120 H 520" class="bpmn-flow" marker-end="url(#arrow8)"/> <rect x="20" y="400" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="420" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+
+                            <rect x="180" y="450" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="470" text-anchor="middle" class="bpmn-task-text">Provide Input (Tech, Compliance)</text>
+                            <path d="M 240 450 V 130 H 370" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 300 475 H 350" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="350" y="450" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="410" y="475" text-anchor="middle" class="bpmn-task-text">Attend Meeting (If relevant)</text>
+                            <path d="M 410 450 V 120 H 540" class="bpmn-flow" marker-end="url(#arrow8)"/> <rect x="20" y="550" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="570" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Key Vendor</text>
+
+                            <rect x="180" y="600" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="625" text-anchor="middle" class="bpmn-task-text">Prepare & Attend Meeting</text>
+                            <path d="M 240 600 V 120 H 560" class="bpmn-flow" marker-end="url(#arrow8)"/> <path d="M 300 620 H 350" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="350" y="600" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="620" text-anchor="middle" class="bpmn-task-text">Present Updates, Address Concerns</text>
+                            <path d="M 410 600 V 120 H 580" class="bpmn-flow" marker-end="url(#arrow8)"/> <rect x="690" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="750" y="100" text-anchor="middle" class="bpmn-task-text">Document Outcomes, Action Items</text>
+                            <path d="M750 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="730" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="750" y="163" text-anchor="middle" class="bpmn-label text-xs">Minutes</text>
+                            <path d="M 810 105 H 860" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="860" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="920" y="100" text-anchor="middle" class="bpmn-task-text">Disseminate Meeting Outcomes</text>
+                             <path d="M 920 130 V 300 H 500" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 920 130 V 450 H 500" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <path d="M 920 130 V 600 H 500" class="bpmn-message-flow" marker-end="url(#arrow8)"/> <text x="700" y="350" class="bpmn-label text-xs">Outcomes to Stakeholders</text>
+                            <path d="M 980 105 H 1030" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <rect x="1030" y="80" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="1090" y="105" text-anchor="middle" class="bpmn-task-text">Follow Up Action Items</text>
+                            <path d="M 1090 120 L 1090 150" class="bpmn-flow" marker-end="url(#arrow8)"/>
+
+                            <circle cx="1090" cy="170" r="15" class="bpmn-event-end"/>
+                            <text x="1090" y="200" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="1090" y="215" text-anchor="middle" class="bpmn-label text-xs">(Actions Tracked)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-blue-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Lead, Facilitator, Coordinator (A/R per document).</li>
+                            <li><strong>Product Teams:</strong> Stakeholder, Information Provider.</li>
+                            <li><strong>ITOS/SAM:</strong> Stakeholder, Information Provider.</li>
+                            <li><strong>Key Vendor (External):</strong> Participant.</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-blue-600">Start Event:</h3>
+                        <p class="text-gray-700">Scheduled review period (e.g., quarterly) or ad-hoc need for strategic discussion.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-blue-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Manage strategic vendor relationships)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Plan and schedule strategic vendor meeting.</li>
+                            <li>Task: Prepare agenda, gather internal input. (Output: Meeting Agenda, Internal Briefing Document; Output Message Flow: Invitation & Agenda to attendees)</li>
+                            <li>Task: Conduct/Facilitate meeting.</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Provide input on vendor’s operational performance.</li>
+                            <li>Task: Attend meeting as key internal stakeholder.</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Provide input on technical performance, software/asset issues.</li>
+                            <li>Task: Attend meeting if relevant.</li>
+                        </ul>
+                        <p><strong>Swimlane: Key Vendor (External)</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Meeting Invitation & Agenda.</li>
+                            <li>Task: Prepare for and attend meeting.</li>
+                            <li>Task: Present performance updates, address concerns, discuss opportunities.</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Document meeting outcomes, action items. (Output: Meeting Minutes, Action Item List)</li>
+                            <li>Task: Disseminate meeting outcomes to stakeholders. (Output Message Flow)</li>
+                            <li>Task: Follow up on action items.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-blue-600">End Event:</h3>
+                        <p class="text-gray-700">Vendor review meeting concluded, actions documented and tracked.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-blue-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Regularity of strategic vendor meetings.</li>
+                            <li>Completion rate of action items.</li>
+                            <li>Stakeholder satisfaction with meeting effectiveness.</li>
+                            <li>Measurable improvements in vendor relationship health.</li>
+                            <li>Vendor-driven innovation outcomes.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-pink-700">Process Flow 9: Vendor Performance Management Process</h2>
+                <div class="mb-4 p-3 bg-pink-50 rounded-md">
+                    <h3 class="text-lg font-medium text-pink-600">Objective:</h3>
+                    <p class="text-gray-700">Ensure vendors meet performance expectations and drive value.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-pink-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="700" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText9">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="680" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: VEMO Operational Processes</text>
+
+                            <rect x="20" y="50" width="1160" height="250" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(New Contract/Review)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="180" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="100" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText9)">Define/Confirm KPIs & SLAs</text>
+                            <path d="M240 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="163" text-anchor="middle" class="bpmn-label text-xs">KPIs/SLAs</text>
+                            <path d="M 300 105 H 350" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="350" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="100" text-anchor="middle" class="bpmn-task-text">Monitor Vendor Performance</text>
+                            <path d="M 240 355 V 130 H 350" class="bpmn-message-flow" marker-end="url(#arrow9)"/>
+                            <text x="290" y="250" class="bpmn-label text-xs">Feedback from Prod. Teams</text>
+                            <path d="M 240 505 V 130 H 370" class="bpmn-message-flow" marker-end="url(#arrow9)"/>
+                             <text x="300" y="350" class="bpmn-label text-xs">Data from Vendor</text>
+                            <path d="M 470 105 H 520" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="520" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="580" y="100" text-anchor="middle" class="bpmn-task-text">Collect & Analyze Performance Data</text>
+                            <path d="M 640 105 H 690" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="690" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="750" y="100" text-anchor="middle" class="bpmn-task-text">Report on Vendor Performance</text>
+                            <path d="M750 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="730" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="750" y="163" text-anchor="middle" class="bpmn-label text-xs">Perf. Report</text>
+                            <path d="M 750 130 V 200 H 870" class="bpmn-message-flow" marker-end="url(#arrow9)"/>
+                            <text x="800" y="170" class="bpmn-label text-xs">Report to Stakeholders</text>
+                            <path d="M 810 105 H 860" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="860" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="920" y="100" text-anchor="middle" class="bpmn-task-text">Identify Issues/ Opportunities</text>
+                            <path d="M 980 105 H 1030" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="1030" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="1090" y="100" text-anchor="middle" class="bpmn-task-text">Drive Performance Improvement</text>
+                            <path d="M 1090 130 V 505 H 470" class="bpmn-message-flow" marker-end="url(#arrow9)"/>
+                            <text x="750" y="300" class="bpmn-label text-xs">Improvement Plan to Vendor</text>
+                            <path d="M 1090 130 V 180" class="bpmn-flow" marker-end="url(#arrow9)"/> <rect x="1030" y="180" width="120" height="50" rx="5" class="bpmn-task"/> <text x="1090" y="200" text-anchor="middle" class="bpmn-task-text">Disseminate Perf. Reports & Outcomes</text>
+                            <path d="M 1090 230 V 355 H 500" class="bpmn-message-flow" marker-end="url(#arrow9)"/> <text x="750" y="280" class="bpmn-label text-xs">Outcomes to Stakeholders</text>
+                            <path d="M 1090 230 L 1090 260" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="20" y="300" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="320" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            
+                            <rect x="180" y="350" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="370" text-anchor="middle" class="bpmn-task-text">Provide Operational Perf. Feedback</text>
+                            <path d="M 300 375 H 350" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="350" y="350" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="370" text-anchor="middle" class="bpmn-task-text">Participate in Improvement Discussions</text>
+                            <path d="M 410 350 V 130 H 1030" class="bpmn-flow" marker-end="url(#arrow9)"/> <rect x="20" y="450" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="470" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Key Vendor</text>
+
+                            <rect x="180" y="500" width="120" height="40" rx="5" class="bpmn-task"/>
+                            <text x="240" y="525" text-anchor="middle" class="bpmn-task-text">Provide Performance Data</text>
+                            <path d="M 300 520 H 350" class="bpmn-flow" marker-end="url(#arrow9)"/>
+
+                            <rect x="350" y="500" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="410" y="520" text-anchor="middle" class="bpmn-task-text">Participate in Reviews & Implement Actions</text>
+                             <path d="M 410 500 V 130 H 1050" class="bpmn-flow" marker-end="url(#arrow9)"/> <circle cx="1090" cy="280" r="15" class="bpmn-event-end"/>
+                            <text x="1090" y="280" text-anchor="middle" class="bpmn-label" style="font-size:20px; fill: #8b0000;">&#8635;</text> <text x="1090" y="310" text-anchor="middle" class="bpmn-label">End (Cyclical)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                     <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-pink-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>VEMO:</strong> Lead, Analyst, Improvement Driver (A/R per document).</li>
+                            <li><strong>Product Teams:</strong> Information Provider, Stakeholder.</li>
+                            <li><strong>Key Vendor (External):</strong> Data Provider, Participant.</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-pink-600">Start Event:</h3>
+                        <p class="text-gray-700">New vendor contract with defined SLAs/KPIs or scheduled performance review cycle.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-pink-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Define and monitor KPIs/SLAs; drive performance improvements)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Define/confirm KPIs and SLAs for vendors. (Output: Vendor KPIs/SLAs Document)</li>
+                            <li>Task: Monitor vendor performance against agreed metrics. (Input: Vendor performance reports, operational feedback)</li>
+                            <li>Task: Collect and analyze performance data.</li>
+                            <li>Task: Report on vendor performance. (Output: Vendor Performance Report; Output Message Flow to internal stakeholders)</li>
+                            <li>Task: Identify performance issues/improvement opportunities.</li>
+                            <li>Task: Drive vendor performance improvement initiatives. (Output Message Flow: Performance Improvement Plan/Request to Vendor)</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Provide operational performance feedback. (Output Information Shared to VEMO)</li>
+                            <li>Task: Participate in performance improvement discussions.</li>
+                        </ul>
+                        <p><strong>Swimlane: Key Vendor (External)</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Provide performance data as per contract.</li>
+                            <li>Task: Participate in performance reviews and implement improvement actions.</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                           <li>Task: Disseminate performance reports and improvement outcomes to stakeholders. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-pink-600">End Event:</h3>
+                        <p class="text-gray-700">Vendor performance reviewed, reported, and improvement actions implemented/tracked (cyclical).</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-pink-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Vendor adherence to SLAs/KPIs.</li>
+                            <li>Number of performance improvement initiatives and success rate.</li>
+                            <li>Value realization from vendor engagements.</li>
+                            <li>Vendor performance trend improvement.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-cyan-700">Process Flow 10: Software/Infrastructure Asset License & Contract Management</h2>
+                 <div class="mb-4 p-3 bg-cyan-50 rounded-md">
+                    <h3 class="text-lg font-medium text-cyan-600">Objective:</h3>
+                    <p class="text-gray-700">Manage software assets, licenses, and infrastructure assets effectively, ensuring compliance and optimizing spend.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-cyan-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText10">
+                                  <rect x="0" y="0" width="110" height="60"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: IT Asset Management</text>
+
+                            <rect x="20" y="50" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams/Users</text>
+                            
+                            <circle cx="100" cy="90" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="120" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="135" text-anchor="middle" class="bpmn-label text-xs">(Need/Renewal/Audit)</text>
+                            
+                            <rect x="180" y="70" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="90" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText10)">Submit Software/ Infra Request</text>
+                            <path d="M240 120 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="140" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="153" text-anchor="middle" class="bpmn-label text-xs">Request</text>
+                            <path d="M 240 120 V 185 H 180" class="bpmn-message-flow" marker-end="url(#arrow10)"/> <rect x="20" y="150" width="1160" height="300" class="bpmn-swimlane"/>
+                            <text x="40" y="170" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+                            
+                            <rect x="180" y="180" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="240" y="200" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText10)">Receive & Triage Request, Track, Manage, Audit</text>
+                            <path d="M 300 210 H 350" class="bpmn-flow" marker-end="url(#arrow10)"/>
+
+                            <rect x="180" y="280" width="120" height="50" rx="5" class="bpmn-task"/> <text x="240" y="300" text-anchor="middle" class="bpmn-task-text">Initiate Proactive Audits/Renewals</text>
+                            <path d="M 240 240 V 280" class="bpmn-flow" marker-end="url(#arrow10)"/> <path d="M 300 305 H 350" class="bpmn-flow" marker-end="url(#arrow10)"/>
+
+                            <path d="M 350 210 l 20 -20 l 20 20 l -20 20 z" fill="#fff" stroke="#333" stroke-width="1.5"/>
+                            <text x="370" y="185" text-anchor="middle" class="bpmn-label text-xs">New Procure?</text>
+                            <path d="M 390 210 V 485 H 180" class="bpmn-message-flow" marker-end="url(#arrow10)"/> <text x="280" y="350" class="bpmn-label text-xs">Yes, Req. to MACs</text>
+                            <path d="M 370 230 H 420" class="bpmn-flow" marker-end="url(#arrow10)"/> <text x="390" y="245" text-anchor="middle" class="bpmn-label text-xs">No</text>
+
+                            <rect x="420" y="210" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="480" y="230" text-anchor="middle" class="bpmn-task-text">Fulfill from Existing / Manage Renewal Directly</text>
+                            <path d="M 540 240 H 590" class="bpmn-flow" marker-end="url(#arrow10)"/>
+
+                            <rect x="590" y="210" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="650" y="230" text-anchor="middle" class="bpmn-task-text">Disseminate Outcomes</text>
+                             <path d="M 650 260 V 120 H 500" class="bpmn-message-flow" marker-end="url(#arrow10)"/>
+                            <text x="570" y="180" class="bpmn-label text-xs">Outcomes to Requesters</text>
+                             <path d="M 650 260 V 635 H 180" class="bpmn-message-flow" marker-end="url(#arrow10)"/>
+                            <text x="400" y="450" class="bpmn-label text-xs">Outcomes to VEMO (if app.)</text>
+                            <path d="M 710 235 H 760" class="bpmn-flow" marker-end="url(#arrow10)"/>
+
+
+                            <rect x="20" y="450" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="470" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+                            
+                            <rect x="180" y="500" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="520" text-anchor="middle" class="bpmn-task-text">Execute Procurement /Contracting</text>
+                            <text x="240" y="535" text-anchor="middle" class="bpmn-label text-xs">(as per Flow 4)</text>
+                            <path d="M 240 500 V 240 H 420" class="bpmn-flow" marker-end="url(#arrow10)"/> <rect x="20" y="600" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="620" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            <text x="200" y="650" class="bpmn-label">Informed on significant commercial vendor software/asset matters</text>
+
+                            <circle cx="790" cy="235" r="15" class="bpmn-event-end"/>
+                            <text x="790" cy="235" text-anchor="middle" class="bpmn-label" style="font-size:20px; fill: #8b0000;">&#8635;</text>
+                            <text x="790" y="265" text-anchor="middle" class="bpmn-label">End (Cyclical)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-cyan-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>ITOS/SAM:</strong> Lead, Technical Authority, Operational Manager (A/R per RACI).</li>
+                            <li><strong>Product Teams/End Users:</strong> Requester, User.</li>
+                            <li><strong>MACs:</strong> Procurement Executor (Consulted, if applicable).</li>
+                            <li><strong>VEMO:</strong> Informed (if applicable for commercial vendors).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-cyan-600">Start Event:</h3>
+                        <p class="text-gray-700">Software/infrastructure need identified, license renewal upcoming, or audit scheduled.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-cyan-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: Product Teams/End Users</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Submit software/infrastructure requests. (Output: Software/Infrastructure Request)</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Oversee software asset management, etc.)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input: Software/Infrastructure Request.</li>
+                            <li>Task: Receive and triage requests, track licenses/entitlements, manage renewals/upgrades, conduct audits, manage infrastructure assets and related contracts.</li>
+                            <li>Task: Initiate proactive software audits or license renewals as scheduled.</li>
+                            <li>Task (Gateway): New procurement or significant contract action needed?
+                                <ul class="list-circle list-inside ml-4">
+                                    <li>Yes: Initiate procurement/contract action via MACs. (Output Message Flow: Procurement/Contract Request to MACs)</li>
+                                    <li>No: Fulfill request from existing licenses/assets or manage renewal directly.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Execute procurement if requested)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow (if applicable): Procurement/Contract Request.</li>
+                            <li>Task: Execute procurement/contracting process (as per Flow 4).</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Informed on significant commercial vendor software/asset matters)</p>
+                        <ul class="list-disc list-inside ml-4">
+                             <li>Input (Implied): Updates from ITOS/SAM on commercial vendor activities.</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Disseminate outcomes (e.g., fulfilled requests, audit results) to stakeholders. (Output Message Flow to Product Teams, VEMO if applicable)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-cyan-600">End Event:</h3>
+                        <p class="text-gray-700">Request fulfilled; license/asset/contract managed; compliance ensured (cyclical for renewals/audits).</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-cyan-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>License compliance rate.</li>
+                            <li>Cost savings through software optimization.</li>
+                            <li>Timeliness of request fulfillment.</li>
+                            <li>Accuracy of asset inventory.</li>
+                            <li>Audit frequency.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-lime-700">Process Flow 11: SSC Partnership and Issues Management Process</h2>
+                <div class="mb-4 p-3 bg-lime-50 rounded-md">
+                    <h3 class="text-lg font-medium text-lime-600">Objective:</h3>
+                    <p class="text-gray-700">Manage ongoing partnership and issues with SSC effectively.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-lime-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText11">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Public Partner Management</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams/Users</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(Need/Issue/Review)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow11)"/>
+
+                            <rect x="180" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="100" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText11)">Identify SSC Service Need/Issue</text>
+                            <path d="M240 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="163" text-anchor="middle" class="bpmn-label text-xs">SSC Req/Issue</text>
+                            <path d="M 240 130 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow11)"/> <text x="200" y="180" class="bpmn-label text-xs">To ITOS/SAM</text>
+                            <path d="M 240 130 V 385 H 180" class="bpmn-message-flow" marker-end="url(#arrow11)"/> <text x="200" y="300" class="bpmn-label text-xs">Or to MACs</text>
+
+                            <rect x="20" y="200" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+                            
+                            <rect x="180" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="270" text-anchor="middle" class="bpmn-task-text">Liaise with SSC for Tech Resolution/Provisioning</text>
+                            <path d="M 240 300 V 385 H 350" class="bpmn-flow" marker-end="url(#arrow11)"/> <rect x="20" y="350" width="1160" height="200" class="bpmn-swimlane"/>
+                            <text x="40" y="370" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">MACs</text>
+
+                            <rect x="180" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="420" text-anchor="middle" class="bpmn-task-text">Manage Contractual Aspects & Comms w/ SSC</text>
+                            <path d="M 300 425 H 350" class="bpmn-flow" marker-end="url(#arrow11)"/>
+
+                            <rect x="350" y="400" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="410" y="420" text-anchor="middle" class="bpmn-task-text">Oversee Escalated Issue Resolution & High-Level Partnership</text>
+                            <path d="M 470 430 H 520" class="bpmn-flow" marker-end="url(#arrow11)"/>
+                            
+                            <rect x="520" y="400" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="580" y="420" text-anchor="middle" class="bpmn-task-text">Disseminate Partnership/Issue Outcomes</text>
+                            <path d="M 580 450 V 130 H 400" class="bpmn-message-flow" marker-end="url(#arrow11)"/> <path d="M 580 450 V 280 H 400" class="bpmn-message-flow" marker-end="url(#arrow11)"/> <path d="M 580 450 V 585 H 180" class="bpmn-message-flow" marker-end="url(#arrow11)"/> <text x="480" y="300" class="bpmn-label text-xs">Outcomes to Stakeholders</text>
+                            <path d="M 640 425 H 690" class="bpmn-flow" marker-end="url(#arrow11)"/>
+
+                            <rect x="20" y="550" width="1160" height="100" class="bpmn-swimlane"/>
+                            <text x="40" y="570" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            <text x="200" y="600" class="bpmn-label">Informed on significant SSC matters (if applicable)</text>
+
+                            <circle cx="720" cy="425" r="15" class="bpmn-event-end"/>
+                            <text x="720" y="455" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="720" y="470" text-anchor="middle" class="bpmn-label text-xs">(Request Addressed/Issue Resolved)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-lime-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>MACs:</strong> Accountable Lead for overall partnership and issues (A per RACI).</li>
+                            <li><strong>ITOS/SAM:</strong> Responsible/Consulted for technical services and operational interactions (R/C per RACI).</li>
+                            <li><strong>Product Teams:</strong> Responsible/Consulted for service needs and issue impact (R/C per RACI).</li>
+                            <li><strong>VEMO:</strong> Informed (if applicable, as SSC is out of scope).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-lime-600">Start Event:</h3>
+                        <p class="text-gray-700">Need for new SSC service, issue with existing SSC service, or scheduled SSC review.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-lime-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: Product Teams/Departmental Users</strong> (Responsibility: Identify SSC service needs/issues)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Identify need or issue related to SSC services. (Output: SSC Service Request/Issue Report; Output Message Flow to ITOS/SAM or MACs)</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Liaise with SSC for technical resolution or provisioning)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input: SSC Service Request/Issue Report.</li>
+                            <li>Task: Liaise with SSC for technical issue resolution or service provisioning.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong> (Responsibility: Accountable for SSC partnership and issues; manage contracts)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Manage contractual aspects and formal communications with SSC.</li>
+                            <li>Task: Oversee resolution of escalated/systemic issues; coordinate high-level partnership.</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Informed on significant SSC matters)</p>
+                        <ul class="list-disc list-inside ml-4">
+                           <li>Input (Implied): Updates from MACs/ITOS/SAM on SSC activities.</li>
+                        </ul>
+                        <p><strong>Swimlane: MACs</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                           <li>Task: Disseminate partnership/issue resolution outcomes to stakeholders. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-lime-600">End Event:</h3>
+                        <p class="text-gray-700">SSC service request addressed, issue resolved, or partnership review completed.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-lime-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Resolution time for SSC-related issues.</li>
+                            <li>Effectiveness of SSC service delivery.</li>
+                            <li>Stakeholder satisfaction with SSC partnership.</li>
+                            <li>Partnership review frequency.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Process Flow 12: Alignment with Innovation and Technology Trends/Activities</h2>
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-gray-600">Objective:</h3>
+                    <p class="text-gray-700">Align VEMO and departmental vendor management with DSPED/GC initiatives and technology trends.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-600 mb-2">BPMN Diagram:</h3>
+                    <div class="border rounded-md overflow-x-auto bg-gray-50 p-2">
+                        <svg width="1200" height="850" viewBox="0 0 1200 850" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow12" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+                                </marker>
+                                <clipPath id="clipText12">
+                                  <rect x="0" y="0" width="110" height="50"/>
+                                </clipPath>
+                            </defs>
+                            
+                            <rect x="10" y="10" width="1180" height="830" class="bpmn-pool"/>
+                            <text x="600" y="35" text-anchor="middle" class="bpmn-label font-semibold">Pool: Strategic Alignment</text>
+
+                            <rect x="20" y="50" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="70" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Other DSPED Teams</text>
+                            
+                            <circle cx="100" cy="100" r="15" class="bpmn-event-start"/>
+                            <text x="100" y="130" text-anchor="middle" class="bpmn-label">Start</text>
+                            <text x="100" y="145" text-anchor="middle" class="bpmn-label text-xs">(New Initiative/Trend)</text>
+                            <path d="M 115 100 H 180" class="bpmn-flow" marker-end="url(#arrow12)"/>
+
+                            <rect x="180" y="80" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="240" y="100" text-anchor="middle" class="bpmn-task-text" clip-path="url(#clipText12)">Drive & Communicate Initiatives</text>
+                            <path d="M240 130 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="220" y="150" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="240" y="163" text-anchor="middle" class="bpmn-label text-xs">Update</text>
+                            <path d="M 240 130 V 235 H 180" class="bpmn-message-flow" marker-end="url(#arrow12)"/> <text x="200" y="180" class="bpmn-label text-xs">Update to VEMO</text>
+                            <path d="M 240 130 V 535 H 180" class="bpmn-message-flow" marker-end="url(#arrow12)"/> <text x="200" y="350" class="bpmn-label text-xs">Update to Stakeholders</text>
+                             <path d="M 240 130 V 685 H 180" class="bpmn-message-flow" marker-end="url(#arrow12)"/> <rect x="20" y="200" width="1160" height="300" class="bpmn-swimlane"/>
+                            <text x="40" y="220" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">VEMO</text>
+                            
+                            <rect x="180" y="250" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="240" y="270" text-anchor="middle" class="bpmn-task-text">Analyze Impact on Vendor Mgt, Landscape, Services</text>
+                            <path d="M 300 280 H 350" class="bpmn-flow" marker-end="url(#arrow12)"/>
+
+                            <rect x="350" y="250" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="410" y="270" text-anchor="middle" class="bpmn-task-text">Adapt VEMO Strategies, Advice, Engagement</text>
+                            <path d="M410 310 v 20 l -15 -15 h 30 l -15 15" class="bpmn-data-object" />
+                            <rect x="390" y="330" width="40" height="20" class="bpmn-data-object"/>
+                            <text x="410" y="343" text-anchor="middle" class="bpmn-label text-xs">Revised Strat.</text>
+                            <path d="M 470 280 H 520" class="bpmn-flow" marker-end="url(#arrow12)"/>
+
+                            <rect x="520" y="250" width="120" height="60" rx="5" class="bpmn-task"/>
+                            <text x="580" y="270" text-anchor="middle" class="bpmn-task-text">Advise Product Teams on Leveraging Vendors for Innovation</text>
+                            <path d="M 580 310 V 535 H 300" class="bpmn-message-flow" marker-end="url(#arrow12)"/>
+                            <text x="430" y="420" class="bpmn-label text-xs">Guidance to Prod. Teams</text>
+                            <path d="M 640 280 H 690" class="bpmn-flow" marker-end="url(#arrow12)"/>
+                            
+                            <rect x="690" y="250" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="750" y="270" text-anchor="middle" class="bpmn-task-text">Disseminate Alignment Outcomes</text>
+                            <path d="M 750 300 V 535 H 450" class="bpmn-message-flow" marker-end="url(#arrow12)"/> <path d="M 750 300 V 685 H 450" class="bpmn-message-flow" marker-end="url(#arrow12)"/> <text x="600" y="480" class="bpmn-label text-xs">Alignment Updates</text>
+                            <path d="M 810 275 H 860" class="bpmn-flow" marker-end="url(#arrow12)"/>
+
+                            <rect x="20" y="500" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="520" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">Product Teams</text>
+                            
+                            <rect x="300" y="550" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="360" y="570" text-anchor="middle" class="bpmn-task-text">Consider Implications for Roadmaps & Reqs.</text>
+
+                            <rect x="20" y="650" width="1160" height="150" class="bpmn-swimlane"/>
+                            <text x="40" y="670" class="bpmn-label font-medium" writing-mode="tb" dominant-baseline="middle" text-anchor="middle">ITOS/SAM</text>
+
+                            <rect x="300" y="700" width="120" height="50" rx="5" class="bpmn-task"/>
+                            <text x="360" y="720" text-anchor="middle" class="bpmn-task-text">Consider Implications for IT Ops, Assets, Standards</text>
+
+                            <circle cx="890" cy="275" r="15" class="bpmn-event-end"/>
+                            <text x="890" y="305" text-anchor="middle" class="bpmn-label">End</text>
+                            <text x="890" y="320" text-anchor="middle" class="bpmn-label text-xs">(Practices Aligned)</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-gray-600">Swimlanes & Partners:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li><strong>Other DSPED Teams (e.g., Technovation, Policy on Service and Digital):</strong> Accountable for initiatives (A per RACI).</li>
+                            <li><strong>VEMO:</strong> Responsible for analysis, adaptation, advisement (R per RACI).</li>
+                            <li><strong>Product Teams:</strong> Informed, Considerer of implications (I per RACI).</li>
+                            <li><strong>ITOS/SAM:</strong> Informed, Considerer of implications (I per RACI).</li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-gray-600">Start Event:</h3>
+                        <p class="text-gray-700">New GC/DSPED initiative launched or significant technology trend identified.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h3 class="text-lg font-medium text-gray-600">Process Steps & Flows:</h3>
+                    <div class="text-gray-700 space-y-2">
+                        <p><strong>Swimlane: Other DSPED Teams</strong> (Responsibility: Drive and communicate initiatives)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Task: Drive specific initiatives and communicate them. (Output: Innovation/Policy/Trend Update; Output Message Flow to VEMO and stakeholders)</li>
+                        </ul>
+                        <p><strong>Swimlane: VEMO</strong> (Responsibility: Align vendor management with trends/initiatives)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input Message Flow: Innovation/Policy/Trend Update.</li>
+                            <li>Task: Analyze impact on vendor management strategy, commercial vendor landscape, VEMO services.</li>
+                            <li>Task: Adapt VEMO strategies, advice, vendor engagement to align. (Output Updated: Revised Overall Vendor Management Strategy or VEMO procedures)</li>
+                            <li>Task: Advise Product Teams on leveraging vendor relationships for innovation. (Output Message Flow: Guidance to Product Teams)</li>
+                        </ul>
+                        <p><strong>Swimlane: Product Teams</strong> (Responsibility: Informed on trends/initiatives)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input (Implied): Guidance from VEMO/Other DSPED Teams.</li>
+                            <li>Task: Consider implications for product roadmaps and vendor requirements.</li>
+                        </ul>
+                        <p><strong>Swimlane: ITOS/SAM</strong> (Responsibility: Informed on trends/initiatives)</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>Input (Implied): Guidance from VEMO/Other DSPED Teams.</li>
+                            <li>Task: Consider implications for IT operations, assets, and technical standards.</li>
+                        </ul>
+                         <p><strong>Swimlane: VEMO</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                           <li>Task: Disseminate alignment outcomes to stakeholders. (Output Message Flow)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-gray-600">End Event:</h3>
+                        <p class="text-gray-700">VEMO and departmental practices aligned with innovation/technology trends.</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-md">
+                        <h3 class="text-lg font-medium text-gray-600">Potential KPIs/Measures:</h3>
+                        <ul class="list-disc list-inside text-gray-700">
+                            <li>Regularity of VEMO’s review of trends/initiatives.</li>
+                            <li>Evidence of strategy adaptation.</li>
+                            <li>Number of innovative solutions identified through vendor alignment.</li>
+                            <li>Policy compliance.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="mt-8 flex flex-col sm:flex-row justify-between items-center">
+            <button id="prevBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md mb-4 sm:mb-0 w-full sm:w-auto transition-colors duration-150">
+                Previous
+            </button>
+            <div id="slide-counter" class="text-center text-gray-700 font-medium mb-4 sm:mb-0">Slide 1 of 12</div>
+            <button id="nextBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md w-full sm:w-auto transition-colors duration-150">
+                Next
+            </button>
+        </footer>
+    </div>
+
+    <script>
+        // JavaScript for Slideshow Functionality
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const slideCounter = document.getElementById('slide-counter');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            // Hide all slides
+            slides.forEach(slide => {
+                slide.classList.remove('active');
+                slide.style.display = 'none'; // Ensure it's hidden
+            });
+            // Show the target slide
+            if (slides[index]) {
+                slides[index].classList.add('active');
+                slides[index].style.display = 'block'; // Ensure it's shown
+                slideCounter.textContent = `Slide ${index + 1} of ${slides.length}`;
+            } else {
+                console.error("Slide index out of bounds:", index);
+            }
+
+            // Update button states
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === slides.length - 1;
+            
+            prevBtn.classList.toggle('opacity-50', index === 0);
+            prevBtn.classList.toggle('cursor-not-allowed', index === 0);
+            nextBtn.classList.toggle('opacity-50', index === slides.length - 1);
+            nextBtn.classList.toggle('cursor-not-allowed', index === slides.length - 1);
+
+            // Scroll to the top of the slide container for better UX on navigation
+            document.getElementById('slides-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 0) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        });
+
+        // Initialize the first slide
+        if (slides.length > 0) {
+            showSlide(currentSlide);
+        } else {
+            slideCounter.textContent = "No slides available.";
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    </script>
+</body>
+</html>
