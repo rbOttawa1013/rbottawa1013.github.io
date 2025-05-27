@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Current Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            margin: 0;
+            padding: 1rem; /* Add padding for smaller screens */
+        }
+        .weather-card {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            margin: 1rem auto;
+        }
+        .weather-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .temperature {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        .condition {
+            font-size: 1.25rem;
+            color: #475569;
+            margin-bottom: 1.5rem;
+        }
+        .details p {
+            color: #334155;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        .details p strong {
+            color: #1e293b;
+        }
+        .reset-button, .city-select {
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db; /* Light gray border for select */
+            cursor: pointer;
+        }
+        .reset-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            transition: background-color 0.3s ease;
+            margin-top: 1.5rem;
+        }
+        .reset-button:hover {
+            background-color: #2563eb;
+        }
+        .reset-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .location {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        .last-updated {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 1rem;
+        }
+        .error-message {
+            color: #dc2626;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+        .city-selector-container {
+            margin-top: 1rem;
+        }
+        .city-select {
+            width: 100%;
+            background-color: #f9fafb; /* Light background for select */
+            color: #1f2937;
+        }
+        .city-select:focus {
+            outline: 2px solid #3b82f6;
+            border-color: #3b82f6;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="weather-card">
+        <h2 id="location" class="location">Loading location...</h2>
+        <div id="weather-icon" class="weather-icon">⏳</div>
+        <p id="temperature" class="temperature">--°C</p>
+        <p id="condition" class="condition">Loading...</p>
+        <div class="details">
+            <p><strong>Humidity:</strong> <span id="humidity">--%</span></p>
+            <p><strong>Wind:</strong> <span id="wind">-- km/h</span></p>
+        </div>
+        <button id="reset-button" class="reset-button">Reset Weather</button>
+        <div class="city-selector-container">
+            <label for="city-select" class="sr-only">Select City:</label> <select id="city-select" class="city-select">
+                </select>
+        </div>
+        <p id="last-updated" class="last-updated">Last updated: --</p>
+        <p id="error-message" class="error-message" style="display: none;"></p>
+    </div>
+
+    <script>
+        // DOM Elements
+        const locationEl = document.getElementById('location');
+        const weatherIconEl = document.getElementById('weather-icon');
+        const temperatureEl = document.getElementById('temperature');
+        const conditionEl = document.getElementById('condition');
+        const humidityEl = document.getElementById('humidity');
+        const windEl = document.getElementById('wind');
+        const resetButton = document.getElementById('reset-button');
+        const lastUpdatedEl = document.getElementById('last-updated');
+        const errorMessageEl = document.getElementById('error-message');
+        const citySelectEl = document.getElementById('city-select');
+
+        // --- Major Canadian Cities with Coordinates ---
+        const canadianCities = [
+            { name: "Ottawa, ON", lat: 45.42, lon: -75.69, default: true },
+            { name: "Toronto, ON", lat: 43.65, lon: -79.38 },
+            { name: "Montreal, QC", lat: 45.50, lon: -73.57 },
+            { name: "Vancouver, BC", lat: 49.28, lon: -123.12 },
+            { name: "Calgary, AB", lat: 51.05, lon: -114.07 },
+            { name: "Edmonton, AB", lat: 53.55, lon: -113.49 },
+            { name: "Quebec City, QC", lat: 46.81, lon: -71.21 },
+            { name: "Winnipeg, MB", lat: 49.90, lon: -97.14 },
+            { name: "Hamilton, ON", lat: 43.26, lon: -79.87 },
+            { name: "Halifax, NS", lat: 44.65, lon: -63.57 },
+            { name: "Victoria, BC", lat: 48.43, lon: -123.37 },
+            { name: "Saskatoon, SK", lat: 52.13, lon: -106.67 },
+            { name: "Regina, SK", lat: 50.45, lon: -104.62 },
+            { name: "St. John's, NL", lat: 47.56, lon: -52.71 },
+        ];
+
+        let currentSelectedCity = canadianCities.find(city => city.default) || canadianCities[0];
+
+        // --- Populate City Dropdown ---
+        function populateCityDropdown() {
+            canadianCities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = JSON.stringify({ lat: city.lat, lon: city.lon, name: city.name });
+                option.textContent = city.name;
+                if (city.name === currentSelectedCity.name) {
+                    option.selected = true;
+                }
+                citySelectEl.appendChild(option);
+            });
+        }
+
+        // --- Helper function to get weather description and icon from WMO code ---
+        function getWeatherInfo(weatherCode) {
+            const codes = {
+                0: { text: "Clear sky", icon: "☀️" }, 1: { text: "Mainly clear", icon: "🌤️" },
+                2: { text: "Partly cloudy", icon: "🌥️" }, 3: { text: "Overcast", icon: "☁️" },
+                45: { text: "Fog", icon: "🌫️" }, 48: { text: "Depositing rime fog", icon: "🌫️❄️" },
+                51: { text: "Light drizzle", icon: "🌦️" }, 53: { text: "Moderate drizzle", icon: "🌦️" },
+                55: { text: "Dense drizzle", icon: "🌧️" }, 56: { text: "Light freezing drizzle", icon: "🥶🌦️" },
+                57: { text: "Dense freezing drizzle", icon: "🥶🌧️" }, 61: { text: "Slight rain", icon: "🌧️" },
+                63: { text: "Moderate rain", icon: "🌧️" }, 65: { text: "Heavy rain", icon: "🌧️☔" },
+                66: { text: "Light freezing rain", icon: "🥶🌧️" }, 67: { text: "Heavy freezing rain", icon: "🥶🌧️☔" },
+                71: { text: "Slight snow fall", icon: "❄️" }, 73: { text: "Moderate snow fall", icon: "❄️" },
+                75: { text: "Heavy snow fall", icon: "❄️🌨️" }, 77: { text: "Snow grains", icon: "❄️" },
+                80: { text: "Slight rain showers", icon: "🌦️" }, 81: { text: "Moderate rain showers", icon: "🌧️" },
+                82: { text: "Violent rain showers", icon: "🌧️⛈️" }, 85: { text: "Slight snow showers", icon: "❄️🌨️" },
+                86: { text: "Heavy snow showers", icon: "❄️🌨️" }, 95: { text: "Thunderstorm", icon: "⛈️" },
+                96: { text: "Thunderstorm with slight hail", icon: "⛈️🧊" }, 99: { text: "Thunderstorm with heavy hail", icon: "⛈️🧊" }
+            };
+            return codes[weatherCode] || { text: "Unknown", icon: "❓" };
+        }
+
+        // --- Helper function to convert wind direction degrees to cardinal direction ---
+        function getWindDirection(degrees) {
+            if (degrees === null || typeof degrees === 'undefined') return ''; // Return empty if no data
+            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const index = Math.round(degrees / 22.5) % 16;
+            return directions[index];
+        }
+
+        // --- Function to Fetch and Display Weather Data ---
+        async function displayWeather(latitude, longitude, cityName) {
+            locationEl.textContent = cityName;
+            conditionEl.textContent = "Fetching new data...";
+            temperatureEl.textContent = "--°C";
+            humidityEl.textContent = "--%";
+            windEl.textContent = "-- km/h";
+            weatherIconEl.textContent = "⏳";
+            resetButton.disabled = true;
+            citySelectEl.disabled = true; // Disable select during fetch
+            errorMessageEl.style.display = 'none';
+
+            const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relativehumidity_2m,weathercode,windspeed_10m,winddirection_10m&temperature_unit=celsius&windspeed_unit=kmh&timezone=auto`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} for ${cityName}`);
+                }
+                const data = await response.json();
+
+                if (data && data.current) {
+                    const currentData = data.current;
+                    const weatherInfo = getWeatherInfo(currentData.weathercode);
+                    const windDirection = getWindDirection(currentData.winddirection_10m);
+
+                    weatherIconEl.textContent = weatherInfo.icon;
+                    temperatureEl.textContent = `${Math.round(currentData.temperature_2m)}°C`;
+                    conditionEl.textContent = weatherInfo.text;
+                    humidityEl.textContent = `${currentData.relativehumidity_2m}%`;
+                    windEl.textContent = `${Math.round(currentData.windspeed_10m)} km/h ${windDirection}`;
+                    lastUpdatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                } else {
+                    throw new Error(`Weather data format is incorrect for ${cityName}.`);
+                }
+
+            } catch (error) {
+                console.error("Error fetching weather data:", error);
+                conditionEl.textContent = "Failed to load";
+                weatherIconEl.textContent = "⚠️";
+                errorMessageEl.textContent = `Error: ${error.message}. Please try again.`;
+                errorMessageEl.style.display = 'block';
+            } finally {
+                resetButton.disabled = false;
+                citySelectEl.disabled = false; // Re-enable select
+            }
+        }
+
+        // --- Event Listeners ---
+        // Load weather data for the default city when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCityDropdown();
+            displayWeather(currentSelectedCity.lat, currentSelectedCity.lon, currentSelectedCity.name);
+        });
+
+        // Refresh weather data when the reset button is clicked for the current city
+        resetButton.addEventListener('click', () => {
+            displayWeather(currentSelectedCity.lat, currentSelectedCity.lon, currentSelectedCity.name);
+        });
+
+        // Update weather data when a new city is selected
+        citySelectEl.addEventListener('change', (event) => {
+            const selectedCityData = JSON.parse(event.target.value);
+            currentSelectedCity = selectedCityData; // Update current city
+            displayWeather(selectedCityData.lat, selectedCityData.lon, selectedCityData.name);
+        });
+    </script>
+</body>
+</html>
