@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canadian Flood Plain Risk Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .dashboard-header {
+            background-color: #1a365d;
+            color: white;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .map-placeholder-container {
+            background-color: #e2e8f0;
+            border: 2px dashed #cbd5e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #4a5568;
+            min-height: 300px;
+            height: clamp(300px, 60vh, 500px);
+            border-radius: 0.375rem;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 0.375rem;
+        }
+        .status-high { background-color: #fecaca; color: #991b1b; }
+        .status-medium { background-color: #fed7aa; color: #9a3412; }
+        .status-low { background-color: #bbf7d0; color: #166534; }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+        }
+        .message-box {
+            position: fixed; top: 20px; left: 50%;
+            transform: translateX(-50%);
+            background-color: #ef4444; color: white;
+            padding: 1rem; border-radius: 0.375rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10000; display: none;
+            font-size: 0.875rem;
+        }
+        .message-box.success { background-color: #22c55e; }
+        /* Layer toggle styles */
+        .layer-controls {
+            background-color: #f9fafb; /* Light gray background for controls */
+            padding: 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            margin-top: 0.75rem; /* space above controls */
+            border: 1px solid #e5e7eb; /* Light border */
+        }
+        .layer-controls h4 {
+            font-weight: 600;
+            color: #374151; /* Gray-700 */
+            margin-bottom: 0.5rem;
+        }
+        .layer-controls label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem; /* 14px */
+            color: #4b5563; /* Gray-600 */
+        }
+        .layer-controls input[type="checkbox"] {
+            margin-right: 0.5rem;
+            accent-color: #1a365d; /* Match header color */
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <header class="dashboard-header p-6 shadow-md">
+        <div class="container mx-auto">
+            <h1 class="text-3xl font-bold">Canadian Flood Plain Risk Dashboard</h1>
+            <p class="text-sm opacity-80">Prototype for visualizing flood risk data</p>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 md:p-6 lg:p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Select City</h2>
+                    <select id="citySelector" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                        <option value="ottawa">Ottawa, ON</option>
+                        <option value="toronto">Toronto, ON</option>
+                        <option value="montreal">Montreal, QC</option>
+                        <option value="vancouver">Vancouver, BC</option>
+                        <option value="calgary">Calgary, AB</option>
+                        <option value="halifax">Halifax, NS</option>
+                        <option value="winnipeg">Winnipeg, MB</option>
+                        <option value="edmonton">Edmonton, AB</option>
+                    </select>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-1 text-gray-700">Risk Overview</h2>
+                    <p class="text-sm text-gray-500 mb-4">For: <span id="selectedCityName" class="font-bold">Ottawa</span></p>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-600">Overall Risk Level:</label><p id="riskLevel" class="text-lg font-bold"><span class="status-badge">Loading...</span></p></div>
+                        <div><label class="block text-sm font-medium text-gray-600">Primary Flood Source:</label><p id="floodSource" class="text-gray-800">Loading...</p></div>
+                        <div><label class="block text-sm font-medium text-gray-600">Estimated Population in Flood Plain:</label><p id="populationAffected" class="text-gray-800">Loading...</p></div>
+                        <div><label class="block text-sm font-medium text-gray-600">Last Major Flood Event:</label><p id="lastEvent" class="text-gray-800">Loading...</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Flood Plain Map (<span id="mapCityName">Ottawa</span>)</h2>
+                    <div id="mapContainer" class="map-placeholder-container rounded-lg w-full">
+                        <div id="map" style="display: none;"></div>
+                        <img id="mapImage" src="https://placehold.co/800x500/e2e8f0/4a5568?text=Interactive+Map+Area%0A(Flood+Plain+Data+for+Ottawa)" alt="Map Placeholder" class="max-w-full max-h-full object-contain rounded-md">
+                    </div>
+                    <p id="mapCaption" class="text-xs text-gray-500 mt-2 text-center">This is a placeholder. A real map would show detailed flood zones.</p>
+
+                    <div id="layerControlsContainer" class="layer-controls" style="display: none;">
+                        <h4>Map Layers (Ottawa)</h4>
+                        <label>
+                            <input type="checkbox" id="toggleFloodPlainLayer" checked> Flood Plain (100-year, Climate Change)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="toggleIceJamLayer"> Ice Jam Prone Areas (Conceptual)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-3 text-gray-700">Key Risk Factors & Considerations</h3>
+                    <ul id="riskFactors" class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>Loading data...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-4 mt-auto">
+        <p class="text-sm">&copy; <span id="currentYear"></span> Flood Risk Information System. For demonstration purposes only.</p>
+    </footer>
+
+    <div id="messageBox" class="message-box"></div>
+
+    <script>
+        const floodData = {
+            ottawa: {
+                name: "Ottawa, ON", riskLevel: "Medium", riskClass: "status-medium",
+                floodSource: "Ottawa River, Rideau River", populationAffected: "Approx. 15,000 - 25,000",
+                lastEvent: "Spring 2019 (Major)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Ottawa)",
+                riskFactors: ["Proximity to major river systems.","Seasonal snowmelt and ice jams.","Aging stormwater infrastructure in older districts.","Increased frequency of heavy rainfall events."],
+                mapConfig: {
+                    center: [45.4215, -75.6972], zoom: 10,
+                    layers: [
+                        {
+                            id: "floodPlain",
+                            name: "Flood Plain (100-year, Climate Change)",
+                            data: { // Inline GeoJSON data as provided by user
+                                "type": "FeatureCollection",
+                                "features": [
+                                    {
+                                        "type": "Feature",
+                                        "properties": {
+                                            "name": "Ottawa River Flood Plain (Mock)"
+                                        },
+                                        "geometry": {
+                                            "type": "Polygon",
+                                            "coordinates": [
+                                                [
+                                                    [-75.75, 45.40],
+                                                    [-75.70, 45.40],
+                                                    [-75.70, 45.35],
+                                                    [-75.75, 45.35],
+                                                    [-75.75, 45.40]
+                                                ]
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "type": "Feature",
+                                        "properties": {
+                                            "name": "Rideau River Flood Plain (Mock)"
+                                        },
+                                        "geometry": {
+                                            "type": "Polygon",
+                                            "coordinates": [
+                                                [
+                                                    [-75.68, 45.42],
+                                                    [-75.65, 45.42],
+                                                    [-75.65, 45.38],
+                                                    [-75.68, 45.38],
+                                                    [-75.68, 45.42]
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                ]
+                            },
+                            style: { color: "#FF0000", weight: 2, opacity: 0.65, fillColor: "#FF5733", fillOpacity: 0.3 },
+                            popupContent: (props) => {
+                                if (props && props.name) return props.name; // Use name from mock data
+                                // Fallback properties if needed, though mock data only has 'name'
+                                let content = "100-Year Flood Plain Area (Climate Change)";
+                                if (props && props.FLD_ZONE) content = `Zone: ${props.FLD_ZONE}`;
+                                else if (props && props.DESCRIPTIO) content = `${props.DESCRIPTIO}`;
+                                else if (props && props.OBJECTID) content = `Area ID: ${props.OBJECTID}`;
+                                return content;
+                            },
+                            visible: true
+                        },
+                        {
+                            id: "iceJams",
+                            name: "Ice Jam Prone Areas (Conceptual)",
+                            data: {
+                                "type": "FeatureCollection",
+                                "features": [
+                                    { "type": "Feature", "properties": { "name": "Rideau River - Billings Bridge Area (Mock)" }, "geometry": { "type": "Polygon", "coordinates": [[[-75.67, 45.38], [-75.66, 45.38], [-75.66, 45.375], [-75.67, 45.375], [-75.67, 45.38]]] } },
+                                    { "type": "Feature", "properties": { "name": "Ottawa River - Britannia Area (Mock)" }, "geometry": { "type": "Polygon", "coordinates": [[[-75.80, 45.37], [-75.79, 45.37], [-75.79, 45.365], [-75.80, 45.365], [-75.80, 45.37]]] } }
+                                ]
+                            },
+                            style: { color: "#0000FF", weight: 2, opacity: 0.7, fillColor: "#3375FF", fillOpacity: 0.4, dashArray: '5, 5' },
+                            popupContent: (props) => props.name || "Conceptual Ice Jam Prone Area",
+                            visible: false
+                        }
+                    ]
+                }
+            },
+            toronto: { name: "Toronto, ON", riskLevel: "Low", riskClass: "status-low", floodSource: "Don River, Humber River, Lake Ontario shoreline", populationAffected: "Approx. 5,000 - 10,000 (localized areas)", lastEvent: "July 2013 (Flash Flood)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Toronto)", riskFactors: ["Urban flash flooding due to overwhelmed drainage.","Lake Ontario storm surges and high water levels.","Development in historical flood plains (ravine systems)."] },
+            montreal: { name: "Montreal, QC", riskLevel: "Medium", riskClass: "status-medium", floodSource: "St. Lawrence River, Rivière des Prairies", populationAffected: "Approx. 10,000 - 20,000", lastEvent: "Spring 2017 & 2019 (Significant)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Montreal)", riskFactors: ["Island city with extensive river frontage.","Vulnerability to spring thaws and ice jams.","Combined sewer overflows during heavy rain."] },
+            vancouver: { name: "Vancouver, BC", riskLevel: "High", riskClass: "status-high", floodSource: "Fraser River, Coastal storm surges, Sea level rise", populationAffected: "Approx. 30,000 - 50,000 (potential, long-term)", lastEvent: "Nov 2021 (Atmospheric River impacts)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Vancouver)", riskFactors: ["Low-lying coastal areas and Fraser River delta.","Significant threat from sea-level rise.","Potential for 'King Tides' combined with storm surges.","Earthquake-induced tsunami risk (secondary flood risk)."] },
+            calgary: { name: "Calgary, AB", riskLevel: "High", riskClass: "status-high", floodSource: "Bow River, Elbow River", populationAffected: "Approx. 20,000 - 30,000", lastEvent: "June 2013 (Catastrophic)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Calgary)", riskFactors: ["Rapid snowmelt from Rocky Mountains.","Confluence of two major rivers within the city.","Historical development in river valleys."] },
+            halifax: { name: "Halifax, NS", riskLevel: "Medium", riskClass: "status-medium", floodSource: "Coastal storm surges, Heavy rainfall", populationAffected: "Approx. 8,000 - 12,000 (coastal areas)", lastEvent: "Hurricane Juan 2003 (Storm Surge)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Halifax)", riskFactors: ["Extensive coastline exposed to Atlantic storms.","Low-lying downtown areas near the harbour.","Increased intensity of hurricanes and post-tropical storms."] },
+            winnipeg: { name: "Winnipeg, MB", riskLevel: "High", riskClass: "status-high", floodSource: "Red River, Assiniboine River", populationAffected: "Varies (Red River Floodway mitigates significantly)", lastEvent: "Spring 2011 (Significant), 1997 (Historic 'Flood of the Century')", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Winnipeg)", riskFactors: ["Located at the confluence of two major rivers.","Flat topography susceptible to widespread overland flooding.","Spring snowmelt from a large watershed.","Existence of the Red River Floodway is a critical mitigation factor."] },
+            edmonton: { name: "Edmonton, AB", riskLevel: "Medium", riskClass: "status-medium", floodSource: "North Saskatchewan River, Urban stormwater runoff", populationAffected: "Approx. 5,000 - 15,000 (localized, river valley & older areas)", lastEvent: "July 2004 (Major localized rainfall/stormwater flooding)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Edmonton)", riskFactors: ["River valley erosion and slope instability.","Localized flooding from intense rainfall overwhelming older storm systems.","Ice jams on the North Saskatchewan River during spring breakup.","Ongoing urban development impacting natural drainage patterns."] }
+        };
+
+        const citySelector = document.getElementById('citySelector');
+        const selectedCityName = document.getElementById('selectedCityName');
+        const riskLevelEl = document.getElementById('riskLevel');
+        const floodSource = document.getElementById('floodSource');
+        const populationAffected = document.getElementById('populationAffected');
+        const lastEvent = document.getElementById('lastEvent');
+        const mapCityName = document.getElementById('mapCityName');
+        const mapImage = document.getElementById('mapImage');
+        const riskFactorsList = document.getElementById('riskFactors');
+        const currentYearSpan = document.getElementById('currentYear');
+        const mapDiv = document.getElementById('map');
+        const mapCaption = document.getElementById('mapCaption');
+        const messageBox = document.getElementById('messageBox');
+        const layerControlsContainer = document.getElementById('layerControlsContainer');
+        const toggleFloodPlainLayerCheckbox = document.getElementById('toggleFloodPlainLayer');
+        const toggleIceJamLayerCheckbox = document.getElementById('toggleIceJamLayer');
+
+        let map; // Leaflet map instance
+        let activeLayers = {}; // To store references to active GeoJSON layers {layerId: leafletLayer}
+
+        function showMessage(text, type = 'error', duration = 5000) {
+            messageBox.textContent = text;
+            messageBox.className = 'message-box';
+            if (type === 'success') messageBox.classList.add('success');
+            messageBox.style.display = 'block';
+            setTimeout(() => { messageBox.style.display = 'none'; }, duration);
+        }
+
+        async function loadGeoJsonLayer(mapInstance, layerConfig) {
+            try {
+                let geoJsonData;
+                if (layerConfig.url) { // Fetch if URL is provided
+                    const response = await fetch(layerConfig.url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${layerConfig.name}`);
+                    geoJsonData = await response.json();
+                } else if (layerConfig.data) { // Use inline data if provided
+                    geoJsonData = layerConfig.data;
+                } else {
+                    throw new Error(`No URL or data provided for layer: ${layerConfig.name}`);
+                }
+
+                const leafletLayer = L.geoJSON(geoJsonData, {
+                    style: layerConfig.style,
+                    onEachFeature: (feature, layer) => {
+                        if (layerConfig.popupContent) {
+                            const content = typeof layerConfig.popupContent === 'function' ?
+                                layerConfig.popupContent(feature.properties) : layerConfig.popupContent;
+                            layer.bindPopup(content);
+                        }
+                    }
+                });
+                return leafletLayer;
+            } catch (error) {
+                console.error(`Error loading layer ${layerConfig.name}:`, error);
+                showMessage(`Failed to load ${layerConfig.name}: ${error.message}.`, 'error');
+                return null;
+            }
+        }
+
+
+        async function setupOttawaMap(config) {
+            mapImage.style.display = 'none';
+            mapDiv.style.display = 'block';
+            mapCaption.textContent = "Live map for Ottawa. Toggle layers below. Data: City of Ottawa (Mock/Conceptual)."; // Adjusted caption
+            layerControlsContainer.style.display = 'block';
+
+            if (!map) {
+                map = L.map('map').setView(config.center, config.zoom);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+            } else {
+                map.setView(config.center, config.zoom);
+                Object.values(activeLayers).forEach(layer => {
+                    if (map.hasLayer(layer)) {
+                         map.removeLayer(layer);
+                    }
+                });
+                activeLayers = {};
+            }
+
+            for (const layerConfig of config.layers) {
+                const leafletLayer = await loadGeoJsonLayer(map, layerConfig); // loadGeoJsonLayer handles both URL and inline data
+                if (leafletLayer) {
+                    activeLayers[layerConfig.id] = leafletLayer;
+                    if (layerConfig.visible) {
+                        leafletLayer.addTo(map);
+                    }
+                }
+            }
+            toggleFloodPlainLayerCheckbox.checked = config.layers.find(l => l.id === 'floodPlain')?.visible ?? false;
+            toggleIceJamLayerCheckbox.checked = config.layers.find(l => l.id === 'iceJams')?.visible ?? false;
+
+            if (activeLayers.floodPlain && config.layers.find(l => l.id === 'floodPlain').visible) {
+                 try {
+                    if (typeof activeLayers.floodPlain.getBounds === 'function' && activeLayers.floodPlain.getBounds().isValid()) {
+                        map.fitBounds(activeLayers.floodPlain.getBounds());
+                    } else {
+                        console.warn("Flood plain layer loaded but bounds are invalid or not available to fit.");
+                    }
+                 } catch (e) {
+                    console.warn("Could not fit bounds for floodPlain layer:", e);
+                 }
+            }
+        }
+
+
+        function showPlaceholderMap(data) {
+            if (map) mapDiv.style.display = 'none';
+            mapImage.style.display = 'block';
+            layerControlsContainer.style.display = 'none';
+            const encodedMapText = encodeURIComponent(data.mapImageText);
+            mapImage.src = `https://placehold.co/800x500/e2e8f0/4a5568?text=${encodedMapText}`;
+            mapImage.alt = `Map placeholder for ${data.name}`;
+            mapCaption.textContent = "This is a placeholder. A real map would show detailed flood zones.";
+        }
+
+        function updateDashboard(cityKey) {
+            const data = floodData[cityKey];
+            if (!data) {
+                console.error("No data found for city:", cityKey);
+                selectedCityName.textContent = "N/A";
+                riskLevelEl.innerHTML = `<span class="status-badge">N/A</span>`;
+                floodSource.textContent = "N/A"; populationAffected.textContent = "N/A"; lastEvent.textContent = "N/A";
+                riskFactorsList.innerHTML = '<li>No data available.</li>';
+                showPlaceholderMap({ name: "N/A", mapImageText: "No+Data+Available" });
+                return;
+            }
+
+            selectedCityName.textContent = data.name;
+            mapCityName.textContent = data.name;
+            riskLevelEl.innerHTML = `<span class="status-badge ${data.riskClass}">${data.riskLevel}</span>`;
+            floodSource.textContent = data.floodSource;
+            populationAffected.textContent = data.populationAffected;
+            lastEvent.textContent = data.lastEvent;
+
+            riskFactorsList.innerHTML = '';
+            if (data.riskFactors && data.riskFactors.length > 0) {
+                data.riskFactors.forEach(factor => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = factor;
+                    riskFactorsList.appendChild(listItem);
+                });
+            } else {
+                riskFactorsList.innerHTML = '<li>No specific risk factors listed.</li>';
+            }
+
+            if (cityKey === 'ottawa' && data.mapConfig) {
+                setupOttawaMap(data.mapConfig);
+            } else {
+                showPlaceholderMap(data);
+            }
+        }
+
+        toggleFloodPlainLayerCheckbox.addEventListener('change', function() {
+            const layerId = 'floodPlain';
+            if (activeLayers[layerId]) {
+                if (this.checked) {
+                    if (!map.hasLayer(activeLayers[layerId])) map.addLayer(activeLayers[layerId]);
+                } else {
+                    if (map.hasLayer(activeLayers[layerId])) map.removeLayer(activeLayers[layerId]);
+                }
+            }
+        });
+
+        toggleIceJamLayerCheckbox.addEventListener('change', function() {
+            const layerId = 'iceJams';
+             if (activeLayers[layerId]) {
+                if (this.checked) {
+                    if (!map.hasLayer(activeLayers[layerId])) map.addLayer(activeLayers[layerId]);
+                } else {
+                    if (map.hasLayer(activeLayers[layerId])) map.removeLayer(activeLayers[layerId]);
+                }
+            }
+        });
+
+
+        citySelector.addEventListener('change', (event) => {
+            updateDashboard(event.target.value);
+        });
+
+        currentYearSpan.textContent = new Date().getFullYear();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialCity = citySelector.value;
+            updateDashboard(initialCity);
+        });
+    </script>
+
+</body>
+</html>
