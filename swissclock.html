@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiss Analog Clock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for the clock canvas */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter font as per instructions */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0; /* Light grey background */
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        canvas {
+            background-color: #ffffff; /* White clock face */
+            border: 8px solid #000000; /* Black border for the clock */
+            border-radius: 50%; /* Make it perfectly circular */
+            display: block;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Soft shadow for depth */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div class="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Swiss Analog Clock</h1>
+        <canvas id="swissClock" class="max-w-full h-auto" width="400" height="400"></canvas>
+    </div>
+
+    <script>
+        // Get the canvas element and its 2D rendering context
+        const canvas = document.getElementById('swissClock');
+        const ctx = canvas.getContext('2d');
+
+        // Variables to store clock properties
+        let radius = 0;
+        let centerX = 0;
+        let centerY = 0;
+
+        /**
+         * Initializes the canvas dimensions and centers the clock.
+         * This function is called on window load and resize to ensure responsiveness.
+         */
+        function initializeCanvas() {
+            // Set canvas size dynamically based on the container, but keep it square
+            const size = Math.min(canvas.parentElement.offsetWidth, window.innerHeight * 0.7); // Adjust based on parent width or window height
+            canvas.width = size;
+            canvas.height = size;
+
+            // Calculate the radius and center of the clock
+            radius = canvas.width / 2 * 0.9; // 90% of half the canvas width to leave some padding
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+
+            // Translate the origin to the center of the canvas for easier drawing
+            ctx.translate(centerX, centerY);
+        }
+
+        /**
+         * Draws the main clock face, including the outer circle and the central dot.
+         */
+        function drawFace() {
+            // Save the current drawing state
+            ctx.save();
+
+            // Draw the outer circle (clock face)
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.strokeStyle = '#000000'; // Black border
+            ctx.lineWidth = radius * 0.02; // 2% of radius for border thickness
+            ctx.stroke();
+
+            // Draw the central dot
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.03, 0, 2 * Math.PI); // Small black dot in the center
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+
+            // Restore the drawing state
+            ctx.restore();
+        }
+
+        /**
+         * Draws the hour and minute markers on the clock face.
+         */
+        function drawMarkers() {
+            ctx.save();
+
+            // Draw hour markers (thick black lines)
+            for (let i = 0; i < 12; i++) {
+                ctx.beginPath();
+                ctx.lineWidth = radius * 0.04; // Thickness of hour markers
+                ctx.lineCap = 'round'; // Rounded ends for markers
+                ctx.strokeStyle = '#000000'; // Black color
+                ctx.rotate(Math.PI / 6); // Rotate by 30 degrees (360/12) for each hour
+                ctx.moveTo(0, -radius * 0.85); // Start point of the marker
+                ctx.lineTo(0, -radius * 0.95); // End point of the marker
+                ctx.stroke();
+            }
+
+            // Draw minute markers (thin black lines)
+            for (let i = 0; i < 60; i++) {
+                if (i % 5 !== 0) { // Don't draw minute markers on top of hour markers
+                    ctx.beginPath();
+                    ctx.lineWidth = radius * 0.01; // Thickness of minute markers
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#000000';
+                    ctx.moveTo(0, -radius * 0.9); // Start point
+                    ctx.lineTo(0, -radius * 0.95); // End point
+                    ctx.stroke();
+                }
+                ctx.rotate(Math.PI / 30); // Rotate by 6 degrees (360/60) for each minute
+            }
+
+            ctx.restore();
+        }
+
+        /**
+         * Draws the clock hands (hour, minute, second).
+         * @param {Date} date - The current date object to get time from.
+         */
+        function drawHands(date) {
+            const hour = date.getHours();
+            const minute = date.getMinutes();
+            const second = date.getSeconds();
+
+            // Calculate angles for hands
+            // Hour hand: 360 degrees in 12 hours, plus minute contribution
+            const hourAngle = ((hour % 12) * Math.PI / 6) + (minute * Math.PI / (6 * 60)) + (second * Math.PI / (360 * 60));
+            // Minute hand: 360 degrees in 60 minutes, plus second contribution
+            const minuteAngle = (minute * Math.PI / 30) + (second * Math.PI / (30 * 60));
+            // Second hand: 360 degrees in 60 seconds
+            const secondAngle = (second * Math.PI / 30);
+
+            // Draw hour hand
+            ctx.save();
+            ctx.rotate(hourAngle);
+            ctx.beginPath();
+            ctx.lineWidth = radius * 0.08; // Thickness of hour hand
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
+            ctx.moveTo(0, radius * 0.1); // Slightly extend past center
+            ctx.lineTo(0, -radius * 0.5); // Length of hour hand
+            ctx.stroke();
+            ctx.restore();
+
+            // Draw minute hand
+            ctx.save();
+            ctx.rotate(minuteAngle);
+            ctx.beginPath();
+            ctx.lineWidth = radius * 0.06; // Thickness of minute hand
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
+            ctx.moveTo(0, radius * 0.1);
+            ctx.lineTo(0, -radius * 0.75); // Length of minute hand
+            ctx.stroke();
+            ctx.restore();
+
+            // Draw second hand (Swiss railway clock style)
+            ctx.save();
+            ctx.rotate(secondAngle);
+            ctx.beginPath();
+            ctx.lineWidth = radius * 0.015; // Thickness of second hand stem
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#FF0000'; // Red color for second hand
+            ctx.moveTo(0, radius * 0.2); // Extend slightly past center
+            ctx.lineTo(0, -radius * 0.7); // Length of second hand stem
+            ctx.stroke();
+
+            // Draw the distinctive red circle at the end of the second hand
+            ctx.beginPath();
+            ctx.arc(0, -radius * 0.7, radius * 0.08, 0, 2 * Math.PI); // Red circle at the tip
+            ctx.fillStyle = '#FF0000';
+            ctx.fill();
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = radius * 0.01;
+            ctx.stroke();
+
+            // Draw a small black dot in the center of the red circle
+            ctx.beginPath();
+            ctx.arc(0, -radius * 0.7, radius * 0.02, 0, 2 * Math.PI);
+            ctx.fillStyle = '#000000';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        /**
+         * Main function to draw and update the clock.
+         * Clears the canvas, redraws all elements, and gets the current time.
+         */
+        function drawClock() {
+            // Clear the entire canvas before redrawing
+            ctx.clearRect(-centerX, -centerY, canvas.width, canvas.height);
+
+            drawFace();
+            drawMarkers();
+            drawHands(new Date()); // Pass the current date object
+        }
+
+        // Event listener for window load to initialize and start the clock
+        window.onload = function () {
+            initializeCanvas(); // Initialize canvas dimensions and context
+            drawClock(); // Draw the clock immediately
+            // Update the clock every second
+            setInterval(drawClock, 1000);
+        };
+
+        // Event listener for window resize to make the clock responsive
+        window.onresize = function() {
+            // Reset the canvas translation before re-initializing
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformation
+            initializeCanvas();
+            drawClock();
+        };
+    </script>
+</body>
+</html>
