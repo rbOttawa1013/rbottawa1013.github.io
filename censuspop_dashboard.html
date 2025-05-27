@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canadian Population Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <style>
+        /* Custom styles for Inter font and any other minor tweaks */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Map container style */
+        #map {
+            height: 400px; /* Defined height for Leaflet map */
+            border-radius: 0.5rem;
+            /* Border applied via Tailwind */
+        }
+        .fact-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .fact-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Province list item base styles (Tailwind will handle hover/active for dark mode) */
+        .province-item {
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+
+        /* Light mode active province item */
+        .province-item.active {
+            background-color: #e0f2fe; /* Tailwind sky-100 */
+            color: #0c4a6e; /* Tailwind sky-700 */
+            font-weight: 600; /* Tailwind font-semibold */
+        }
+        /* Dark mode active province item */
+        .dark .province-item.active {
+            background-color: #0369a1; /* Tailwind sky-700 */
+            color: #e0f2fe; /* Tailwind sky-200 */
+        }
+
+        /* Light mode province item hover */
+        .province-item:hover {
+            background-color: #f0f9ff; /* Tailwind sky-50 */
+        }
+        /* Dark mode province item hover */
+        .dark .province-item:hover {
+            background-color: #075985; /* Tailwind sky-800 */
+        }
+
+
+        /* Scrollbar styling for province list */
+        .province-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .province-list::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Light mode track */
+            border-radius: 10px;
+        }
+        .dark .province-list::-webkit-scrollbar-track {
+            background: #374151; /* Dark mode track (gray-700) */
+        }
+        .province-list::-webkit-scrollbar-thumb {
+            background: #888; /* Light mode thumb */
+            border-radius: 10px;
+        }
+        .dark .province-list::-webkit-scrollbar-thumb {
+            background: #6b7280; /* Dark mode thumb (gray-500) */
+        }
+        .province-list::-webkit-scrollbar-thumb:hover {
+            background: #555; /* Light mode thumb hover */
+        }
+        .dark .province-list::-webkit-scrollbar-thumb:hover {
+            background: #4b5563; /* Dark mode thumb hover (gray-600) */
+        }
+
+        /* Simple modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+        .dark .modal {
+             background-color: rgba(0,0,0,0.6); /* Darker overlay for dark mode */
+        }
+
+        .modal-content {
+            background-color: #fefefe; /* Light mode */
+            margin: 10% auto; /* Adjusted margin for better centering */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%; /* More responsive width */
+            max-width: 500px;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .dark .modal-content {
+            background-color: #1f2937; /* gray-800 */
+            border-color: #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+        }
+
+        .modal-close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            line-height: 1; /* Align better */
+        }
+        .modal-close-button:hover,
+        .modal-close-button:focus {
+            color: black; /* Light mode */
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .dark .modal-close-button {
+            color: #9ca3af; /* gray-400 */
+        }
+        .dark .modal-close-button:hover,
+        .dark .modal-close-button:focus {
+            color: #f3f4f6; /* gray-100 */
+        }
+        /* Leaflet attribution control styling */
+        .leaflet-control-attribution a {
+            color: #0078A8 !important; /* Tailwind sky-600 for links */
+        }
+        .dark .leaflet-control-attribution a {
+            color: #7dd3fc !important; /* Tailwind sky-300 for links in dark mode */
+        }
+        .leaflet-popup-content-wrapper {
+            background: #ffffff;
+            color: #333333;
+        }
+        .dark .leaflet-popup-content-wrapper {
+            background: #2d3748; /* A dark gray */
+            color: #e2e8f0; /* A light gray */
+        }
+        .leaflet-popup-tip {
+            background: #ffffff;
+        }
+        .dark .leaflet-popup-tip {
+            background: #2d3748;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300">
+
+    <header class="bg-sky-700 text-white p-6 shadow-md dark:bg-slate-800">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold">Canadian Population Dashboard</h1>
+                <p class="text-sky-200 dark:text-sky-300">Explore 2021 Census Data & Interesting Facts</p>
+            </div>
+            <button id="theme-toggle" type="button" class="text-sky-200 dark:text-yellow-300 hover:text-white dark:hover:text-yellow-200 focus:outline-none p-2 rounded-lg">
+                <svg id="theme-toggle-dark-icon" class="hidden h-6 w-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                <svg id="theme-toggle-light-icon" class="hidden h-6 w-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414-1.414l-.707-.707a1 1 0 01-1.414 1.414l.707.707zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3 text-sky-700 dark:text-sky-400">Map & Region Selection</h2>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Click a name below to update map and details.</p>
+                    <div id="map" class="mb-4 border border-gray-200 dark:border-gray-700"></div>
+                    <ul id="provinceList" class="province-list max-h-80 overflow-y-auto space-y-1 pr-2">
+                        </ul>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 text-sky-700 dark:text-sky-400" id="provinceName">Canada</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                        <div class="bg-sky-50 dark:bg-sky-900/50 p-4 rounded-lg">
+                            <p class="text-sm text-sky-600 dark:text-sky-400 font-medium">Population (2021)</p>
+                            <p class="text-2xl font-bold text-sky-800 dark:text-sky-200" id="provincePopulation">36,991,981</p>
+                        </div>
+                        <div class="bg-green-50 dark:bg-green-900/50 p-4 rounded-lg">
+                            <p class="text-sm text-green-600 dark:text-green-400 font-medium">Growth (2016-2021)</p>
+                            <p class="text-2xl font-bold text-green-800 dark:text-green-200" id="provinceGrowth">5.2%</p>
+                        </div>
+                        <div class="bg-indigo-50 dark:bg-indigo-900/50 p-4 rounded-lg">
+                            <p class="text-sm text-indigo-600 dark:text-indigo-400 font-medium">Land Area (km²)</p>
+                            <p class="text-2xl font-bold text-indigo-800 dark:text-indigo-200" id="provinceLandArea">8,965,589</p>
+                        </div>
+                        <div class="bg-yellow-50 dark:bg-yellow-900/50 p-4 rounded-lg">
+                            <p class="text-sm text-yellow-600 dark:text-yellow-400 font-medium">Population Density (/km²)</p>
+                            <p class="text-2xl font-bold text-yellow-800 dark:text-yellow-200" id="provinceDensity">4.2</p>
+                        </div>
+                        <div class="bg-purple-50 dark:bg-purple-900/50 p-4 rounded-lg sm:col-span-2 md:col-span-1">
+                            <p class="text-sm text-purple-600 dark:text-purple-400 font-medium">Capital City</p>
+                            <p class="text-2xl font-bold text-purple-800 dark:text-purple-200" id="provinceCapital">Ottawa</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 text-sky-700 dark:text-sky-400">Did You Know? <span id="factsRegionName" class="text-lg font-medium text-gray-600 dark:text-gray-400"></span></h2>
+                    <div id="interestingFacts" class="space-y-3">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center p-6 mt-8 text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-slate-800 border-t border-gray-200 dark:border-gray-700">
+        <p>&copy; <span id="currentYear"></span> Canadian Population Dashboard. Data based on 2021 Census and other sources.</p>
+        <p>This is a demo application for illustrative purposes. Map tiles by OpenStreetMap.</p>
+    </footer>
+
+    <div id="messageModal" class="modal">
+        <div class="modal-content"> <span class="modal-close-button" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle" class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">Notification</h3>
+            <p id="modalMessage" class="text-gray-700 dark:text-gray-300">This is a sample message.</p>
+            <div class="mt-4 text-right">
+                <button onclick="closeModal()" class="bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <script>
+        // --- Global Map Variable ---
+        let map;
+        let currentProvinceKey = "Canada"; // To keep track of the selected province
+
+        // --- Data (with lat, lon, zoom for map) ---
+        const populationData = {
+            "Canada": { name: "Canada", population: 36991981, growth: "5.2%", landArea: "8,965,589", density: "4.2", capital: "Ottawa", lat: 56.1304, lon: -106.3468, zoom: 3 },
+            "Ontario": { name: "Ontario", population: 14223942, growth: "5.8%", landArea: "908,699", density: "15.7", capital: "Toronto", lat: 51.2538, lon: -85.3232, zoom: 5 },
+            "Quebec": { name: "Quebec", population: 8501833, growth: "4.1%", landArea: "1,356,625", density: "6.3", capital: "Quebec City", lat: 52.9399, lon: -73.5491, zoom: 4 },
+            "British Columbia": { name: "British Columbia", population: 5000879, growth: "7.6%", landArea: "922,503", density: "5.4", capital: "Victoria", lat: 53.7267, lon: -127.6476, zoom: 5 },
+            "Alberta": { name: "Alberta", population: 4262635, growth: "4.8%", landArea: "640,330", density: "6.7", capital: "Edmonton", lat: 53.9333, lon: -116.5765, zoom: 5 },
+            "Manitoba": { name: "Manitoba", population: 1342153, growth: "5.0%", landArea: "552,371", density: "2.4", capital: "Winnipeg", lat: 53.7609, lon: -98.8139, zoom: 5 },
+            "Saskatchewan": { name: "Saskatchewan", population: 1132505, growth: "3.1%", landArea: "588,244", density: "1.9", capital: "Regina", lat: 52.9399, lon: -106.4509, zoom: 5 },
+            "Nova Scotia": { name: "Nova Scotia", population: 969383, growth: "5.0%", landArea: "52,942", density: "18.3", capital: "Halifax", lat: 44.6820, lon: -63.7443, zoom: 7 },
+            "New Brunswick": { name: "New Brunswick", population: 775610, growth: "3.8%", landArea: "71,389", density: "10.9", capital: "Fredericton", lat: 46.5653, lon: -66.4619, zoom: 7 },
+            "Newfoundland and Labrador": { name: "Newfoundland and Labrador", population: 510550, growth: "-1.8%", landArea: "370,514", density: "1.4", capital: "St. John's", lat: 53.1355, lon: -57.6604, zoom: 5 },
+            "Prince Edward Island": { name: "Prince Edward Island", population: 154331, growth: "8.0%", landArea: "5,686", density: "27.1", capital: "Charlottetown", lat: 46.5107, lon: -63.4168, zoom: 8 },
+            "Northwest Territories": { name: "Northwest Territories", population: 41070, growth: "-1.7%", landArea: "1,143,794", density: "0.04", capital: "Yellowknife", lat: 64.8255, lon: -124.8457, zoom: 4 },
+            "Yukon": { name: "Yukon", population: 40232, growth: "12.1%", landArea: "474,713", density: "0.08", capital: "Whitehorse", lat: 64.2823, lon: -135.0000, zoom: 5 },
+            "Nunavut": { name: "Nunavut", population: 36858, growth: "2.5%", landArea: "1,877,779", density: "0.02", capital: "Iqaluit", lat: 70.2998, lon: -83.1076, zoom: 3 }
+        };
+
+        const interestingFactsData = {
+            "Canada": [
+                { text: "Canada is the second-largest country in the world by total area.", icon: "🌍" },
+                { text: "Over 80% of Canada's population lives within 150 kilometers (93 miles) of the US border.", icon: "🏠" },
+                { text: "The median age in Canada was 41.7 years in 2021.", icon: "🎂" },
+                { text: "Canada has the longest coastline of any country in the world.", icon: "🌊" },
+                { text: "Approximately 1 in 5 Canadians were born outside of Canada.", icon: "✈️" },
+                { text: "The most common mother tongue reported in 2021 after English and French was Mandarin.", icon: "🗣️" }
+            ],
+            "Ontario": [
+                { text: "Ontario is home to Canada's largest city, Toronto, and the national capital, Ottawa.", icon: "🏙️" },
+                { text: "The name 'Ontario' is believed to come from an Iroquoian word meaning 'beautiful water' or 'sparkling water'.", icon: "💧" },
+                { text: "Ontario has more than 250,000 lakes, containing about one-fifth of the world's fresh water.", icon: "🏞️" },
+                { text: "The city of Hamilton, Ontario, is known as the 'Waterfall Capital of the World' in an urban area, boasting over 100 waterfalls.", icon: "🌊" },
+                { text: "Ontario's official flower is the white trillium, a delicate three-petaled flower that blooms in spring.", icon: "🌸" },
+                { text: "The popular Canadian pastry, BeaverTails, originated in Killaloe, Ontario, in 1978.", icon: "🍰" }
+            ],
+            "Quebec": [
+                { text: "Quebec is the largest province by area and the only one with a predominantly French-speaking population.", icon: "🗣️" },
+                { text: "Montreal, Quebec's largest city, is the second-largest primarily French-speaking city in the world, after Paris.", icon: "🥐" },
+                { text: "The Château Frontenac in Quebec City is said to be the most photographed hotel in the world.", icon: "🏰" },
+                { text: "Quebec produces about 70% of the world's maple syrup.", icon: "🍁" },
+                { text: "The Montreal International Jazz Festival is the largest jazz festival in the world.", icon: "🎷" },
+                { text: "Poutine, a dish of french fries, cheese curds, and gravy, originated in rural Quebec in the 1950s.", icon: "🍟" }
+            ],
+            "British Columbia": [
+                { text: "British Columbia is Canada's westernmost province, known for its stunning mountain ranges and Pacific coastline.", icon: "🏔️" },
+                { text: "About half of all British Columbians live in the Metro Vancouver area.", icon: "🌲" },
+                { text: "The Great Bear Rainforest in B.C. is one of the largest remaining tracts of unspoiled temperate rainforest left in the world.", icon: "🐻" },
+                { text: "BC is home to Canada's only desert, located in the Okanagan Valley.", icon: "🌵" },
+                { text: "The province has three UNESCO World Heritage Sites: Canadian Rocky Mountain Parks, SGang Gwaay, and Tatshenshini-Alsek.", icon: "🏞️" },
+                { text: "Vancouver often ranks as one of the most livable cities in the world.", icon: "🏆" }
+            ],
+            "Alberta": [
+                { text: "Alberta is known for its vast oil reserves and the stunning Rocky Mountains, including Banff and Jasper National Parks.", icon: "⛽" },
+                { text: "The Calgary Stampede, an annual rodeo, exhibition, and festival, is known as 'The Greatest Outdoor Show on Earth'.", icon: "🤠" },
+                { text: "Dinosaur Provincial Park in Alberta contains some of the most important dinosaur fossil discoveries ever made.", icon: "🦖" },
+                { text: "Alberta is the only Canadian province with no provincial sales tax (PST).", icon: "💸" },
+                { text: "The West Edmonton Mall was the world's largest shopping mall until 2004 and remains North America's largest.", icon: "🛍️" },
+                { text: "Alberta has the highest number of sunny days per year in Canada.", icon: "☀️" }
+            ],
+            "Manitoba": [
+                { text: "Manitoba is considered the longitudinal centre of Canada.", icon: "📍" },
+                { text: "Churchill, Manitoba is known as the 'Polar Bear Capital of the World'.", icon: "🐻‍❄️" },
+                { text: "Winnipeg's Exchange District is a National Historic Site featuring a collection of well-preserved early 20th-century architecture.", icon: "🧱" },
+                { text: "Manitoba has over 100,000 lakes, including Lake Winnipeg, Canada's sixth-largest freshwater lake.", icon: "🏞️" },
+                { text: "The Royal Canadian Mint, which produces all of Canada's circulation coins, is located in Winnipeg.", icon: "🪙" },
+                { text: "Gimli, Manitoba, hosts an annual Icelandic Festival, celebrating its strong Icelandic heritage.", icon: "🇮🇸" }
+            ],
+             "Saskatchewan": [
+                { text: "Saskatchewan is known as the 'Land of Living Skies' due to its vibrant sunsets and northern lights.", icon: "🌅" },
+                { text: "The province is a major producer of wheat and other grains, often called 'Canada's Breadbasket'.", icon: "🌾" },
+                { text: "The RCMP Heritage Centre in Regina showcases the history of the Royal Canadian Mounted Police.", icon: "🐴" },
+                { text: "Saskatchewan has more road surface than any other province in Canada.", icon: "🛣️" },
+                { text: "The Athabasca Sand Dunes in northern Saskatchewan are the largest active sand dunes in Canada.", icon: "🏜️" },
+                { text: "Little Manitou Lake is often called 'Canada's Dead Sea' due to its high mineral content and buoyancy.", icon: "🧂" }
+            ],
+            "Nova Scotia": [
+                { text: "Nova Scotia means 'New Scotland' in Latin.", icon: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+                { text: "It is one of the three Maritime Provinces and one of the four Atlantic Provinces.", icon: "🦞" },
+                { text: "The Cabot Trail, a scenic roadway in Cape Breton Island, is world-renowned.", icon: "🚗" },
+                { text: "Peggy's Cove Lighthouse is one of Canada's most photographed lighthouses.", icon: "💡" },
+                { text: "Nova Scotia is home to the world's highest tides in the Bay of Fundy.", icon: "🌊" },
+                { text: "The Halifax Explosion in 1917 was the largest man-made explosion prior to the atomic bomb.", icon: "💥" }
+            ],
+            "New Brunswick": [
+                { text: "New Brunswick is the only officially bilingual province in Canada (English and French).", icon: "🗣️" },
+                { text: "The Bay of Fundy, shared with Nova Scotia, has the highest tides in the world.", icon: "🌊" },
+                { text: "It is known for its covered bridges, often called 'kissing bridges', with over 50 remaining.", icon: "🌉" },
+                { text: "The Hopewell Rocks, or Flowerpot Rocks, are distinctive rock formations carved by tidal erosion.", icon: "🗿" },
+                { text: "New Brunswick is one of the most forested provinces in Canada, with forests covering about 83% of its land.", icon: "🌲" },
+                { text: "The Magnetic Hill in Moncton is a famous optical illusion where cars appear to roll uphill.", icon: "🚗" }
+            ],
+            "Newfoundland and Labrador": [
+                { text: "This province has its own unique time zone (Newfoundland Time Zone), 30 minutes ahead of Atlantic Time.", icon: "⏰" },
+                { text: "Gros Morne National Park is a UNESCO World Heritage site known for its geology and stunning fjords.", icon: "🏞️" },
+                { text: "Iceberg Alley, off the coast, is a prime spot for viewing icebergs that break off from Greenland glaciers.", icon: "🧊" },
+                { text: "L'Anse aux Meadows is the only authenticated Norse site in North America, dating back to around 1000 AD.", icon: "🛡️" },
+                { text: "The province has its own distinct dialect and unique vocabulary.", icon: "💬" },
+                { text: "Cape Spear is the easternmost point of land in North America.", icon: "➡️" }
+            ],
+            "Prince Edward Island": [
+                { text: "PEI is Canada's smallest province by land area and population.", icon: "🏝️" },
+                { text: "It's famous for its red soil, potatoes, and as the setting of Lucy Maud Montgomery's 'Anne of Green Gables'.", icon: "🥔" },
+                { text: "The Confederation Bridge, connecting PEI to New Brunswick, is one of the longest bridges in the world over ice-covered water.", icon: "🌉" },
+                { text: "PEI is known as the 'Birthplace of Confederation' as Charlottetown hosted the 1864 conference that led to Canada's formation.", icon: "📜" },
+                { text: "The island has no native snakes.", icon: "🐍" },
+                { text: "PEI has the highest concentration of lighthouses in North America.", icon: "💡" }
+            ],
+            "Northwest Territories": [
+                { text: "The NWT is home to Great Bear Lake, the largest lake entirely within Canada, and the eighth largest in the world.", icon: "🏞️" },
+                { text: "It's a prime location for viewing the Aurora Borealis (Northern Lights), especially around Yellowknife.", icon: "✨" },
+                { text: "Diamond mining is a significant industry in the NWT, with several major mines.", icon: "💎" },
+                { text: "Nahanni National Park Reserve, a UNESCO site, features Virginia Falls, twice the height of Niagara Falls.", icon: "🌊" },
+                { text: "The NWT has 11 official languages, including English, French, and nine Indigenous languages.", icon: "🗣️" },
+                { text: "The territory is home to the northernmost extent of the boreal forest in Canada.", icon: "🌲" }
+            ],
+            "Yukon": [
+                { text: "Yukon is famous for the Klondike Gold Rush of the late 1890s, which brought over 100,000 prospectors.", icon: "💰" },
+                { text: "Mount Logan, in Kluane National Park Reserve, is Canada's highest peak at 5,959 meters.", icon: "🏔️" },
+                { text: "It had the highest population growth rate in Canada between 2016-2021 at 12.1%.", icon: "📈" },
+                { text: "The Yukon River is the fifth-longest river in North America.", icon: "🏞️" },
+                { text: "The 'Midnight Sun' phenomenon occurs in summer, where the sun can be visible for 24 hours in some northern parts.", icon: "☀️" },
+                { text: "Dawson City, once the heart of the Gold Rush, preserves many of its historic buildings.", icon: "🏘️" }
+            ],
+            "Nunavut": [
+                { text: "Nunavut is Canada's newest, largest, and northernmost territory, formed in 1999.", icon: "❄️" },
+                { text: "It has the lowest population density in Canada, with about 0.02 people per square kilometer.", icon: "🧍" },
+                { text: "Inuktitut is one of its official languages, along with English, French, and Inuinnaqtun.", icon: "🗣️" },
+                { text: "Nunavut covers about 1/5th of Canada's total landmass.", icon: "🗺️" },
+                { text: "The territory is home to unique Arctic wildlife, including polar bears, caribou, and narwhals.", icon: "🐻‍❄️" },
+                { text: "Iqaluit, the capital, is accessible only by air and sea (during summer).", icon: "✈️" }
+            ]
+        };
+
+        // --- DOM Elements ---
+        const provinceNameEl = document.getElementById('provinceName');
+        const provincePopulationEl = document.getElementById('provincePopulation');
+        const provinceGrowthEl = document.getElementById('provinceGrowth');
+        const provinceLandAreaEl = document.getElementById('provinceLandArea');
+        const provinceDensityEl = document.getElementById('provinceDensity');
+        const provinceCapitalEl = document.getElementById('provinceCapital');
+        const provinceListEl = document.getElementById('provinceList');
+        const interestingFactsEl = document.getElementById('interestingFacts');
+        const factsRegionNameEl = document.getElementById('factsRegionName');
+        const currentYearEl = document.getElementById('currentYear');
+
+        // Modal elements
+        const messageModal = document.getElementById('messageModal');
+        const modalTitleEl = document.getElementById('modalTitle');
+        const modalMessageEl = document.getElementById('modalMessage');
+
+        // Theme toggle elements
+        const themeToggleButton = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        // --- Theme Management ---
+        // Function to apply the theme
+        function applyTheme(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleDarkIcon.classList.add('hidden');
+                themeToggleLightIcon.classList.remove('hidden');
+            }
+        }
+
+        // Check for saved theme preference or use OS preference
+        let isDarkMode = localStorage.getItem('theme') === 'dark' || 
+                         (localStorage.getItem('theme') === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        applyTheme(isDarkMode);
+
+
+        // Listener for theme toggle button
+        themeToggleButton.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            applyTheme(isDarkMode);
+        });
+        
+        // Listen for OS theme changes if no preference is set
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (localStorage.getItem('theme') === null) { // Only if no user preference is set
+                isDarkMode = event.matches;
+                applyTheme(isDarkMode);
+            }
+        });
+
+
+        // --- Functions ---
+
+        // Function to show modal
+        function showModal(title, message) {
+            modalTitleEl.textContent = title;
+            modalMessageEl.textContent = message;
+            messageModal.style.display = "block";
+        }
+
+        // Function to close modal
+        function closeModal() {
+            messageModal.style.display = "none";
+        }
+
+        // Close modal if user clicks outside of it
+        window.onclick = function(event) {
+            if (event.target == messageModal) {
+                closeModal();
+            }
+        }
+
+        // Initialize Leaflet Map
+        function initMap() {
+            const canadaData = populationData["Canada"];
+            map = L.map('map').setView([canadaData.lat, canadaData.lon], canadaData.zoom);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
+
+        function updateProvinceDetails(provinceKey) {
+            currentProvinceKey = provinceKey; // Update current province
+            const data = populationData[provinceKey];
+            if (data) {
+                provinceNameEl.textContent = data.name;
+                provincePopulationEl.textContent = parseInt(data.population).toLocaleString();
+                provinceGrowthEl.textContent = data.growth;
+                provinceLandAreaEl.textContent = parseInt(data.landArea.replace(/,/g, '')).toLocaleString();
+                provinceDensityEl.textContent = data.density;
+                provinceCapitalEl.textContent = data.capital;
+
+                // Update map view
+                if (map && data.lat && data.lon && data.zoom) {
+                    map.setView([data.lat, data.lon], data.zoom);
+                }
+
+                // Update active class in the list
+                // CSS will handle the dark/light styling for .active
+                const listItems = provinceListEl.querySelectorAll('li.province-item');
+                listItems.forEach(item => {
+                    item.classList.remove('active');
+                    if (item.dataset.key === provinceKey) {
+                        item.classList.add('active');
+                    }
+                });
+
+                populateInterestingFacts(provinceKey);
+
+            } else {
+                console.error("Data not found for key:", provinceKey);
+                showModal("Error", `Data not found for ${provinceKey}.`);
+            }
+        }
+
+        function populateProvinceList() {
+            // Clear existing list items first to prevent duplication if called multiple times
+            provinceListEl.innerHTML = '';
+
+            const createListItem = (key, text) => {
+                const listItem = document.createElement('li');
+                // Base classes for all items, hover/active styles are in CSS or handled by .active class
+                listItem.className = 'p-3 rounded-md province-item text-gray-700 dark:text-gray-300';
+                listItem.textContent = text;
+                listItem.dataset.key = key;
+                listItem.onclick = () => updateProvinceDetails(key);
+                return listItem;
+            };
+
+            provinceListEl.appendChild(createListItem("Canada", "Canada (Overview)"));
+
+            const provinceKeys = Object.keys(populationData).filter(key => key !== "Canada").sort((a, b) => populationData[a].name.localeCompare(populationData[b].name));
+
+            provinceKeys.forEach(key => {
+                provinceListEl.appendChild(createListItem(key, populationData[key].name));
+            });
+        }
+
+        function populateInterestingFacts(regionKey) {
+            interestingFactsEl.innerHTML = ''; // Clear existing facts
+            factsRegionNameEl.textContent = `for ${populationData[regionKey].name}`;
+
+            const factsToShow = interestingFactsData[regionKey] || interestingFactsData["Canada"]; 
+
+            if (factsToShow && factsToShow.length > 0) {
+                factsToShow.forEach(fact => {
+                    const factDiv = document.createElement('div');
+                    // Tailwind classes for fact card styling, including dark mode
+                    factDiv.className = 'fact-card bg-gray-50 dark:bg-slate-700 p-4 rounded-lg shadow flex items-start space-x-3 hover:shadow-md dark:hover:shadow-slate-600';
+
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = 'text-2xl flex-shrink-0 pt-1'; // Added pt-1 for better alignment with text
+                    iconSpan.textContent = fact.icon;
+
+                    const textP = document.createElement('p');
+                    // Tailwind classes for fact text, including dark mode
+                    textP.className = 'text-gray-700 dark:text-gray-300 text-sm';
+                    textP.textContent = fact.text;
+
+                    factDiv.appendChild(iconSpan);
+                    factDiv.appendChild(textP);
+                    interestingFactsEl.appendChild(factDiv);
+                });
+            } else {
+                const noFactsP = document.createElement('p');
+                noFactsP.className = 'text-gray-600 dark:text-gray-400 italic';
+                noFactsP.textContent = 'No specific interesting facts available for this region at the moment.';
+                interestingFactsEl.appendChild(noFactsP);
+            }
+        }
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            currentYearEl.textContent = new Date().getFullYear();
+            initMap(); 
+            populateProvinceList();
+            updateProvinceDetails(currentProvinceKey); // Set initial view
+        });
+
+    </script>
+
+</body>
+</html>
