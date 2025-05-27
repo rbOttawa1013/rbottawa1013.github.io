@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard Quiz App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link id="dyslexic-font-link" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" disabled>
+  <style>
+    body { 
+        font-family: 'Inter', sans-serif; 
+        transition: font-size 0.3s ease-in-out; /* Smooth font size transition */
+    }
+    .card-flip { transition: transform 0.6s; transform-style: preserve-3d; }
+    .card-flip.flipped { transform: rotateY(180deg); }
+    .card-front, .card-back { backface-visibility: hidden; position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; border-radius: 0.25rem; }
+    .card-back { transform: rotateY(180deg); }
+
+    /* Accessibility Styles */
+    .accessibility-larger-font {
+        font-size: 115%; /* Increase base font size */
+    }
+    .accessibility-larger-font h1 { font-size: 2.5rem; /* Adjust headings accordingly */ }
+    .accessibility-larger-font h2 { font-size: 1.75rem; }
+    .accessibility-larger-font h3 { font-size: 1.35rem; }
+    .accessibility-larger-font button, 
+    .accessibility-larger-font select, 
+    .accessibility-larger-font input {
+        font-size: 110%; /* Slightly larger form elements */
+    }
+
+
+    .accessibility-dyslexic-font body,
+    .accessibility-dyslexic-font button,
+    .accessibility-dyslexic-font select,
+    .accessibility-dyslexic-font input,
+    .accessibility-dyslexic-font textarea,
+    .accessibility-dyslexic-font p,
+    .accessibility-dyslexic-font span,
+    .accessibility-dyslexic-font label,
+    .accessibility-dyslexic-font h1,
+    .accessibility-dyslexic-font h2,
+    .accessibility-dyslexic-font h3 {
+        font-family: 'Atkinson Hyperlegible', sans-serif !important;
+    }
+    /* High contrast and Dark mode will primarily use Tailwind's dark: variants */
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+  <header class="bg-blue-600 dark:bg-blue-900 text-white p-4">
+    <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+        <h1 class="text-2xl font-bold mb-2 sm:mb-0">Flashcard Quiz App</h1>
+        <div class="flex items-center">
+            <label for="accessibility-options" class="mr-2 text-sm">Accessibility:</label>
+            <select id="accessibility-options" class="text-sm bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-1 rounded">
+                <option value="default">Default</option>
+                <option value="dark-mode">Dark Mode</option>
+                <option value="larger-font">Larger Font</option>
+                <option value="high-contrast">High Contrast</option>
+                <option value="color-blind-friendly">Color Blind Friendly</option> 
+                <option value="dyslexic-font">Dyslexic Font</option>
+            </select>
+        </div>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto p-4">
+    <section id="quiz-page">
+      <div class="mb-4 flex flex-col sm:flex-row justify-between items-center">
+        <select id="deck-select" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full sm:w-auto mb-2 sm:mb-0"></select>
+        <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+          <label class="flex items-center"><input id="randomize" type="checkbox" checked class="mr-2 rounded text-blue-600 focus:ring-blue-500"> Randomize Order</label>
+          <input id="timer-input" type="number" min="1" value="5" class="w-20 p-2 border rounded dark:bg-gray-700 dark:border-gray-600" placeholder="Minutes (Not a limit)">
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md mb-4">
+        <div class="flex flex-col sm:flex-row justify-around mb-4 text-sm sm:text-base"> <span>Time Elapsed: <span id="timer">00:00</span></span>
+          <span>Score: <span id="score">0/0</span></span>
+        </div>
+        <div class="relative h-64 bg-gray-200 dark:bg-gray-600 rounded p-4 flex items-center justify-center">
+          <div id="flashcard" class="card-flip w-full h-full"> 
+            <div class="card-front bg-blue-100 dark:bg-blue-800">
+              <p id="question" class="text-lg font-semibold text-center"></p>
+            </div>
+            <div class="card-back bg-blue-200 dark:bg-blue-900">
+              <p id="answer" class="text-lg font-semibold text-center"></p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-center space-x-2 sm:space-x-4">
+          <button id="show-answer" class="bg-blue-500 text-white px-3 py-2 sm:px-4 rounded hover:bg-blue-600">Show Answer</button>
+          <button id="mark-correct" class="bg-green-500 text-white px-3 py-2 sm:px-4 rounded hover:bg-green-600 hidden">Correct</button>
+          <button id="mark-incorrect" class="bg-red-500 text-white px-3 py-2 sm:px-4 rounded hover:bg-red-600 hidden">Incorrect</button>
+          </div>
+      </div>
+      <div class="flex justify-center space-x-2 sm:space-x-4">
+        <button id="start-quiz" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Start Quiz</button>
+        <button id="reset-quiz" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Reset Quiz</button>
+        <button id="to-manage-deck" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Manage Decks</button>
+      </div>
+    </section>
+
+    <section id="manage-deck-page" class="hidden">
+      <h2 class="text-xl font-bold mb-4">Manage Decks</h2>
+      <div class="mb-4 flex flex-col sm:flex-row items-center flex-wrap"> 
+        <select id="manage-deck-select" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2"></select>
+        <button id="new-deck" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto mb-2 sm:mb-0 sm:mr-2">New Deck</button>
+        <button id="delete-selected-deck" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full sm:w-auto mb-2 sm:mb-0">Delete Selected Deck</button>
+      </div>
+      <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md mb-4">
+        <h3 class="text-lg font-semibold mb-4">Deck Editor: <span id="editing-deck-name" class="text-blue-600 dark:text-blue-400"></span></h3>
+        <div class="mb-4">
+          <input id="new-question" type="text" class="p-2 border rounded w-full dark:bg-gray-600 dark:border-gray-500 mb-2" placeholder="Enter question">
+          <input id="new-answer" type="text" class="p-2 border rounded w-full dark:bg-gray-600 dark:border-gray-500" placeholder="Enter answer">
+          <button id="add-card" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Card to Selected Deck</button>
+        </div>
+        <div id="card-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+      </div>
+      <div class="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4">
+        <button id="import-deck-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Import Deck</button>
+        <input id="import-file-input" type="file" accept=".json" class="hidden">
+        <button id="export-deck-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Export Selected Deck</button>
+        <button id="to-quiz" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Back to Quiz</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Default Deck 1: Top 10 Facts About Mot Liens French Grammar
+    const defaultDeckLinkingWords = {
+      name: "Top 10 Facts About Mot Liens French Grammar",
+      cards: [
+        { id: 1, question: "What is a mot lien?", answer: "A linking word used to connect clauses or sentences in French." },
+        { id: 2, question: "Give an example of a coordinating conjunction.", answer: "Mais (but)." },
+        { id: 3, question: "What is the role of 'donc'?", answer: "It indicates a consequence or result, meaning 'therefore'." },
+        { id: 4, question: "How is 'ou' used?", answer: "It means 'or' and connects alternatives." },
+        { id: 5, question: "What does 'car' express?", answer: "It means 'because' and explains a reason." },
+        { id: 6, question: "What is a subordinating conjunction?", answer: "A word like 'que' that introduces a dependent clause." },
+        { id: 7, question: "Give an example of a time-related mot lien.", answer: "Quand (when)." },
+        { id: 8, question: "What does 'puisque' mean?", answer: "It means 'since' or 'as' and explains a cause." },
+        { id: 9, question: "How is 'et' used in French?", answer: "It means 'and' and connects similar ideas." },
+        { id: 10, question: "What is the function of 'si'?", answer: "It means 'if' and introduces a conditional clause." }
+      ]
+    };
+
+    // Default Deck 2: French Irregular Verbs (Top 10)
+    const defaultDeckIrregularVerbs = {
+        name: "French Irregular Verbs (Top 10)",
+        cards: [
+            { id: 11, question: "Être (to be) - Je suis, Tu es, Il/Elle/On ____?", answer: "est" },
+            { id: 12, question: "Avoir (to have) - J'ai, Tu as, Il/Elle/On ____?", answer: "a" },
+            { id: 13, question: "Aller (to go) - Je vais, Tu vas, Il/Elle/On ____?", answer: "va" },
+            { id: 14, question: "Faire (to do/make) - Je fais, Tu fais, Il/Elle/On ____?", answer: "fait" },
+            { id: 15, question: "Pouvoir (to be able to) - Je peux, Tu peux, Il/Elle/On ____?", answer: "peut" },
+            { id: 16, question: "Vouloir (to want) - Je veux, Tu veux, Il/Elle/On ____?", answer: "veut" },
+            { id: 17, question: "Devoir (to have to/must) - Je dois, Tu dois, Il/Elle/On ____?", answer: "doit" },
+            { id: 18, question: "Savoir (to know facts/how to) - Je sais, Tu sais, Il/Elle/On ____?", answer: "sait" },
+            { id: 19, question: "Venir (to come) - Je viens, Tu viens, Il/Elle/On ____?", answer: "vient" },
+            { id: 20, question: "Voir (to see) - Je vois, Tu vois, Il/Elle/On ____?", answer: "voit" }
+        ]
+    };
+
+    let decks = [];
+    let currentDeck; 
+    let currentCards = []; 
+    let currentCardIndex = 0;
+    let correctAnswers = 0;
+    let totalAnswered = 0;
+    let timerInterval;
+    let timeElapsed = 0; 
+
+    // DOM Elements
+    const quizPage = document.getElementById('quiz-page');
+    const manageDeckPage = document.getElementById('manage-deck-page');
+    const deckSelect = document.getElementById('deck-select');
+    const manageDeckSelect = document.getElementById('manage-deck-select');
+    const randomizeCheckbox = document.getElementById('randomize');
+    const timerInput = document.getElementById('timer-input'); 
+    const timerDisplay = document.getElementById('timer');
+    const scoreDisplay = document.getElementById('score');
+    const flashcard = document.getElementById('flashcard');
+    const questionDisplay = document.getElementById('question');
+    const answerDisplay = document.getElementById('answer');
+    const showAnswerBtn = document.getElementById('show-answer');
+    const markCorrectBtn = document.getElementById('mark-correct');
+    const markIncorrectBtn = document.getElementById('mark-incorrect');
+    const startQuizBtn = document.getElementById('start-quiz');
+    const resetQuizBtn = document.getElementById('reset-quiz');
+    const toManageDeckBtn = document.getElementById('to-manage-deck');
+    const toQuizBtn = document.getElementById('to-quiz');
+    const newQuestionInput = document.getElementById('new-question');
+    const newAnswerInput = document.getElementById('new-answer');
+    const addCardBtn = document.getElementById('add-card');
+    const cardList = document.getElementById('card-list');
+    const importDeckBtn = document.getElementById('import-deck-btn');
+    const importFileInput = document.getElementById('import-file-input');
+    const exportDeckBtn = document.getElementById('export-deck-btn');
+    const newDeckBtn = document.getElementById('new-deck');
+    const accessibilityOptionsSelect = document.getElementById('accessibility-options');
+    const dyslexicFontLink = document.getElementById('dyslexic-font-link');
+    const editingDeckNameDisplay = document.getElementById('editing-deck-name');
+    const deleteSelectedDeckBtn = document.getElementById('delete-selected-deck');
+
+
+    // Initialize
+    function initialize() {
+      loadDecks();
+      updateDeckSelects(); 
+      
+      if (!currentDeck && decks.length > 0) {
+          currentDeck = decks[0];
+      }
+      
+      if (currentDeck) {
+        deckSelect.value = currentDeck.name;
+        manageDeckSelect.value = currentDeck.name;
+        editingDeckNameDisplay.textContent = currentDeck.name;
+      } else {
+        editingDeckNameDisplay.textContent = "No Deck Selected";
+      }
+
+      resetQuiz(); 
+      showQuizPage();
+      updateCardList(); 
+      loadAccessibilitySetting(); 
+      setupEventListeners();
+    }
+
+    // Accessibility Settings
+    function applyAccessibilitySetting(setting) {
+        document.documentElement.classList.remove('dark'); 
+        document.body.classList.remove('accessibility-larger-font', 'accessibility-dyslexic-font');
+        dyslexicFontLink.disabled = true; 
+
+        switch (setting) {
+            case 'dark-mode': // Added dark-mode option
+                document.documentElement.classList.add('dark');
+                break;
+            case 'larger-font':
+                document.body.classList.add('accessibility-larger-font');
+                break;
+            case 'high-contrast':
+            case 'color-blind-friendly': 
+                document.documentElement.classList.add('dark'); // Both use dark class for high contrast
+                break;
+            case 'dyslexic-font':
+                dyslexicFontLink.disabled = false; 
+                document.body.classList.add('accessibility-dyslexic-font');
+                break;
+            case 'default':
+            default:
+                // No special classes needed for default, dark class already removed
+                break;
+        }
+        localStorage.setItem('accessibilitySetting', setting);
+        if(accessibilityOptionsSelect) accessibilityOptionsSelect.value = setting; 
+    }
+
+    function loadAccessibilitySetting() {
+        const savedSetting = localStorage.getItem('accessibilitySetting') || 'default';
+        applyAccessibilitySetting(savedSetting);
+    }
+
+
+    // Page Navigation
+    function showQuizPage() {
+      quizPage.classList.remove('hidden');
+      manageDeckPage.classList.add('hidden');
+    }
+
+    function showManageDeckPage() {
+      quizPage.classList.add('hidden');
+      manageDeckPage.classList.remove('hidden');
+      if (currentDeck) { 
+        manageDeckSelect.value = currentDeck.name; 
+        editingDeckNameDisplay.textContent = currentDeck.name;
+      } else {
+         editingDeckNameDisplay.textContent = "No Deck Selected";
+      }
+      updateCardList(); 
+    }
+
+    // Deck Loading and Saving
+    function loadDecks() {
+        const storedDecks = localStorage.getItem('decks');
+        if (storedDecks) {
+            decks = JSON.parse(storedDecks);
+        }
+        if (decks.length === 0) {
+            decks = [
+                JSON.parse(JSON.stringify(defaultDeckLinkingWords)),
+                JSON.parse(JSON.stringify(defaultDeckIrregularVerbs))
+            ];
+            saveDecks();
+        }
+    }
+    
+    function saveDecks() {
+      localStorage.setItem('decks', JSON.stringify(decks));
+    }
+
+    // Quiz Functions
+    function updateDeckSelects() {
+      const previouslySelectedDeckName = currentDeck ? currentDeck.name : null;
+
+      deckSelect.innerHTML = '';
+      manageDeckSelect.innerHTML = '';
+
+      if (decks.length === 0) {
+        currentDeck = null; 
+        const noDecksOption = "<option value=''>No Decks Available</option>";
+        deckSelect.innerHTML = noDecksOption;
+        manageDeckSelect.innerHTML = noDecksOption;
+        editingDeckNameDisplay.textContent = "No Deck Selected";
+        updateCardList(); 
+        return;
+      }
+
+      decks.forEach(deck => {
+        const option = document.createElement('option');
+        option.value = deck.name; 
+        option.textContent = `${deck.name} (${deck.cards.length} cards)`; 
+        deckSelect.appendChild(option.cloneNode(true));
+        manageDeckSelect.appendChild(option);
+      });
+      
+      let newCurrentDeck = null;
+      if (previouslySelectedDeckName && decks.find(d => d.name === previouslySelectedDeckName)) {
+        newCurrentDeck = decks.find(d => d.name === previouslySelectedDeckName);
+      } else if (decks.length > 0) {
+        newCurrentDeck = decks[0];
+      }
+      
+      currentDeck = newCurrentDeck; 
+
+      if (currentDeck) {
+        deckSelect.value = currentDeck.name;
+        manageDeckSelect.value = currentDeck.name;
+        editingDeckNameDisplay.textContent = currentDeck.name;
+      } else {
+        editingDeckNameDisplay.textContent = "No Deck Selected";
+      }
+      updateCardList(); 
+    }
+
+    function shuffle(array) {
+      let newArray = [...array]; 
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    }
+
+    function startQuiz() {
+      if (!currentDeck || currentDeck.cards.length === 0) {
+        alert("Please select a deck with cards to start the quiz.");
+        return;
+      }
+      
+      currentCards = [...currentDeck.cards]; 
+      if (randomizeCheckbox.checked) {
+        currentCards = shuffle(currentCards); 
+      }
+
+      currentCardIndex = 0;
+      correctAnswers = 0;
+      totalAnswered = 0;
+      timeElapsed = 0; 
+      
+      updateTimerDisplay();
+      updateScore();
+      showCard();
+      startTimer();
+      
+      startQuizBtn.classList.add('hidden');
+      showAnswerBtn.classList.remove('hidden');
+      markCorrectBtn.classList.add('hidden');
+      markIncorrectBtn.classList.add('hidden');
+      deckSelect.disabled = true;
+      timerInput.disabled = true; 
+      randomizeCheckbox.disabled = true;
+    }
+
+    function resetQuiz() {
+      clearInterval(timerInterval);
+      currentCards = [];
+      currentCardIndex = 0;
+      correctAnswers = 0;
+      totalAnswered = 0;
+      timeElapsed = 0; 
+      
+      timerDisplay.textContent = formatTime(timeElapsed); 
+      updateScore(); 
+      flashcard.classList.remove('flipped');
+      questionDisplay.textContent = 'Press Start to begin';
+      answerDisplay.textContent = '';
+      
+      showAnswerBtn.classList.add('hidden');
+      markCorrectBtn.classList.add('hidden');
+      markIncorrectBtn.classList.add('hidden');
+      startQuizBtn.classList.remove('hidden');
+      deckSelect.disabled = false;
+      timerInput.disabled = false; 
+      randomizeCheckbox.disabled = false;
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeElapsed++; 
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = formatTime(timeElapsed);
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateScore() {
+      const totalCardsInDeck = currentDeck ? currentDeck.cards.length : 0;
+      scoreDisplay.textContent = `${totalAnswered}/${totalCardsInDeck}`;
+    }
+
+    function showCard() {
+      if (currentCardIndex < currentCards.length) {
+        questionDisplay.textContent = currentCards[currentCardIndex].question;
+        answerDisplay.textContent = currentCards[currentCardIndex].answer;
+        flashcard.classList.remove('flipped');
+        showAnswerBtn.classList.remove('hidden');
+        markCorrectBtn.classList.add('hidden');
+        markIncorrectBtn.classList.add('hidden');
+      } else {
+        clearInterval(timerInterval);
+        if (currentCards.length > 0) { 
+            const totalCardsInDeck = currentDeck ? currentDeck.cards.length : 0;
+            alert(`Quiz complete! Score: ${correctAnswers} correct out of ${totalCardsInDeck} cards.`); 
+        }
+        resetQuiz();
+      }
+    }
+
+    // Deck Management
+    function updateCardList() {
+      cardList.innerHTML = '';
+      if (!currentDeck) { 
+        editingDeckNameDisplay.textContent = "No Deck Selected";
+        cardList.innerHTML = "<p class='text-center text-gray-500 dark:text-gray-400'>No deck selected. Please create or import a deck.</p>";
+        return;
+      }
+      
+      editingDeckNameDisplay.textContent = currentDeck.name; 
+
+      if (!currentDeck.cards || currentDeck.cards.length === 0) {
+        cardList.innerHTML = "<p class='text-center text-gray-500 dark:text-gray-400'>This deck is empty. Add some cards!</p>";
+      } else {
+        currentDeck.cards.forEach(card => {
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center p-2 border-b dark:border-gray-600';
+            div.innerHTML = `
+            <div class="flex-grow mr-2">
+                <p class="text-sm break-all"><strong>Q:</strong> ${card.question}</p>
+                <p class="text-sm break-all"><strong>A:</strong> ${card.answer}</p>
+            </div>
+            <div class="flex-shrink-0">
+                <button class="edit-card bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 text-xs mr-1" data-id="${card.id}">Edit</button>
+                <button class="delete-card bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-xs" data-id="${card.id}">Delete</button>
+            </div>
+            `;
+            cardList.appendChild(div);
+        });
+      }
+    }
+
+    function addCardToDeck() {
+      if (!currentDeck) {
+        alert("Please select a deck first or create a new one.");
+        return;
+      }
+      const question = newQuestionInput.value.trim();
+      const answer = newAnswerInput.value.trim();
+      if (!question || !answer) {
+        alert('Please enter both a question and an answer.');
+        return;
+      }
+      if (!currentDeck.cards) {
+        currentDeck.cards = [];
+      }
+      let maxId = 0;
+      decks.forEach(deck => {
+          if (deck.cards && deck.cards.length > 0) {
+              const currentMax = Math.max(0, ...deck.cards.map(c => c.id)); 
+              if (currentMax > maxId) {
+                  maxId = currentMax;
+              }
+          }
+      });
+      const newCardId = maxId + 1;
+
+      currentDeck.cards.push({ id: newCardId, question, answer });
+      saveDecks();
+      updateCardList();
+      updateDeckSelects(); 
+      newQuestionInput.value = '';
+      newAnswerInput.value = '';
+    }
+
+    function editCardInDeck(id) {
+        if (!currentDeck || !currentDeck.cards) return;
+        const cardIndex = currentDeck.cards.findIndex(c => c.id == id);
+        if (cardIndex === -1) return;
+
+        const card = currentDeck.cards[cardIndex];
+
+        const newQ = prompt("Edit Question:", card.question);
+        if (newQ === null) return; 
+        if (newQ.trim() === "") { 
+            alert("Question cannot be empty. Edit cancelled.");
+            return; 
+        }
+
+        const newA = prompt("Edit Answer:", card.answer);
+        if (newA === null) return; 
+        if (newA.trim() === "") { 
+            alert("Answer cannot be empty. Edit cancelled.");
+            return;
+        }
+
+        currentDeck.cards[cardIndex].question = newQ.trim();
+        currentDeck.cards[cardIndex].answer = newA.trim();
+        saveDecks();
+        updateCardList();
+        updateDeckSelects(); 
+    }
+
+    function deleteCardFromDeck(id) {
+      if (!currentDeck || !currentDeck.cards) return;
+      if (confirm('Are you sure you want to delete this card?')) {
+        currentDeck.cards = currentDeck.cards.filter(c => c.id != id);
+        saveDecks();
+        updateCardList();
+        updateDeckSelects(); 
+      }
+    }
+
+    function handleDeleteSelectedDeck() {
+        if (!currentDeck) {
+            alert("No deck is currently selected to delete.");
+            return;
+        }
+
+        if (decks.length <= 1) {
+            alert("You cannot delete the last remaining deck. Create another deck first if you wish to delete this one.");
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete the deck "${currentDeck.name}"? This action cannot be undone.`)) {
+            const deckNameToDelete = currentDeck.name;
+            decks = decks.filter(deck => deck.name !== deckNameToDelete);
+            saveDecks();
+            
+            updateDeckSelects(); 
+            
+            resetQuiz(); 
+
+            alert(`Deck "${deckNameToDelete}" has been deleted.`);
+        }
+    }
+    
+    function handleImportDeck(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!file.name.endsWith('.json')) {
+        alert('Please upload a valid JSON file.');
+        importFileInput.value = ''; 
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedDeckData = JSON.parse(e.target.result);
+          if (!importedDeckData.name || !Array.isArray(importedDeckData.cards)) {
+            throw new Error('Invalid deck format. Deck must have a "name" and a "cards" array.');
+          }
+          
+          let maxId = 0;
+            decks.forEach(deck => {
+                if (deck.cards && deck.cards.length > 0) {
+                    const currentMax = Math.max(0, ...deck.cards.map(c => c.id));
+                    if (currentMax > maxId) maxId = currentMax;
+                }
+            });
+            if (importedDeckData.cards && importedDeckData.cards.length > 0) {
+                 const importedMaxId = Math.max(0, ...importedDeckData.cards.filter(c => c.id && !isNaN(c.id)).map(c => c.id));
+                 if (importedMaxId > maxId) maxId = importedMaxId;
+            }
+
+
+          importedDeckData.cards = importedDeckData.cards.map((card) => {
+              let newCardId = card.id;
+              const idExistsInAnyDeck = (idToCheck) => decks.some(d => d.cards.some(c => c.id === idToCheck));
+              const idExistsInImportedDeck = (idToCheck, currentCard) => importedDeckData.cards.filter(c => c !== currentCard).some(c => c.id === idToCheck);
+
+              if (!newCardId || isNaN(newCardId) || idExistsInAnyDeck(newCardId) || idExistsInImportedDeck(newCardId, card) ) {
+                  newCardId = ++maxId;
+              }
+              return {
+                  id: newCardId,
+                  question: card.question || "",
+                  answer: card.answer || ""
+              };
+          }).filter(card => card.question && card.answer); 
+
+          const existingDeckIndex = decks.findIndex(d => d.name === importedDeckData.name);
+          if (existingDeckIndex !== -1) {
+            if (!confirm(`A deck named "${importedDeckData.name}" already exists. Overwrite it?`)) {
+              importFileInput.value = '';
+              return;
+            }
+            decks[existingDeckIndex] = importedDeckData; 
+          } else {
+            decks.push(importedDeckData);
+          }
+          
+          saveDecks();
+          currentDeck = importedDeckData; 
+          updateDeckSelects(); 
+          resetQuiz(); 
+          alert('Deck imported successfully!');
+        } catch (err) {
+          alert('Error importing deck: ' + err.message);
+        } finally {
+            importFileInput.value = ''; 
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function handleExportDeck() {
+      if (!currentDeck) {
+        alert("No deck selected to export.");
+        return;
+      }
+      const dataStr = JSON.stringify(currentDeck, null, 2); 
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${currentDeck.name.replace(/[^a-z0-9_.-]/gi, '_')}.json`; 
+      document.body.appendChild(link); 
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function handleCreateNewDeck() {
+      const name = prompt('Enter new deck name:');
+      if (name && name.trim() !== "") {
+        const trimmedName = name.trim();
+        if (decks.find(d => d.name === trimmedName)) {
+            alert(`A deck named "${trimmedName}" already exists. Please choose a different name.`);
+            return;
+        }
+        const newDeck = { name: trimmedName, cards: [] };
+        decks.push(newDeck);
+        saveDecks(); 
+        currentDeck = newDeck; 
+        updateDeckSelects(); 
+        resetQuiz(); 
+      } else if (name !== null) { 
+        alert("Deck name cannot be empty.");
+      }
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+        accessibilityOptionsSelect.addEventListener('change', (e) => {
+            applyAccessibilitySetting(e.target.value);
+        });
+
+        deckSelect.addEventListener('change', () => {
+            const selectedDeckName = deckSelect.value;
+            currentDeck = decks.find(d => d.name === selectedDeckName);
+            if (currentDeck) {
+                manageDeckSelect.value = currentDeck.name; 
+                editingDeckNameDisplay.textContent = currentDeck.name;
+                 updateCardList(); 
+            }
+            resetQuiz(); 
+        });
+
+        manageDeckSelect.addEventListener('change', () => {
+            const selectedDeckName = manageDeckSelect.value;
+            currentDeck = decks.find(d => d.name === selectedDeckName);
+            if (currentDeck) {
+                deckSelect.value = currentDeck.name; 
+                editingDeckNameDisplay.textContent = currentDeck.name;
+                updateCardList();
+            }
+        });
+
+        startQuizBtn.addEventListener('click', startQuiz);
+        resetQuizBtn.addEventListener('click', resetQuiz);
+        toManageDeckBtn.addEventListener('click', showManageDeckPage);
+        toQuizBtn.addEventListener('click', showQuizPage);
+        
+        showAnswerBtn.addEventListener('click', () => {
+            flashcard.classList.add('flipped');
+            showAnswerBtn.classList.add('hidden');
+            markCorrectBtn.classList.remove('hidden');
+            markIncorrectBtn.classList.remove('hidden');
+        });
+        
+        markCorrectBtn.addEventListener('click', () => {
+            correctAnswers++;
+            totalAnswered++;
+            updateScore();
+            currentCardIndex++; 
+            showCard();
+        });
+        
+        markIncorrectBtn.addEventListener('click', () => {
+            totalAnswered++;
+            updateScore();
+            currentCardIndex++; 
+            showCard();
+        });
+        
+        addCardBtn.addEventListener('click', addCardToDeck);
+        
+        importDeckBtn.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', handleImportDeck);
+        
+        exportDeckBtn.addEventListener('click', handleExportDeck);
+        newDeckBtn.addEventListener('click', handleCreateNewDeck);
+        deleteSelectedDeckBtn.addEventListener('click', handleDeleteSelectedDeck); 
+        
+        cardList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('edit-card')) {
+                editCardInDeck(e.target.dataset.id);
+            } else if (e.target.classList.contains('delete-card')) {
+                deleteCardFromDeck(e.target.dataset.id);
+            }
+        });
+
+        document.querySelectorAll('button, select, input[type="checkbox"], input[type="number"]').forEach(el => {
+            if (!el.hasAttribute('tabindex') && el.offsetWidth > 0 && el.offsetHeight > 0) { 
+                 el.setAttribute('tabindex', '0');
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize(); 
+    }
+  </script>
+</body>
+</html>
