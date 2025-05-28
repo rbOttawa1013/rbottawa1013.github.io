@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hublot Spirit of Big Bang Yellow Magic</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .watch-container {
+      position: relative;
+      width: 280px;
+      height: 600px;
+      margin: 0 auto;
+      background: transparent;
+    }
+    .watch-face {
+      background: transparent;
+      border: 8px solid #ffeb3b;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      position: absolute;
+      top: 150px;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      border-radius: 20px;
+      width: 280px;
+      height: 300px;
+    }
+    .skeleton-dial {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1a1a1a;
+      opacity: 0.7;
+    }
+    .dial-text {
+      position: absolute;
+      font-size: 12px;
+      color: #ffeb3b;
+      font-weight: bold;
+    }
+    .hand {
+      position: absolute;
+      bottom: 50%;
+      left: 50%;
+      transform-origin: bottom;
+      background: #fff;
+      border: 1px solid #333;
+    }
+    .hour-hand {
+      width: 6px;
+      height: 70px;
+    }
+    .minute-hand {
+      width: 5px;
+      height: 90px;
+    }
+    .second-hand {
+      width: 3px;
+      height: 100px;
+      background: #d32f2f;
+    }
+    .chrono-hand {
+      width: 3px;
+      height: 80px;
+      background: #0288d1;
+      display: none;
+    }
+    .small-second-hand {
+      width: 2px;
+      height: 35px;
+      background: #fff;
+      display: none;
+    }
+    .complication {
+      position: absolute;
+      border: 2px solid #ffeb3b;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
+    .moon-phase {
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+    .chrono-display {
+      background: #333;
+      font-size: 14px;
+      font-weight: bold;
+      color: #ffeb3b;
+    }
+    .power-reserve {
+      background: #333;
+      font-size: 14px;
+      font-weight: bold;
+      color: #ffeb3b;
+    }
+    .date-window {
+      background: #333;
+      border: 2px solid #ffeb3b;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #ffeb3b;
+    }
+    .marker {
+      position: absolute;
+      background: #ffeb3b;
+      width: 5px;
+      height: 12px;
+    }
+    .gear {
+      position: absolute;
+      opacity: 0.9;
+      animation: rotateGear linear infinite;
+    }
+    @keyframes rotateGear {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .strap {
+      position: absolute;
+      width: 280px;
+      height: 150px;
+      background: linear-gradient(to bottom, #ffeb3b 80%, #1a1a1a 100%);
+      border: 2px solid #1a1a1a;
+      background-size: 20px 100%;
+      background-image: repeating-linear-gradient(0deg, #ffeb3b, #ffeb3b 5px, #e6d332 5px, #e6d332 10px);
+      animation: strapTexture 2s infinite linear;
+    }
+    @keyframes strapTexture {
+      0% { background-position: 0 0; }
+      100% { background-position: 20px 0; }
+    }
+    .strap-top {
+      top: 0;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+    }
+    .strap-bottom {
+      bottom: 0;
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      clip-path: polygon(0% 0%, 100% 0%, 80% 100%, 20% 100%);
+    }
+    .pusher {
+      position: absolute;
+      background: #1a1a1a;
+      border: 2px solid #ffeb3b;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .crown {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #1a1a1a;
+      border: 2px solid #ffeb3b;
+      border-radius: 50%;
+      top: 250px;
+      left: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen">
+  <div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-4xl font-bold text-center mb-4 text-yellow-400">Hublot Spirit of Big Bang Yellow Magic</h1>
+    <div class="flex flex-col md:flex-row gap-6">
+      <!-- Watch Simulation -->
+      <div class="flex-1">
+        <div class="watch-container">
+          <!-- Strap -->
+          <div class="strap strap-top"></div>
+          <div class="strap strap-bottom"></div>
+          <!-- Pushers -->
+          <div class="pusher" style="width: 40px; height: 20px; top: 210px; right: 0;" onclick="pusherAction(1)"></div>
+          <div class="pusher" style="width: 40px; height: 20px; top: 290px; right: 0;" onclick="pusherAction(2)"></div>
+          <!-- Crown -->
+          <div class="crown" onclick="adjustTime()"></div>
+          <!-- Watch Face -->
+          <div class="watch-face relative">
+            <div class="skeleton-dial"></div>
+            <!-- Dial Text -->
+            <div class="dial-text" style="top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 16px;">Hublot</div>
+            <div class="dial-text" style="bottom: 20px; left: 50%; transform: translateX(-50%);">Swiss Made</div>
+            <!-- Gears (as per photo) -->
+            <svg class="gear" style="width: 50px; height: 50px; top: 20px; left: 20px; animation-duration: 8s;" viewBox="0 0 100 100">
+              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
+            </svg>
+            <svg class="gear" style="width: 40px; height: 40px; top: 60px; left: 80px; animation-duration: 10s;" viewBox="0 0 100 100">
+              <path fill="#333" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
+            </svg>
+            <svg class="gear" style="width: 30px; height: 30px; top: 100px; left: 40px; animation-duration: 12s;" viewBox="0 0 100 100">
+              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
+            </svg>
+            <svg class="gear" style="width: 45px; height: 45px; top: 80px; right: 20px; animation-duration: 9s;" viewBox="0 0 100 100">
+              <path fill="#333" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
+            </svg>
+            <svg class="gear" style="width: 35px; height: 35px; top: 40px; right: 60px; animation-duration: 7s;" viewBox="0 0 100 100">
+              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
+            </svg>
+            <!-- Hour Markers -->
+            <div class="marker" style="top: 10px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="marker" style="bottom: 10px; left: 50%; transform: translateX(-50%);"></div>
+            <div class="marker" style="left: 10px; top: 50%; transform: translateY(-50%);"></div>
+            <div class="marker" style="right: 10px; top: 50%; transform: translateY(-50%);"></div>
+            <!-- Hands -->
+            <div class="hand hour-hand" id="hourHand"></div>
+            <div class="hand minute-hand" id="minuteHand"></div>
+            <div class="hand second-hand" id="secondHand"></div>
+            <div class="hand chrono-hand" id="chronoHand"></div>
+            <div class="hand small-second-hand" style="left: 30%; top: 50%; transform-origin: center;" id="smallSecondHand"></div>
+            <!-- Complications -->
+            <div class="complication moon-phase w-16 h-16" style="bottom: 50px; left: 30px;" id="moonPhase">
+              <svg width="100%" height="100%" viewBox="0 0 100 100" id="moonSvg">
+                <circle cx="50" cy="50" r="45" fill="#000" />
+                <circle cx="50" cy="50" r="40" fill="#fff" />
+              </svg>
+            </div>
+            <div class="complication chrono-display w-16 h-16" style="top: 30px; right: 30px;" id="chronoDisplay">0:00</div>
+            <div class="complication power-reserve w-16 h-16" style="top: 30px; left: 30px;" id="powerReserve">100%</div>
+            <div class="date-window absolute bottom-20 left-1/2 transform -translate-x-1/2" id="dateWindow">28</div>
+            <div class="complication chrono-display w-16 h-16" style="bottom: 50px; right: 30px;" id="chrono30min">00</div>
+            <!-- Center Pin -->
+            <div class="absolute w-4 h-4 bg-gray-800 rounded-full left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+          </div>
+        </div>
+        <!-- Complication Control Buttons -->
+        <div class="mt-4 flex flex-col items-center gap-2">
+          <button onclick="cycleMoonPhase()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600">Cycle Moon Phase</button>
+          <button onclick="updatePowerReserve()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600">Update Power Reserve</button>
+          <button onclick="toggleChronograph()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600" id="chronoButton">Start Chronograph</button>
+          <button onclick="toggleSmallSeconds()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600" id="smallSecondButton">Toggle Small Seconds</button>
+        </div>
+      </div>
+      <!-- Description -->
+      <div class="flex-1 bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold mb-2 text-yellow-400">About the Watch</h2>
+        <p class="text-gray-300 mb-4">
+          <strong>Price:</strong> Approx. $22,000 - $36,500 (depending on material)<br>
+          <strong>Collection:</strong> Spirit of Big Bang<br>
+          <strong>Brand:</strong> Hublot<br><br>
+          The Hublot Spirit of Big Bang Yellow Magic is a vibrant, barrel-shaped timepiece that embodies Hublot’s “Art of Fusion” philosophy. Crafted with high-tech yellow ceramic, this 42mm watch is ultra-tough and nearly scratch-proof, using zirconium sintered at high temperatures. It features a skeletonized dial showcasing a modified Zenith El Primero chronograph movement, known for its precision at 36,000 vibrations per hour. The watch includes complications such as a moon phase, power reserve indicator, and chronograph, paired with a rubber strap for durability and comfort. Its bold design and innovative materials make it a standout in luxury watchmaking.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let moonPhaseIndex = 0;
+    const moonPhases = [
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" />`, // New Moon
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="70" cy="50" r="20" fill="#000" />`, // Waxing Crescent
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="65" cy="50" r="35" fill="#000" />`, // First Quarter
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="60" cy="50" r="40" fill="#000" />`, // Waxing Gibbous
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="50" cy="50" r="40" fill="#000" stroke="#fff" stroke-width="5" />`, // Full Moon
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="40" cy="50" r="40" fill="#000" />`, // Waning Gibbous
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="35" cy="50" r="35" fill="#000" />`, // Last Quarter
+      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="30" cy="50" r="20" fill="#000" />`  // Waning Crescent
+    ];
+    let currentDate = 28;
+    let powerReserve = 100;
+    let chronoRunning = false;
+    let chronoSeconds = 0;
+    let chronoMinutes = 0;
+    let chronoInterval = null;
+    let smallSecondsRunning = false;
+    let smallSecondsInterval = null;
+
+    function updateTime() {
+      const now = new Date();
+      const seconds = now.getSeconds();
+      const minutes = now.getMinutes();
+      const hours = now.getHours() % 12;
+
+      const secondDeg = (seconds / 60) * 360;
+      const minuteDeg = (minutes / 60) * 360 + (seconds / 60) * 6;
+      const hourDeg = (hours / 12) * 360 + (minutes / 60) * 30;
+
+      document.getElementById('hourHand').style.transform = `rotate(${hourDeg}deg)`;
+      document.getElementById('minuteHand').style.transform = `rotate(${minuteDeg}deg)`;
+      document.getElementById('secondHand').style.transform = `rotate(${secondDeg}deg)`;
+      if (smallSecondsRunning) {
+        const smallSecondDeg = (seconds / 60) * 360;
+        document.getElementById('smallSecondHand').style.transform = `rotate(${smallSecondDeg}deg)`;
+      }
+    }
+
+    function cycleMoonPhase() {
+      moonPhaseIndex = (moonPhaseIndex + 1) % moonPhases.length;
+      document.getElementById('moonSvg').innerHTML = moonPhases[moonPhaseIndex];
+    }
+
+    function updatePowerReserve() {
+      powerReserve = Math.max(0, powerReserve - 10);
+      if (powerReserve === 0) powerReserve = 100;
+      document.getElementById('powerReserve').textContent = `${powerReserve}%`;
+    }
+
+    function toggleChronograph() {
+      if (chronoRunning) {
+        clearInterval(chronoInterval);
+        chronoRunning = false;
+        document.getElementById('chronoButton').textContent = 'Start Chronograph';
+        document.getElementById('chronoHand').style.display = 'none';
+        chronoSeconds = 0;
+        chronoMinutes = 0;
+        document.getElementById('chronoDisplay').textContent = '0:00';
+        document.getElementById('chrono30min').textContent = '00';
+      } else {
+        chronoRunning = true;
+        document.getElementById('chronoButton').textContent = 'Stop Chronograph';
+        document.getElementById('chronoHand').style.display = 'block';
+        chronoInterval = setInterval(() => {
+          chronoSeconds++;
+          if (chronoSeconds === 60) {
+            chronoSeconds = 0;
+            chronoMinutes++;
+            document.getElementById('chrono30min').textContent = chronoMinutes < 30 ? chronoMinutes.toString().padStart(2, '0') : '30';
+          }
+          const chronoDeg = (chronoSeconds % 60) * 6;
+          document.getElementById('chronoHand').style.transform = `rotate(${chronoDeg}deg)`;
+          document.getElementById('chronoDisplay').textContent = `${chronoMinutes}:${chronoSeconds.toString().padStart(2, '0')}`;
+        }, 1000);
+      }
+    }
+
+    function toggleSmallSeconds() {
+      if (smallSecondsRunning) {
+        clearInterval(smallSecondsInterval);
+        smallSecondsRunning = false;
+        document.getElementById('smallSecondButton').textContent = 'Toggle Small Seconds';
+        document.getElementById('smallSecondHand').style.display = 'none';
+      } else {
+        smallSecondsRunning = true;
+        document.getElementById('smallSecondButton').textContent = 'Stop Small Seconds';
+        document.getElementById('smallSecondHand').style.display = 'block';
+        smallSecondsInterval = setInterval(() => {
+          const now = new Date();
+          const seconds = now.getSeconds();
+          const smallSecondDeg = (seconds / 60) * 360;
+          document.getElementById('smallSecondHand').style.transform = `rotate(${smallSecondDeg}deg)`;
+        }, 1000);
+      }
+    }
+
+    function adjustTime() {
+      const now = new Date();
+      const hours = (now.getHours() % 12 + 1) % 12;
+      const hourDeg = (hours / 12) * 360;
+      document.getElementById('hourHand').style.transform = `rotate(${hourDeg}deg)`;
+    }
+
+    function pusherAction(pusher) {
+      if (pusher === 1) {
+        toggleChronograph();
+      } else if (pusher === 2) {
+        if (!chronoRunning) {
+          chronoSeconds = 0;
+          chronoMinutes = 0;
+          document.getElementById('chronoDisplay').textContent = '0:00';
+          document.getElementById('chrono30min').textContent = '00';
+        }
+      }
+    }
+
+    // Update every second
+    setInterval(updateTime, 1000);
+    updateTime(); // Initial call
+  </script>
