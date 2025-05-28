@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Options Strategy Visualizer with Greeks & Coaching</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .message-box {
+            transition: opacity 0.5s ease-in-out;
+        }
+        #chartContainer {
+            position: relative;
+            height: 300px; /* Default height */
+        }
+        @media (min-width: 640px) { #chartContainer { height: 320px; } }
+        @media (min-width: 768px) { #chartContainer { height: 384px; } }
+        
+        .greek-info dt, .calculated-greek dt { font-weight: 600; color: #4A5568; } /* text-gray-700 */
+        .greek-info dd, .calculated-greek dd { margin-left: 0.5rem; color: #1F2937; } /* text-gray-800 for values */
+        .calculated-greek dd span { color: #718096; } /* text-gray-600 for N/A */
+
+        .results-grid > div {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #coachingSummary, #coachingSuggestionsList li {
+            line-height: 1.6;
+        }
+        #coachingSuggestionsList {
+            list-style-type: none; 
+            padding-left: 0;
+        }
+        #coachingSuggestionsList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid #e5e7eb; 
+        }
+         #coachingSuggestionsList li:last-child {
+            border-bottom: none;
+        }
+        .suggestion-button { /* This class was for individual apply buttons per suggestion */
+            margin-left: 1rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem; 
+            border-radius: 0.375rem; 
+            background-color: #4f46e5; 
+            color: white;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .suggestion-button:hover {
+            background-color: #4338ca; 
+        }
+        /* Styles for the main action buttons below the list (Apply Selected, Clear) if we re-add toggles */
+        .coaching-action-button {
+            margin-top: 0.5rem; 
+            margin-right: 0.5rem; 
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem; 
+            border-radius: 0.375rem; 
+            color: white;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+         #applySelectedSuggestionsButton {
+             background-color: #16a34a; 
+        }
+        #applySelectedSuggestionsButton:hover {
+            background-color: #15803d; 
+        }
+        #clearSelectedSuggestionsButton {
+            background-color: #d97706; 
+        }
+        #clearSelectedSuggestionsButton:hover {
+            background-color: #b45309; 
+        }
+
+
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4 py-8">
+
+    <div class="container mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-5xl">
+        <header class="mb-6 sm:mb-8 text-center">
+            <h1 class="text-2xl sm:text-3xl font-bold text-indigo-600">Enhanced Options Strategy Visualizer</h1>
+            <p class="text-gray-600 mt-1">Analyze strategies, payoff diagrams, option Greeks, and get interactive strategy insights</p>
+        </header>
+
+        <section id="inputSection" class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 items-end">
+            <div>
+                <label for="strategy" class="block text-sm font-medium text-gray-700 mb-1">Strategy</label>
+                <select id="strategy" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="Long Call">Long Call</option>
+                    <option value="Long Put">Long Put</option>
+                    <option value="Short Call">Short Call (Naked)</option>
+                    <option value="Short Put">Short Put (Naked)</option>
+                </select>
+            </div>
+            <div>
+                <label for="underlyingPrice" class="block text-sm font-medium text-gray-700 mb-1">Underlying Price (S₀)</label>
+                <input type="number" id="underlyingPrice" value="100" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="strikePrice" class="block text-sm font-medium text-gray-700 mb-1">Strike Price (K)</label>
+                <input type="number" id="strikePrice" value="105" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="premium" class="block text-sm font-medium text-gray-700 mb-1">Premium per Contract (P)</label>
+                <input type="number" id="premium" value="5" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+             <div>
+                <label for="numberOfContracts" class="block text-sm font-medium text-gray-700 mb-1">Number of Contracts</label>
+                <input type="number" id="numberOfContracts" value="1" min="1" step="1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Evaluation Date</label>
+                <input type="date" id="startDate" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" title="Date for which Greeks are calculated (typically today)">
+            </div>
+            <div>
+                <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                <input type="date" id="expiryDate" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="impliedVolatility" class="block text-sm font-medium text-gray-700 mb-1">Implied Volatility (%)</label>
+                <input type="number" id="impliedVolatility" value="20" step="any" min="0.01" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" title="Enter as percentage, e.g., 20 for 20%">
+            </div>
+            <div>
+                <label for="riskFreeRate" class="block text-sm font-medium text-gray-700 mb-1">Risk-Free Rate (%)</label>
+                <input type="number" id="riskFreeRate" value="1.5" step="any" min="0" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" title="Enter as percentage, e.g., 1.5 for 1.5%">
+            </div>
+            <div class="lg:col-span-3 sm:col-span-2 mt-4">
+                 <button id="calculateButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 ease-in-out">
+                    Calculate & Visualize
+                </button>
+            </div>
+        </section>
+
+        <div id="messageBox" class="message-box my-4 p-3 rounded-md text-sm hidden"></div>
+
+        <section id="resultsSection" class="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-center results-grid">
+            <div class="bg-indigo-50 p-4 rounded-lg shadow"> <h3 class="text-sm font-semibold text-indigo-700">Breakeven / Share</h3> <p id="breakevenPoint" class="text-lg font-bold text-indigo-900">-</p> </div>
+            <div class="bg-green-50 p-4 rounded-lg shadow"> <h3 class="text-sm font-semibold text-green-700">Total Max Profit</h3> <p id="maxProfit" class="text-lg font-bold text-green-900">-</p> </div>
+            <div class="bg-red-50 p-4 rounded-lg shadow"> <h3 class="text-sm font-semibold text-red-700">Total Max Loss</h3> <p id="maxLoss" class="text-lg font-bold text-red-900">-</p> </div>
+            <div class="bg-yellow-50 p-4 rounded-lg shadow"> <h3 class="text-sm font-semibold text-yellow-700">Risk Level</h3> <p id="riskLevel" class="text-base font-semibold text-yellow-900">-</p> </div>
+            <div class="bg-sky-50 p-4 rounded-lg shadow"> <h3 class="text-sm font-semibold text-sky-700">Days to Expiry</h3> <p id="daysToExpiry" class="text-lg font-bold text-sky-900">-</p> </div>
+        </section>
+
+        <section id="calculatedGreeksSection" class="mb-8 bg-teal-50 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-teal-700 mb-4">Calculated Option Greeks (per Share)</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 calculated-greek text-sm">
+                <div><dt>Delta (Δ):</dt><dd id="greekDelta"><span>N/A</span></dd></div>
+                <div><dt>Gamma (Γ):</dt><dd id="greekGamma"><span>N/A</span></dd></div>
+                <div><dt>Vega (ν):</dt><dd id="greekVega"><span>N/A</span></dd></div>
+                <div><dt>Theta (Θ):</dt><dd id="greekTheta"><span>N/A</span></dd></div>
+                <div><dt>Rho (ρ):</dt><dd id="greekRho"><span>N/A</span></dd></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Greeks are calculated using the Black-Scholes-Merton model for European options. Theta is per day. Vega is for a 1% change in IV.</p>
+        </section>
+
+        <section id="coachingWindowSection" class="mb-8 bg-purple-50 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-purple-700 mb-3">Strategy Coaching Corner</h2>
+            <p id="coachingSummary" class="text-sm text-gray-700">- Select a strategy to see insights -</p>
+            <div id="coachingSuggestionsContainer" class="mt-4">
+                <h3 class="text-md font-semibold text-purple-600 mb-2">Potential Considerations & Explorations:</h3>
+                <ul id="coachingSuggestionsList" class="text-sm text-gray-700 space-y-1">
+                    <li>No specific suggestions based on current inputs. Consider general options principles.</li>
+                </ul>
+                <!-- <div class="mt-4 flex space-x-3">
+                    <button id="applySelectedSuggestionsButton" class="coaching-action-button">Apply Selected</button>
+                    <button id="clearSelectedSuggestionsButton" class="coaching-action-button">Clear Selections</button>
+                </div> -->
+            </div>
+        </section>
+
+        <section id="chartSection" class="mb-8 bg-gray-50 p-4 rounded-lg shadow-inner">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center">Payoff Diagram at Expiration (Total P/L)</h2>
+            <div id="chartContainer"> <canvas id="payoffChart"></canvas> </div>
+        </section>
+
+        <section id="greeksExplainedSection" class="bg-blue-50 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-blue-700 mb-4">Understanding Option Greeks (Conceptual)</h2>
+            <p class="text-sm text-gray-600 mb-4"> The "Greeks" are a set of risk measures that indicate how sensitive an option's price is to changes in certain parameters. </p>
+            <dl class="greek-info space-y-3 text-sm">
+                <div><dt>Delta (Δ)</dt><dd>Measures the rate of change of the option's price for a $1 change in the underlying asset's price.</dd></div>
+                <div><dt>Gamma (Γ)</dt><dd>Measures the rate of change in an option's delta for a $1 change in the underlying asset's price.</dd></div>
+                <div><dt>Theta (Θ)</dt><dd>Measures the rate of change in an option's price per one-day decrease in its time to expiration (time decay).</dd></div>
+                <div><dt>Vega (ν)</dt><dd>Measures the rate of change in an option's price per 1% change in the implied volatility of the underlying asset.</dd></div>
+                <div><dt>Rho (ρ)</dt><dd>Measures the rate of change in an option's price per 1% change in the risk-free interest rate.</dd></div>
+            </dl>
+        </section>
+
+        <footer class="mt-8 text-center text-sm text-gray-500"> <p>This is an educational tool. Options trading involves significant risk. Always consult a financial advisor.</p> </footer>
+    </div>
+
+    <script>
+        // DOM Elements
+        const strategySelect = document.getElementById('strategy');
+        const underlyingPriceInput = document.getElementById('underlyingPrice');
+        const strikePriceInput = document.getElementById('strikePrice');
+        const premiumInput = document.getElementById('premium');
+        const numberOfContractsInput = document.getElementById('numberOfContracts');
+        const startDateInput = document.getElementById('startDate');
+        const expiryDateInput = document.getElementById('expiryDate');
+        const impliedVolatilityInput = document.getElementById('impliedVolatility');
+        const riskFreeRateInput = document.getElementById('riskFreeRate');
+        const calculateButton = document.getElementById('calculateButton');
+        
+        const breakevenPointDisplay = document.getElementById('breakevenPoint');
+        const maxProfitDisplay = document.getElementById('maxProfit');
+        const maxLossDisplay = document.getElementById('maxLoss');
+        const riskLevelDisplay = document.getElementById('riskLevel');
+        const daysToExpiryDisplay = document.getElementById('daysToExpiry');
+
+        const greekDeltaDisplay = document.getElementById('greekDelta');
+        const greekGammaDisplay = document.getElementById('greekGamma');
+        const greekVegaDisplay = document.getElementById('greekVega');
+        const greekThetaDisplay = document.getElementById('greekTheta');
+        const greekRhoDisplay = document.getElementById('greekRho');
+
+        const coachingSummaryDisplay = document.getElementById('coachingSummary');
+        const coachingSuggestionsListDisplay = document.getElementById('coachingSuggestionsList');
+        // Removed suggestSetupsButton, applySelectedSuggestionsButton, clearSelectedSuggestionsButton from DOM consts as they are not in this HTML version.
+        
+        const payoffChartCanvas = document.getElementById('payoffChart');
+        const messageBox = document.getElementById('messageBox');
+        let payoffChart;
+
+        // --- Black-Scholes Helper Functions ---
+        function norm_cdf(x) {
+            const a1 = 0.319381530, a2 = -0.356563782, a3 = 1.781477937, a4 = -1.821255978, a5 = 1.330274429, p = 0.2316419;
+            if (x < 0) return 1 - norm_cdf(-x);
+            const t = 1.0 / (1.0 + p * x);
+            return 1.0 - Math.exp(-x * x / 2.0) / Math.sqrt(2 * Math.PI) * t * (a1 + t * (a2 + t * (a3 + t * (a4 + t * a5))));
+        }
+        function norm_pdf(x) { return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x); }
+        function calculateD1(S, K, T, r, sigma) {
+            if (T <= 1e-6 || sigma <= 1e-6 || S <= 0 || K <= 0) return NaN;
+            return (Math.log(S / K) + (r + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
+        }
+        function calculateD2(d1, T, sigma) {
+            if (isNaN(d1) || T <= 1e-6 || sigma <= 1e-6) return NaN;
+            return d1 - sigma * Math.sqrt(T);
+        }
+        // --- End Black-Scholes Helpers ---
+
+        function setDefaultDates() {
+            const today = new Date();
+            startDateInput.value = today.toISOString().split('T')[0];
+            const expiry = new Date();
+            expiry.setDate(today.getDate() + 30);
+            expiryDateInput.value = expiry.toISOString().split('T')[0];
+        }
+
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box my-4 p-3 rounded-md text-sm';
+            if (type === 'error') messageBox.classList.add('bg-red-100', 'text-red-700');
+            else if (type === 'success') messageBox.classList.add('bg-green-100', 'text-green-700');
+            else messageBox.classList.add('bg-blue-100', 'text-blue-700');
+            messageBox.classList.remove('hidden');
+            messageBox.style.opacity = 1;
+            setTimeout(() => {
+                messageBox.style.opacity = 0;
+                setTimeout(() => messageBox.classList.add('hidden'), 500); 
+            }, 3000);
+        }
+
+        function initializeOrUpdateChart(chartLabels, chartData, strategyName) {
+            const datasetLabel = `${strategyName} Total P/L at Expiration`;
+            const chartYAxisTitle = 'Total Profit / Loss';
+            if (payoffChart) {
+                payoffChart.data.labels = chartLabels;
+                payoffChart.data.datasets[0].data = chartData;
+                payoffChart.data.datasets[0].label = datasetLabel;
+                payoffChart.options.scales.y.title.text = chartYAxisTitle;
+                payoffChart.update();
+            } else { 
+                const ctx = payoffChartCanvas.getContext('2d');
+                payoffChart = new Chart(ctx, {
+                    type: 'line', data: { labels: chartLabels, datasets: [{ label: datasetLabel, data: chartData, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', tension: 0.1, fill: true, pointRadius: 0, borderWidth: 2, }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Underlying Price at Expiration (Sᴛ)', font: { size: 14 } }, grid: { color: 'rgba(200, 200, 200, 0.2)' } }, y: { title: { display: true, text: chartYAxisTitle, font: { size: 14 } }, grid: { color: 'rgba(200, 200, 200, 0.2)' }, ticks: { callback: function(value) { return '$' + parseFloat(value).toFixed(2); } } } }, plugins: { tooltip: { callbacks: { label: function(context) { return `Total P/L: $${parseFloat(context.parsed.y).toFixed(2)}`; } } }, legend: { display: true, position: 'top' } } }
+                });
+            }
+        }
+        
+        function daysBetween(date1, date2) {
+            const oneDay = 24 * 60 * 60 * 1000;
+            const d1_utc = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
+            const d2_utc = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
+            return Math.floor((d1_utc - d2_utc) / oneDay);
+        }
+
+        /**
+         * Generates coaching suggestions with actionable buttons (individual apply).
+         * @returns {object[]} Array of suggestion objects {text, buttonText, action}
+         */
+        function generateCoachingSuggestions(strategy, S, K, dte, ivPercent, premium) {
+            const suggestions = [];
+            const DTE_MEDIUM_ADD = 15; 
+            const STRIKE_OTM_PERCENT = 0.05; 
+
+            const isLongStrategy = strategy === 'Long Call' || strategy === 'Long Put';
+            
+            if (Math.abs(S - K) > 0.01 * S) {
+                 suggestions.push({
+                    text: `Explore an At-The-Money (ATM) strike for a different balance of cost/probability.`,
+                    buttonText: `Set Strike to ATM ($${S.toFixed(2)})`,
+                    action: { targetInputId: 'strikePrice', newValue: S.toFixed(2) }
+                });
+            }
+
+            let suggestedOTMStrike;
+            let otmDirectionText;
+            if (strategy.includes('Call')) { 
+                suggestedOTMStrike = S * (1 + STRIKE_OTM_PERCENT);
+                otmDirectionText = isLongStrategy ? "further OTM (lower cost, lower PoP)" : "further OTM (higher PoP, less premium)";
+            } else { 
+                suggestedOTMStrike = S * (1 - STRIKE_OTM_PERCENT);
+                otmDirectionText = isLongStrategy ? "further OTM (lower cost, lower PoP)" : "further OTM (higher PoP, less premium)";
+            }
+            if (Math.abs(K - suggestedOTMStrike) > 0.01 * S) { 
+                suggestions.push({
+                    text: `Consider a strike ~5% ${otmDirectionText} for an alternative risk/reward.`,
+                    buttonText: `Set Strike to $${suggestedOTMStrike.toFixed(2)}`,
+                    action: { targetInputId: 'strikePrice', newValue: suggestedOTMStrike.toFixed(2) }
+                });
+            }
+            
+            suggestions.push({
+                text: `See impact of adding ${DTE_MEDIUM_ADD} days to expiry (more time value, slower Theta).`,
+                buttonText: `Add ${DTE_MEDIUM_ADD} Days DTE`,
+                action: { targetInputId: 'expiryDate', changeType: 'addDays', changeAmount: DTE_MEDIUM_ADD }
+            });
+
+            if (dte > DTE_MEDIUM_ADD + 5) { 
+                suggestions.push({
+                    text: `See impact of reducing ${DTE_MEDIUM_ADD} days from expiry (less time value, faster Theta).`,
+                    buttonText: `Reduce ${DTE_MEDIUM_ADD} Days DTE`,
+                    action: { targetInputId: 'expiryDate', changeType: 'addDays', changeAmount: -DTE_MEDIUM_ADD }
+                });
+            }
+            
+            const IV_LOW = 15, IV_HIGH = 40;
+             if (ivPercent >= IV_HIGH) {
+                if (isLongStrategy) suggestions.push({ text: `High IV (${ivPercent}%) makes buying options expensive. Be cautious of IV crush (a fall in IV).` }); // No button for IV
+                else suggestions.push({ text: `High IV (${ivPercent}%) is generally favorable for selling premium, but increases risk if IV normalizes.` }); // No button
+            } else if (ivPercent <= IV_LOW) {
+                if (isLongStrategy) suggestions.push({ text: `Low IV (${ivPercent}%) can make buying options cheaper, potentially beneficial if IV rises.` }); // No button
+                else suggestions.push({ text: `Low IV (${ivPercent}%) means less premium when selling options; ensure it compensates for risk.` }); // No button
+            }
+
+            if (suggestions.length === 0) {
+                suggestions.push({text: "Inputs appear balanced or no specific heuristic triggered."});
+            }
+            return suggestions;
+        }
+
+
+        function calculateAndDisplayPayoff() {
+            const selectedStrategy = strategySelect.value;
+            const S = parseFloat(underlyingPriceInput.value);
+            const K = parseFloat(strikePriceInput.value);
+            const premiumPerContract = parseFloat(premiumInput.value);
+            const numContracts = parseInt(numberOfContractsInput.value);
+            const impliedVolPercent = parseFloat(impliedVolatilityInput.value);
+            const riskFreeRatePercent = parseFloat(riskFreeRateInput.value);
+            const evalDateValue = startDateInput.value;
+            const expiryDateValue = expiryDateInput.value;
+
+            let dte = 0; let T = 0; let dateValidationPassed = true;
+            if (!evalDateValue || !expiryDateValue) {
+                showMessage('Please select both Evaluation and Expiry dates.', 'error');
+                daysToExpiryDisplay.textContent = '-'; dateValidationPassed = false;
+            } else {
+                const evalDateParts = evalDateValue.split('-').map(Number);
+                const expiryDateParts = expiryDateValue.split('-').map(Number);
+                const evalDate = new Date(evalDateParts[0], evalDateParts[1]-1, evalDateParts[2]);
+                const expiryDate = new Date(expiryDateParts[0], expiryDateParts[1]-1, expiryDateParts[2]);
+
+                if (expiryDate < evalDate) {
+                    showMessage('Expiry Date cannot be before Evaluation Date.', 'error');
+                    daysToExpiryDisplay.textContent = '-'; dateValidationPassed = false;
+                } else {
+                    dte = daysBetween(expiryDate, evalDate);
+                    daysToExpiryDisplay.textContent = dte; T = dte / 365.0;
+                    if (dte < 0) { 
+                         showMessage('Evaluation date cannot be after expiry date.', 'error');
+                         daysToExpiryDisplay.textContent = 'Invalid'; dateValidationPassed = false; T = 0;
+                    }
+                }
+            }
+            
+            let financialValidationPassed = true;
+            if (isNaN(S) || isNaN(K) || isNaN(premiumPerContract) || isNaN(numContracts) || isNaN(impliedVolPercent) || isNaN(riskFreeRatePercent)) {
+                showMessage('Please enter valid numbers for all financial fields.', 'error'); financialValidationPassed = false;
+            }
+            if (S <= 0) { showMessage('Underlying price must be positive.', 'error'); financialValidationPassed = false;}
+            if (numContracts < 1) { showMessage('Number of contracts must be at least 1.', 'error'); financialValidationPassed = false; }
+            if (K <= 0) { showMessage('Strike price must be positive.', 'error'); financialValidationPassed = false; }
+            if (premiumPerContract <= 0 && (selectedStrategy === 'Long Call' || selectedStrategy === 'Long Put')) {
+                showMessage('Premium must be positive for long strategies.', 'error'); financialValidationPassed = false;
+            }
+            if (impliedVolPercent <= 0) { showMessage('Implied Volatility must be positive.', 'error'); financialValidationPassed = false; }
+
+            if (!dateValidationPassed || !financialValidationPassed) {
+                ['greekDelta', 'greekGamma', 'greekVega', 'greekTheta', 'greekRho'].forEach(id => document.getElementById(id).innerHTML = '<span>N/A</span>');
+                coachingSummaryDisplay.textContent = '- Please correct input errors -';
+                coachingSuggestionsListDisplay.innerHTML = '<li>No suggestions due to input errors.</li>';
+                return;
+            }
+
+            let breakeven, maxProfitPerContract, maxLossPerContract, risk, perSharePayoffFunction, coachingText;
+             switch (selectedStrategy) {
+                case 'Long Call':
+                    breakeven = K + premiumPerContract; maxProfitPerContract = Infinity; maxLossPerContract = -premiumPerContract;
+                    risk = "Medium (Limited Loss, Unlimited Potential)";
+                    perSharePayoffFunction = (st) => Math.max(0, st - K) - premiumPerContract;
+                    coachingText = "A Long Call is a bullish strategy. You buy the right to purchase the underlying at the strike price. Profit is made if the underlying rises significantly above the breakeven point (Strike + Premium). Max loss is limited to the premium paid. Benefits from rising prices, increasing volatility (positive Vega), and is hurt by time decay (negative Theta).";
+                    break;
+                case 'Long Put':
+                    breakeven = K - premiumPerContract; maxProfitPerContract = K - premiumPerContract; maxLossPerContract = -premiumPerContract;
+                    risk = "Medium (Limited Loss, Significant Potential)";
+                    perSharePayoffFunction = (st) => Math.max(0, K - st) - premiumPerContract;
+                    coachingText = "A Long Put is a bearish strategy. You buy the right to sell the underlying at the strike price. Profit is made if the underlying falls significantly below the breakeven point (Strike - Premium). Max loss is limited to the premium paid. Benefits from falling prices, increasing volatility (positive Vega), and is hurt by time decay (negative Theta).";
+                    break;
+                case 'Short Call':
+                    breakeven = K + premiumPerContract; maxProfitPerContract = premiumPerContract; maxLossPerContract = -Infinity;
+                    risk = "High (Limited Profit, Unlimited Potential Loss)";
+                    perSharePayoffFunction = (st) => premiumPerContract - Math.max(0, st - K);
+                    coachingText = "A Short Call (Naked) is a bearish to neutral strategy. You sell the right for someone else to buy the underlying from you at the strike price, in exchange for a premium. Profit is maximized if the underlying stays below the strike price. Max loss is theoretically unlimited if the price rises significantly. Benefits from falling/stagnant prices, decreasing volatility (negative Vega), and time decay is a friend (positive Theta).";
+                    break;
+                case 'Short Put':
+                    breakeven = K - premiumPerContract; maxProfitPerContract = premiumPerContract; maxLossPerContract = -(K - premiumPerContract);
+                    risk = "High (Limited Profit, Significant Potential Loss)";
+                    perSharePayoffFunction = (st) => premiumPerContract - Math.max(0, K - st);
+                    coachingText = "A Short Put (Naked) is a bullish to neutral strategy. You sell the right for someone else to sell the underlying to you at the strike price, in exchange for a premium. Profit is maximized if the underlying stays above the strike price. Max loss can be substantial if the price falls significantly (to zero). Benefits from rising/stagnant prices, decreasing volatility (negative Vega), and time decay is a friend (positive Theta).";
+                    break;
+                default: 
+                    showMessage('Invalid strategy selected.', 'error'); 
+                    coachingSummaryDisplay.textContent = '- Invalid strategy -';
+                    coachingSuggestionsListDisplay.innerHTML = '<li>Invalid strategy selected.</li>'; // Clear suggestions
+                    return;
+            }
+            coachingSummaryDisplay.textContent = coachingText;
+
+            // Generate and display coaching suggestions with individual apply buttons
+            const suggestions = generateCoachingSuggestions(selectedStrategy, S, K, dte, impliedVolPercent, premiumPerContract);
+            coachingSuggestionsListDisplay.innerHTML = ''; 
+            suggestions.forEach(sug => {
+                const li = document.createElement('li');
+                const textSpan = document.createElement('span');
+                textSpan.textContent = sug.text;
+                textSpan.className = 'suggestion-text'; // Ensure text takes available space
+                li.appendChild(textSpan);
+
+                if (sug.action && sug.buttonText) { // Check if buttonText exists
+                    const button = document.createElement('button');
+                    button.textContent = sug.buttonText;
+                    button.className = 'suggestion-button'; // Class for individual apply buttons
+                    button.dataset.targetInputId = sug.action.targetInputId;
+                    if (sug.action.newValue !== undefined) {
+                         button.dataset.newValue = sug.action.newValue;
+                    }
+                    if (sug.action.changeType) {
+                        button.dataset.changeType = sug.action.changeType;
+                        button.dataset.changeAmount = sug.action.changeAmount;
+                    }
+                    li.appendChild(button);
+                }
+                coachingSuggestionsListDisplay.appendChild(li);
+            });
+
+
+            const totalMaxProfit = isFinite(maxProfitPerContract) ? maxProfitPerContract * numContracts : "Unlimited";
+            const totalMaxLoss = isFinite(maxLossPerContract) ? maxLossPerContract * numContracts : "Unlimited";
+            breakevenPointDisplay.textContent = (breakeven < 0 && (selectedStrategy === 'Long Put' || selectedStrategy === 'Short Put') && K <= premiumPerContract) ? `N/A (K <= P)` : `$${breakeven.toFixed(2)}`;
+            maxProfitDisplay.textContent = (typeof totalMaxProfit === 'string') ? totalMaxProfit : `$${totalMaxProfit.toFixed(2)}`;
+            maxLossDisplay.textContent = (typeof totalMaxLoss === 'string') ? totalMaxLoss : `$${Math.abs(totalMaxLoss).toFixed(2)}`;
+            riskLevelDisplay.textContent = risk;
+            
+            let chartLabels = []; let chartData = [];
+            const minPriceFactor = 0.5; const maxPriceFactor = 1.5;
+            let chartMinPrice = Math.max(0.01, Math.min(S, K) * minPriceFactor);
+            if (selectedStrategy === 'Long Put' || selectedStrategy === 'Short Put') chartMinPrice = Math.max(0.01, K * 0.25);
+            let chartMaxPrice = Math.max(S, K, (typeof breakeven === 'number' ? breakeven : K) ) * maxPriceFactor;
+            if (chartMaxPrice < K + 20) chartMaxPrice = K + 50; if (chartMaxPrice < S + 20) chartMaxPrice = S + 50;
+            if (typeof breakeven === 'number' && chartMaxPrice < breakeven + 20 && breakeven > 0) chartMaxPrice = breakeven + 50;
+            if (chartMaxPrice <= chartMinPrice) chartMaxPrice = chartMinPrice + 100;
+            const numPoints = 100; const step = (chartMaxPrice - chartMinPrice) / numPoints;
+            for (let i = 0; i <= numPoints; i++) {
+                const st_chart = chartMinPrice + (i * step); chartLabels.push(st_chart.toFixed(2));
+                chartData.push((perSharePayoffFunction(st_chart) * numContracts).toFixed(2));
+            }
+            initializeOrUpdateChart(chartLabels, chartData, selectedStrategy);
+
+            const sigma = impliedVolPercent / 100.0; const r = riskFreeRatePercent / 100.0;
+            let optionType = (selectedStrategy === 'Long Call' || selectedStrategy === 'Short Call') ? 'call' : 'put';
+            let positionMultiplier = (selectedStrategy === 'Short Call' || selectedStrategy === 'Short Put') ? -1 : 1;
+
+
+            if (T > 1e-6 && sigma > 1e-6) {
+                const d1 = calculateD1(S, K, T, r, sigma); const d2 = calculateD2(d1, T, sigma);
+                if (isNaN(d1) || isNaN(d2)) {
+                     ['greekDelta', 'greekGamma', 'greekVega', 'greekTheta', 'greekRho'].forEach(id => document.getElementById(id).innerHTML = '<span>Error</span>');
+                } else {
+                    let delta_opt, gamma_opt, vega_opt, theta_opt, rho_opt;
+                    gamma_opt = norm_pdf(d1) / (S * sigma * Math.sqrt(T));
+                    vega_opt = S * norm_pdf(d1) * Math.sqrt(T) / 100; 
+                    if (optionType === 'call') {
+                        delta_opt = norm_cdf(d1);
+                        theta_opt = (-(S * norm_pdf(d1) * sigma) / (2 * Math.sqrt(T)) - r * K * Math.exp(-r * T) * norm_cdf(d2)) / 365;
+                        rho_opt = (K * T * Math.exp(-r * T) * norm_cdf(d2)) / 100;
+                    } else { 
+                        delta_opt = norm_cdf(d1) - 1;
+                        theta_opt = (-(S * norm_pdf(d1) * sigma) / (2 * Math.sqrt(T)) + r * K * Math.exp(-r * T) * norm_cdf(-d2)) / 365;
+                        rho_opt = (-K * T * Math.exp(-r * T) * norm_cdf(-d2)) / 100;
+                    }
+                    greekDeltaDisplay.textContent = (delta_opt * positionMultiplier).toFixed(4);
+                    greekGammaDisplay.textContent = (gamma_opt * positionMultiplier).toFixed(4); 
+                    greekVegaDisplay.textContent = (vega_opt * positionMultiplier).toFixed(4);
+                    greekThetaDisplay.textContent = (theta_opt * positionMultiplier).toFixed(4);
+                    greekRhoDisplay.textContent = (rho_opt * positionMultiplier).toFixed(4);
+                }
+            } else {
+                ['greekDelta', 'greekGamma', 'greekVega', 'greekTheta', 'greekRho'].forEach(id => document.getElementById(id).innerHTML = '<span>N/A</span>');
+            }
+            
+            if (dateValidationPassed && financialValidationPassed && !document.getElementById('messageBox').classList.contains('bg-red-100')) {
+               showMessage('Calculations complete.', 'success');
+            }
+        }
+        
+        // Event listener for individual suggestion buttons (using event delegation)
+        coachingSuggestionsListDisplay.addEventListener('click', function(event) {
+            if (event.target.classList.contains('suggestion-button')) {
+                const button = event.target;
+                const targetInputId = button.dataset.targetInputId;
+                const newValue = button.dataset.newValue;
+                const changeType = button.dataset.changeType;
+                const changeAmount = parseFloat(button.dataset.changeAmount);
+                
+                const targetInput = document.getElementById(targetInputId);
+
+                if (targetInput) {
+                    if (newValue !== undefined) {
+                        targetInput.value = newValue;
+                    } else if (changeType === 'addDays' && targetInputId === 'expiryDate') {
+                        const currentDateString = targetInput.value;
+                        const parts = currentDateString.split('-');
+                        const currentDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+
+                        if (!isNaN(currentDate.getTime())) {
+                             currentDate.setUTCDate(currentDate.getUTCDate() + changeAmount); 
+                             targetInput.value = currentDate.toISOString().split('T')[0];
+                        } else {
+                            showMessage('Could not parse current expiry date to apply change.', 'error');
+                            return;
+                        }
+                    }
+                    calculateAndDisplayPayoff(); 
+                    showMessage(`Applied suggestion: ${targetInput.labels[0].textContent} updated.`, 'info');
+                }
+            }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setDefaultDates();
+            calculateAndDisplayPayoff(); 
+            // Initial call to populate suggestions based on default values
+            // This will now use the individual apply button logic
+            const S_init = parseFloat(underlyingPriceInput.value);
+            const K_init = parseFloat(strikePriceInput.value);
+            const evalDate_init = new Date(startDateInput.value.split('-')[0], startDateInput.value.split('-')[1]-1, startDateInput.value.split('-')[2]);
+            const expiryDate_init = new Date(expiryDateInput.value.split('-')[0], expiryDateInput.value.split('-')[1]-1, expiryDateInput.value.split('-')[2]);
+            const dte_init = daysBetween(expiryDate_init, evalDate_init);
+            const iv_init = parseFloat(impliedVolatilityInput.value);
+            const premium_init = parseFloat(premiumInput.value);
+            const initialSuggestions = generateCoachingSuggestions(strategySelect.value, S_init, K_init, dte_init, iv_init, premium_init);
+            
+            coachingSuggestionsListDisplay.innerHTML = ''; 
+            initialSuggestions.forEach(sug => {
+                const li = document.createElement('li');
+                const textSpan = document.createElement('span');
+                textSpan.textContent = sug.text;
+                textSpan.className = 'suggestion-text';
+                li.appendChild(textSpan);
+
+                if (sug.action && sug.buttonText) {
+                    const button = document.createElement('button');
+                    button.textContent = sug.buttonText;
+                    button.className = 'suggestion-button';
+                    button.dataset.targetInputId = sug.action.targetInputId;
+                    if (sug.action.newValue !== undefined) button.dataset.newValue = sug.action.newValue;
+                    if (sug.action.changeType) {
+                        button.dataset.changeType = sug.action.changeType;
+                        button.dataset.changeAmount = sug.action.changeAmount;
+                    }
+                    li.appendChild(button);
+                }
+                coachingSuggestionsListDisplay.appendChild(li);
+            });
+        });
+
+        calculateButton.addEventListener('click', calculateAndDisplayPayoff);
+        const allInputs = [strategySelect, underlyingPriceInput, strikePriceInput, premiumInput, numberOfContractsInput, startDateInput, expiryDateInput, impliedVolatilityInput, riskFreeRateInput];
+        allInputs.forEach(input => {
+            input.addEventListener('change', calculateAndDisplayPayoff);
+        });
+    </script>
+</body>
+</html>
