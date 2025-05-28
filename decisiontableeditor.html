@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Table Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Application State ---
+        let db, auth;
+        let userId = null;
+        // Default Demo Table with Python expressions in conditions
+        let currentTable = {
+            name: "Age & Citizenship Eligibility Demo",
+            conditions: ["Age", "IsCitizen"], // "Age" (number), "IsCitizen" (boolean expression e.g., "IsCitizen == True")
+            actions: ["Eligibility", "Notes"],
+            rules: [
+                { "Age": "Age >= 18", "IsCitizen": "IsCitizen == True", "Eligibility": "Eligible", "Notes": "Standard eligibility" },
+                { "Age": "Age < 18", "IsCitizen": "IsCitizen == True", "Eligibility": "Not Eligible", "Notes": "Too young" },
+                { "Age": "Age >= 18", "IsCitizen": "IsCitizen == False", "Eligibility": "Not Eligible", "Notes": "Must be citizen" },
+                { "Age": "Age > 120", "IsCitizen": "IsCitizen == True", "Eligibility": "Review", "Notes": "Age seems high, please review." },
+                { "Age": "", "IsCitizen": "IsCitizen == False", "Eligibility": "Not Eligible", "Notes": "Citizenship required (age not specified)" }
+            ]
+        };
+        let savedTables = [];
+
+        // --- Firebase Configuration ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'decision-table-editor-app';
+        let firebaseConfig;
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        } catch (e) {
+            console.error("Error parsing Firebase config:", e);
+            firebaseConfig = null;
+        }
+        
+        // --- UI Elements ---
+        const tableNameInput = () => document.getElementById('tableNameInput');
+        const tableContainer = () => document.getElementById('tableContainer');
+        const pythonCodeModal = () => document.getElementById('pythonCodeModal');
+        const pythonFunctionNameInput = () => document.getElementById('pythonFunctionNameInput');
+        const generatedPythonCodeTextarea = () => document.getElementById('generatedPythonCodeTextarea');
+        const fileInput = () => document.getElementById('fileInput');
+        const saveModal = () => document.getElementById('saveModal');
+        const loadModal = () => document.getElementById('loadModal');
+        const savedTablesList = () => document.getElementById('savedTablesList');
+        const userIdDisplay = () => document.getElementById('userIdDisplay');
+        const loadingOverlay = () => document.getElementById('loadingOverlay');
+        const notificationArea = () => document.getElementById('notificationArea');
+
+        // --- Initialization ---
+        window.onload = async () => {
+            if (!firebaseConfig) {
+                showNotification("Firebase configuration is missing. Save/Load features will be disabled.", "error");
+            } else {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    setLogLevel('debug'); // For Firebase Firestore logging
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            if (userIdDisplay()) userIdDisplay().textContent = `User ID: ${userId}`;
+                            console.log("User signed in with UID:", userId);
+                        } else {
+                            userId = null;
+                            if (userIdDisplay()) userIdDisplay().textContent = "User ID: Not signed in";
+                            console.log("User signed out or not signed in.");
+                        }
+                    });
+                } catch (error) {
+                    console.error("Firebase initialization error:", error);
+                    showNotification("Error initializing Firebase. Save/Load features may not work.", "error");
+                }
+            }
+            
+            setupEventListeners();
+            if (tableNameInput()) tableNameInput().value = currentTable.name; // Set initial table name
+            renderTable(); // Render the default or loaded table
+        };
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            document.getElementById('newTableBtn').addEventListener('click', newTable);
+            document.getElementById('importTableBtn').addEventListener('click', () => fileInput().click());
+            fileInput().addEventListener('change', importTable);
+            document.getElementById('exportTableBtn').addEventListener('click', exportTable);
+            document.getElementById('saveTableBtn').addEventListener('click', openSaveModal);
+            document.getElementById('loadTableBtn').addEventListener('click', openLoadModal);
+            document.getElementById('generatePythonBtn').addEventListener('click', openPythonModal);
+            
+            document.getElementById('addConditionBtn').addEventListener('click', addConditionColumn);
+            document.getElementById('addActionBtn').addEventListener('click', addActionColumn);
+            document.getElementById('addRuleBtn').addEventListener('click', addRule);
+
+            tableNameInput().addEventListener('change', (e) => {
+                currentTable.name = e.target.value || "Untitled Table";
+            });
+
+            // Modals
+            document.getElementById('closePythonModalBtn').addEventListener('click', closePythonModal);
+            document.getElementById('confirmGeneratePythonBtn').addEventListener('click', generatePythonFunction);
+            document.getElementById('copyPythonCodeBtn').addEventListener('click', copyPythonCode);
+            
+            document.getElementById('closeSaveModalBtn').addEventListener('click', closeSaveModal);
+            document.getElementById('confirmSaveBtn').addEventListener('click', saveTableToFirestore);
+
+            document.getElementById('closeLoadModalBtn').addEventListener('click', closeLoadModal);
+        }
+
+        // --- UI Rendering ---
+        function renderTable() {
+            if (!tableContainer()) return;
+            const tableEl = document.createElement('table');
+            tableEl.className = 'min-w-full divide-y divide-gray-300 border border-gray-300 rounded-lg shadow-sm';
+
+            // Header Row
+            const thead = document.createElement('thead');
+            thead.className = 'bg-gray-100';
+            const headerRow = document.createElement('tr');
+            
+            currentTable.conditions.forEach((cond, index) => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.className = 'px-3 py-3.5 text-left text-sm font-semibold text-gray-900 relative group';
+                th.textContent = cond;
+                const helpIcon = document.createElement('span');
+                helpIcon.textContent = ' (expr)';
+                helpIcon.className = 'text-xs text-gray-500 font-normal ml-1';
+                helpIcon.title = 'This column expects a Python boolean expression. Use column headers as variables (e.g., Age > 18). Empty means condition passes.';
+                th.appendChild(helpIcon);
+                const removeBtn = createRemoveButton(() => removeColumn(index, 'condition'), 'Remove Condition');
+                th.appendChild(removeBtn);
+                headerRow.appendChild(th);
+            });
+            currentTable.actions.forEach((act, index) => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.className = 'px-3 py-3.5 text-left text-sm font-semibold text-gray-900 relative group';
+                th.textContent = act;
+                const removeBtn = createRemoveButton(() => removeColumn(currentTable.conditions.length + index, 'action'), 'Remove Action');
+                th.appendChild(removeBtn);
+                headerRow.appendChild(th);
+            });
+            const emptyTh = document.createElement('th'); // For remove rule button
+            emptyTh.className = 'px-3 py-3.5';
+            headerRow.appendChild(emptyTh);
+            thead.appendChild(headerRow);
+            tableEl.appendChild(thead);
+
+            // Body Rows (Rules)
+            const tbody = document.createElement('tbody');
+            tbody.className = 'divide-y divide-gray-200 bg-white';
+            currentTable.rules.forEach((rule, rowIndex) => {
+                const tr = document.createElement('tr');
+                tr.className = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                
+                currentTable.conditions.forEach(condKey => {
+                    const td = document.createElement('td');
+                    td.className = 'whitespace-nowrap px-3 py-2 text-sm text-gray-500';
+                    const input = createCellInput(rule[condKey] || "", rowIndex, condKey);
+                    input.placeholder = "e.g., Age >= 18";
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+                currentTable.actions.forEach(actKey => {
+                    const td = document.createElement('td');
+                    td.className = 'whitespace-nowrap px-3 py-2 text-sm text-gray-500';
+                    const input = createCellInput(rule[actKey] || "", rowIndex, actKey);
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+                
+                const removeRuleTd = document.createElement('td');
+                removeRuleTd.className = 'whitespace-nowrap px-3 py-2 text-sm text-gray-500';
+                const removeRuleBtn = createSmallButton('Remove', () => removeRule(rowIndex), 'bg-red-500 hover:bg-red-600');
+                removeRuleTd.appendChild(removeRuleBtn);
+                tr.appendChild(removeRuleTd);
+                
+                tbody.appendChild(tr);
+            });
+            tableEl.appendChild(tbody);
+
+            tableContainer().innerHTML = ''; // Clear previous table
+            tableContainer().appendChild(tableEl);
+        }
+
+        function createCellInput(value, rowIndex, colKey) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'w-full p-1 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm';
+            input.value = value;
+            input.addEventListener('change', (e) => updateCell(rowIndex, colKey, e.target.value));
+            return input;
+        }
+        
+        function createRemoveButton(onClickCallback, title) {
+            const button = document.createElement('button');
+            button.innerHTML = '&times;'; // Multiplication sign for 'x'
+            button.className = 'absolute top-0 right-0 p-0.5 m-0.5 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity text-xs leading-none rounded-full bg-gray-200 hover:bg-gray-300';
+            button.title = title;
+            button.addEventListener('click', onClickCallback);
+            return button;
+        }
+
+        function createSmallButton(text, onClickCallback, extraClasses = 'bg-indigo-600 hover:bg-indigo-700') {
+            const button = document.createElement('button');
+            button.textContent = text;
+            button.className = `px-2 py-1 text-xs font-medium text-white ${extraClasses} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`;
+            button.addEventListener('click', onClickCallback);
+            return button;
+        }
+
+        // --- Table Manipulation Logic ---
+        function updateCell(rowIndex, colKey, value) {
+            currentTable.rules[rowIndex][colKey] = value;
+        }
+
+        function addConditionColumn() {
+            const newConditionName = `Condition ${currentTable.conditions.length + 1}`;
+            currentTable.conditions.push(newConditionName);
+            currentTable.rules.forEach(rule => rule[newConditionName] = "");
+            renderTable();
+        }
+
+        function addActionColumn() {
+            const newActionName = `Action ${currentTable.actions.length + 1}`;
+            currentTable.actions.push(newActionName);
+            currentTable.rules.forEach(rule => rule[newActionName] = "");
+            renderTable();
+        }
+
+        function removeColumn(colIndex, type) {
+            let keyToRemove;
+            if (type === 'condition') {
+                if (currentTable.conditions.length <= 1 && currentTable.actions.length === 0) {
+                     showNotification("Cannot remove the last condition if no actions exist.", "warning"); return;
+                }
+                 if (currentTable.conditions.length <= 1 && currentTable.actions.length > 0) {
+                     showNotification("Cannot remove the last condition. Add another condition first or remove actions.", "warning"); return;
+                }
+                keyToRemove = currentTable.conditions.splice(colIndex, 1)[0];
+            } else { // action
+                 if (currentTable.actions.length <= 1 && currentTable.conditions.length === 0) {
+                    showNotification("Cannot remove the last action if no conditions exist.", "warning"); return;
+                }
+                if (currentTable.actions.length <= 1 && currentTable.conditions.length > 0) {
+                    showNotification("Cannot remove the last action. Add another action first or remove conditions.", "warning"); return;
+                }
+                keyToRemove = currentTable.actions.splice(colIndex - currentTable.conditions.length, 1)[0];
+            }
+            currentTable.rules.forEach(rule => delete rule[keyToRemove]);
+            renderTable();
+        }
+
+        function addRule() {
+            const newRule = {};
+            currentTable.conditions.forEach(cond => newRule[cond] = "");
+            currentTable.actions.forEach(act => newRule[act] = "");
+            currentTable.rules.push(newRule);
+            renderTable();
+        }
+
+        function removeRule(rowIndex) {
+            if (currentTable.rules.length > 1) {
+                currentTable.rules.splice(rowIndex, 1);
+                renderTable();
+            } else {
+                showNotification("Cannot remove the last rule.", "warning");
+            }
+        }
+
+        // --- File Operations ---
+        function newTable() {
+            currentTable = {
+                name: "Untitled Table",
+                conditions: ["Condition 1"],
+                actions: ["Action 1"],
+                rules: [{ "Condition 1": "", "Action 1": "" }]
+            };
+            if (tableNameInput()) tableNameInput().value = currentTable.name;
+            renderTable();
+            showNotification("New blank table created.", "success");
+        }
+
+        function exportTable() {
+            const filename = `${currentTable.name.replace(/\s+/g, '_') || 'decision_table'}.json`;
+            const dataStr = JSON.stringify(currentTable, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', filename);
+            linkElement.click();
+            showNotification("Table exported successfully.", "success");
+        }
+
+        function importTable(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (importedData && Array.isArray(importedData.conditions) && 
+                            Array.isArray(importedData.actions) && Array.isArray(importedData.rules)) {
+                            currentTable = importedData;
+                            if (tableNameInput()) tableNameInput().value = currentTable.name || "Untitled Table";
+                            renderTable();
+                            showNotification("Table imported successfully.", "success");
+                        } else {
+                            showNotification("Invalid decision table file format.", "error");
+                        }
+                    } catch (error) {
+                        console.error("Import error:", error);
+                        showNotification("Error importing file: " + error.message, "error");
+                    }
+                };
+                reader.readAsText(file);
+                fileInput().value = ''; 
+            }
+        }
+
+        // --- Python Generation ---
+        function openPythonModal() {
+            if (pythonFunctionNameInput()) pythonFunctionNameInput().value = currentTable.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'my_decision_function';
+            if (generatedPythonCodeTextarea()) generatedPythonCodeTextarea().value = '';
+            if (pythonCodeModal()) pythonCodeModal().classList.remove('hidden');
+        }
+        function closePythonModal() {
+            if (pythonCodeModal()) pythonCodeModal().classList.add('hidden');
+        }
+
+        function generatePythonFunction() {
+            const rawFunctionName = pythonFunctionNameInput().value.trim() || 'my_decision_function';
+            let functionName = rawFunctionName.replace(/[^a-zA-Z0-9_]/g, '_');
+            if (!/^[a-zA-Z_]/.test(functionName)) {
+                functionName = '_' + functionName;
+            }
+            if (pythonFunctionNameInput()) pythonFunctionNameInput().value = functionName; 
+
+            const sanitizedConditionArgNames = currentTable.conditions.map(cond => {
+                let sanCond = cond.replace(/[^a-zA-Z0-9_]/g, '_');
+                if (!/^[a-zA-Z_]/.test(sanCond)) {
+                    sanCond = '_' + sanCond;
+                }
+                return sanCond;
+            });
+
+            let pyCode = `def ${functionName}(${sanitizedConditionArgNames.join(', ')}):\n`;
+            pyCode += `    """\n    Decision table function generated for table: ${currentTable.name}\n`;
+            pyCode += `    Original Conditions: ${JSON.stringify(currentTable.conditions)}\n`;
+            pyCode += `    Actions: ${JSON.stringify(currentTable.actions)}\n`;
+            pyCode += `    Input arguments for conditions: ${sanitizedConditionArgNames.join(', ')}\n\n`;
+            pyCode += `    Condition cells are evaluated as Python boolean expressions.\n`;
+            pyCode += `    These expressions can use other condition names (from table headers) as variables.\n`;
+            pyCode += `    Example: If a condition column is 'Age', a cell expression could be 'Age >= 18 and Age < 65'.\n`;
+            pyCode += `    Empty condition cells are treated as True (condition passes).\n`;
+            pyCode += `    """\n`;
+            
+            const pyRules = currentTable.rules.map(rule => {
+                const pyRule = {};
+                for (const key in rule) {
+                    pyRule[key] = rule[key]; // Keep cell content as string for expressions
+                }
+                return pyRule;
+            });
+
+            pyCode += `    rules = ${JSON.stringify(pyRules, null, 4).replace(/^/gm, '    ')}\n\n`;
+            
+            pyCode += `    for rule_idx, rule in enumerate(rules):\n`;
+            pyCode += `        eval_locals = {\n`;
+            currentTable.conditions.forEach((originalCond, index) => {
+                const sanitizedArgName = sanitizedConditionArgNames[index];
+                pyCode += `            "${originalCond.replace(/"/g, '\\"')}": ${sanitizedArgName},\n`;
+            });
+            pyCode += `        }\n`;
+
+            pyCode += `        try:\n`;
+            pyCode += `            match = True\n`;
+            currentTable.conditions.forEach((originalCond) => {
+                const originalCondKey = originalCond.replace(/"/g, '\\"');
+                pyCode += `            condition_expression_str = str(rule.get("${originalCondKey}", "")).strip()\n`;
+                pyCode += `            if condition_expression_str: # Only evaluate if not empty\n`;
+                pyCode += `                if not eval(condition_expression_str, {"__builtins__": {}}, eval_locals):\n`;
+                pyCode += `                    match = False\n`;
+                pyCode += `                    break # Stop checking conditions for this rule\n`;
+            });
+            pyCode += `            if match:\n`;
+            if (currentTable.actions.length > 0) {
+                const actionAssignments = currentTable.actions.map(act => {
+                    const actKey = act.replace(/"/g, '\\"');
+                    return `"${actKey}": rule.get("${actKey}")`;
+                }).join(', ');
+                pyCode += `                return {${actionAssignments}}\n`;
+            } else {
+                pyCode += `                return True # Indicates a match with no specific actions\n`;
+            }
+            pyCode += `        except Exception as e:\n`;
+            pyCode += `            print(f"Error evaluating rule {rule_idx} for table '${currentTable.name.replace(/'/g, "\\'")}': {e} (Expression: {condition_expression_str if 'condition_expression_str' in locals() else 'N/A'})")\n`;
+            pyCode += `            # This rule is skipped due to error. Loop continues to the next rule.\n`;
+            pyCode += `            pass\n`;
+
+            pyCode += `    return None # No rule matched or all matched rules had errors\n`;
+            
+            if (generatedPythonCodeTextarea()) generatedPythonCodeTextarea().value = pyCode;
+            showNotification("Python function generated (with expression support).", "success");
+        }
+
+        function copyPythonCode() {
+            const code = generatedPythonCodeTextarea().value;
+            if (code) {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showNotification("Python code copied to clipboard!", "success");
+                } catch (err) {
+                    showNotification("Failed to copy code.", "error");
+                    console.error('Failed to copy text: ', err);
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // --- Firestore Operations ---
+        async function openSaveModal() {
+            if (!userId || !db) {
+                showNotification("Firebase not available. Cannot save table.", "error");
+                return;
+            }
+            document.getElementById('saveTableNameInput').value = currentTable.name;
+            if (saveModal()) saveModal().classList.remove('hidden');
+        }
+        function closeSaveModal() {
+            if (saveModal()) saveModal().classList.add('hidden');
+        }
+
+        async function saveTableToFirestore() {
+            if (!userId || !db) {
+                showNotification("Firebase not available. Cannot save table.", "error");
+                closeSaveModal();
+                return;
+            }
+            const tableName = document.getElementById('saveTableNameInput').value.trim();
+            if (!tableName) {
+                showNotification("Table name cannot be empty.", "error");
+                return;
+            }
+            currentTable.name = tableName; 
+            if (tableNameInput()) tableNameInput().value = tableName;
+
+            showLoading(true, "Saving table...");
+            try {
+                const tableRef = doc(db, `artifacts/${appId}/users/${userId}/decision_tables/${tableName}`);
+                const tableToSave = JSON.parse(JSON.stringify(currentTable, (key, value) => 
+                    typeof value === 'undefined' ? "" : value
+                ));
+                await setDoc(tableRef, tableToSave);
+                showNotification(`Table "${tableName}" saved successfully!`, "success");
+            } catch (error) {
+                console.error("Error saving table to Firestore:", error);
+                showNotification("Error saving table: " + error.message, "error");
+            } finally {
+                showLoading(false);
+                closeSaveModal();
+            }
+        }
+
+        async function openLoadModal() {
+            if (!userId || !db) {
+                showNotification("Firebase not available. Cannot load tables.", "error");
+                return;
+            }
+            showLoading(true, "Loading saved tables...");
+            try {
+                const tablesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/decision_tables`);
+                const querySnapshot = await getDocs(tablesCollectionRef);
+                savedTables = [];
+                querySnapshot.forEach((doc) => {
+                    savedTables.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (savedTablesList()) savedTablesList().innerHTML = ''; 
+                if (savedTables.length === 0) {
+                    savedTablesList().innerHTML = '<p class="text-gray-500">No saved tables found.</p>';
+                } else {
+                    savedTables.forEach(table => {
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center p-2 border-b border-gray-200 hover:bg-gray-50 rounded-md';
+                        
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = table.name || table.id;
+                        nameSpan.className = 'text-gray-700 cursor-pointer flex-grow';
+                        nameSpan.onclick = () => loadSelectedTable(table.id);
+                        
+                        const deleteBtn = createSmallButton('Delete', async (event) => {
+                            event.stopPropagation(); 
+                            await deleteTableFromFirestore(table.id);
+                        }, 'bg-red-500 hover:bg-red-600');
+                        deleteBtn.classList.add('ml-2');
+
+                        div.appendChild(nameSpan);
+                        div.appendChild(deleteBtn);
+                        savedTablesList().appendChild(div);
+                    });
+                }
+                if (loadModal()) loadModal().classList.remove('hidden');
+            } catch (error) {
+                console.error("Error listing tables from Firestore:", error);
+                showNotification("Error loading tables: " + error.message, "error");
+            } finally {
+                showLoading(false);
+            }
+        }
+        function closeLoadModal() {
+            if (loadModal()) loadModal().classList.add('hidden');
+        }
+
+        async function loadSelectedTable(tableName) {
+            showLoading(true, `Loading table "${tableName}"...`);
+            try {
+                const tableRef = doc(db, `artifacts/${appId}/users/${userId}/decision_tables/${tableName}`);
+                const docSnap = await getDoc(tableRef);
+                if (docSnap.exists()) {
+                    currentTable = docSnap.data();
+                    if (tableNameInput()) tableNameInput().value = currentTable.name;
+                    renderTable();
+                    showNotification(`Table "${tableName}" loaded successfully.`, "success");
+                } else {
+                    showNotification(`Table "${tableName}" not found.`, "error");
+                }
+            } catch (error) {
+                console.error("Error loading table from Firestore:", error);
+                showNotification("Error loading table: " + error.message, "error");
+            } finally {
+                showLoading(false);
+                closeLoadModal();
+            }
+        }
+        
+        async function deleteTableFromFirestore(tableName) {
+            const customModal = document.getElementById('customConfirmModal');
+            const confirmMessage = document.getElementById('customConfirmMessage');
+            const confirmYesBtn = document.getElementById('customConfirmYes');
+            const confirmNoBtn = document.getElementById('customConfirmNo');
+
+            if (!customModal || !confirmMessage || !confirmYesBtn || !confirmNoBtn) {
+                if (!window.confirm(`Are you sure you want to delete the table "${tableName}"? This cannot be undone.`)) {
+                    return;
+                }
+            } else {
+                confirmMessage.textContent = `Are you sure you want to delete the table "${tableName}"? This cannot be undone.`;
+                customModal.classList.remove('hidden');
+
+                const Succeeded = await new Promise((resolve) => {
+                    confirmYesBtn.onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(true);
+                    };
+                    confirmNoBtn.onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(false);
+                    };
+                });
+                 if (!Succeeded) return;
+            }
+
+            showLoading(true, `Deleting table "${tableName}"...`);
+            try {
+                const tableRef = doc(db, `artifacts/${appId}/users/${userId}/decision_tables/${tableName}`);
+                await deleteDoc(tableRef);
+                showNotification(`Table "${tableName}" deleted successfully.`, "success");
+                if (!loadModal().classList.contains('hidden')) {
+                    openLoadModal(); 
+                }
+            } catch (error) {
+                console.error("Error deleting table from Firestore:", error);
+                showNotification("Error deleting table: " + error.message, "error");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+
+        // --- Utility Functions ---
+        function showLoading(isLoading, message = "Loading...") {
+            if (!loadingOverlay()) return;
+            const messageEl = loadingOverlay().querySelector('p');
+            if (messageEl) messageEl.textContent = message;
+
+            if (isLoading) {
+                loadingOverlay().classList.remove('hidden');
+            } else {
+                loadingOverlay().classList.add('hidden');
+            }
+        }
+
+        let notificationTimeout;
+        function showNotification(message, type = "info") {
+            if (!notificationArea()) return;
+            
+            const bgColor = type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : type === "warning" ? "bg-yellow-500" : "bg-blue-500";
+            notificationArea().className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white ${bgColor} transition-opacity duration-300 z-50`;
+            notificationArea().textContent = message;
+            notificationArea().classList.remove('opacity-0');
+            notificationArea().classList.add('opacity-100');
+
+            clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(() => {
+                notificationArea().classList.remove('opacity-100');
+                notificationArea().classList.add('opacity-0');
+            }, 3000);
+        }
+
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal-content {
+            max-height: 80vh; 
+        }
+        #generatedPythonCodeTextarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        #savedTablesList > div:hover {
+            background-color: #f9fafb; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="container mx-auto max-w-6xl bg-white p-6 md:p-8 rounded-xl shadow-2xl">
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800">Decision Table Editor</h1>
+            <p id="userIdDisplay" class="text-xs text-gray-500 mt-1">User ID: Loading...</p>
+        </header>
+
+        <div class="mb-6 flex flex-wrap gap-2 items-center">
+            <button id="newTableBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm">New Table</button>
+            <button id="importTableBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-sm">Import JSON</button>
+            <input type="file" id="fileInput" class="hidden" accept=".json">
+            <button id="exportTableBtn" class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 shadow-sm">Export JSON</button>
+            <button id="saveTableBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 shadow-sm">Save Table</button>
+            <button id="loadTableBtn" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 shadow-sm">Load Table</button>
+            <button id="generatePythonBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 shadow-sm">Generate Python</button>
+        </div>
+
+        <div class="mb-6">
+            <label for="tableNameInput" class="block text-sm font-medium text-gray-700 mb-1">Table Name:</label>
+            <input type="text" id="tableNameInput" class="w-full md:w-1/2 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div class="mb-4 flex flex-wrap gap-2">
+            <button id="addConditionBtn" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm shadow-sm">Add Condition Column</button>
+            <button id="addActionBtn" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm shadow-sm">Add Action Column</button>
+        </div>
+
+        <div id="tableContainer" class="overflow-x-auto mb-6 rounded-lg border border-gray-200 shadow-sm">
+            </div>
+
+        <div class="mb-6">
+            <button id="addRuleBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 shadow-sm">Add Rule (Row)</button>
+        </div>
+    </div>
+
+    <div id="pythonCodeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden p-4 z-40">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Generated Python Function</h3>
+            <div class="mb-4">
+                <label for="pythonFunctionNameInput" class="block text-sm font-medium text-gray-700">Function Name:</label>
+                <input type="text" id="pythonFunctionNameInput" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <textarea id="generatedPythonCodeTextarea" readonly class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 mb-4"></textarea>
+            <div class="flex justify-end gap-3">
+                <button id="copyPythonCodeBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm">Copy Code</button>
+                <button id="confirmGeneratePythonBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm">Generate/Regenerate</button>
+                <button id="closePythonModalBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 shadow-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="saveModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden p-4 z-40">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Save Decision Table</h3>
+            <div class="mb-4">
+                <label for="saveTableNameInput" class="block text-sm font-medium text-gray-700">Table Name for Saving:</label>
+                <input type="text" id="saveTableNameInput" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button id="confirmSaveBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow-sm">Save to Cloud</button>
+                <button id="closeSaveModalBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 shadow-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden p-4 z-40">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Load Saved Table</h3>
+            <div id="savedTablesList" class="max-h-96 overflow-y-auto border border-gray-200 rounded-md p-2">
+                </div>
+            <div class="mt-6 flex justify-end">
+                <button id="closeLoadModalBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 shadow-sm">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex flex-col items-center justify-center z-50 hidden">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+        <p class="text-white text-lg">Loading...</p>
+    </div>
+
+    <div id="notificationArea" class="fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white opacity-0 transition-opacity duration-300 z-50">
+        </div>
+    
+    <div id="customConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Confirm Deletion</h3>
+            <p id="customConfirmMessage" class="text-sm text-gray-600 mb-4">Are you sure?</p>
+            <div class="flex justify-end gap-3">
+                <button id="customConfirmYes" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">Yes, Delete</button>
+                <button id="customConfirmNo" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 text-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
