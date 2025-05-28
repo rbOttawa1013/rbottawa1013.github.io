@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pension Projection App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .input-group {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .input-group h3, details > summary {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937; /* Dark gray text */
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid #e5e7eb; /* Light gray border */
+            padding-bottom: 0.5rem;
+        }
+        details > summary {
+            cursor: pointer;
+        }
+        .input-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151; /* Medium gray text */
+            margin-bottom: 0.25rem;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db; /* Gray border */
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: #1f2937;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #2563eb; /* Blue border on focus */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        .btn-primary {
+            background-color: #2563eb; /* Blue */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8; /* Darker blue */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* Gray */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* Darker gray */
+        }
+        .btn-danger {
+            background-color: #dc2626; /* Red */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #b91c1c; /* Darker red */
+        }
+        .btn-outline {
+            background-color: transparent;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+        }
+        .btn-outline:hover {
+            background-color: #eff6ff; /* Light blue */
+        }
+        /* Tab styles */
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        .tab-button.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; /* 10% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 500px;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .modal-header {
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        .modal-body {
+            padding-top: 10px;
+            padding-bottom: 20px;
+        }
+        .modal-footer {
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        /* Responsive table */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        }
+        table {
+            width: 100%;
+            min-width: 1000px; /* Ensure table has a minimum width for horizontal scroll */
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+        th {
+            background-color: #f9fafb; /* Lightest gray for headers */
+            font-weight: 600;
+            color: #374151;
+        }
+        td {
+            color: #1f2937;
+        }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb;
+            animation: spin 1s ease infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4 max-w-7xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Canadian Pension Projection App</h1>
+            <p id="userIdDisplay" class="text-sm text-gray-500 mt-1"></p>
+        </header>
+
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-semibold mb-3 text-gray-700">Scenario Management</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label for="scenarioSelect" class="input-label">Active Scenario:</label>
+                    <select id="scenarioSelect" class="input-field">
+                        </select>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2 md:mt-0 col-span-1 lg:col-span-2 justify-start">
+                    <button id="btnNewScenario" class="btn btn-primary">New Scenario</button>
+                    <button id="btnSaveScenario" class="btn btn-primary">Save Current</button>
+                    <button id="btnSaveAsScenario" class="btn btn-primary">Save As New</button>
+                    <button id="btnDeleteScenario" class="btn btn-danger">Delete Current</button>
+                    <label for="importFile" class="btn btn-outline cursor-pointer">Import JSON</label>
+                    <input type="file" id="importFile" accept=".json" class="hidden">
+                    <button id="btnExportScenario" class="btn btn-outline">Export Current (JSON)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:flex lg:gap-6">
+            <div class="lg:w-1/3 mb-6 lg:mb-0">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-3 text-gray-700">Input Parameters</h2>
+                    <form id="projectionForm">
+                        <details class="input-group" open>
+                            <summary>Personal & Timeline</summary>
+                            <div class="mt-2">
+                                <div><label for="scenarioName" class="input-label">Scenario Name:</label><input type="text" id="scenarioName" class="input-field" required value="Default Scenario"></div>
+                                <div class="grid grid-cols-2 gap-4 mt-2">
+                                    <div><label for="currentYear" class="input-label">Current Year:</label><input type="number" id="currentYear" class="input-field" required value="2025"></div>
+                                    <div><label for="birthYear" class="input-label">Birth Year:</label><input type="number" id="birthYear" class="input-field" required value="1970"></div>
+                                    <div><label for="retirementYear" class="input-label">Retirement Year:</label><input type="number" id="retirementYear" class="input-field" required value="2040"></div>
+                                    <div><label for="projectionEndYear" class="input-label">Projection End Year:</label><input type="number" id="projectionEndYear" class="input-field" required value="2065"></div>
+                                </div>
+                                <div class="mt-2"><label for="inflationRate" class="input-label">Annual Inflation Rate (%):</label><input type="number" step="0.01" id="inflationRate" class="input-field" required value="2.5"></div>
+                                <div class="mt-3">
+                                    <input type="checkbox" id="useNominalValues" class="mr-2 align-middle">
+                                    <label for="useNominalValues" class="input-label inline-block align-middle">Use Nominal Values (No Inflation on Expenses/Benefits)</label>
+                                </div>
+                            </div>
+                        </details>
+                        
+                        <details class="input-group">
+                            <summary>Pre-Retirement Phase</summary>
+                            <div class="mt-2">
+                                <div><label for="employmentIncome" class="input-label">Annual Gross Employment Income ($):</label><input type="number" id="employmentIncome" class="input-field" value="80000"></div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                    <div><label for="rrspContribRate" class="input-label">RRSP Contrib. Rate (% of Empl. Inc):</label><input type="number" step="0.1" id="rrspContribRate" class="input-field" value="10.0"></div>
+                                    <div><label for="tfsaContribRateEmpl" class="input-label">TFSA Contrib. Rate (% of Empl. Inc):</label><input type="number" step="0.1" id="tfsaContribRateEmpl" class="input-field" value="5.0"></div>
+                                </div>
+                                <div class="mt-2">
+                                    <label for="tfsaContribRateOtherPension" class="input-label">TFSA Contrib. Rate (% of Other Pension):</label>
+                                    <input type="number" step="0.1" id="tfsaContribRateOtherPension" class="input-field" value="0.0">
+                                    <p class="text-xs text-gray-500 mt-1">Applies to "Other Pension" amount if received pre-retirement.</p>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Contributions are made until retirement year.</p>
+                            </div>
+                        </details>
+
+                        <details class="input-group">
+                            <summary>Initial Financial State (Current Year)</summary>
+                            <div class="mt-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label for="initialRRSP" class="input-label">RRSP Balance ($):</label><input type="number" id="initialRRSP" class="input-field" value="100000"></div>
+                                    <div><label for="initialTFSA" class="input-label">TFSA Balance ($):</label><input type="number" id="initialTFSA" class="input-field" value="50000"></div>
+                                    <div><label for="initialTFSAContributionRoom" class="input-label">Current TFSA Room ($):</label><input type="number" id="initialTFSAContributionRoom" class="input-field" value="20000"></div>
+                                    <div><label for="initialNonReg" class="input-label">Non-Registered Balance ($):</label><input type="number" id="initialNonReg" class="input-field" value="75000"></div>
+                                </div>
+                                 <div class="mt-2"><label for="initialNonRegACB" class="input-label">Non-Reg ACB ($):</label><input type="number" id="initialNonRegACB" class="input-field" value="60000"></div>
+                            </div>
+                        </details>
+
+                        <details class="input-group">
+                            <summary>Government Benefits & Other Pension (Retirement)</summary>
+                             <div class="mt-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label for="cppStartAge" class="input-label">CPP Start Age:</label><input type="number" id="cppStartAge" class="input-field" value="65"></div>
+                                    <div><label for="cppAt65" class="input-label">CPP at 65 (Annual, Today's $):</label><input type="number" id="cppAt65" class="input-field" value="13000"></div>
+                                    <div><label for="oasStartAge" class="input-label">OAS Start Age:</label><input type="number" id="oasStartAge" class="input-field" value="65"></div> <div><label for="oasMaxAnnual" class="input-label">Max OAS (Annual, Today's $):</label><input type="number" id="oasMaxAnnual" class="input-field" value="8200"></div>
+                                </div>
+                                <div class="mt-2"><label for="otherPension" class="input-label">Other Pension (Annual, Today's $):</label><input type="number" id="otherPension" class="input-field" value="5000"></div>
+                                <div class="mt-2"><input type="checkbox" id="otherPensionIndexed" class="mr-2 align-middle"><label for="otherPensionIndexed" class="input-label inline-block align-middle">Other Pension Indexed to Inflation?</label></div>
+                            </div>
+                        </details>
+                        
+                        <details class="input-group">
+                            <summary>Retirement Withdrawal Strategy</summary>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-600 mb-2">Withdrawals cover (Expenses - Gov Benefits - Other Pensions). Order: RRSP (RRIF min enforced), Non-Reg, TFSA. Specified rates act as a floor.</p>
+                                <div class="mt-2"><input type="checkbox" id="useRRIFMinimum" class="mr-2 align-middle"><label for="useRRIFMinimum" class="input-label inline-block align-middle">Enforce RRIF Min. from age 72 for RRSP</label></div>
+                                <div class="grid grid-cols-2 gap-4 mt-3">
+                                    <div><label for="tfsaWithdrawalRate" class="input-label">TFSA Withdrawal Rate (% of Bal):</label><input type="number" step="0.1" id="tfsaWithdrawalRate" class="input-field" value="0.0"></div>
+                                    <div><label for="nonRegWithdrawalRate" class="input-label">Non-Reg W/D Rate (% of Bal):</label><input type="number" step="0.1" id="nonRegWithdrawalRate" class="input-field" value="0.0"></div>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Set to 0 if only needs-based withdrawal is desired for TFSA/Non-Reg.</p>
+                            </div>
+                        </details>
+
+                        <details class="input-group">
+                            <summary>Investment & Expenses</summary>
+                            <div class="mt-2">
+                                <div><label for="investmentReturn" class="input-label">Annual Investment Return (Nominal %):</label><input type="number" step="0.01" id="investmentReturn" class="input-field" value="5.0"></div>
+                                <div class="mt-2"><label for="annualLivingExpenses" class="input-label">Annual Living Expenses (Retirement, Today's $):</label><input type="number" id="annualLivingExpenses" class="input-field" value="50000"></div>
+                                <p class="text-xs text-gray-500 mt-1">Tax calculation uses example 2024/2025 ON+Fed marginal rates & BPAs.</p>
+                            </div>
+                        </details>
+                        <button type="submit" id="btnRunProjection" class="btn btn-primary w-full mt-4">Run Projection</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:w-2/3">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="flex border-b border-gray-200">
+                        <button class="tab-button active" onclick="openTab(event, 'gridTab')">Forecast Grid</button>
+                        <button class="tab-button" onclick="openTab(event, 'graphTab')">Forecast Graph</button>
+                        <button class="tab-button" onclick="openTab(event, 'summaryTab')">Summary</button>
+                    </div>
+
+                    <div id="gridTab" class="tab-content active mt-4">
+                        <h2 class="text-xl font-semibold mb-3 text-gray-700">Projection Grid</h2>
+                        <div id="loadingGrid" class="hidden text-center py-4"><div class="spinner"></div><p>Calculating...</p></div>
+                        <div id="projectionGridContainer" class="table-container">
+                            </div>
+                    </div>
+
+                    <div id="graphTab" class="tab-content mt-4">
+                        <h2 class="text-xl font-semibold mb-3 text-gray-700">Projection Graph</h2>
+                         <div id="loadingGraph" class="hidden text-center py-4"><div class="spinner"></div><p>Generating graph...</p></div>
+                        <canvas id="projectionChart"></canvas>
+                    </div>
+                    <div id="summaryTab" class="tab-content mt-4">
+                        <h2 class="text-xl font-semibold mb-3 text-gray-700">Projection Summary</h2>
+                        <div id="loadingSummary" class="hidden text-center py-4"><div class="spinner"></div><p>Calculating summary...</p></div>
+                        <div id="projectionSummaryContainer">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="saveAsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-button" onclick="closeModal('saveAsModal')">&times;</span>
+                Save Scenario As
+            </div>
+            <div class="modal-body">
+                <label for="newScenarioName" class="input-label">New Scenario Name:</label>
+                <input type="text" id="newScenarioName" class="input-field" placeholder="Enter a unique name">
+                <p id="saveAsError" class="text-red-500 text-sm mt-1 hidden"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('saveAsModal')">Cancel</button>
+                <button id="btnConfirmSaveAs" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmDeleteModal" class="modal">
+        <div class="modal-content">
+             <div class="modal-header">
+                <span class="close-button" onclick="closeModal('confirmDeleteModal')">&times;</span>
+                Confirm Delete
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the scenario "<span id="scenarioNameToDelete"></span>"? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('confirmDeleteModal')">Cancel</button>
+                <button id="btnConfirmDelete" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-button" onclick="closeModal('messageModal')">&times;</span>
+                <span id="messageModalTitle">Message</span>
+            </div>
+            <div class="modal-body">
+                <p id="messageModalText"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('messageModal')">OK</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration and App ID
+        const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        const firebaseConfig = JSON.parse(rawFirebaseConfig);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-pension-app-v4'; 
+        
+        let app, db, auth;
+        let userId = null;
+        let scenarios = []; 
+        let currentScenarioId = null;
+        let projectionChart = null;
+        let currentProjectionParams = null; 
+
+        // DOM Elements
+        const scenarioSelect = document.getElementById('scenarioSelect');
+        const projectionForm = document.getElementById('projectionForm');
+        const projectionGridContainer = document.getElementById('projectionGridContainer');
+        const projectionChartCanvas = document.getElementById('projectionChart').getContext('2d');
+        const projectionSummaryContainer = document.getElementById('projectionSummaryContainer');
+        const loadingGrid = document.getElementById('loadingGrid');
+        const loadingGraph = document.getElementById('loadingGraph');
+        const loadingSummary = document.getElementById('loadingSummary');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const btnNewScenario = document.getElementById('btnNewScenario');
+        const btnSaveScenario = document.getElementById('btnSaveScenario');
+        const btnSaveAsScenario = document.getElementById('btnSaveAsScenario');
+        const btnDeleteScenario = document.getElementById('btnDeleteScenario');
+        const importFile = document.getElementById('importFile');
+        const btnExportScenario = document.getElementById('btnExportScenario');
+
+
+        // --- Firebase Initialization and Auth ---
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.warn("Firebase config is empty. Firestore features will be disabled.");
+                    showMessageModal("Warning", "Firebase is not configured. Scenarios will not be saved.");
+                    loadDefaultScenario(); 
+                    return;
+                }
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); 
+
+                await setPersistence(auth, browserLocalPersistence); 
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = `User ID: ${userId}`;
+                        console.log("User authenticated:", userId);
+                        await loadScenariosFromFirestore();
+                    } else {
+                        console.log("No user signed in. Attempting to sign in.");
+                        userIdDisplay.textContent = "User ID: Not authenticated";
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            try {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                                console.log("Signed in with custom token.");
+                            } catch (error) {
+                                console.error("Error signing in with custom token, trying anonymous:", error);
+                                await signInAnonymously(auth);
+                                console.log("Signed in anonymously after custom token failure.");
+                            }
+                        } else {
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously.");
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showMessageModal("Error", "Could not initialize Firebase. Scenarios will not be saved. " + error.message);
+                loadDefaultScenario();
+            }
+        }
+        
+        // --- Scenario Management ---
+        function populateScenarioDropdown() {
+            scenarioSelect.innerHTML = ''; 
+            if (scenarios.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "No scenarios available";
+                scenarioSelect.appendChild(option);
+                return;
+            }
+            scenarios.forEach(scenario => {
+                const option = document.createElement('option');
+                option.value = scenario.id;
+                option.textContent = scenario.inputParams.scenarioName || `Scenario ${scenario.id.substring(0,6)}`;
+                scenarioSelect.appendChild(option);
+            });
+
+            if (currentScenarioId && scenarios.some(s => s.id === currentScenarioId)) {
+                scenarioSelect.value = currentScenarioId;
+            } else if (scenarios.length > 0) { 
+                currentScenarioId = scenarios[0].id;
+                scenarioSelect.value = currentScenarioId;
+            }
+        }
+        
+        function getFormData() {
+            const getNum = (id, def = 0) => parseFloat(document.getElementById(id).value) || def;
+            const getStr = (id, def = '') => document.getElementById(id).value || def;
+            const getBool = (id) => document.getElementById(id).checked;
+
+            return {
+                scenarioName: getStr('scenarioName', 'Unnamed Scenario'),
+                currentYear: getNum('currentYear', new Date().getFullYear()),
+                birthYear: getNum('birthYear', 1970),
+                retirementYear: getNum('retirementYear', 2040),
+                projectionEndYear: getNum('projectionEndYear', 2065),
+                inflationRate: getNum('inflationRate', 2.5) / 100,
+                useNominalValues: getBool('useNominalValues'),
+                employmentIncome: getNum('employmentIncome', 80000),
+                rrspContribRate: getNum('rrspContribRate', 10.0) / 100,
+                tfsaContribRateEmpl: getNum('tfsaContribRateEmpl', 5.0) / 100, 
+                tfsaContribRateOtherPension: getNum('tfsaContribRateOtherPension', 0.0) / 100, 
+                initialRRSP: getNum('initialRRSP', 100000),
+                initialTFSA: getNum('initialTFSA', 50000),
+                initialTFSAContributionRoom: getNum('initialTFSAContributionRoom', 20000),
+                initialNonReg: getNum('initialNonReg', 75000),
+                initialNonRegACB: getNum('initialNonRegACB', 60000),
+                cppStartAge: getNum('cppStartAge', 65),
+                cppAt65: getNum('cppAt65', 13000),
+                oasStartAge: getNum('oasStartAge', 65), 
+                oasMaxAnnual: getNum('oasMaxAnnual', 8200),
+                otherPension: getNum('otherPension', 5000),
+                otherPensionIndexed: getBool('otherPensionIndexed'),
+                useRRIFMinimum: getBool('useRRIFMinimum'),
+                tfsaWithdrawalRate: getNum('tfsaWithdrawalRate', 0.0) / 100,
+                nonRegWithdrawalRate: getNum('nonRegWithdrawalRate', 0.0) / 100,
+                investmentReturn: getNum('investmentReturn', 5.0) / 100,
+                annualLivingExpenses: getNum('annualLivingExpenses', 50000),
+            };
+        }
+
+        function setFormData(params) {
+            const setVal = (id, val, isPercent = false) => {
+                const el = document.getElementById(id);
+                if (el) el.value = isPercent ? (val * 100).toFixed(1) : val;
+            };
+            const setBool = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = !!val; 
+            };
+
+            setVal('scenarioName', params.scenarioName || 'Default Scenario');
+            setVal('currentYear', params.currentYear);
+            setVal('birthYear', params.birthYear);
+            setVal('retirementYear', params.retirementYear);
+            setVal('projectionEndYear', params.projectionEndYear);
+            setVal('inflationRate', params.inflationRate, true);
+            setBool('useNominalValues', params.useNominalValues); 
+            setVal('employmentIncome', params.employmentIncome);
+            setVal('rrspContribRate', params.rrspContribRate, true);
+            setVal('tfsaContribRateEmpl', params.tfsaContribRateEmpl, true); 
+            setVal('tfsaContribRateOtherPension', params.tfsaContribRateOtherPension, true); 
+            setVal('initialRRSP', params.initialRRSP);
+            setVal('initialTFSA', params.initialTFSA);
+            setVal('initialTFSAContributionRoom', params.initialTFSAContributionRoom);
+            setVal('initialNonReg', params.initialNonReg);
+            setVal('initialNonRegACB', params.initialNonRegACB);
+            setVal('cppStartAge', params.cppStartAge);
+            setVal('cppAt65', params.cppAt65);
+            setVal('oasStartAge', params.oasStartAge); 
+            setVal('oasMaxAnnual', params.oasMaxAnnual);
+            setVal('otherPension', params.otherPension);
+            setBool('otherPensionIndexed', params.otherPensionIndexed);
+            setBool('useRRIFMinimum', params.useRRIFMinimum);
+            setVal('tfsaWithdrawalRate', params.tfsaWithdrawalRate, true); 
+            setVal('nonRegWithdrawalRate', params.nonRegWithdrawalRate, true); 
+            setVal('investmentReturn', params.investmentReturn, true);
+            setVal('annualLivingExpenses', params.annualLivingExpenses);
+        }
+
+        function getDefaultParams() { 
+             return {
+                scenarioName: "Default Scenario", currentYear: 2025, birthYear: 1970, retirementYear: 2040, projectionEndYear: 2065, inflationRate: 0.025, useNominalValues: false,
+                employmentIncome: 80000, rrspContribRate: 0.10, tfsaContribRateEmpl: 0.05, tfsaContribRateOtherPension: 0.0,
+                initialRRSP: 100000, initialTFSA: 50000, initialTFSAContributionRoom: 20000, initialNonReg: 75000, initialNonRegACB: 60000,
+                cppStartAge: 65, cppAt65: 13000, oasStartAge: 65, oasMaxAnnual: 8200, otherPension: 5000, otherPensionIndexed: true,
+                useRRIFMinimum: true, tfsaWithdrawalRate: 0.0, nonRegWithdrawalRate: 0.0,
+                investmentReturn: 0.05, annualLivingExpenses: 50000
+            };
+        }
+
+
+        function loadDefaultScenario() {
+            const defaultParams = getDefaultParams();
+            const defaultIdx = scenarios.findIndex(s => s.isDefault);
+            if (defaultIdx === -1) { 
+                 scenarios.push({ id: 'default', inputParams: defaultParams, isDefault: true });
+            } else { 
+                scenarios[defaultIdx].inputParams = defaultParams;
+            }
+            currentScenarioId = 'default';
+            setFormData(defaultParams);
+            populateScenarioDropdown(); 
+            clearResults();
+        }
+
+        function clearResults() {
+            projectionGridContainer.innerHTML = '<p class="text-gray-500">Configure parameters and run projection.</p>';
+            projectionSummaryContainer.innerHTML = '<p class="text-gray-500">Run projection to see summary.</p>';
+            if (projectionChart) {
+                projectionChart.destroy();
+                projectionChart = null;
+            }
+        }
+        
+        async function loadScenariosFromFirestore() {
+            if (!db || !userId) {
+                console.log("Firestore not available or user not authenticated. Loading default scenario.");
+                loadDefaultScenario();
+                return;
+            }
+            const scenariosCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/pensionScenarios`);
+            
+            onSnapshot(query(scenariosCollectionRef), (snapshot) => {
+                scenarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Scenarios loaded/updated from Firestore:", scenarios);
+                if (scenarios.length === 0) { 
+                    loadDefaultScenario(); 
+                } else {
+                    populateScenarioDropdown(); 
+                    const scenarioToLoadId = scenarioSelect.value || (scenarios.length > 0 ? scenarios[0].id : null);
+                    if (scenarioToLoadId) {
+                        loadScenarioToForm(scenarioToLoadId);
+                    }
+                }
+            }, (error) => {
+                console.error("Error listening to scenarios:", error);
+                showMessageModal("Error", "Could not load scenarios from cloud: " + error.message);
+                loadDefaultScenario();
+            });
+        }
+
+        function loadScenarioToForm(scenarioId) {
+            const scenario = scenarios.find(s => s.id === scenarioId);
+            if (scenario) {
+                currentScenarioId = scenario.id; 
+                const completeParams = { ...getDefaultParams(), ...scenario.inputParams }; 
+                setFormData(completeParams);
+                if (scenarioSelect.value !== scenarioId) { 
+                     scenarioSelect.value = scenarioId;
+                }
+                clearResults();
+            } else {
+                console.warn(`Scenario with ID ${scenarioId} not found. Loading default.`);
+                loadDefaultScenario(); 
+            }
+        }
+        
+        scenarioSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadScenarioToForm(e.target.value);
+            } else { 
+                loadDefaultScenario();
+            }
+        });
+
+        btnNewScenario.addEventListener('click', () => {
+            const newScenarioName = `New Scenario ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+            const freshDefault = getDefaultParams();
+            freshDefault.scenarioName = newScenarioName;
+            freshDefault.employmentIncome = 0; freshDefault.rrspContribRate = 0; freshDefault.tfsaContribRateEmpl = 0; freshDefault.tfsaContribRateOtherPension = 0;
+            freshDefault.initialRRSP = 0; freshDefault.initialTFSA = 0; freshDefault.initialTFSAContributionRoom = 0; freshDefault.initialNonReg = 0; freshDefault.initialNonRegACB = 0;
+            freshDefault.cppAt65 = 0; freshDefault.otherPension = 0; freshDefault.annualLivingExpenses = 0;
+
+            setFormData(freshDefault);
+            currentScenarioId = null; 
+            scenarioSelect.value = ""; 
+            clearResults();
+            document.getElementById('scenarioName').focus();
+        });
+
+        async function saveScenarioToFirestore(params, scenarioIdToUpdate = null) {
+            if (!db || !userId) {
+                showMessageModal("Error", "Cannot save: Firebase not connected or user not authenticated.");
+                const existingScenarioIndex = scenarios.findIndex(s => s.id === scenarioIdToUpdate);
+                if (scenarioIdToUpdate && existingScenarioIndex !== -1 && !scenarios[existingScenarioIndex].isDefault) {
+                    scenarios[existingScenarioIndex].inputParams = params;
+                } else { 
+                     const newId = `local-${Date.now()}`;
+                     scenarios.push({id: newId, inputParams: params, createdAt: new Date().toISOString(), isDefault: false});
+                     currentScenarioId = newId;
+                }
+                populateScenarioDropdown();
+                return currentScenarioId;
+            }
+
+            const scenarioData = {
+                inputParams: params,
+                updatedAt: serverTimestamp()
+            };
+
+            try {
+                let newOrUpdatedId = scenarioIdToUpdate;
+                if (scenarioIdToUpdate && scenarioIdToUpdate !== 'default') { 
+                    const scenarioRef = doc(db, `artifacts/${appId}/users/${userId}/pensionScenarios`, scenarioIdToUpdate);
+                    await setDoc(scenarioRef, scenarioData, { merge: true });
+                    showMessageModal("Success", `Scenario "${params.scenarioName}" updated.`);
+                } else { 
+                    scenarioData.createdAt = serverTimestamp();
+                    const scenariosCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/pensionScenarios`);
+                    const docRef = await addDoc(scenariosCollectionRef, scenarioData);
+                    showMessageModal("Success", `Scenario "${params.scenarioName}" saved as new.`);
+                    newOrUpdatedId = docRef.id;
+                }
+                if (newOrUpdatedId) {
+                    currentScenarioId = newOrUpdatedId;
+                }
+                return newOrUpdatedId;
+
+            } catch (error) {
+                console.error("Error saving scenario:", error);
+                showMessageModal("Error", "Could not save scenario: " + error.message);
+                return null;
+            }
+        }
+        
+        btnSaveScenario.addEventListener('click', async () => {
+            const params = getFormData();
+            if (!params.scenarioName.trim()) {
+                showMessageModal("Validation Error", "Scenario name cannot be empty."); return;
+            }
+            const currentLoadedScenario = scenarios.find(s => s.id === currentScenarioId);
+            if (currentScenarioId && currentLoadedScenario && !currentLoadedScenario.isDefault) {
+                await saveScenarioToFirestore(params, currentScenarioId);
+            } else { 
+                document.getElementById('newScenarioName').value = params.scenarioName;
+                openModal('saveAsModal');
+            }
+        });
+
+        btnSaveAsScenario.addEventListener('click', () => {
+            const params = getFormData();
+            document.getElementById('newScenarioName').value = params.scenarioName;
+            openModal('saveAsModal');
+        });
+        
+        const defaultSaveAsConfirmLogic = async () => {
+            const newName = document.getElementById('newScenarioName').value.trim();
+            const saveAsError = document.getElementById('saveAsError');
+            if (!newName) {
+                saveAsError.textContent = "Scenario name cannot be empty."; saveAsError.classList.remove('hidden'); return;
+            }
+            if (db && userId && scenarios.some(s => s.inputParams.scenarioName === newName && s.id !== currentScenarioId)) {
+                 saveAsError.textContent = "A scenario with this name already exists."; saveAsError.classList.remove('hidden'); return;
+            }
+            saveAsError.classList.add('hidden');
+            
+            const params = getFormData(); 
+            params.scenarioName = newName; 
+            await saveScenarioToFirestore(params, null); 
+            closeModal('saveAsModal');
+        };
+        document.getElementById('btnConfirmSaveAs').onclick = defaultSaveAsConfirmLogic;
+
+
+        btnDeleteScenario.addEventListener('click', () => {
+            const scenario = scenarios.find(s => s.id === currentScenarioId);
+            if (!currentScenarioId || (scenario && scenario.isDefault)) {
+                showMessageModal("Info", "Cannot delete the default or an unsaved scenario."); return;
+            }
+            if (scenario) {
+                document.getElementById('scenarioNameToDelete').textContent = scenario.inputParams.scenarioName;
+                openModal('confirmDeleteModal');
+            }
+        });
+
+        document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+            const scenarioToDelete = scenarios.find(s => s.id === currentScenarioId);
+            if (!scenarioToDelete || scenarioToDelete.isDefault) { 
+                 closeModal('confirmDeleteModal'); return;
+            }
+
+            if (!db || !userId) { 
+                 scenarios = scenarios.filter(s => s.id !== currentScenarioId);
+                 currentScenarioId = null; 
+                 if (scenarios.length > 0) {
+                    loadScenarioToForm(scenarios[0].id);
+                 } else {
+                    loadDefaultScenario();
+                 }
+                 closeModal('confirmDeleteModal');
+                 return;
+            }
+            if (currentScenarioId) {
+                try {
+                    const scenarioRef = doc(db, `artifacts/${appId}/users/${userId}/pensionScenarios`, currentScenarioId);
+                    await deleteDoc(scenarioRef);
+                    showMessageModal("Success", "Scenario deleted.");
+                    currentScenarioId = null; 
+                } catch (error) {
+                    console.error("Error deleting scenario:", error);
+                    showMessageModal("Error", "Could not delete scenario: " + error.message);
+                }
+            }
+            closeModal('confirmDeleteModal');
+        });
+
+        importFile.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const importedParams = JSON.parse(e.target.result);
+                        if (typeof importedParams.scenarioName !== 'string' || typeof importedParams.currentYear !== 'number') { 
+                           throw new Error("Invalid scenario format.");
+                        }
+                        const completeImportedParams = { ...getDefaultParams(), ...importedParams };
+
+                        document.getElementById('newScenarioName').value = completeImportedParams.scenarioName || `Imported ${new Date().toLocaleTimeString()}`;
+                        openModal('saveAsModal');
+                        
+                        document.getElementById('btnConfirmSaveAs').onclick = async () => {
+                            const newName = document.getElementById('newScenarioName').value.trim();
+                             if (!newName) { /* show error */ return; }
+                            completeImportedParams.scenarioName = newName; 
+                            await saveScenarioToFirestore(completeImportedParams, null); 
+                            closeModal('saveAsModal');
+                            document.getElementById('btnConfirmSaveAs').onclick = defaultSaveAsConfirmLogic; 
+                        };
+                    } catch (error) {
+                        console.error("Error importing scenario:", error);
+                        showMessageModal("Import Error", "Could not import scenario: " + error.message);
+                         document.getElementById('btnConfirmSaveAs').onclick = defaultSaveAsConfirmLogic; 
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = null; 
+            }
+        });
+        
+        btnExportScenario.addEventListener('click', () => {
+            if (!currentScenarioId) {
+                showMessageModal("Info", "No active scenario selected to export."); return;
+            }
+            const scenario = scenarios.find(s => s.id === currentScenarioId);
+            if (scenario) {
+                const jsonString = JSON.stringify(scenario.inputParams, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${(scenario.inputParams.scenarioName || 'scenario').replace(/\s+/g, '_')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                showMessageModal("Error", "Could not find current scenario data to export.");
+            }
+        });
+
+
+        // --- Marginal Tax Function (Simplified ON + Fed 2024/2025) ---
+        function calculateMarginalTax(taxableIncome) {
+            const fedBPA = 15705;
+            const onBPA = 12399;
+            // Combined Federal and Ontario tax brackets (illustrative for 2024/2025)
+            // This is a simplified model. Actual tax calculation is more complex.
+            const brackets = [
+                { limit: 12399,  fedRate: 0.1500, onRate: 0.0000 }, 
+                { limit: 15705,  fedRate: 0.1500, onRate: 0.0505 }, 
+                { limit: 51446,  fedRate: 0.1500, onRate: 0.0505 }, 
+                { limit: 55867,  fedRate: 0.1500, onRate: 0.0915 }, 
+                { limit: 102894, fedRate: 0.2050, onRate: 0.0915 }, 
+                { limit: 111733, fedRate: 0.2050, onRate: 0.1116 }, 
+                { limit: 150000, fedRate: 0.2600, onRate: 0.1116 }, 
+                { limit: 173205, fedRate: 0.2600, onRate: 0.1216 }, 
+                { limit: 220000, fedRate: 0.2900, onRate: 0.1216 }, 
+                { limit: 246752, fedRate: 0.2900, onRate: 0.1316 }, 
+                { limit: Infinity,fedRate: 0.3300, onRate: 0.1316 }  
+            ];
+            const fedBpaCredit = fedBPA * 0.15; 
+            const onBpaCredit = onBPA * 0.0505; 
+            const totalBpaCredits = fedBpaCredit + onBpaCredit;
+            let taxPayable = 0;
+            let incomeProcessed = 0;
+
+            for (const bracket of brackets) {
+                if (taxableIncome <= incomeProcessed) break;
+                const bracketUpperLimit = bracket.limit;
+                const incomeInThisBracket = Math.min(taxableIncome - incomeProcessed, bracketUpperLimit - incomeProcessed);
+                
+                if (incomeInThisBracket <= 0 && bracket.limit !== Infinity) { 
+                     incomeProcessed = Math.max(incomeProcessed, bracketUpperLimit); 
+                     continue;
+                }
+                
+                taxPayable += incomeInThisBracket * (bracket.fedRate + bracket.onRate);
+                incomeProcessed += incomeInThisBracket;
+                if (bracket.limit === Infinity) break;
+            }
+            taxPayable = Math.max(0, taxPayable - totalBpaCredits);
+            return taxPayable;
+        }
+
+
+        // --- Projection Engine (Revised with new features) ---
+        function runProjection(params) {
+            const results = [];
+            let { currentYear, birthYear, retirementYear, projectionEndYear, inflationRate, useNominalValues,
+                  employmentIncome, rrspContribRate, tfsaContribRateEmpl, tfsaContribRateOtherPension, 
+                  initialRRSP, initialTFSA, initialTFSAContributionRoom, initialNonReg, initialNonRegACB,
+                  cppStartAge, cppAt65, oasStartAge, oasMaxAnnual, otherPension, otherPensionIndexed,
+                  useRRIFMinimum, tfsaWithdrawalRate, nonRegWithdrawalRate,
+                  investmentReturn, annualLivingExpenses } = params;
+
+            let rrspBalance = initialRRSP;
+            let tfsaBalance = initialTFSA;
+            let tfsaRoom = initialTFSAContributionRoom; 
+            let nonRegBalance = initialNonReg;
+            let nonRegACB = initialNonRegACB;
+            
+            const TFSA_ANNUAL_LIMIT_TODAY = 7000; 
+            const OAS_CLAWBACK_THRESHOLD_TODAY = 86912; 
+
+            const rrifFactors = { 
+                71: 0.0528, 72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598, 77: 0.0617,
+                78: 0.0636, 79: 0.0658, 80: 0.0682, 81: 0.0708, 82: 0.0738, 83: 0.0771, 84: 0.0808,
+                85: 0.0851, 86: 0.0899, 87: 0.0955, 88: 0.1021, 89: 0.1099, 90: 0.1192, 91: 0.1306,
+                92: 0.1449, 93: 0.1634, 94: 0.1879, 95: 0.2000
+            };
+
+            let depletionSummary = { rrsp: null, tfsa: null, nonReg: null, allAssets: null };
+            let assetsDepleted = false;
+
+            for (let year = currentYear; year <= projectionEndYear; year++) {
+                const age = year - birthYear;
+                const effectiveInflationRate = useNominalValues ? 0 : inflationRate; // Inflation rate to apply to user amounts if not nominal
+                const inflationMultiplierForYear = Math.pow(1 + effectiveInflationRate, year - currentYear); // For user amounts
+                
+                // TFSA limit is always indexed by actual inflation, not the nominal toggle
+                const currentAnnualTFSAContributionLimit = TFSA_ANNUAL_LIMIT_TODAY * Math.pow(1 + inflationRate, year - currentYear);
+                // OAS Clawback threshold is also indexed by actual inflation if not using nominal values for benefits
+                const oasClawbackLowerThresholdIndexed = OAS_CLAWBACK_THRESHOLD_TODAY * (useNominalValues ? 1 : Math.pow(1 + inflationRate, year - currentYear));
+
+
+                let yearResult = { year, age, preRetirement: year < retirementYear };
+                yearResult.indexedLivingExpenses = annualLivingExpenses * inflationMultiplierForYear;
+                
+                // --- Pre-Retirement Phase ---
+                if (year < retirementYear) {
+                    yearResult.employmentIncome = employmentIncome; 
+                    const grossEmploymentIncomeForYear = employmentIncome * inflationMultiplierForYear; 
+                    
+                    const rrspContribution = grossEmploymentIncomeForYear * rrspContribRate;
+                    
+                    let otherPensionIncomeForYear_PreRet = otherPension; // Start with base
+                    if (!useNominalValues && otherPensionIndexed) { // Only inflate if not using nominal AND it's marked as indexed
+                        otherPensionIncomeForYear_PreRet = otherPension * inflationMultiplierForYear;
+                    }
+                    // If useNominalValues is true, it remains 'otherPension' (today's dollars).
+                    // If useNominalValues is false AND !otherPensionIndexed, it also remains 'otherPension'.
+
+                    const tfsaContribFromEmpl = grossEmploymentIncomeForYear * tfsaContribRateEmpl;
+                    const tfsaContribFromOtherPension = otherPensionIncomeForYear_PreRet * tfsaContribRateOtherPension;
+
+                    const plannedTFSAPreRetContrib = tfsaContribFromEmpl + tfsaContribFromOtherPension;
+                    const actualTFSAPreRetContrib = Math.min(plannedTFSAPreRetContrib, tfsaRoom, currentAnnualTFSAContributionLimit);
+                    
+                    rrspBalance += rrspContribution;
+                    tfsaBalance += actualTFSAPreRetContrib;
+                    tfsaRoom = Math.max(0, tfsaRoom - actualTFSAPreRetContrib);
+
+                    yearResult.rrspContribution = rrspContribution;
+                    yearResult.tfsaContribution = actualTFSAPreRetContrib;
+
+                    const taxablePreRetIncome = grossEmploymentIncomeForYear - rrspContribution;
+                    const preRetTaxes = calculateMarginalTax(taxablePreRetIncome);
+                    const preRetNetIncome = grossEmploymentIncomeForYear - rrspContribution - preRetTaxes; 
+                    const preRetSurplus = preRetNetIncome - actualTFSAPreRetContrib - yearResult.indexedLivingExpenses;
+
+                    if (preRetSurplus > 0) {
+                        nonRegBalance += preRetSurplus;
+                        nonRegACB += preRetSurplus; 
+                    } else if (preRetSurplus < 0) { 
+                        const deficitDrawdown = Math.min(Math.abs(preRetSurplus), nonRegBalance);
+                        nonRegBalance -= deficitDrawdown;
+                    }
+                    yearResult.taxablePreRetIncome = taxablePreRetIncome;
+                    yearResult.preRetTaxes = preRetTaxes;
+                    yearResult.preRetSurplusToNonReg = preRetSurplus;
+                }
+
+                // --- Post-Retirement Phase ---
+                if (year >= retirementYear) {
+                    let cppPayment = 0;
+                    if (age >= cppStartAge) {
+                        let baseCpp = cppAt65 * inflationMultiplierForYear; 
+                        const monthsDiff = (cppStartAge - 65) * 12;
+                        if (monthsDiff < 0) baseCpp *= (1 + (monthsDiff * 0.006)); 
+                        else if (monthsDiff > 0) baseCpp *= (1 + (Math.min(monthsDiff, 60) * 0.007)); 
+                        cppPayment = Math.max(0, baseCpp);
+                    }
+                    yearResult.cppPayment = cppPayment;
+
+                    let oasPaymentGross = 0;
+                    if (age >= oasStartAge) {
+                         let baseOas = oasMaxAnnual * inflationMultiplierForYear; 
+                         if (oasStartAge > 65) { // OAS deferral adjustment
+                             const monthsDeferred = Math.min((oasStartAge - 65) * 12, 60);
+                             baseOas *= (1 + (monthsDeferred * 0.006));
+                         }
+                         oasPaymentGross = baseOas;
+                    }
+                    yearResult.oasPaymentGross = oasPaymentGross;
+                    
+                    let otherPensionPaymentVal = otherPension; // Start with base
+                    if (!useNominalValues && otherPensionIndexed) { 
+                        otherPensionPaymentVal = otherPension * inflationMultiplierForYear;
+                    }
+                    yearResult.otherPensionPayment = (year >= retirementYear ? otherPensionPaymentVal : 0);
+
+
+                    let requiredIncomeFromSavings = yearResult.indexedLivingExpenses - (cppPayment + oasPaymentGross + yearResult.otherPensionPayment);
+                    if (requiredIncomeFromSavings < 0) requiredIncomeFromSavings = 0;
+
+                    // Withdrawal Hierarchy
+                    let rrspWithdrawal = 0;
+                    let rrspStartOfYear = rrspBalance; 
+                    if (rrspBalance > 0) { 
+                        let rrspWithdrawalForNeeds = Math.min(Math.max(0,requiredIncomeFromSavings), rrspBalance);
+                        let rrifMinWithdrawal = 0;
+                        if (useRRIFMinimum && age >= 71) {
+                            const rrifFactor = rrifFactors[Math.min(age, 95)] || 0.20;
+                            rrifMinWithdrawal = rrspStartOfYear * rrifFactor; 
+                        }
+                        rrspWithdrawal = Math.max(rrspWithdrawalForNeeds, rrifMinWithdrawal);
+                        rrspWithdrawal = Math.min(rrspWithdrawal, rrspBalance); 
+                        
+                        rrspBalance -= rrspWithdrawal;
+                        requiredIncomeFromSavings -= Math.min(rrspWithdrawal, rrspWithdrawalForNeeds); 
+                    }
+                    yearResult.rrspWithdrawal = rrspWithdrawal;
+
+                    let nonRegWithdrawal = 0;
+                    let nonRegTaxableGain = 0;
+                    let nonRegBalanceStartOfYear = nonRegBalance; 
+                    if (nonRegBalance > 0) {
+                        const nonRegWithdrawalForNeeds = Math.min(Math.max(0, requiredIncomeFromSavings), nonRegBalance);
+                        const nonRegRateBasedWithdrawal = nonRegBalanceStartOfYear * nonRegWithdrawalRate; // Rate based on start of year balance
+                        nonRegWithdrawal = Math.max(nonRegWithdrawalForNeeds, nonRegRateBasedWithdrawal);
+                        nonRegWithdrawal = Math.min(nonRegWithdrawal, nonRegBalance); // Cannot withdraw more than available
+
+                        if (nonRegWithdrawal > 0) { 
+                            const proportionACB = nonRegBalanceStartOfYear > 0 ? (nonRegACB / nonRegBalanceStartOfYear) : 0; 
+                            const costOfWithdrawal = nonRegWithdrawal * proportionACB;
+                            const capitalGain = nonRegWithdrawal - costOfWithdrawal;
+                            nonRegTaxableGain = capitalGain * 0.5;
+                            nonRegACB = Math.max(0, nonRegACB - costOfWithdrawal);
+                        }
+                        nonRegBalance -= nonRegWithdrawal;
+                        requiredIncomeFromSavings -= Math.min(nonRegWithdrawal, nonRegWithdrawalForNeeds);
+                    }
+                    yearResult.nonRegWithdrawal = nonRegWithdrawal;
+                    yearResult.nonRegTaxableGain = nonRegTaxableGain;
+
+                    let tfsaWithdrawal = 0;
+                    let tfsaBalanceStartOfYear = tfsaBalance; // For rate based withdrawal
+                    if (tfsaBalance > 0) {
+                        const tfsaWithdrawalForNeeds = Math.min(Math.max(0, requiredIncomeFromSavings), tfsaBalance);
+                        const tfsaRateBasedWithdrawal = tfsaBalanceStartOfYear * tfsaWithdrawalRate; // Rate based on start of year balance
+                        tfsaWithdrawal = Math.max(tfsaWithdrawalForNeeds, tfsaRateBasedWithdrawal);
+                        tfsaWithdrawal = Math.min(tfsaWithdrawal, tfsaBalance); // Cannot withdraw more than available
+                        
+                        tfsaBalance -= tfsaWithdrawal;
+                        tfsaRoom += tfsaWithdrawal; 
+                        requiredIncomeFromSavings -= Math.min(tfsaWithdrawal, tfsaWithdrawalForNeeds);
+                    }
+                    yearResult.tfsaWithdrawal = tfsaWithdrawal;
+                    
+                    const incomeForOASClawback = cppPayment + oasPaymentGross + yearResult.otherPensionPayment + rrspWithdrawal + nonRegTaxableGain;
+                    let oasClawback = 0;
+                    if (oasPaymentGross > 0 && incomeForOASClawback > oasClawbackLowerThresholdIndexed) {
+                        oasClawback = Math.min(oasPaymentGross, (incomeForOASClawback - oasClawbackLowerThresholdIndexed) * 0.15);
+                    }
+                    const oasNet = oasPaymentGross - oasClawback;
+                    yearResult.oasClawback = oasClawback;
+                    yearResult.oasNet = oasNet;
+
+                    const taxableRetirementIncome = cppPayment + oasNet + yearResult.otherPensionPayment + rrspWithdrawal + nonRegTaxableGain;
+                    const totalIncomeTax = calculateMarginalTax(taxableRetirementIncome);
+                    yearResult.taxableRetirementIncome = taxableRetirementIncome;
+                    yearResult.totalIncomeTax = totalIncomeTax;
+                    
+                    const netRetirementIncome = taxableRetirementIncome - totalIncomeTax + tfsaWithdrawal; 
+                    yearResult.netRetirementIncome = netRetirementIncome;
+                    const surplusDeficit = netRetirementIncome - yearResult.indexedLivingExpenses; 
+                    yearResult.surplusDeficit = surplusDeficit;
+
+                    if (surplusDeficit > 0) {
+                        let remainingSurplus = surplusDeficit;
+                        if (tfsaRoom > 0 && currentAnnualTFSAContributionLimit > 0) {
+                            const tfsaTopUp = Math.min(remainingSurplus, tfsaRoom, currentAnnualTFSAContributionLimit);
+                            tfsaBalance += tfsaTopUp;
+                            tfsaRoom -= tfsaTopUp;
+                            remainingSurplus -= tfsaTopUp;
+                            yearResult.tfsaContributionPostRet = tfsaTopUp;
+                        }
+                        if (remainingSurplus > 0) {
+                            nonRegBalance += remainingSurplus;
+                            nonRegACB += remainingSurplus;
+                            yearResult.nonRegSurplusInvestPostRet = remainingSurplus;
+                        }
+                    }
+                } 
+
+                // Account Growth
+                rrspBalance *= (1 + investmentReturn);
+                tfsaBalance *= (1 + investmentReturn);
+                nonRegBalance *= (1 + investmentReturn);
+                
+                tfsaRoom += currentAnnualTFSAContributionLimit; 
+                
+                yearResult.rrspBalance = rrspBalance < 1 ? 0 : rrspBalance;
+                yearResult.tfsaBalance = tfsaBalance < 1 ? 0 : tfsaBalance;
+                yearResult.nonRegBalance = nonRegBalance < 1 ? 0 : nonRegBalance;
+                yearResult.totalAssets = yearResult.rrspBalance + yearResult.tfsaBalance + yearResult.nonRegBalance;
+
+                // Depletion Tracking
+                if (year >= retirementYear) {
+                    if (rrspBalance < 1 && !depletionSummary.rrsp) depletionSummary.rrsp = year;
+                    if (tfsaBalance < 1 && !depletionSummary.tfsa) depletionSummary.tfsa = year;
+                    if (nonRegBalance < 1 && !depletionSummary.nonReg) depletionSummary.nonReg = year;
+                    if (yearResult.totalAssets < 1 && !assetsDepleted) {
+                        depletionSummary.allAssets = year;
+                        assetsDepleted = true;
+                    }
+                }
+                results.push(yearResult);
+            } 
+            return { projection: results, depletion: depletionSummary };
+        }
+
+        // --- UI Rendering (Grid, Graph, Summary) ---
+        function renderForecastGrid(results) {
+            if (!results || results.length === 0) {
+                projectionGridContainer.innerHTML = '<p class="text-gray-500">No projection data to display.</p>';
+                return;
+            }
+            let tableHtml = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th>Year</th><th>Age</th><th>Phase</th>
+                            <th>RRSP Contrib</th><th>TFSA Contrib</th><th>Pre-Ret Tax</th>
+                            <th>CPP</th><th>OAS (Net)</th><th>Other Pen</th>
+                            <th>RRSP W/D</th><th>NonReg W/D (Gain)</th><th>TFSA W/D</th>
+                            <th>Taxable Inc</th><th>Total Tax</th><th>Expenses</th><th>Surplus/Deficit</th>
+                            <th>RRSP Bal</th><th>TFSA Bal</th><th>NonReg Bal</th><th>Total Assets</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+            results.forEach(row => {
+                const surplusOrDeficit = row.preRetirement ? (row.preRetSurplusToNonReg || 0) : (row.surplusDeficit || 0);
+                tableHtml += `
+                    <tr>
+                        <td>${row.year}</td><td>${row.age}</td><td>${row.preRetirement ? 'Pre-Ret' : 'Retirement'}</td>
+                        <td>${Math.round(row.rrspContribution || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.tfsaContribution || row.tfsaContributionPostRet || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.preRetTaxes || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.cppPayment || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.oasNet || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.otherPensionPayment || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.rrspWithdrawal || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.nonRegWithdrawal || 0).toLocaleString()} (${Math.round(row.nonRegTaxableGain || 0).toLocaleString()})</td>
+                        <td>${Math.round(row.tfsaWithdrawal || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.taxableRetirementIncome || row.taxablePreRetIncome || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.totalIncomeTax || row.preRetTaxes || 0).toLocaleString()}</td>
+                        <td>${Math.round(row.indexedLivingExpenses).toLocaleString()}</td>
+                        <td class="${surplusOrDeficit < 0 ? 'text-red-600' : 'text-green-600'}">${Math.round(surplusOrDeficit).toLocaleString()}</td>
+                        <td>${Math.round(row.rrspBalance).toLocaleString()}</td>
+                        <td>${Math.round(row.tfsaBalance).toLocaleString()}</td>
+                        <td>${Math.round(row.nonRegBalance).toLocaleString()}</td>
+                        <td>${Math.round(row.totalAssets).toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            tableHtml += `</tbody></table>`;
+            projectionGridContainer.innerHTML = tableHtml;
+        }
+
+        function renderForecastGraph(results) {
+            if (projectionChart) {
+                projectionChart.destroy();
+                projectionChart = null;
+            }
+            if (!results || results.length === 0 || !currentProjectionParams) { 
+                return;
+            }
+
+            const labels = results.map(r => r.year);
+            const totalAssetsData = results.map(r => r.totalAssets);
+            const annualIncomeData = results.map(r => {
+                if (r.preRetirement) { 
+                    const effectiveInflationRate = currentProjectionParams.useNominalValues ? 0 : currentProjectionParams.inflationRate;
+                    const inflationMultiplierForYear = Math.pow(1 + effectiveInflationRate, r.year - currentProjectionParams.currentYear);
+                    const grossEmpIndexed = (r.employmentIncome || 0) * inflationMultiplierForYear; // Use r.employmentIncome which is base
+                    return grossEmpIndexed - (r.rrspContribution || 0) - (r.preRetTaxes || 0) - (r.tfsaContribution || 0);
+                } else { 
+                    return (r.netRetirementIncome || 0);
+                }
+            });
+            const expensesData = results.map(r => r.indexedLivingExpenses);
+
+
+            projectionChart = new Chart(projectionChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Total Assets ($)',
+                            data: totalAssetsData,
+                            borderColor: 'rgb(37, 99, 235)', 
+                            tension: 0.1,
+                            yAxisID: 'yAssets'
+                        },
+                        {
+                            label: 'Net Annual Income (After Tax & Savings Contrib) ($)',
+                            data: annualIncomeData,
+                            borderColor: 'rgb(22, 163, 74)', 
+                            tension: 0.1,
+                             yAxisID: 'yIncomeExpenses'
+                        },
+                        {
+                            label: 'Annual Living Expenses ($)',
+                            data: expensesData,
+                            borderColor: 'rgb(220, 38, 38)', 
+                            tension: 0.1,
+                            yAxisID: 'yIncomeExpenses'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        yAssets: {
+                            type: 'linear', display: true, position: 'left',
+                            title: { display: true, text: 'Total Assets ($)'},
+                            ticks: { callback: value => value.toLocaleString() }
+                        },
+                        yIncomeExpenses: {
+                            type: 'linear', display: true, position: 'right',
+                            title: { display: true, text: 'Annual Amounts ($)'},
+                            grid: { drawOnChartArea: false }, 
+                            ticks: { callback: value => value.toLocaleString() }
+                        },
+                        x: { title: { display: true, text: 'Year' }}
+                    },
+                    plugins: { tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${Math.round(context.parsed.y).toLocaleString()}`}}}
+                }
+            });
+        }
+        
+        function renderProjectionSummary(summaryData, projectionYears) {
+            if (!summaryData || !summaryData.projection || summaryData.projection.length === 0 || !currentProjectionParams) { 
+                projectionSummaryContainer.innerHTML = '<p class="text-gray-500">No summary data available.</p>';
+                return;
+            }
+            let html = '<div class="space-y-3">';
+            html += `<p>Projection Span: ${projectionYears.start} to ${projectionYears.end} (Ages ${projectionYears.startAge} to ${projectionYears.endAge})</p>`;
+            
+            if (summaryData.depletion.allAssets) {
+                html += `<p class="font-semibold text-red-600">All financial assets depleted by year ${summaryData.depletion.allAssets} (Age ${summaryData.depletion.allAssets - currentProjectionParams.birthYear}).</p>`;
+            } else {
+                html += `<p class="font-semibold text-green-600">Financial assets are projected to last throughout the projection period.</p>`;
+            }
+            html += '<ul class="list-disc list-inside mt-1">';
+            if(summaryData.depletion.rrsp) html += `<li>RRSP depleted by year: ${summaryData.depletion.rrsp} (Age ${summaryData.depletion.rrsp - currentProjectionParams.birthYear})</li>`;
+            if(summaryData.depletion.nonReg) html += `<li>Non-Registered depleted by year: ${summaryData.depletion.nonReg} (Age ${summaryData.depletion.nonReg - currentProjectionParams.birthYear})</li>`;
+            if(summaryData.depletion.tfsa) html += `<li>TFSA depleted by year: ${summaryData.depletion.tfsa} (Age ${summaryData.depletion.tfsa - currentProjectionParams.birthYear})</li>`;
+            html += '</ul>';
+
+            const finalAssets = summaryData.projection[summaryData.projection.length - 1].totalAssets;
+            html += `<p class="mt-2">Projected total assets at end of ${projectionYears.end} (Age ${projectionYears.endAge}): $${Math.round(finalAssets).toLocaleString()}</p>`;
+
+            html += '</div>';
+            projectionSummaryContainer.innerHTML = html;
+        }
+
+        // --- Event Listeners & Initial Load ---
+        projectionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loadingGrid.classList.remove('hidden');
+            loadingGraph.classList.remove('hidden');
+            loadingSummary.classList.remove('hidden');
+            projectionGridContainer.innerHTML = ''; 
+            projectionSummaryContainer.innerHTML = '';
+            if (projectionChart) { projectionChart.destroy(); projectionChart = null; }
+
+            setTimeout(() => {
+                try {
+                    currentProjectionParams = getFormData(); 
+                    const { projection, depletion } = runProjection(currentProjectionParams);
+                    renderForecastGrid(projection);
+                    renderForecastGraph(projection); 
+                    renderProjectionSummary(
+                        { projection, depletion }, 
+                        { start: currentProjectionParams.currentYear, end: currentProjectionParams.projectionEndYear, 
+                          startAge: currentProjectionParams.currentYear - currentProjectionParams.birthYear, 
+                          endAge: currentProjectionParams.projectionEndYear - currentProjectionParams.birthYear }
+                    );
+                } catch (error) {
+                    console.error("Error running projection:", error);
+                    showMessageModal("Projection Error", "An error occurred: " + error.message + (error.stack ? `\nStack: ${error.stack}`: ''));
+                    projectionGridContainer.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                } finally {
+                    loadingGrid.classList.add('hidden');
+                    loadingGraph.classList.add('hidden');
+                    loadingSummary.classList.add('hidden');
+                }
+            }, 50);
+        });
+
+        // Tab functionality
+        window.openTab = function(event, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).style.display = "block";
+            document.getElementById(tabName).classList.add("active");
+            event.currentTarget.classList.add("active");
+        }
+
+        // Modal functionality
+        window.openModal = function(modalId) { document.getElementById(modalId).style.display = "block"; }
+        window.closeModal = function(modalId) {
+            document.getElementById(modalId).style.display = "none";
+            if (modalId === 'saveAsModal') { 
+                document.getElementById('saveAsError').classList.add('hidden');
+                document.getElementById('saveAsError').textContent = '';
+                document.getElementById('btnConfirmSaveAs').onclick = defaultSaveAsConfirmLogic;
+            }
+        }
+        window.showMessageModal = function(title, text) {
+            document.getElementById('messageModalTitle').textContent = title;
+            document.getElementById('messageModalText').textContent = text;
+            openModal('messageModal');
+        }
+        
+        window.onclick = function(event) {
+            const modals = document.getElementsByClassName('modal');
+            for (let i = 0; i < modals.length; i++) {
+                if (event.target == modals[i]) {
+                    modals[i].style.display = "none";
+                     if (modals[i].id === 'saveAsModal') { 
+                        document.getElementById('btnConfirmSaveAs').onclick = defaultSaveAsConfirmLogic;
+                    }
+                }
+            }
+        }
+
+        // Initial load
+        initializeFirebase(); 
+        document.getElementById('gridTab').classList.add('active'); 
+        document.getElementById('graphTab').style.display = 'none'; 
+        document.getElementById('summaryTab').style.display = 'none'; 
+    </script>
+</body>
+</html>
+
