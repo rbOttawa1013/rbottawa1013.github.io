@@ -1,378 +1,538 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hublot Spirit of Big Bang Yellow Magic</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .watch-container {
-      position: relative;
-      width: 280px;
-      height: 600px;
-      margin: 0 auto;
-      background: transparent;
-    }
-    .watch-face {
-      background: transparent;
-      border: 8px solid #ffeb3b;
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-      position: absolute;
-      top: 150px;
-      left: 0;
-      right: 0;
-      margin: 0 auto;
-      overflow: hidden;
-      border-radius: 20px;
-      width: 280px;
-      height: 300px;
-    }
-    .skeleton-dial {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #1a1a1a;
-      opacity: 0.7;
-    }
-    .dial-text {
-      position: absolute;
-      font-size: 12px;
-      color: #ffeb3b;
-      font-weight: bold;
-    }
-    .hand {
-      position: absolute;
-      bottom: 50%;
-      left: 50%;
-      transform-origin: bottom;
-      background: #fff;
-      border: 1px solid #333;
-    }
-    .hour-hand {
-      width: 6px;
-      height: 70px;
-    }
-    .minute-hand {
-      width: 5px;
-      height: 90px;
-    }
-    .second-hand {
-      width: 3px;
-      height: 100px;
-      background: #d32f2f;
-    }
-    .chrono-hand {
-      width: 3px;
-      height: 80px;
-      background: #0288d1;
-      display: none;
-    }
-    .small-second-hand {
-      width: 2px;
-      height: 35px;
-      background: #fff;
-      display: none;
-    }
-    .complication {
-      position: absolute;
-      border: 2px solid #ffeb3b;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    }
-    .moon-phase {
-      background: #1a1a1a;
-      overflow: hidden;
-    }
-    .chrono-display {
-      background: #333;
-      font-size: 14px;
-      font-weight: bold;
-      color: #ffeb3b;
-    }
-    .power-reserve {
-      background: #333;
-      font-size: 14px;
-      font-weight: bold;
-      color: #ffeb3b;
-    }
-    .date-window {
-      background: #333;
-      border: 2px solid #ffeb3b;
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 16px;
-      font-weight: bold;
-      color: #ffeb3b;
-    }
-    .marker {
-      position: absolute;
-      background: #ffeb3b;
-      width: 5px;
-      height: 12px;
-    }
-    .gear {
-      position: absolute;
-      opacity: 0.9;
-      animation: rotateGear linear infinite;
-    }
-    @keyframes rotateGear {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .strap {
-      position: absolute;
-      width: 280px;
-      height: 150px;
-      background: linear-gradient(to bottom, #ffeb3b 80%, #1a1a1a 100%);
-      border: 2px solid #1a1a1a;
-      background-size: 20px 100%;
-      background-image: repeating-linear-gradient(0deg, #ffeb3b, #ffeb3b 5px, #e6d332 5px, #e6d332 10px);
-      animation: strapTexture 2s infinite linear;
-    }
-    @keyframes strapTexture {
-      0% { background-position: 0 0; }
-      100% { background-position: 20px 0; }
-    }
-    .strap-top {
-      top: 0;
-      border-bottom: none;
-      border-radius: 10px 10px 0 0;
-      clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
-    }
-    .strap-bottom {
-      bottom: 0;
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      clip-path: polygon(0% 0%, 100% 0%, 80% 100%, 20% 100%);
-    }
-    .pusher {
-      position: absolute;
-      background: #1a1a1a;
-      border: 2px solid #ffeb3b;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .crown {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: #1a1a1a;
-      border: 2px solid #ffeb3b;
-      border-radius: 50%;
-      top: 250px;
-      left: 20px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen">
-  <div class="max-w-4xl mx-auto p-6">
-    <h1 class="text-4xl font-bold text-center mb-4 text-yellow-400">Hublot Spirit of Big Bang Yellow Magic</h1>
-    <div class="flex flex-col md:flex-row gap-6">
-      <!-- Watch Simulation -->
-      <div class="flex-1">
-        <div class="watch-container">
-          <!-- Strap -->
-          <div class="strap strap-top"></div>
-          <div class="strap strap-bottom"></div>
-          <!-- Pushers -->
-          <div class="pusher" style="width: 40px; height: 20px; top: 210px; right: 0;" onclick="pusherAction(1)"></div>
-          <div class="pusher" style="width: 40px; height: 20px; top: 290px; right: 0;" onclick="pusherAction(2)"></div>
-          <!-- Crown -->
-          <div class="crown" onclick="adjustTime()"></div>
-          <!-- Watch Face -->
-          <div class="watch-face relative">
-            <div class="skeleton-dial"></div>
-            <!-- Dial Text -->
-            <div class="dial-text" style="top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 16px;">Hublot</div>
-            <div class="dial-text" style="bottom: 20px; left: 50%; transform: translateX(-50%);">Swiss Made</div>
-            <!-- Gears (as per photo) -->
-            <svg class="gear" style="width: 50px; height: 50px; top: 20px; left: 20px; animation-duration: 8s;" viewBox="0 0 100 100">
-              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
-            </svg>
-            <svg class="gear" style="width: 40px; height: 40px; top: 60px; left: 80px; animation-duration: 10s;" viewBox="0 0 100 100">
-              <path fill="#333" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
-            </svg>
-            <svg class="gear" style="width: 30px; height: 30px; top: 100px; left: 40px; animation-duration: 12s;" viewBox="0 0 100 100">
-              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
-            </svg>
-            <svg class="gear" style="width: 45px; height: 45px; top: 80px; right: 20px; animation-duration: 9s;" viewBox="0 0 100 100">
-              <path fill="#333" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
-            </svg>
-            <svg class="gear" style="width: 35px; height: 35px; top: 40px; right: 60px; animation-duration: 7s;" viewBox="0 0 100 100">
-              <path fill="#ffeb3b" d="M50,5 L55,15 L65,15 L57,22 L62,32 L50,25 L38,32 L43,22 L35,15 L45,15 Z M50,15a35,35 0 0,0 0,70a35,35 0 0,0 0-70Z"/>
-            </svg>
-            <!-- Hour Markers -->
-            <div class="marker" style="top: 10px; left: 50%; transform: translateX(-50%);"></div>
-            <div class="marker" style="bottom: 10px; left: 50%; transform: translateX(-50%);"></div>
-            <div class="marker" style="left: 10px; top: 50%; transform: translateY(-50%);"></div>
-            <div class="marker" style="right: 10px; top: 50%; transform: translateY(-50%);"></div>
-            <!-- Hands -->
-            <div class="hand hour-hand" id="hourHand"></div>
-            <div class="hand minute-hand" id="minuteHand"></div>
-            <div class="hand second-hand" id="secondHand"></div>
-            <div class="hand chrono-hand" id="chronoHand"></div>
-            <div class="hand small-second-hand" style="left: 30%; top: 50%; transform-origin: center;" id="smallSecondHand"></div>
-            <!-- Complications -->
-            <div class="complication moon-phase w-16 h-16" style="bottom: 50px; left: 30px;" id="moonPhase">
-              <svg width="100%" height="100%" viewBox="0 0 100 100" id="moonSvg">
-                <circle cx="50" cy="50" r="45" fill="#000" />
-                <circle cx="50" cy="50" r="40" fill="#fff" />
-              </svg>
-            </div>
-            <div class="complication chrono-display w-16 h-16" style="top: 30px; right: 30px;" id="chronoDisplay">0:00</div>
-            <div class="complication power-reserve w-16 h-16" style="top: 30px; left: 30px;" id="powerReserve">100%</div>
-            <div class="date-window absolute bottom-20 left-1/2 transform -translate-x-1/2" id="dateWindow">28</div>
-            <div class="complication chrono-display w-16 h-16" style="bottom: 50px; right: 30px;" id="chrono30min">00</div>
-            <!-- Center Pin -->
-            <div class="absolute w-4 h-4 bg-gray-800 rounded-full left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-          </div>
-        </div>
-        <!-- Complication Control Buttons -->
-        <div class="mt-4 flex flex-col items-center gap-2">
-          <button onclick="cycleMoonPhase()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600">Cycle Moon Phase</button>
-          <button onclick="updatePowerReserve()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600">Update Power Reserve</button>
-          <button onclick="toggleChronograph()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600" id="chronoButton">Start Chronograph</button>
-          <button onclick="toggleSmallSeconds()" class="bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-600" id="smallSecondButton">Toggle Small Seconds</button>
-        </div>
-      </div>
-      <!-- Description -->
-      <div class="flex-1 bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-semibold mb-2 text-yellow-400">About the Watch</h2>
-        <p class="text-gray-300 mb-4">
-          <strong>Price:</strong> Approx. $22,000 - $36,500 (depending on material)<br>
-          <strong>Collection:</strong> Spirit of Big Bang<br>
-          <strong>Brand:</strong> Hublot<br><br>
-          The Hublot Spirit of Big Bang Yellow Magic is a vibrant, barrel-shaped timepiece that embodies Hublot’s “Art of Fusion” philosophy. Crafted with high-tech yellow ceramic, this 42mm watch is ultra-tough and nearly scratch-proof, using zirconium sintered at high temperatures. It features a skeletonized dial showcasing a modified Zenith El Primero chronograph movement, known for its precision at 36,000 vibrations per hour. The watch includes complications such as a moon phase, power reserve indicator, and chronograph, paired with a rubber strap for durability and comfort. Its bold design and innovative materials make it a standout in luxury watchmaking.
-        </p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let moonPhaseIndex = 0;
-    const moonPhases = [
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" />`, // New Moon
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="70" cy="50" r="20" fill="#000" />`, // Waxing Crescent
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="65" cy="50" r="35" fill="#000" />`, // First Quarter
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="60" cy="50" r="40" fill="#000" />`, // Waxing Gibbous
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="50" cy="50" r="40" fill="#000" stroke="#fff" stroke-width="5" />`, // Full Moon
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="40" cy="50" r="40" fill="#000" />`, // Waning Gibbous
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="35" cy="50" r="35" fill="#000" />`, // Last Quarter
-      `<circle cx="50" cy="50" r="45" fill="#000" /><circle cx="50" cy="50" r="40" fill="#fff" /><circle cx="30" cy="50" r="20" fill="#000" />`  // Waning Crescent
-    ];
-    let currentDate = 28;
-    let powerReserve = 100;
-    let chronoRunning = false;
-    let chronoSeconds = 0;
-    let chronoMinutes = 0;
-    let chronoInterval = null;
-    let smallSecondsRunning = false;
-    let smallSecondsInterval = null;
-
-    function updateTime() {
-      const now = new Date();
-      const seconds = now.getSeconds();
-      const minutes = now.getMinutes();
-      const hours = now.getHours() % 12;
-
-      const secondDeg = (seconds / 60) * 360;
-      const minuteDeg = (minutes / 60) * 360 + (seconds / 60) * 6;
-      const hourDeg = (hours / 12) * 360 + (minutes / 60) * 30;
-
-      document.getElementById('hourHand').style.transform = `rotate(${hourDeg}deg)`;
-      document.getElementById('minuteHand').style.transform = `rotate(${minuteDeg}deg)`;
-      document.getElementById('secondHand').style.transform = `rotate(${secondDeg}deg)`;
-      if (smallSecondsRunning) {
-        const smallSecondDeg = (seconds / 60) * 360;
-        document.getElementById('smallSecondHand').style.transform = `rotate(${smallSecondDeg}deg)`;
-      }
-    }
-
-    function cycleMoonPhase() {
-      moonPhaseIndex = (moonPhaseIndex + 1) % moonPhases.length;
-      document.getElementById('moonSvg').innerHTML = moonPhases[moonPhaseIndex];
-    }
-
-    function updatePowerReserve() {
-      powerReserve = Math.max(0, powerReserve - 10);
-      if (powerReserve === 0) powerReserve = 100;
-      document.getElementById('powerReserve').textContent = `${powerReserve}%`;
-    }
-
-    function toggleChronograph() {
-      if (chronoRunning) {
-        clearInterval(chronoInterval);
-        chronoRunning = false;
-        document.getElementById('chronoButton').textContent = 'Start Chronograph';
-        document.getElementById('chronoHand').style.display = 'none';
-        chronoSeconds = 0;
-        chronoMinutes = 0;
-        document.getElementById('chronoDisplay').textContent = '0:00';
-        document.getElementById('chrono30min').textContent = '00';
-      } else {
-        chronoRunning = true;
-        document.getElementById('chronoButton').textContent = 'Stop Chronograph';
-        document.getElementById('chronoHand').style.display = 'block';
-        chronoInterval = setInterval(() => {
-          chronoSeconds++;
-          if (chronoSeconds === 60) {
-            chronoSeconds = 0;
-            chronoMinutes++;
-            document.getElementById('chrono30min').textContent = chronoMinutes < 30 ? chronoMinutes.toString().padStart(2, '0') : '30';
-          }
-          const chronoDeg = (chronoSeconds % 60) * 6;
-          document.getElementById('chronoHand').style.transform = `rotate(${chronoDeg}deg)`;
-          document.getElementById('chronoDisplay').textContent = `${chronoMinutes}:${chronoSeconds.toString().padStart(2, '0')}`;
-        }, 1000);
-      }
-    }
-
-    function toggleSmallSeconds() {
-      if (smallSecondsRunning) {
-        clearInterval(smallSecondsInterval);
-        smallSecondsRunning = false;
-        document.getElementById('smallSecondButton').textContent = 'Toggle Small Seconds';
-        document.getElementById('smallSecondHand').style.display = 'none';
-      } else {
-        smallSecondsRunning = true;
-        document.getElementById('smallSecondButton').textContent = 'Stop Small Seconds';
-        document.getElementById('smallSecondHand').style.display = 'block';
-        smallSecondsInterval = setInterval(() => {
-          const now = new Date();
-          const seconds = now.getSeconds();
-          const smallSecondDeg = (seconds / 60) * 360;
-          document.getElementById('smallSecondHand').style.transform = `rotate(${smallSecondDeg}deg)`;
-        }, 1000);
-      }
-    }
-
-    function adjustTime() {
-      const now = new Date();
-      const hours = (now.getHours() % 12 + 1) % 12;
-      const hourDeg = (hours / 12) * 360;
-      document.getElementById('hourHand').style.transform = `rotate(${hourDeg}deg)`;
-    }
-
-    function pusherAction(pusher) {
-      if (pusher === 1) {
-        toggleChronograph();
-      } else if (pusher === 2) {
-        if (!chronoRunning) {
-          chronoSeconds = 0;
-          chronoMinutes = 0;
-          document.getElementById('chronoDisplay').textContent = '0:00';
-          document.getElementById('chrono30min').textContent = '00';
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hublot Watch Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --hublot-yellow: #FFD700;
+            --hublot-black: #1a1a1a;
+            --hublot-grey: #4a4a4a;
+            --hublot-dark-grey: #2c2c2c;
+            --hublot-light-grey: #d3d3d3;
+            --hublot-pusher-black: #000000;
+            --button-bg: #2d3748; /* Tailwind gray-800 */
+            --button-text: #edf2f7; /* Tailwind gray-200 */
+            --button-hover-bg: #4a5568; /* Tailwind gray-700 */
+            --description-bg: #252525; /* Darker background for description */
+            --description-text: var(--hublot-light-grey);
+            --chrono-blue: #1E90FF; /* Dodger Blue for chrono hand */
         }
-      }
-    }
 
-    // Update every second
-    setInterval(updateTime, 1000);
-    updateTime(); // Initial call
-  </script>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--hublot-grey);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Align to top to see all content */
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px; /* Padding around the whole page */
+            overflow-x: hidden;
+        }
+
+        .main-content-wrapper {
+            display: flex;
+            flex-direction: row; /* Default to side-by-side */
+            justify-content: center;
+            align-items: flex-start; /* Align items to their top */
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px; /* Max width for the watch + description area */
+            margin-bottom: 20px;
+        }
+
+        .watch-container-wrapper { /* New wrapper for the watch only */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0; /* Prevent watch from shrinking too much */
+        }
+
+        .watch-container {
+            position: relative;
+            width: 280px; /* Base width */
+            height: 336px; /* (280 * 480/400) */
+            max-width: 100%; /* Max width within its wrapper */
+            aspect-ratio: 400 / 480;
+        }
+
+        .watch-body {
+            position: absolute; width: 100%; height: 100%;
+            background-color: var(--hublot-yellow);
+            border-radius: 42px / 35px; 
+            box-shadow: 0 0 7px rgba(0,0,0,0.3), inset 0 0 10px rgba(0,0,0,0.2), 0px 7px 14px rgba(0,0,0,0.4);
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
+        }
+
+        .bezel {
+            position: absolute; width: calc(100% - 14px); height: calc(100% - 14px); 
+            background-color: var(--hublot-black);
+            border-radius: 35px / 28px; 
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: inset 0 0 7px rgba(0,0,0,0.5);
+        }
+
+        .watch-face {
+            position: relative; width: calc(100% - 28px); height: calc(100% - 28px); 
+            background-color: var(--hublot-dark-grey);
+            border-radius: 28px / 21px; 
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
+            background-image: radial-gradient(circle, var(--hublot-grey) 15%, transparent 60%), /* Adjusted gradient for more visible skeleton */
+                              repeating-linear-gradient(45deg, var(--hublot-dark-grey), var(--hublot-dark-grey) 3.5px, var(--hublot-grey) 3.5px, var(--hublot-grey) 7px);
+        }
+        
+        /* Decorative skeleton elements */
+        .skeleton-deco {
+            position: absolute;
+            opacity: 0.3;
+            z-index: 0; /* Behind gears and hands */
+        }
+        .skeleton-bridge1 {
+            width: 60%;
+            height: 20%;
+            background-color: var(--hublot-light-grey);
+            top: 30%;
+            left: 20%;
+            border-radius: 5px;
+            transform: rotate(-15deg);
+        }
+         .skeleton-plate1 {
+            width: 30px;
+            height: 30px;
+            background-color: var(--hublot-grey);
+            border: 1px solid var(--hublot-light-grey);
+            border-radius: 50%;
+            bottom: 25%;
+            left: 30%;
+        }
+
+
+        .screw {
+            position: absolute; width: 9px; height: 9px; 
+            background-color: var(--hublot-light-grey); border-radius: 50%;
+            box-shadow: inset 0 0 1px rgba(0,0,0,0.5);
+        }
+        .screw::after {
+            content: ''; position: absolute; width: 60%; height: 1.3px;
+            background-color: var(--hublot-black); top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+        .screw-tl { top: 18px; left: 38px; } .screw-tr { top: 18px; right: 38px; }
+        .screw-bl { bottom: 18px; left: 38px; } .screw-br { bottom: 18px; right: 38px; }
+        .screw-ml { top: 50%; left: 14px; transform: translateY(-50%); }
+        .screw-mr { top: 50%; right: 14px; transform: translateY(-50%); }
+
+        .hands-container { position: absolute; width: 100%; height: 100%; z-index: 5; /* Ensure hands are above skeleton decos */ }
+        .hand {
+            position: absolute; bottom: 50%; left: 50%;
+            transform-origin: bottom center;
+            background-color: var(--hublot-yellow);
+            border: 0.8px solid var(--hublot-black); 
+            border-radius: 2.5px 2.5px 0 0; box-shadow: 0 0 3.5px rgba(0,0,0,0.3);
+            transition: background-color 0.3s ease; 
+        }
+        .hour-hand { width: 6px; height: 25%; z-index: 10; }
+        .minute-hand { width: 4.5px; height: 35%; z-index: 11; }
+        .second-hand { width: 2px; height: 40%; z-index: 12; } /* Main second / Chrono second */
+        .center-cap {
+            position: absolute; width: 10.5px; height: 10.5px; 
+            background-color: var(--hublot-black); border: 1.3px solid var(--hublot-yellow);
+            border-radius: 50%; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 13;
+        }
+
+        .gear { position: absolute; border-radius: 50%; background-color: var(--hublot-light-grey); box-shadow: 0 0 3.5px rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; z-index: 1; }
+        .gear-svg { width: 100%; height: 100%; animation: spin 20s linear infinite; fill: var(--hublot-light-grey); stroke: var(--hublot-dark-grey); stroke-width: 0.7; }
+        .gear1 { width: 56px; height: 56px; top: 25%; left: 20%; z-index: 1; } .gear1 .gear-svg { animation-duration: 18s; }
+        .gear2 { width: 42px; height: 42px; top: 50%; left: 60%; z-index: 2; } .gear2 .gear-svg { animation-duration: 12s; animation-direction: reverse; }
+        .gear3 { width: 28px; height: 28px; bottom: 22%; right: 25%; z-index: 1; } .gear3 .gear-svg { animation-duration: 25s; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .hour-marker { position: absolute; background-color: var(--hublot-yellow); box-shadow: 0 0 1.5px rgba(0,0,0,0.4); z-index: 3; }
+        .marker-12 { width: 4.5px; height: 12px; top: 10%; left: 50%; transform: translateX(-50%); border-radius: 1.3px; }
+        .marker-3 { width: 12px; height: 4.5px; top: 50%; right: 10%; transform: translateY(-50%); border-radius: 1.3px; }
+        .marker-6 { width: 4.5px; height: 12px; bottom: 10%; left: 50%; transform: translateX(-50%); border-radius: 1.3px; }
+        .marker-9 { width: 12px; height: 4.5px; top: 50%; left: 10%; transform: translateY(-50%); border-radius: 1.3px; }
+        .hour-marker.pos-1 { width: 2.5px; height: 9px; top: 15%; left: calc(50% + 23%); transform: translateX(-50%) rotate(30deg); border-radius: 1px;}
+        .hour-marker.pos-2 { width: 2.5px; height: 9px; top: 25%; left: calc(50% + 38%); transform: translateX(-50%) rotate(60deg); border-radius: 1px;}
+        .hour-marker.pos-4 { width: 9px; height: 2.5px; top: calc(50% + 23%); right: 15%; transform: translateY(-50%) rotate(30deg); border-radius: 1px;}
+        .hour-marker.pos-5 { width: 9px; height: 2.5px; top: calc(50% + 38%); right: 25%; transform: translateY(-50%) rotate(60deg); border-radius: 1px;}
+        .hour-marker.pos-7 { width: 2.5px; height: 9px; bottom: 15%; left: calc(50% - 23%); transform: translateX(-50%) rotate(-30deg); border-radius: 1px;}
+        .hour-marker.pos-8 { width: 2.5px; height: 9px; bottom: 25%; left: calc(50% - 38%); transform: translateX(-50%) rotate(-60deg); border-radius: 1px;}
+        .hour-marker.pos-10 { width: 9px; height: 2.5px; top: calc(50% - 23%); left: 15%; transform: translateY(-50%) rotate(-30deg); border-radius: 1px;}
+        .hour-marker.pos-11 { width: 9px; height: 2.5px; top: calc(50% - 38%); left: 25%; transform: translateY(-50%) rotate(-60deg); border-radius: 1px;}
+
+        .subdial {
+            position: absolute; width: 49px; height: 49px; 
+            border: 1.3px solid var(--hublot-light-grey); border-radius: 50%; background-color: rgba(0,0,0,0.1);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 9px; color: var(--hublot-yellow); text-align: center; line-height: 1.2; z-index: 4;
+        }
+        .subdial-hand { width: 1.3px; height: 40%; background-color: var(--hublot-yellow); position: absolute; bottom: 50%; left: 50%; transform-origin: bottom center; transform: translateX(-50%) rotate(0deg); }
+        .subdial-center-cap { width: 4.5px; height: 4.5px; background-color: var(--hublot-yellow); border-radius: 50%; position: absolute; }
+        .subdial-text { font-size: 12px; z-index: 1; }
+        .subdial1 { top: 30%; left: 18%; } /* Moon Phase */
+        .subdial2 { top: 30%; right: 18%; } /* Power Reserve */
+        .subdial3 { bottom: 16%; left: 50%; transform: translateX(-50%); } /* Chrono Minutes */
+
+        /* Date Window */
+        .date-window {
+            position: absolute;
+            width: 28px; /* Adjust size as needed */
+            height: 18px;
+            background-color: var(--hublot-light-grey);
+            color: var(--hublot-black);
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 3px;
+            border: 1px solid var(--hublot-black);
+            /* Approximate 4:30 position: (cos(45deg)*radius, sin(45deg)*radius) from center, then offset */
+            /* For tonneau, it's more complex. Trial and error positioning. */
+            top: calc(50% + 25px); 
+            left: calc(50% + 45px);
+            transform: translate(-50%, -50%) rotate(10deg); /* Slight rotation to match typical angled date windows */
+            z-index: 4;
+        }
+
+
+        .crown { 
+            position: absolute; width: 17.5px; height: 35px; 
+            background-color: var(--hublot-pusher-black); border: 1.3px solid var(--hublot-yellow); 
+            right: -14px; top: 50%; transform: translateY(-50%); 
+            border-radius: 5px 0 0 5px; z-index: -1; box-shadow: -1.3px 0 3.5px rgba(0,0,0,0.3);
+            cursor: pointer; transition: transform 0.1s ease-out;
+        }
+        .crown:active {
+            transform: translateY(-50%) scale(0.95); /* Visual feedback for click */
+        }
+        .crown::before { content: ""; position: absolute; width: 100%; height: 2.5px; background-color: var(--hublot-yellow); top: 7px; opacity: 0.7; }
+        .crown::after { content: ""; position: absolute; width: 100%; height: 2.5px; background-color: var(--hublot-yellow); bottom: 7px; opacity: 0.7; }
+        
+        .pusher { position: absolute; width: 14px; height: 24.5px; background-color: var(--hublot-pusher-black); border: 0.8px solid var(--hublot-yellow); right: -12.5px; z-index: -1; border-radius: 4.5px; box-shadow: -1.3px 0 3.5px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; }
+        .pusher:active { transform: translateX(1.3px) translateY(-50%); box-shadow: -1px 0 1.3px rgba(0,0,0,0.2); }
+        .pusher-top { top: calc(50% - 42px); transform: translateY(-50%); }
+        .pusher-bottom { top: calc(50% + 42px); transform: translateY(-50%); }
+
+        .strap-attachment { position: absolute; width: 60%; height: 28px; background-color: var(--hublot-black); z-index: -2; border: 1.3px solid var(--hublot-yellow); }
+        .strap-top { top: -14px; left: 50%; transform: translateX(-50%); border-radius: 10.5px 10.5px 0 0; }
+        .strap-bottom { bottom: -14px; left: 50%; transform: translateX(-50%); border-radius: 0 0 10.5px 10.5px; }
+
+        .brand-name { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); color: var(--hublot-yellow); font-size: 12px; font-weight: bold; letter-spacing: 0.8px; z-index: 15; text-shadow: 0.8px 0.8px 1.3px var(--hublot-black); }
+        .swiss-made { position: absolute; bottom: 18%; left: 50%; transform: translateX(-50%); color: var(--hublot-light-grey); font-size: 7px; font-weight: normal; letter-spacing: 1.3px; z-index: 15; text-transform: uppercase; }
+
+        .description-container {
+            background-color: var(--description-bg); color: var(--description-text);
+            padding: 15px 20px; border-radius: 8px; border: 1px solid var(--hublot-yellow);
+            width: 100%; max-width: 450px; box-sizing: border-box;
+            font-size: 13px; line-height: 1.6;
+        }
+        .description-container h3 { color: var(--hublot-yellow); font-size: 1.3em; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid var(--hublot-grey); padding-bottom: 5px; }
+        .description-container p { margin-bottom: 10px; }
+        .description-container strong { color: var(--hublot-yellow); }
+
+        .controls-container {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 10px; padding: 10px; width: 100%;
+            max-width: 600px; margin-top: 10px; 
+        }
+        .control-button {
+            background-color: var(--button-bg); color: var(--button-text);
+            border: 1px solid var(--hublot-yellow); padding: 8px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 12px;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .control-button:hover { background-color: var(--button-hover-bg); }
+        .control-button:active { transform: translateY(1px); }
+
+        @media (max-width: 768px) { 
+            .main-content-wrapper { flex-direction: column; align-items: center; }
+            .watch-container-wrapper { margin-bottom: 20px; }
+            .description-container { max-width: 90%; }
+            .watch-container { width: 300px; height: 360px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content-wrapper">
+        <div class="watch-container-wrapper">
+            <div class="watch-container">
+                <div class="strap-attachment strap-top"></div>
+                <div class="strap-attachment strap-bottom"></div>
+                <div class="watch-body">
+                    <div class="bezel">
+                        <div class="screw screw-tl"></div><div class="screw screw-tr"></div>
+                        <div class="screw screw-bl"></div><div class="screw screw-br"></div>
+                        <div class="screw screw-ml"></div><div class="screw screw-mr"></div>
+                        <div class="watch-face">
+                            <div class="skeleton-deco skeleton-bridge1"></div>
+                            <div class="skeleton-deco skeleton-plate1"></div>
+
+                            <div class="brand-name">HUBLOT</div>
+                            <div class="swiss-made">SWISS MADE</div>
+                            <div class="date-window" id="dateDisplay">28</div>
+
+                            <div class="gear gear1"><svg class="gear-svg" viewBox="0 0 100 100"><path d="M50,10 A40,40 0 1,1 49.99,10 M50,15 A35,35 0 1,1 49.99,15 M50,2 L50,12 M50,88 L50,98 M2,50 L12,50 M88,50 L98,50 M16.5,16.5 L23.5,23.5 M76.5,76.5 L83.5,83.5 M16.5,83.5 L23.5,76.5 M76.5,23.5 L83.5,16.5 M50,25 L50,75 M25,50 L75,50 M32.32,32.32 L67.68,67.68 M32.32,67.68 L67.68,32.32 Z" stroke-width="4" fill="none" stroke="currentColor"/><circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="10" stroke-dasharray="5,5"/></svg></div>
+                            <div class="gear gear2"><svg class="gear-svg" viewBox="0 0 100 100"><path d="M50,10 A40,40 0 1,1 49.99,10 M50,15 A35,35 0 1,1 49.99,15 M50,2 L50,12 M50,88 L50,98 M2,50 L12,50 M88,50 L98,50 M16.5,16.5 L23.5,23.5 M76.5,76.5 L83.5,83.5 M16.5,83.5 L23.5,76.5 M76.5,23.5 L83.5,16.5 M50,25 L50,75 M25,50 L75,50 M32.32,32.32 L67.68,67.68 M32.32,67.68 L67.68,32.32 Z" stroke-width="5" fill="none" stroke="currentColor"/><circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="4,4"/></svg></div>
+                            <div class="gear gear3"><svg class="gear-svg" viewBox="0 0 100 100"><path d="M50,10 A40,40 0 1,1 49.99,10 M50,15 A35,35 0 1,1 49.99,15 M50,2 L50,12 M50,88 L50,98 M2,50 L12,50 M88,50 L98,50 M16.5,16.5 L23.5,23.5 M76.5,76.5 L83.5,83.5 M16.5,83.5 L23.5,76.5 M76.5,23.5 L83.5,16.5 M50,25 L50,75 M25,50 L75,50 M32.32,32.32 L67.68,67.68 M32.32,67.68 L67.68,32.32 Z" stroke-width="6" fill="none" stroke="currentColor"/><circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="3,3"/></svg></div>
+                            
+                            <div class="hour-marker marker-12"></div><div class="hour-marker marker-3"></div><div class="hour-marker marker-6"></div><div class="hour-marker marker-9"></div>
+                            <div class="hour-marker pos-1"></div><div class="hour-marker pos-2"></div><div class="hour-marker pos-4"></div><div class="hour-marker pos-5"></div>
+                            <div class="hour-marker pos-7"></div><div class="hour-marker pos-8"></div><div class="hour-marker pos-10"></div><div class="hour-marker pos-11"></div>
+                            
+                            <div class="subdial subdial1" id="moonPhaseDisplayContainer"><span class="subdial-text" id="moonPhaseText">🌑</span><div class="subdial-center-cap"></div></div>
+                            <div class="subdial subdial2" id="powerReserveDisplayContainer"><span class="subdial-text" id="powerReserveText">FULL</span><div class="subdial-center-cap"></div></div>
+                            <div class="subdial subdial3" id="chronoMinutesContainer"><div class="subdial-hand" id="chronoMinutesHand" style="transform: translateX(-50%) rotate(0deg);"></div><div class="subdial-center-cap"></div></div>
+                            
+                            <div class="hands-container">
+                                <div class="hand hour-hand" id="hourHand"></div>
+                                <div class="hand minute-hand" id="minuteHand"></div>
+                                <div class="hand second-hand" id="secondHand"></div>
+                                <div class="center-cap"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="crown" id="crown"></div>
+                <div class="pusher pusher-top" id="pusherTop"></div>
+                <div class="pusher pusher-bottom" id="pusherBottom"></div>
+            </div>
+        </div>
+
+        <div class="description-container">
+            <h3>About the Watch</h3>
+            <p><strong>Price:</strong> Approx. $22,000 - $36,500 (depending on material)</p>
+            <p><strong>Collection:</strong> Spirit of Big Bang</p>
+            <p><strong>Brand:</strong> Hublot</p>
+            <p>The Hublot Spirit of Big Bang Yellow Magic is a vibrant, barrel-shaped timepiece that embodies Hublot’s “Art of Fusion” philosophy. Crafted with high-tech yellow ceramic, this 42mm watch is ultra-tough and nearly scratch-proof, using zirconium sintered at high temperatures. It features a skeletonized dial showcasing a modified Zenith El Primero chronograph movement, known for its precision at 36,000 vibrations per hour. The watch includes complications such as a moon phase, power reserve indicator, and chronograph, paired with a rubber strap for durability and comfort. Its bold design and innovative materials make it a standout in luxury watchmaking.</p>
+        </div>
+    </div>
+
+    <div class="controls-container">
+        <button class="control-button" id="btnCycleMoonPhase">Cycle Moon Phase</button>
+        <button class="control-button" id="btnUpdatePowerReserve">Update Power Reserve</button>
+        <button class="control-button" id="btnStartStopChrono">Start/Stop Chrono</button>
+        <button class="control-button" id="btnResetChrono">Reset Chrono</button>
+    </div>
+
+    <script>
+        // --- Global State Variables ---
+        let chronoRunning = false;
+        let chronoInterval;
+        let chronoElapsedTenths = 0; // For smoother animation (tenths of a second)
+        let chronoElapsedMinutes = 0;
+        let chronoSecondHandDegrees = 90; 
+        let chronoMinutesHandDegrees = 0;
+
+
+        const moonPhases = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'];
+        let currentMoonPhaseIndex = 0;
+        const powerReserveStates = ['FULL', 'MED', 'LOW'];
+        let currentPowerReserveIndex = 0;
+        // smallSeconds functionality removed
+
+        // --- DOM Element Getters ---
+        const hourHand = document.getElementById('hourHand');
+        const minuteHand = document.getElementById('minuteHand');
+        const secondHand = document.getElementById('secondHand'); 
+        const crown = document.getElementById('crown');
+        const pusherTop = document.getElementById('pusherTop');
+        const pusherBottom = document.getElementById('pusherBottom');
+
+        const moonPhaseText = document.getElementById('moonPhaseText');
+        const powerReserveText = document.getElementById('powerReserveText');
+        const chronoMinutesHand = document.getElementById('chronoMinutesHand');
+        const dateDisplay = document.getElementById('dateDisplay'); // For static date
+
+        const btnCycleMoonPhase = document.getElementById('btnCycleMoonPhase');
+        const btnUpdatePowerReserve = document.getElementById('btnUpdatePowerReserve');
+        const btnStartStopChrono = document.getElementById('btnStartStopChrono');
+        const btnResetChrono = document.getElementById('btnResetChrono');
+
+        // --- Clock Update Function ---
+        function updateClock() {
+            const now = new Date();
+            const s = now.getSeconds();
+            const m = now.getMinutes();
+            const h = now.getHours();
+
+            const secondsDegrees = ((s / 60) * 360) + 90;
+            const minutesDegrees = ((m / 60) * 360) + ((s / 60) * 6) + 90;
+            const hoursDegrees = ((h / 12) * 360) + ((m / 60) * 30) + 90;
+
+            if (!chronoRunning) { 
+                 secondHand.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
+            }
+            minuteHand.style.transform = `translateX(-50%) rotate(${minutesDegrees}deg)`;
+            hourHand.style.transform = `translateX(-50%) rotate(${hoursDegrees}deg)`;
+            
+            // Update static date display (could be dynamic if needed)
+            const dayOfMonth = now.getDate();
+            dateDisplay.textContent = dayOfMonth < 10 ? '0' + dayOfMonth : dayOfMonth;
+        }
+
+        // --- Chronograph Functions ---
+        function startChrono() {
+            if (!chronoRunning) {
+                chronoRunning = true;
+                chronoElapsedTenths = 0;
+                chronoElapsedMinutes = 0;
+                chronoSecondHandDegrees = 90; 
+                chronoMinutesHandDegrees = 0; // Reset minutes hand too
+                chronoMinutesHand.style.transform = `translateX(-50%) rotate(${chronoMinutesHandDegrees}deg)`;
+                secondHand.style.backgroundColor = 'var(--chrono-blue)';
+                secondHand.style.transform = `translateX(-50%) rotate(${chronoSecondHandDegrees}deg)`; 
+
+                clearInterval(chronoInterval); 
+                chronoInterval = setInterval(() => {
+                    chronoElapsedTenths++;
+                    // Chrono second hand updates every tenth of a second
+                    // 360 degrees / 600 tenths = 0.6 degrees per tenth
+                    chronoSecondHandDegrees = ((chronoElapsedTenths / 600) * 360) + 90; 
+                    secondHand.style.transform = `translateX(-50%) rotate(${chronoSecondHandDegrees}deg)`;
+
+                    // Update chrono minutes hand every 60 seconds (600 tenths)
+                    if (chronoElapsedTenths > 0 && chronoElapsedTenths % 600 === 0) {
+                        chronoElapsedMinutes++;
+                        // 360 degrees / 60 minutes = 6 degrees per minute
+                        chronoMinutesHandDegrees = (chronoElapsedMinutes % 60) * 6; 
+                        chronoMinutesHand.style.transform = `translateX(-50%) rotate(${chronoMinutesHandDegrees}deg)`;
+                    }
+                }, 100); // Update 10 times per second for smoother chrono hand
+
+                console.log("Chronograph STARTED");
+                pusherTop.style.backgroundColor = 'var(--hublot-yellow)';
+                pusherTop.style.borderColor = 'var(--hublot-pusher-black)';
+                btnStartStopChrono.textContent = "Stop Chrono";
+            }
+        }
+
+        function stopChrono() {
+             if (chronoRunning) {
+                chronoRunning = false;
+                clearInterval(chronoInterval);
+                console.log(`Chronograph STOPPED at ${chronoElapsedTenths / 10}s, ${chronoElapsedMinutes}min`);
+                pusherTop.style.backgroundColor = 'var(--hublot-pusher-black)';
+                pusherTop.style.borderColor = 'var(--hublot-yellow)';
+                btnStartStopChrono.textContent = "Start Chrono";
+            }
+        }
+        
+        function toggleChrono() {
+            if (chronoRunning) {
+                stopChrono();
+            } else {
+                startChrono();
+            }
+        }
+
+        function resetChrono() {
+            stopChrono(); 
+            chronoElapsedTenths = 0;
+            chronoElapsedMinutes = 0;
+            chronoSecondHandDegrees = 90;
+            chronoMinutesHandDegrees = 0;
+            secondHand.style.backgroundColor = 'var(--hublot-yellow)'; 
+            chronoMinutesHand.style.transform = `translateX(-50%) rotate(${chronoMinutesHandDegrees}deg)`;
+            updateClock(); 
+            console.log("Chronograph RESET");
+            btnStartStopChrono.textContent = "Start Chrono";
+            pusherBottom.style.backgroundColor = 'var(--hublot-yellow)';
+            setTimeout(() => {
+                 pusherBottom.style.backgroundColor = 'var(--hublot-pusher-black)';
+            }, 200);
+        }
+
+        // --- Feature Control Functions ---
+        function cycleMoonPhase() {
+            currentMoonPhaseIndex = (currentMoonPhaseIndex + 1) % moonPhases.length;
+            moonPhaseText.textContent = moonPhases[currentMoonPhaseIndex];
+        }
+
+        function updatePowerReserve() {
+            currentPowerReserveIndex = (currentPowerReserveIndex + 1) % powerReserveStates.length;
+            powerReserveText.textContent = powerReserveStates[currentPowerReserveIndex];
+        }
+        
+        // --- Crown Interaction ---
+        crown.addEventListener('click', () => {
+            console.log("Crown clicked. (Time/Date setting not implemented)");
+            crown.style.transform = 'translateY(-50%) scale(0.90)';
+            setTimeout(() => {
+                crown.style.transform = 'translateY(-50%) scale(1)';
+            }, 150);
+        });
+
+        // --- Resize Function ---
+        function resizeWatch() {
+            const watchContainer = document.querySelector('.watch-container');
+            const mainContentWrapper = document.querySelector('.main-content-wrapper');
+            
+            let newWidth, newHeight;
+            const aspectRatio = 400 / 480;
+            const isRowLayout = getComputedStyle(mainContentWrapper).flexDirection === 'row';
+
+            let availableWidthForWatchArea;
+            if (isRowLayout) {
+                availableWidthForWatchArea = watchContainer.parentElement.offsetWidth;
+            } else {
+                availableWidthForWatchArea = mainContentWrapper.offsetWidth * 0.9; 
+            }
+            
+            const availableHeightForWatchArea = window.innerHeight * 0.70;
+
+            if (availableWidthForWatchArea / availableHeightForWatchArea > aspectRatio) {
+                newHeight = availableHeightForWatchArea;
+                newWidth = newHeight * aspectRatio;
+            } else {
+                newWidth = availableWidthForWatchArea;
+                newHeight = newWidth / aspectRatio;
+            }
+            
+            newWidth = Math.max(newWidth, 200); 
+            newHeight = Math.max(newHeight, 200 / aspectRatio);
+            if(isRowLayout) {
+                newWidth = Math.min(newWidth, mainContentWrapper.offsetWidth * 0.5 - 20); 
+                newHeight = newWidth / aspectRatio;
+            }
+
+            watchContainer.style.width = `${newWidth}px`;
+            watchContainer.style.height = `${newHeight}px`;
+
+            const baseWidthForScaling = 280; 
+            const scaleFactor = newWidth / baseWidthForScaling;
+            
+            document.querySelector('.brand-name').style.fontSize = `${Math.max(7, 12 * scaleFactor)}px`;
+            document.querySelector('.swiss-made').style.fontSize = `${Math.max(4, 7 * scaleFactor)}px`;
+            document.querySelectorAll('.subdial-text').forEach(el => {
+                 el.style.fontSize = `${Math.max(7, 12 * scaleFactor)}px`;
+            });
+            document.querySelector('.date-window').style.fontSize = `${Math.max(7, 11 * scaleFactor)}px`;
+        }
+
+        // --- Initial Calls & Event Listeners ---
+        updateClock(); 
+        setInterval(updateClock, 1000); 
+
+        pusherTop.addEventListener('click', toggleChrono);
+        pusherBottom.addEventListener('click', resetChrono);
+        btnStartStopChrono.addEventListener('click', toggleChrono);
+        btnResetChrono.addEventListener('click', resetChrono);
+        btnCycleMoonPhase.addEventListener('click', cycleMoonPhase);
+        btnUpdatePowerReserve.addEventListener('click', updatePowerReserve);
+        
+        window.addEventListener('resize', resizeWatch);
+        window.addEventListener('load', () => {
+            resizeWatch(); 
+            moonPhaseText.textContent = moonPhases[currentMoonPhaseIndex];
+            powerReserveText.textContent = powerReserveStates[currentPowerReserveIndex];
+        });
+    </script>
+</body>
+</html>
