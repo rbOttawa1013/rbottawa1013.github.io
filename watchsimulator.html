@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mechanical Switch Watch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column; /* Allow title to be above simulation area */
+            align-items: center; /* Center content horizontally */
+            min-height: 100vh;
+            background-color: #e5e7eb;
+            margin: 0;
+            padding: 20px;
+            padding-top: 30px; /* Adjusted padding, title will have its own margin */
+            box-sizing: border-box;
+        }
+
+        #mainTitle {
+            font-size: 2.25rem; /* Tailwind text-4xl */
+            font-weight: 700; /* Tailwind font-bold */
+            color: #1f2937; /* Tailwind text-gray-800 */
+            text-align: center;
+            margin-bottom: 2rem; /* Tailwind mb-8 */
+            margin-top: 1rem; /* Add some margin at the top */
+        }
+
+        .lang-toggle-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .simulation-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        @media (min-width: 880px) {
+            .simulation-area {
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: space-around;
+            }
+        }
+
+        .watch-assembly-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            flex-shrink: 0;
+        }
+        
+        .instructions-and-mechanism-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .watch {
+            width: 250px; height: 250px; border-radius: 50%;
+            background-color: #ffffff; border: 8px solid #374151;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15), inset 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .watch-face { width: 100%; height: 100%; position: relative; }
+
+        .hand {
+            position: absolute; bottom: 50%; left: 50%;
+            transform-origin: bottom center; border-radius: 4px 4px 0 0;
+            transition: background-color 0.3s ease; z-index: 10;
+        }
+        .hour-hand { width: 7px; height: 30%; background-color: #1f2937; }
+        .minute-hand { width: 5px; height: 40%; background-color: #374151; }
+        .second-hand { width: 2px; height: 45%; background-color: #ef4444; z-index: 11; }
+
+        .center-dot {
+            width: 12px; height: 12px; background-color: #111827;
+            border-radius: 50%; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 12;
+            transition: background-color 0.3s ease;
+        }
+
+        .hour-marker {
+            position: absolute; left: 50%; top: 5%; height: 8%; width: 3px;
+            background-color: #4b5563; transform-origin: 50% 112.5px;
+            border-radius: 2px; transition: background-color 0.3s ease;
+        }
+        .hour-marker.thick { width: 5px; height: 12%; background-color: #374151; }
+        
+        .watch.lume-active { background-color: #1f2937; border-color: #4b5563; }
+        .lume-active .hour-hand, .lume-active .minute-hand { background-color: #34d399; }
+        .lume-active .second-hand { background-color: #60a5fa; }
+        .lume-active .center-dot { background-color: #34d399; }
+        .lume-active .hour-marker, .lume-active .hour-marker.thick { background-color: #34d399; }
+
+        .switch-assembly { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .switch-label { font-size: 0.9rem; color: #4b5563; font-weight: 500; }
+        .switch-body {
+            width: 70px; height: 34px; background-color: #d1d5db; border-radius: 17px;
+            padding: 4px; cursor: pointer; transition: background-color 0.3s ease;
+            border: 2px solid #9ca3af; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .switch-toggle {
+            width: 26px; height: 26px; background-color: white; border-radius: 50%;
+            transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .switch-body.active { background-color: #22c55e; border-color: #16a34a; }
+        .switch-body.active .switch-toggle { transform: translateX(36px); }
+
+        .instructions-container {
+            padding: 15px; background-color: #e0e7ff;
+            border-radius: 8px; border: 1px solid #c7d2fe;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        }
+        .instructions-container h3 {
+            font-size: 1.1rem; font-weight: 600; color: #3730a3;
+            margin-top: 0; margin-bottom: 10px; text-align: center;
+        }
+        .instructions-container p {
+            font-size: 0.85rem; color: #4338ca;
+            line-height: 1.5; margin-bottom: 8px;
+        }
+        .instructions-container ul {
+            font-size: 0.85rem; color: #4f46e5;
+            list-style-type: none; 
+            padding-left: 0; margin-bottom: 0;
+        }
+        .instructions-container li {
+            margin-bottom: 5px;
+            display: flex; 
+            align-items: center;
+            padding: 4px; /* Add some padding for better visual separation */
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .instructions-container li.highlighted-guide-item {
+            background-color: #c7d2fe; /* Highlight background for the active guide item */
+        }
+
+        .instructions-container strong { font-weight: 600; color: #312e81; }
+        .guide-highlight-arrow {
+            display: none; 
+            margin-right: 8px; 
+            font-size: 1em;
+            color: #2563eb; 
+        }
+        .instructions-container li.highlighted-guide-item .guide-highlight-arrow {
+            display: inline; /* Show arrow for highlighted item */
+        }
+
+
+        .internals-container {
+            width: 100%; max-width: 320px; height: 300px;
+            background-color: #e0e0e0;
+            border-radius: 12px; border: 4px solid #52525b;
+            padding: 20px; box-sizing: border-box; position: relative;
+            overflow: hidden; box-shadow: inset 0 0 15px rgba(0,0,0,0.15);
+            align-self: center;
+        }
+        #mechanismHighlightArrow {
+            position: absolute;
+            display: none; 
+            font-size: 1.8em; 
+            color: #2563eb; 
+            z-index: 25; 
+            transition: top 0.2s ease-out, left 0.2s ease-out, opacity 0.2s ease-out; 
+            opacity: 0;
+        }
+        #mechanismHighlightArrow.visible {
+            display: block;
+            opacity: 1;
+        }
+
+
+        .internals-title {
+            text-align: center; font-size: 1.1rem; font-weight: 600; color: #1f2937;
+            margin-bottom: 15px; position: absolute; top: 10px; left: 50%;
+            transform: translateX(-50%); width: 100%; z-index: 20;
+        }
+        
+        .component-label {
+            position: absolute; font-size: 0.65rem;
+            font-weight: 500; color: #1f2937;
+            background-color: rgba(249, 250, 251, 0.75);
+            padding: 1px 3px; border-radius: 3px; z-index: 15;
+            text-align: center;
+        }
+
+        .mainspring-container { position: absolute; top: 45px; left: 25px; width: 70px; height: 70px; }
+        .mainspring-label { top: 120px; left: 25px; width: 70px; }
+        .mainspring-coil {
+            position: absolute; border-style: solid;
+            border-color: #6b7280 transparent transparent transparent;
+            border-radius: 50%; animation: mainspring-unwind 60s linear infinite;
+        }
+        .mainspring-coil1 { width: 100%; height: 100%; border-width: 5px; }
+        .mainspring-coil2 { width: 80%; height: 80%; border-width: 4px; top: 10%; left: 10%; animation-delay: -0.5s;}
+        .mainspring-coil3 { width: 60%; height: 60%; border-width: 3px; top: 20%; left: 20%; animation-delay: -1.0s;}
+        .mainspring-coil4 { width: 40%; height: 40%; border-width: 2px; top: 30%; left: 30%; animation-delay: -1.5s;}
+
+        .gear-train-label { top: 115px; left: 110px; width: 60px; }
+        .sprocket {
+            position: absolute; border-radius: 50%;
+            background-color: #a1a1aa; border: 2px solid #3f3f46;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .sprocket::before, .sprocket::after { 
+            content: ''; position: absolute; background-color: #a1a1aa; border: 1px solid #3f3f46;
+        }
+        .sprocket::before { width: 110%; height: 20%; border-radius: 3px;}
+        .sprocket::after { width: 20%; height: 110%; border-radius: 3px;}
+        .sprocket .sprocket-center {
+            width: 40%; height: 40%; background-color: #71717a;
+            border-radius: 50%; border: 1px solid #27272a;
+        }
+        .sprocket1 { 
+            width: 55px; height: 55px; top: 60px; left: 100px;
+            animation: rotate-cw-steps 12s steps(12, end) infinite; 
+        }
+        .sprocket2 { 
+            width: 40px; height: 40px; top: 105px; left: 135px; 
+            animation: rotate-ccw-steps 10s steps(20, end) infinite; 
+        }
+        
+        .escape-wheel-label { top: 65px; right: 25px; width: 70px; }
+        .escape-wheel { 
+            width: 40px; height: 40px; top: 85px; right: 35px; 
+            background-color: #facc15; border-color: #ca8a04;
+            animation: rotate-cw-steps-fast 5s steps(20, end) infinite; 
+        }
+        .escape-wheel::before, .escape-wheel::after { background-color: #facc15; border-color: #ca8a04;}
+        .escape-wheel .sprocket-center { background-color: #eab308; border-color: #a16207;}
+
+        .balance-wheel-container { position: absolute; bottom: 30px; right: 80px; width: 70px; height: 70px; }
+        .balance-wheel-label { bottom: 15px; right: 80px; width: 70px;}
+        .balance-wheel {
+            width: 100%; height: 100%; border: 4px solid #4ade80;
+            border-radius: 50%; position: relative;
+            animation: oscillate-balance 0.5s ease-in-out infinite alternate; 
+        }
+        .balance-wheel::before, .balance-wheel::after { 
+            content: ''; position: absolute; background-color: #4ade80;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+        .balance-wheel::before { width: 90%; height: 3px; }
+        .balance-wheel::after { width: 3px; height: 90%; }
+        .balance-wheel-center {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 10px; height: 10px; background-color: #166534; border-radius: 50%;
+        }
+
+        .pallet-fork-container {
+            position: absolute; bottom: 70px; right: 30px;
+            width: 15px; height: 50px; transform-origin: bottom center; 
+        }
+        .pallet-fork-label { bottom: 125px; right: 10px; width: 60px; }
+        .pallet-fork-arm {
+            width: 100%; height: 100%; background-color: #fb7185;
+            border: 1px solid #e11d48; border-radius: 6px 6px 0 0; 
+            animation: oscillate-fork 0.5s steps(2, end) infinite alternate; 
+        }
+        .pallet-fork-arm::before, .pallet-fork-arm::after {
+            content: ''; position: absolute; width: 8px; height: 5px;
+            background-color: #e11d48; border-radius: 1px;
+        }
+        .pallet-fork-arm::before { top: 5px; left: -3px; transform: rotate(-30deg); }
+        .pallet-fork-arm::after { top: 5px; right: -3px; transform: rotate(30deg); }
+
+        @keyframes mainspring-unwind { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotate-cw-steps { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotate-ccw-steps { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes rotate-cw-steps-fast { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes oscillate-balance { 0% { transform: rotate(-25deg); } 100% { transform: rotate(25deg); } }
+        @keyframes oscillate-fork { 0% { transform: rotate(-15deg); } 100% { transform: rotate(15deg); } }
+
+    </style>
+</head>
+<body>
+    <h1 id="mainTitle">Watch Simulator</h1>
+    <button id="langToggleBtn" class="lang-toggle-button bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition-colors duration-150">
+        Français
+    </button>
+
+    <div class="simulation-area">
+        <div class="watch-assembly-container">
+            <div class="watch" id="watch">
+                <div class="watch-face" id="watchFace">
+                    <div class="hand hour-hand" id="hourHand"></div>
+                    <div class="hand minute-hand" id="minuteHand"></div>
+                    <div class="hand second-hand" id="secondHand"></div>
+                    <div class="center-dot" id="centerDot"></div>
+                </div>
+            </div>
+
+            <div class="switch-assembly">
+                <div class="switch-label" id="switchLabel" data-translation-key-off="lumeOff" data-translation-key-on="lumeOn">LUME OFF</div>
+                <div class="switch-body" id="lumeSwitch">
+                    <div class="switch-toggle"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions-and-mechanism-container">
+            <div class="instructions-container">
+                <h3 data-translation-key="simulationGuideTitle">Simulation Guide</h3>
+                <p data-translation-key="guideP1">Use the <strong>LUME SWITCH</strong> below the watch face to toggle the night-view (lume) of the watch.</p>
+                <p data-translation-key="guideP2">The <strong>MECHANISM VIEW</strong> provides a stylized look at the inner workings:</p>
+                <ul>
+                    <li data-target-id="mainspringContainer" data-translation-key="mainspringDesc"><span class="guide-highlight-arrow">👉</span><span><strong>Mainspring:</strong> Stores and releases energy to power the watch.</span></li>
+                    <li data-target-id="sprocket1" data-translation-key="gearTrainDesc"><span class="guide-highlight-arrow">👉</span><span><strong>Gear Train:</strong> Transfers energy from the mainspring and regulates the speed of the hands.</span></li>
+                    <li data-target-id="escapeWheel" data-translation-key="escapementDesc"><span class="guide-highlight-arrow">👉</span><span><strong>Escape Wheel & Pallet Fork:</strong> Together, they form the escapement. This critical part controls the release of energy in precise, intermittent impulses (the 'tick-tock'), allowing the gear train to advance step-by-step.</span></li>
+                    <li data-target-id="balanceWheelContainer" data-translation-key="balanceWheelDesc"><span class="guide-highlight-arrow">👉</span><span><strong>Balance Wheel:</strong> The heart of the timekeeping. It oscillates back and forth at a constant rate, driven by the escapement, ensuring accurate time.</span></li>
+                </ul>
+                 <p style="margin-top:10px; text-align:center; font-style:italic;" data-translation-key="guideP3">Observe how these parts interact!</p>
+            </div>
+
+            <div class="internals-container" id="internalsContainer">
+                <div id="mechanismHighlightArrow" class="mechanism-arrow">➡️</div>
+                <div class="internals-title" data-translation-key="mechanismViewTitle">MECHANISM VIEW</div>
+                
+                <div class="mainspring-container" id="mainspringContainer">
+                    <div class="mainspring-coil mainspring-coil1"></div>
+                    <div class="mainspring-coil mainspring-coil2"></div>
+                    <div class="mainspring-coil mainspring-coil3"></div>
+                    <div class="mainspring-coil mainspring-coil4"></div>
+                </div>
+                <div class="component-label mainspring-label" data-translation-key="mainspringLabel">Mainspring</div>
+
+                <div class="sprocket sprocket1" id="sprocket1"><div class="sprocket-center"></div></div>
+                <div class="sprocket sprocket2" id="sprocket2"><div class="sprocket-center"></div></div>
+                <div class="component-label gear-train-label" data-translation-key="gearTrainLabel">Gear Train</div>
+                
+                <div class="sprocket escape-wheel" id="escapeWheel"><div class="sprocket-center"></div></div>
+                <div class="component-label escape-wheel-label" data-translation-key="escapeWheelLabel">Escape Wheel</div>
+
+                <div class="balance-wheel-container" id="balanceWheelContainer">
+                    <div class="balance-wheel">
+                        <div class="balance-wheel-center"></div>
+                    </div>
+                </div>
+                <div class="component-label balance-wheel-label" data-translation-key="balanceWheelLabel">Balance Wheel</div>
+
+                <div class="pallet-fork-container" id="palletForkContainer">
+                    <div class="pallet-fork-arm"></div>
+                </div>
+                <div class="component-label pallet-fork-label" data-translation-key="palletForkLabel">Pallet Fork</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const hourHand = document.getElementById('hourHand');
+        const minuteHand = document.getElementById('minuteHand');
+        const secondHand = document.getElementById('secondHand');
+        const watchElement = document.getElementById('watch');
+        const watchFaceElement = document.getElementById('watchFace');
+        
+        const lumeSwitchElement = document.getElementById('lumeSwitch');
+        const switchLabelElement = document.getElementById('switchLabel');
+        const langToggleBtn = document.getElementById('langToggleBtn');
+        
+        const internalsContainer = document.getElementById('internalsContainer');
+        const mechanismHighlightArrow = document.getElementById('mechanismHighlightArrow');
+        const guideListItems = Array.from(document.querySelectorAll('.instructions-container ul li[data-target-id]')); // Convert NodeList to Array
+
+        const translations = {
+            lumeOff: { en: "LUME OFF", fr: "LUME ÉTEINTE" },
+            lumeOn: { en: "LUME ON", fr: "LUME ALLUMÉE" },
+            simulationGuideTitle: { en: "Simulation Guide", fr: "Guide de Simulation" },
+            guideP1: { en: "Use the <strong>LUME SWITCH</strong> below the watch face to toggle the night-view (lume) of the watch.", fr: "Utilisez l'<strong>INTERRUPTEUR LUME</strong> sous le cadran de la montre pour basculer la vue nocturne (lume) de la montre." },
+            guideP2: { en: "The <strong>MECHANISM VIEW</strong> provides a stylized look at the inner workings:", fr: "La <strong>VUE DU MÉCANISME</strong> offre un aperçu stylisé du fonctionnement interne :" },
+            mainspringDesc: { en: "<strong>Mainspring:</strong> Stores and releases energy to power the watch.", fr: "<strong>Ressort Moteur :</strong> Emmagasine et libère l'énergie pour alimenter la montre." },
+            gearTrainDesc: { en: "<strong>Gear Train:</strong> Transfers energy from the mainspring and regulates the speed of the hands.", fr: "<strong>Train de Rouages :</strong> Transfère l'énergie du ressort moteur et régule la vitesse des aiguilles." },
+            escapementDesc: { en: "<strong>Escape Wheel & Pallet Fork:</strong> Together, they form the escapement. This critical part controls the release of energy in precise, intermittent impulses (the 'tick-tock'), allowing the gear train to advance step-by-step.", fr: "<strong>Roue d'Échappement & Ancre :</strong> Ensemble, ils forment l'échappement. Cette pièce essentielle contrôle la libération d'énergie par impulsions précises et intermittentes (le 'tic-tac'), permettant au train de rouages d'avancer pas à pas." },
+            balanceWheelDesc: { en: "<strong>Balance Wheel:</strong> The heart of the timekeeping. It oscillates back and forth at a constant rate, driven by the escapement, ensuring accurate time.", fr: "<strong>Balancier :</strong> Le cœur du chronométrage. Il oscille d'avant en arrière à un rythme constant, entraîné par l'échappement, assurant l'heure exacte." },
+            guideP3: { en: "Observe how these parts interact!", fr: "Observez comment ces pièces interagissent !" },
+            mechanismViewTitle: { en: "MECHANISM VIEW", fr: "VUE DU MÉCANISME" },
+            mainspringLabel: { en: "Mainspring", fr: "Ressort Moteur" },
+            gearTrainLabel: { en: "Gear Train", fr: "Train de Rouages" },
+            escapeWheelLabel: { en: "Escape Wheel", fr: "Roue d'Échappement" },
+            balanceWheelLabel: { en: "Balance Wheel", fr: "Balancier" },
+            palletForkLabel: { en: "Pallet Fork", fr: "Ancre" },
+            langButtonToFr: { en: "Français", fr: "Français" },
+            langButtonToEn: { en: "English", fr: "English" }
+        };
+
+        let currentLanguage = 'en';
+        let isLumeActive = false;
+
+        function updateUIText() {
+            langToggleBtn.textContent = currentLanguage === 'en' ? translations.langButtonToFr[currentLanguage] : translations.langButtonToEn[currentLanguage];
+            document.querySelectorAll('[data-translation-key]').forEach(el => {
+                const key = el.getAttribute('data-translation-key');
+                const textSpan = el.querySelector('span:not(.guide-highlight-arrow)') || el;
+                if (translations[key] && translations[key][currentLanguage]) {
+                    textSpan.innerHTML = translations[key][currentLanguage];
+                }
+            });
+            const lumeKey = isLumeActive ? switchLabelElement.getAttribute('data-translation-key-on') : switchLabelElement.getAttribute('data-translation-key-off');
+            if (translations[lumeKey] && translations[lumeKey][currentLanguage]) {
+                switchLabelElement.textContent = translations[lumeKey][currentLanguage];
+            }
+        }
+
+        const markerContainer = watchFaceElement;
+        const numMarkers = 12;
+        for (let i = 0; i < numMarkers; i++) {
+            const marker = document.createElement('div');
+            marker.classList.add('hour-marker');
+            if (i % 3 === 0) marker.classList.add('thick');
+            const rotation = (i / numMarkers) * 360;
+            marker.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+            markerContainer.appendChild(marker);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const seconds = now.getSeconds();
+            const minutes = now.getMinutes();
+            const hours = now.getHours();
+            const secondsDegrees = ((seconds / 60) * 360) + 90;
+            const minutesDegrees = ((minutes / 60) * 360) + ((seconds / 60) * 6) + 90;
+            const hoursDegrees = ((hours / 12) * 360) + ((minutes / 60) * 30) + 90;
+            secondHand.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
+            minuteHand.style.transform = `translateX(-50%) rotate(${minutesDegrees}deg)`;
+            hourHand.style.transform = `translateX(-50%) rotate(${hoursDegrees}deg)`;
+        }
+
+        lumeSwitchElement.addEventListener('click', () => {
+            isLumeActive = !isLumeActive;
+            lumeSwitchElement.classList.toggle('active', isLumeActive);
+            watchElement.classList.toggle('lume-active', isLumeActive);
+            updateUIText();
+        });
+        
+        langToggleBtn.addEventListener('click', () => {
+            currentLanguage = currentLanguage === 'en' ? 'fr' : 'en';
+            updateUIText();
+        });
+
+        // --- Automatic Highlight Cycling Logic ---
+        let currentHighlightIndex = 0;
+        const highlightCycleTime = 3000; // 3 seconds per component
+        let highlightIntervalId = null; // To store the interval ID
+
+        function cycleHighlight() {
+            // Remove highlight from the previous item
+            if (guideListItems.length > 0) {
+                guideListItems.forEach(item => item.classList.remove('highlighted-guide-item'));
+                if(mechanismHighlightArrow) mechanismHighlightArrow.classList.remove('visible');
+            }
+
+            // Get current item
+            const currentItem = guideListItems[currentHighlightIndex];
+            if (!currentItem) return;
+
+            currentItem.classList.add('highlighted-guide-item');
+            
+            const targetId = currentItem.getAttribute('data-target-id');
+            const targetElement = document.getElementById(targetId);
+
+            if (targetElement && mechanismHighlightArrow) {
+                // Ensure mechanismHighlightArrow is a direct child of internalsContainer for offset calculations
+                // or adjust calculations if it's not. Assuming it is for now.
+                
+                let arrowTop = targetElement.offsetTop + (targetElement.offsetHeight / 2) - (mechanismHighlightArrow.offsetHeight / 2);
+                let arrowLeft = targetElement.offsetLeft - mechanismHighlightArrow.offsetWidth - 10; // 10px gap to the left
+
+                mechanismHighlightArrow.textContent = '➡️'; // Default right-pointing arrow
+
+                if (targetId === 'palletForkContainer' || targetId === 'escapeWheel' || targetId === 'balanceWheelContainer') {
+                     arrowLeft = targetElement.offsetLeft + targetElement.offsetWidth + 10; // 10px gap to the right
+                     mechanismHighlightArrow.textContent = '⬅️'; // Left-pointing for right-side elements
+                }
+                
+                // Keep arrow within bounds of the internals container (visual approximation)
+                arrowTop = Math.max(5, Math.min(arrowTop, internalsContainer.clientHeight - mechanismHighlightArrow.offsetHeight - 5));
+                arrowLeft = Math.max(5, Math.min(arrowLeft, internalsContainer.clientWidth - mechanismHighlightArrow.offsetWidth - 5));
+
+
+                mechanismHighlightArrow.style.top = `${arrowTop}px`;
+                mechanismHighlightArrow.style.left = `${arrowLeft}px`;
+                mechanismHighlightArrow.classList.add('visible');
+            }
+
+            currentHighlightIndex = (currentHighlightIndex + 1) % guideListItems.length;
+        }
+
+
+        function startHighlightCycle() {
+            if (guideListItems.length > 0) {
+                if (highlightIntervalId) clearInterval(highlightIntervalId); // Clear existing interval
+                cycleHighlight(); // Call once to highlight the first item immediately
+                highlightIntervalId = setInterval(cycleHighlight, highlightCycleTime);
+            }
+        }
+
+        function stopHighlightCycle() {
+            if (highlightIntervalId) clearInterval(highlightIntervalId);
+            guideListItems.forEach(item => item.classList.remove('highlighted-guide-item'));
+            if(mechanismHighlightArrow) mechanismHighlightArrow.classList.remove('visible');
+        }
+
+        // Example: Start cycling when the page loads.
+        // You might want to tie this to a button or other user interaction.
+        startHighlightCycle();
+
+
+        updateClock();
+        setInterval(updateClock, 1000);
+        updateUIText();
+
+    </script>
+</body>
+</html>
