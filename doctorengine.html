@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Symptom Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; 
+            margin: 0;
+        }
+        .main-app-container {
+            display: flex; /* Default: visible */
+            flex-direction: column;
+            gap: 24px;
+            padding: 24px;
+            max-width: 1300px;
+            margin: 24px auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+        }
+        .rule-editor-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #e9ecef; 
+            z-index: 1000;
+            padding: 24px;
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+        }
+        .rule-editor-content {
+            max-width: 1200px; /* Wider for grid with ID */
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .header-controls {
+            display: flex;
+            justify-content: space-between; 
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 16px; 
+        }
+        .section {
+            background-color: #f9fafb;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07);
+        }
+        .section-title {
+            font-size: 1.35rem; 
+            font-weight: 700;
+            color: #1a2b3c; 
+            margin-bottom: 16px;
+            border-bottom: 3px solid #e2e8f0; 
+            padding-bottom: 10px;
+        }
+        textarea#ruleEditor { /* Specific to rule editor textarea */
+            width: 100%;
+            min-height: 250px; 
+            max-height: 350px; /* Max height before scroll */
+            padding: 14px;
+            border: 1px solid #cbd5e1; 
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem; /* Slightly smaller for JSON */
+            line-height: 1.5;
+            background-color: #ffffff;
+            color: #334155; 
+            resize: vertical;
+        }
+        textarea#symptomInput {
+             width: 100%;
+             min-height: 100px;
+             padding: 14px;
+             border: 1px solid #cbd5e1; 
+             border-radius: 8px;
+             font-size: 0.9rem; 
+             line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6; 
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+        }
+        button, .button { 
+            padding: 10px 20px; 
+            background-color: #2563eb; 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+            display: inline-block; 
+            text-align: center;
+            font-size: 0.9rem; 
+        }
+        button:hover, .button:hover {
+            background-color: #1d4ed8; 
+            transform: translateY(-1px);
+        }
+        button:active, .button:active {
+            transform: translateY(0px);
+        }
+        .button-small { 
+             padding: 8px 12px; 
+             font-size: 0.8rem;
+        }
+        .button-exit { 
+            background-color: #6b7280; 
+        }
+        .button-exit:hover {
+            background-color: #4b5563;
+        }
+
+        .disclaimer {
+            background-color: #fff1f2; 
+            color: #c21a2d; 
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #ffccd3; 
+            font-weight: 500;
+            text-align: center;
+        }
+        .disclaimer h2 { 
+            font-size: 1.2em;
+            font-weight: 700;
+            margin-bottom: 0.5em;
+        }
+        .output-item {
+            background-color: #eef6ff; 
+            color: #1e40af; 
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 5px solid #60a5fa; 
+        }
+        .output-item .condition-name {
+            font-weight: 700;
+            color: #1e3a8a; 
+            font-size: 1.05em;
+        }
+        .output-item .match-score, .output-item .matched-keywords-info {
+            font-size: 0.85rem;
+            color: #1d4ed8; 
+            margin-top: 4px;
+        }
+        .output-item .matched-keywords-info strong { 
+            color: #1e40af;
+        }
+        .output-item .matched-keywords-info .keyword {
+            background-color: #dbeafe; 
+            color: #1e40af;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 500;
+            margin: 0 2px;
+            display: inline-block; 
+        }
+        .error-message {
+            color: #ef4444; 
+            font-size: 0.9rem;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        .rules-grid-container {
+            max-height: 350px; /* Adjusted max height for the grid */
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .rules-table th, .rules-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .rules-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            position: sticky;
+            top: 0; 
+            z-index: 10;
+        }
+        .rules-table th:first-child { width: 5%; } /* ID column */
+        .rules-table th:nth-child(2) { width: 45%; } /* Symptoms column */
+        .rules-table th:nth-child(3) { width: 25%; } /* Condition EN */
+        .rules-table th:nth-child(4) { width: 25%; } /* Condition FR */
+
+        .rules-table td .symptom-list {
+            max-height: 60px; 
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+        .rules-table td .symptom-list span {
+            display: block;
+            margin-bottom: 2px;
+            background-color: #eef2ff;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        @media (min-width: 1024px) { 
+            .main-app-container .rules-input-column {
+                flex: 3; 
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+            .main-app-container .output-column {
+                flex: 2; 
+                position: sticky; 
+                top: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="mainAppView" class="main-app-container">
+        <div class="rules-input-column">
+            <div class="header-controls">
+                <button id="manageRulesBtn" class="button" data-translate-key="manageRulesBtn"></button>
+                <button id="languageToggle" class="button button-small"></button>
+            </div>
+            <div class="section disclaimer">
+                <h2 data-translate-key="criticalWarningTitle"></h2>
+                <p data-translate-key="disclaimerP1"></p>
+                <p data-translate-key="disclaimerP2" class="mt-2"></p>
+                <p data-translate-key="disclaimerP3" class="mt-2 font-bold text-red-700"></p>
+                <p data-translate-key="disclaimerP4" class="mt-2 text-sm"></p>
+                <p data-translate-key="disclaimerP5" class="mt-2 text-xs italic"></p>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title" data-translate-key="symptomInputTitle"></h2>
+                <p class="text-sm text-gray-600 mb-3" data-translate-key="symptomInputSubtext"></p>
+                <textarea id="symptomInput" data-translate-key-placeholder="symptomInputPlaceholder"></textarea>
+                <button id="diagnoseBtn" class="button mt-4" data-translate-key="runEngineBtn"></button>
+            </div>
+        </div>
+
+        <div class="output-column section">
+            <h2 class="section-title" data-translate-key="outputTitle"></h2>
+            <div id="outputArea" class="mt-2 text-sm text-gray-700">
+                <p data-translate-key="outputAreaDefaultMsg"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ruleEditorScreen" class="rule-editor-screen">
+        <div class="rule-editor-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="section-title !mb-0 !border-b-0" data-translate-key="ruleEditorScreenTitle"></h2>
+                <button id="exitRuleEditorBtn" class="button button-exit" data-translate-key="exitRuleEditorBtn"></button>
+            </div>
+            
+            <div class="rules-grid-container mb-4">
+                <table class="rules-table">
+                    <thead>
+                        <tr>
+                            <th data-translate-key="idGridHeader">ID</th>
+                            <th data-translate-key="symptomsGridHeader">Symptoms (English)</th>
+                            <th data-translate-key="conditionEnGridHeader">Condition (EN)</th>
+                            <th data-translate-key="conditionFrGridHeader">Condition (FR)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rulesGridBody">
+                        </tbody>
+                </table>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-1" data-translate-key="rawJsonEditorLabel">Raw JSON Editor:</p>
+            <textarea id="ruleEditor" spellcheck="false"></textarea>
+            <div class="mt-4 flex flex-wrap gap-3 justify-start">
+                <button id="loadDefaultRulesBtn" class="button" data-translate-key="loadRulesBtn"></button>
+                <button id="applyRulesBtn" class="button" data-translate-key="applyRulesBtn"></button> 
+                <button id="saveRulesBtn" class="button" data-translate-key="saveRulesBtn"></button>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-3 justify-start">
+                <button id="exportRulesBtn" class="button" data-translate-key="exportRulesBtn"></button>
+                <label class="button cursor-pointer">
+                    <span data-translate-key="importRulesBtn">Import Rules</span>
+                    <input type="file" id="importRulesFile" accept=".json" class="hidden">
+                </label>
+            </div>
+            <p id="ruleError" class="error-message mt-3"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- I18N TRANSLATIONS ---
+        const I18n = (() => {
+            const translations = {
+                en: {
+                    pageTitle: "Medical Symptom Checker (Demo v4.7 - Rule IDs & Expanded Set)",
+                    languageToggle: "Français",
+                    manageRulesBtn: "Manage Rules",
+                    exitRuleEditorBtn: "Exit Rule Editor",
+                    ruleEditorScreenTitle: "Rule Management",
+                    idGridHeader: "ID",
+                    symptomsGridHeader: "Symptoms (English)",
+                    conditionEnGridHeader: "Condition (EN)",
+                    conditionFrGridHeader: "Condition (FR)",
+                    rawJsonEditorLabel: "Raw JSON Editor:",
+                    saveRulesBtn: "Save Rules (to Browser)",
+                    exportRulesBtn: "Export Rules (JSON)",
+                    importRulesBtn: "Import Rules (JSON)",
+                    criticalWarningTitle: "⚠️ CRITICAL WARNING & DEMONSTRATION PURPOSE ⚠️",
+                    disclaimerP1: "This application is a <strong>highly simplified demonstration</strong> of keyword matching, stemming, and basic synonym logic. It is for <strong>EDUCATIONAL AND ILLUSTRATIVE PURPOSES ONLY.</strong>",
+                    disclaimerP2: "The medical conditions and symptoms listed are <strong>GENERIC EXAMPLES (approx. 200 for demo)</strong> and are <strong>NOT MEDICALLY ACCURATE, EXHAUSTIVE, OR VALIDATED.</strong>",
+                    disclaimerP3: "DO NOT, UNDER ANY CIRCUMSTANCES, USE THIS TOOL FOR ACTUAL MEDICAL DIAGNOSIS, ADVICE, OR TREATMENT DECISIONS. Always consult a qualified healthcare professional for any health concerns.",
+                    disclaimerP4: "Input processing: Common words are ignored. Keywords are stemmed (e.g., 'aching' becomes 'ach'). Basic synonyms are considered (e.g., 'head pain' ~ 'headache').",
+                    disclaimerP5: "Note: Condition names can be displayed in the selected language. Symptom input, keyword processing, and matching logic are English-based. Rules are stored with English symptoms.",
+                    ruleEditorSubtextScreen: "View rules in the grid. Edit the raw JSON below. Each rule needs an 'id' (number), English \"symptoms\" (array), \"condition_en\" (English name), and optionally \"condition_fr\" (French name).",
+                    loadRulesBtn: "Load Default Demo Rules",
+                    applyRulesBtn: "Apply Rules from Editor",
+                    symptomInputTitle: "Symptom Input (English)",
+                    symptomInputSubtext: "Describe symptoms naturally in English (e.g., \"I'm feeling a lot of head pain and my body is aching\"). Non-essential words will be filtered out.",
+                    symptomInputPlaceholder: "Enter symptoms in English here...",
+                    runEngineBtn: "Run Engine & Rank Matches",
+                    outputTitle: "Ranked Potential Conditions",
+                    outputAreaDefaultMsg: "Results will appear here, ranked by keyword match strength...",
+                    rulesLoadedSuccess: "Default demo rules ({count}) loaded into editor.",
+                    rulesAppliedSuccess: "Successfully applied {count} rules from editor to the engine.",
+                    rulesSavedSuccess: "Rules saved to browser storage.",
+                    rulesImportedSuccess: "Rules imported into editor from file. Review and click 'Apply' or 'Save'.",
+                    rulesImportError: "Error importing file: {error}",
+                    rulesEmpty: "Rule editor is empty. No rules applied or saved.",
+                    rulesParseError: "Error parsing or processing rules: {error}",
+                    rulesApplyFailed: "Failed to apply rules. Please check JSON format and rule structure.",
+                    symptomsPleaseEnter: "Please enter symptoms.",
+                    noKeywordsFound: "No relevant keywords found in your input after filtering. Please describe your symptoms more specifically.",
+                    noMatchesFound: "No conditions matched significantly based on the keywords from your symptoms and the current rules. (Remember the IMPORTANT DISCLAIMER - always consult a doctor)",
+                    matchScore: "Match Strength: {score} of {total} rule keywords.",
+                    matchedRuleKeywordsLabel: "Matched Rule Keywords:",
+                    none: "None"
+                },
+                fr: {
+                    pageTitle: "Vérificateur de symptômes (Démo v4.7 - IDs Règles & Ensemble Étendu)",
+                    languageToggle: "English",
+                    manageRulesBtn: "Gérer les Règles",
+                    exitRuleEditorBtn: "Quitter l'Éditeur",
+                    ruleEditorScreenTitle: "Gestion des Règles",
+                    idGridHeader: "ID",
+                    symptomsGridHeader: "Symptômes (Anglais)",
+                    conditionEnGridHeader: "Condition (EN)",
+                    conditionFrGridHeader: "Condition (FR)",
+                    rawJsonEditorLabel: "Éditeur JSON Brut :",
+                    saveRulesBtn: "Sauvegarder les Règles (Navigateur)",
+                    exportRulesBtn: "Exporter les Règles (JSON)",
+                    importRulesBtn: "Importer les Règles (JSON)",
+                    criticalWarningTitle: "⚠️ AVERTISSEMENT CRITIQUE ET BUT DE DÉMONSTRATION ⚠️",
+                    disclaimerP1: "Cette application est une <strong>démonstration très simplifiée</strong> de la correspondance par mots-clés, de la racinisation et de la logique de synonymes de base. Elle est destinée à des <strong>FINS ÉDUCATIVES ET ILLUSTRATIVES UNIQUEMENT.</strong>",
+                    disclaimerP2: "Les conditions médicales et les symptômes listés sont des <strong>EXEMPLES GÉNÉRIQUES (env. 200 pour démo)</strong> et ne sont <strong>PAS MÉDICALEMENT EXACTS, EXHAUSTIFS OU VALIDÉS.</strong>",
+                    disclaimerP3: "N'UTILISEZ JAMAIS, EN AUCUNE CIRCONSTANCE, CET OUTIL POUR UN DIAGNOSTIC MÉDICAL RÉEL, DES CONSEILS OU DES DÉCISIONS DE TRAITEMENT. Consultez toujours un professionnel de la santé qualifié pour tout problème de santé.",
+                    disclaimerP4: "Traitement de l'entrée : Les mots courants sont ignorés. Les mots-clés sont racinisés (ex. : 'aching' devient 'ach'). Des synonymes de base sont pris en compte (ex. : 'head pain' ~ 'headache').",
+                    disclaimerP5: "Note : Les noms des conditions peuvent être affichés dans la langue sélectionnée. La saisie des symptômes, le traitement des mots-clés et la logique de correspondance sont basés sur l'anglais. Les règles sont stockées avec des symptômes en anglais.",
+                    ruleEditorSubtextScreen: "Visualisez les règles dans la grille. Modifiez le JSON brut ci-dessous. Chaque règle nécessite un 'id' (numéro), des \"symptoms\" en anglais (tableau), \"condition_en\" (nom anglais), et optionnellement \"condition_fr\" (nom français).",
+                    loadRulesBtn: "Charger les Règles de Démo",
+                    applyRulesBtn: "Appliquer les Règles de l'Éditeur",
+                    symptomInputTitle: "Saisie des symptômes (Anglais)",
+                    symptomInputSubtext: "Décrivez les symptômes naturellement en anglais (par ex., « I'm feeling a lot of head pain and my body is aching »). Les mots non essentiels seront filtrés.",
+                    symptomInputPlaceholder: "Saisissez les symptômes en anglais ici...",
+                    runEngineBtn: "Exécuter le Moteur",
+                    outputTitle: "Conditions Potentielles Classées",
+                    outputAreaDefaultMsg: "Les résultats apparaîtront ici...",
+                    rulesLoadedSuccess: "Règles de démo ({count}) chargées dans l'éditeur.",
+                    rulesAppliedSuccess: "{count} règles de l'éditeur appliquées au moteur avec succès.",
+                    rulesSavedSuccess: "Règles sauvegardées dans le stockage du navigateur.",
+                    rulesImportedSuccess: "Règles importées dans l'éditeur depuis le fichier. Vérifiez et cliquez sur 'Appliquer' ou 'Sauvegarder'.",
+                    rulesImportError: "Erreur d'importation du fichier : {error}",
+                    rulesEmpty: "L'éditeur de règles est vide. Aucune règle appliquée ou sauvegardée.",
+                    rulesParseError: "Erreur d'analyse ou de traitement des règles : {error}",
+                    rulesApplyFailed: "Échec de l'application des règles. Vérifiez le format JSON.",
+                    symptomsPleaseEnter: "Veuillez saisir des symptômes.",
+                    noKeywordsFound: "Aucun mot-clé pertinent trouvé. Décrivez plus spécifiquement.",
+                    noMatchesFound: "Aucune condition correspondante trouvée. (N'oubliez pas l'AVERTISSEMENT - consultez un médecin)",
+                    matchScore: "Force de Corresp. : {score} sur {total} mots-clés de règle.",
+                    matchedRuleKeywordsLabel: "Mots-clés de Règle Corresp. :",
+                    none: "Aucun"
+                }
+            };
+            let currentLang = 'en';
+            function setLanguage(lang) { currentLang = lang; renderTranslations(); }
+            function getCurrentLanguage() { return currentLang; }
+            function T(key, params = {}) {
+                let text = translations[currentLang]?.[key] || translations['en']?.[key] || `Missing: ${key}`;
+                for (const param in params) text = text.replace(new RegExp(`{${param}}`, 'g'), params[param]);
+                return text;
+            }
+            function renderTranslations() {
+                document.title = T('pageTitle');
+                document.querySelectorAll('[data-translate-key]').forEach(el => {
+                    const key = el.getAttribute('data-translate-key');
+                    if (['disclaimerP1', 'disclaimerP2'].includes(key)) el.innerHTML = T(key);
+                    else el.textContent = T(key);
+                });
+                document.querySelectorAll('[data-translate-key-placeholder]').forEach(el => el.placeholder = T(el.getAttribute('data-translate-key-placeholder')));
+                document.getElementById('languageToggle').textContent = T('languageToggle');
+            }
+            function toggleLanguage() {
+                setLanguage(currentLang === 'en' ? 'fr' : 'en');
+                if (document.getElementById('outputArea').querySelector('.output-item')) {
+                     const symptomText = UIManager.getSymptomInput();
+                     if (symptomText.trim()) UIManager.displayResults(ReasoningEngine.findMatches(symptomText));
+                }
+                if (document.getElementById('ruleEditorScreen').style.display === 'block') {
+                    UIManager.renderRulesGrid(); 
+                }
+            }
+            return { setLanguage, getCurrentLanguage, T, renderTranslations, toggleLanguage };
+        })();
+
+        // --- CONFIGURATION ---
+        const Config = { 
+            stopWords: new Set([ /* English stopwords... */
+                "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "am",
+                "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "is",
+                "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "are",
+                "these", "those", "was", "were", "be", "been", "being", "have", "has", "had", "a", "an", "the",
+                "having", "do", "does", "did", "doing", "and", "but", "if", "or", "because", "as", "of", "at", "by",
+                "until", "while", "for", "with", "about", "against", "between", "into", "through", "during", "before",
+                "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "then",
+                "again", "further", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each",
+                "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than",
+                "too", "very", "s", "t", "can", "will", "just", "don", "should", "now", "im", "ive", "id", "youre", "hes",
+                "shes", "its", "were", "theyre", "feeling", "experiencing", "suffer", "suffering", "complain", "bit",
+                "lot", "slight", "slightly", "mild", "mildly", "severe", "severely", "bad", "terrible", "persistent",
+                "intermittent", "sensation", "also", "get", "getting", "got", "seems", "like", "really", "quite", "much", "feel"
+            ]),
+            synonymMap: { /* English synonyms... */
+                'headach': ['head pain', 'cephalalgia'], 'fatigu': ['tire', 'exhaust', 'weari'],
+                'fever': ['high temperatur', 'pyrexia'], 'nausea': ['sick stomach', 'queasi'],
+                'rash': ['skin erupt', 'blotch'], 'breathless': ['short breath', 'dyspnea'],
+                'pain': ['ach', 'discomfort', 'sore'], 'swell': ['puffi', 'enlarg'], 'dizzi': ['lighthead', 'vertigo']
+            },
+            stemmer: (word) => { /* English stemmer... */
+                if (word.length < 3) return word;
+                const step1bEnds = {'eedly': 'ee', 'eed': 'ee'};
+                for (const [suffix, replacement] of Object.entries(step1bEnds)) {
+                    if (word.endsWith(suffix)) return word.slice(0, -suffix.length) + replacement;
+                }
+                let commonSuffixes = [
+                    "ational", "tional", "enci", "anci", "izer", "abli", "alli", "entli", "eli", "ousli", "ization", "ation", "ator",
+                    "alism", "iveness", "fulness", "ousness", "aliti", "iviti", "biliti", "logi", "icate", "ative", "alize", "iciti",
+                    "ical", "ful", "ness", "ing", "ed", "es", "s", "ly", "er", "or", "ic", "al", "en", "ize", "ate", "ent", "ion", 
+                    "ou", "is", "ive"
+                ];
+                commonSuffixes.sort((a,b) => b.length - a.length);
+                for (const suffix of commonSuffixes) {
+                    if (word.endsWith(suffix)) {
+                        const stem = word.slice(0, -suffix.length);
+                        if (stem.length > 1) { 
+                            if (suffix === 's' && (stem.endsWith('s') || stem.endsWith('u') || stem.endsWith('i'))) continue;
+                            if ((suffix === 'ed' || suffix === 'ing') && stem.length < 2) continue;
+                            if (suffix === 'ly' && stem.length < 2) continue;
+                            return stem;
+                        }
+                    }
+                }
+                return word;
+            }
+        };
+
+        // --- TEXT PROCESSING MODULE ---
+        const TextProcessor = (() => {
+            function getKeywords(text) { 
+                if (!text || typeof text !== 'string') return [];
+                let processedText = text.toLowerCase().replace(/[^\w\s'-]/g, '');
+                const words = processedText.split(/\s+/).filter(w => w.length > 0 && !Config.stopWords.has(w));
+                const stemmedWords = words.map(w => Config.stemmer(w));
+                const finalKeywords = new Set();
+                stemmedWords.forEach(sw => {
+                    finalKeywords.add(sw);
+                    Object.entries(Config.synonymMap).forEach(([keyStem, synStems]) => {
+                        const allStems = [keyStem, ...synStems.map(s => Config.stemmer(s.toLowerCase().replace(/[^\w\s'-]/g, '')))];
+                        if (allStems.includes(sw)) allStems.forEach(s => finalKeywords.add(s));
+                    });
+                });
+                return [...finalKeywords];
+            }
+            return { getKeywords };
+        })();
+
+        // --- RULE MANAGEMENT MODULE ---
+        const RuleManager = (() => {
+            let currentRules = []; 
+            let sourceRulesForEditor = []; 
+
+            // Expanded Rule Set with IDs (approx. 200 rules)
+            // For brevity, only a small portion is shown here.
+            // Ensure the full list with unique IDs and condition_fr placeholders is used.
+            const defaultDemoRulesSource = [
+                {"id": 1, "symptoms": ["high fever", "persistent cough", "body aches all over", "extreme tiredness", "chills"], "condition_en": "Demo: Flu-like Illness Pattern A", "condition_fr": "Démo : Modèle de maladie de type grippal A"},
+                {"id": 2, "symptoms": ["sneezing fits", "runny nose", "itchy and watery eyes", "tickle in throat"], "condition_en": "Demo: Allergic Reaction Pattern", "condition_fr": "Démo : Modèle de réaction allergique"},
+                {"id": 3, "symptoms": ["sore throat", "difficulty swallowing food", "swollen neck glands", "mild fever"], "condition_en": "Demo: Throat Infection Pattern", "condition_fr": "Démo : Modèle d'infection de la gorge"},
+                {"id": 4, "symptoms": ["constant headache", "feeling very fatigued", "dizziness spells", "trouble concentrating"], "condition_en": "Demo: General Malaise Pattern A", "condition_fr": "Démo : Modèle de malaise général A"},
+                {"id": 5, "symptoms": ["skin rash", "itching skin", "red blotches on skin", "slight fever"], "condition_en": "Demo: Skin Irritation Pattern", "condition_fr": "Démo : Modèle d'irritation cutanée"},
+                {"id": 6, "symptoms": ["shortness of breath especially on exertion", "wheezing sound", "tight chest feeling", "coughing spells"], "condition_en": "Demo: Respiratory Distress Pattern A (Seek medical attention if severe)", "condition_fr": "Démo : Modèle de détresse respiratoire A (Consultez un médecin si grave)"},
+                {"id": 7, "symptoms": ["nausea", "vomiting after meals", "diarrhea", "abdominal cramps or pain"], "condition_en": "Demo: Digestive Upset Pattern A", "condition_fr": "Démo : Modèle de troubles digestifs A"},
+                {"id": 8, "symptoms": ["painful urination", "frequent urge to urinate", "cloudy or strong-smelling urine"], "condition_en": "Demo: Urinary Tract Discomfort Pattern", "condition_fr": "Démo : Modèle d'inconfort des voies urinaires"},
+                {"id": 9, "symptoms": ["joint pain", "stiff joints in morning", "swollen joints", "reduced movement"], "condition_en": "Demo: Joint Discomfort Pattern", "condition_fr": "Démo : Modèle d'inconfort articulaire"},
+                {"id": 10, "symptoms": ["ear pain", "muffled hearing", "fever", "sometimes fluid from ear"], "condition_en": "Demo: Ear Discomfort Pattern", "condition_fr": "Démo : Modèle d'inconfort auriculaire"},
+                {"id": 11, "symptoms": ["back pain", "muscle spasms in back", "difficulty bending"], "condition_en": "Demo: Back Strain Pattern", "condition_fr": "Démo : Modèle de tension dorsale"},
+                {"id": 12, "symptoms": ["unexplained weight loss", "persistent fatigue", "night sweats"], "condition_en": "Demo: Systemic Concern Pattern A (Consult Doctor)", "condition_fr": "Démo : Modèle de préoccupation systémique A (Consultez un médecin)"},
+                {"id": 13, "symptoms": ["blurry vision", "eye strain", "headaches after reading"], "condition_en": "Demo: Vision Concern Pattern", "condition_fr": "Démo : Modèle de préoccupation visuelle"},
+                {"id": 14, "symptoms": ["heart palpitations", "feeling anxious", "shortness of breath"], "condition_en": "Demo: Anxiety-like Symptoms Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de symptômes de type anxieux (Consultez un médecin)"},
+                {"id": 15, "symptoms": ["memory problems", "confusion", "difficulty with familiar tasks"], "condition_en": "Demo: Cognitive Concern Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de préoccupation cognitive (Consultez un médecin)"},
+                {"id": 16, "symptoms": ["persistent sadness", "loss of interest in activities", "sleep disturbances", "fatigue"], "condition_en": "Demo: Mood Concern Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de préoccupation de l'humeur (Consultez un médecin)"},
+                {"id": 17, "symptoms": ["tingling in hands or feet", "numbness in extremities", "weakness"], "condition_en": "Demo: Neurological Sensation Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de sensation neurologique (Consultez un médecin)"},
+                {"id": 18, "symptoms": ["bruising easily", "bleeding gums", "prolonged bleeding from cuts"], "condition_en": "Demo: Bleeding/Bruising Concern Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de préoccupation de saignement/ecchymose (Consultez un médecin)"},
+                {"id": 19, "symptoms": ["excessive thirst", "frequent urination", "unexplained fatigue", "blurred vision"], "condition_en": "Demo: Metabolic Concern Pattern A (Consult Doctor)", "condition_fr": "Démo : Modèle de préoccupation métabolique A (Consultez un médecin)"},
+                {"id": 20, "symptoms": ["difficulty sleeping", "waking up frequently", "daytime sleepiness"], "condition_en": "Demo: Sleep Disturbance Pattern", "condition_fr": "Démo : Modèle de perturbation du sommeil"},
+                {"id": 21, "symptoms": ["hair loss", "brittle nails", "dry skin"], "condition_en": "Demo: Hair/Nail/Skin Change Pattern", "condition_fr": "Démo : Modèle de changement cheveux/ongles/peau"},
+                {"id": 22, "symptoms": ["hoarse voice", "persistent sore throat", "difficulty speaking"], "condition_en": "Demo: Voice Change Pattern", "condition_fr": "Démo : Modèle de changement de voix"},
+                {"id": 23, "symptoms": ["swollen ankles or feet", "weight gain", "shortness of breath"], "condition_en": "Demo: Fluid Retention Pattern (Consult Doctor)", "condition_fr": "Démo : Modèle de rétention d'eau (Consultez un médecin)"},
+                {"id": 24, "symptoms": ["chest pain or discomfort", "pain radiating to arm or jaw", "shortness of breath", "nausea"], "condition_en": "Demo: Serious Chest Discomfort Pattern (URGENT - Seek immediate medical attention)", "condition_fr": "Démo : Modèle d'inconfort thoracique grave (URGENT - Consultez immédiatement un médecin)"},
+                {"id": 25, "symptoms": ["sudden weakness on one side of body", "slurred speech", "facial drooping", "sudden severe headache"], "condition_en": "Demo: Stroke-like Symptoms Pattern (URGENT - Seek immediate medical attention)", "condition_fr": "Démo : Modèle de symptômes de type AVC (URGENT - Consultez immédiatement un médecin)"}
+            ];
+
+            // Generate additional placeholder rules to reach ~200
+            for (let i = 26; i <= 200; i++) {
+                let symptoms = [];
+                const numSymptoms = Math.floor(Math.random() * 3) + 2; // 2 to 4 symptoms
+                const commonSymptomsPool = ["mild pain", "slight swelling", "general discomfort", "intermittent ache", "feeling off", "low energy", "minor irritation", "some redness", "occasional dizziness", "transient numbness", "temporary rash", "passing headache"];
+                for (let j = 0; j < numSymptoms; j++) {
+                    symptoms.push(commonSymptomsPool[Math.floor(Math.random() * commonSymptomsPool.length)] + (Math.random() > 0.7 ? ` type ${String.fromCharCode(65 + j)}` : ''));
+                }
+                defaultDemoRulesSource.push({
+                    "id": i,
+                    "symptoms": symptoms,
+                    "condition_en": `Demo Condition EN #${i}`,
+                    "condition_fr": `Démo Condition FR #${i}`
+                });
+            }
+
+
+            function getSourceRulesForEditor() { return sourceRulesForEditor; }
+            function setSourceRulesForEditor(newSourceRules) { sourceRulesForEditor = JSON.parse(JSON.stringify(newSourceRules)); }
+            function loadRulesFromStorage() {
+                const storedRules = localStorage.getItem('medicalCheckerRules');
+                if (storedRules) {
+                    try {
+                        setSourceRulesForEditor(JSON.parse(storedRules));
+                        return processAndSetEngineRules(getSourceRulesForEditor());
+                    } catch (e) {
+                        console.error("Error parsing rules from localStorage:", e);
+                        setSourceRulesForEditor(defaultDemoRulesSource);
+                        return processAndSetEngineRules(getSourceRulesForEditor());
+                    }
+                } else {
+                    setSourceRulesForEditor(defaultDemoRulesSource);
+                    return processAndSetEngineRules(getSourceRulesForEditor());
+                }
+            }
+            function saveRulesToStorage(rulesToSave) { localStorage.setItem('medicalCheckerRules', JSON.stringify(rulesToSave)); }
+            function processAndSetEngineRules(rulesSourceArray) { 
+                currentRules = rulesSourceArray.map(rule => {
+                    let keywords = new Set();
+                    (rule.symptoms || []).forEach(phrase => TextProcessor.getKeywords(phrase).forEach(kw => keywords.add(kw)));
+                    return { 
+                        id: rule.id, // Carry over ID
+                        condition_en: rule.condition_en, 
+                        condition_fr: rule.condition_fr || rule.condition_en, 
+                        keywords: [...keywords], 
+                        originalSymptoms: rule.symptoms 
+                    };
+                }).filter(rule => rule.keywords.length > 0);
+                return currentRules.length;
+            }
+            function getEngineRules() { return currentRules; }
+            function getDefaultRulesSourceForEditor() { return JSON.parse(JSON.stringify(defaultDemoRulesSource));}
+            return { loadRulesFromStorage, saveRulesToStorage, processAndSetEngineRules, getEngineRules, getSourceRulesForEditor, setSourceRulesForEditor, getDefaultRulesSourceForEditor };
+        })();
+
+        // --- REASONING ENGINE MODULE ---
+        const ReasoningEngine = (() => {
+            function findMatches(inputSymptomsText) { 
+                const rules = RuleManager.getEngineRules();
+                if (rules.length === 0) return { status: "no_rules", matches: [] };
+                const inputKeywords = TextProcessor.getKeywords(inputSymptomsText); 
+                if (inputKeywords.length === 0) return { status: "no_keywords", matches: [] };
+                const inputKeywordsSet = new Set(inputKeywords);
+                let potentialMatches = [];
+                rules.forEach(rule => {
+                    if (rule.keywords.length === 0) return;
+                    const matchedRuleKeywords = rule.keywords.filter(rk => inputKeywordsSet.has(rk));
+                    if (matchedRuleKeywords.length > 0) {
+                        potentialMatches.push({
+                            id: rule.id, // Include ID in match object
+                            condition_en: rule.condition_en, condition_fr: rule.condition_fr,
+                            score: matchedRuleKeywords.length, totalRuleKeywords: rule.keywords.length, 
+                            matchedKeywords: matchedRuleKeywords, inputKeywordsUsed: inputKeywords 
+                        });
+                    }
+                });
+                potentialMatches.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    const ratioA = a.score / Math.max(1, a.totalRuleKeywords);
+                    const ratioB = b.score / Math.max(1, b.totalRuleKeywords);
+                    if (ratioB !== ratioA) return ratioB - ratioA;
+                    return a.condition_en.localeCompare(b.condition_en); 
+                });
+                return { status: potentialMatches.length > 0 ? "matches_found" : "no_matches", matches: potentialMatches };
+            }
+            return { findMatches };
+        })();
+
+        // --- UI MODULE & VIEW MANAGEMENT ---
+        const UIManager = (() => {
+            const el = id => document.getElementById(id);
+            const mainAppView = el('mainAppView'), ruleEditorScreen = el('ruleEditorScreen');
+            const ruleEditorTextarea = el('ruleEditor'), symptomInput = el('symptomInput');
+            const outputArea = el('outputArea'), ruleError = el('ruleError'), rulesGridBody = el('rulesGridBody');
+
+            function showRuleEditorScreen() {
+                mainAppView.style.display = 'none';
+                ruleEditorScreen.style.display = 'block';
+                setRuleEditorTextareaContent(RuleManager.getSourceRulesForEditor()); 
+                renderRulesGrid(); 
+            }
+            function hideRuleEditorScreen() {
+                ruleEditorScreen.style.display = 'none';
+                mainAppView.style.display = 'flex';
+            }
+            function setRuleEditorTextareaContent(rulesSourceArray) { ruleEditorTextarea.value = JSON.stringify(rulesSourceArray, null, 2); }
+            function getRuleEditorTextareaContent() { return ruleEditorTextarea.value; }
+            function getSymptomInput() { return symptomInput.value; }
+            function showRuleError(key, err) { ruleError.textContent = I18n.T(key, {error: err?.message || String(err) }); }
+            function clearRuleError() { ruleError.textContent = ''; }
+            function showMessageInOutput(key, type = "info", params = {}) {
+                let c = "text-gray-700";
+                if (type === "success") c = "text-green-600 font-medium";
+                if (type === "warning") c = "text-yellow-600 font-medium";
+                if (type === "error") c = "text-red-600 font-medium";
+                outputArea.innerHTML = `<p class="${c}">${I18n.T(key, params)}</p>`;
+            }
+            function renderRulesGrid() {
+                rulesGridBody.innerHTML = ''; 
+                let rulesToDisplay = [];
+                try {
+                    rulesToDisplay = JSON.parse(getRuleEditorTextareaContent());
+                    if (!Array.isArray(rulesToDisplay)) throw new Error("Rules not an array");
+                } catch (e) {
+                    const row = rulesGridBody.insertRow();
+                    const cell = row.insertCell(); cell.colSpan = 4; // Adjusted for ID column
+                    cell.textContent = I18n.T("rulesParseError", {error: e.message});
+                    cell.style.color = "red"; return;
+                }
+                rulesToDisplay.forEach(rule => {
+                    const row = rulesGridBody.insertRow();
+                    const idCell = row.insertCell();
+                    const symptomsCell = row.insertCell();
+                    const conditionEnCell = row.insertCell();
+                    const conditionFrCell = row.insertCell();
+                    
+                    idCell.textContent = rule.id !== undefined ? rule.id : 'N/A';
+                    const symptomListDiv = document.createElement('div');
+                    symptomListDiv.className = 'symptom-list';
+                    (rule.symptoms || []).slice(0, 3).forEach(symptom => { 
+                        const span = document.createElement('span'); span.textContent = symptom;
+                        symptomListDiv.appendChild(span);
+                    });
+                    if ((rule.symptoms || []).length > 3) {
+                        const moreSpan = document.createElement('span');
+                        moreSpan.textContent = `... (${(rule.symptoms || []).length - 3} more)`;
+                        moreSpan.style.fontStyle = 'italic';
+                        symptomListDiv.appendChild(moreSpan);
+                    }
+                    symptomsCell.appendChild(symptomListDiv);
+                    conditionEnCell.textContent = rule.condition_en || 'N/A';
+                    conditionFrCell.textContent = rule.condition_fr || rule.condition_en || 'N/A';
+                });
+            }
+            function displayResults(result) {
+                if (result.status === "no_rules") { showMessageInOutput("rulesEmpty", "warning"); return; }
+                if (result.status === "no_keywords") { showMessageInOutput("noKeywordsFound", "warning"); return; }
+                if (result.status === "no_matches") { showMessageInOutput("noMatchesFound", "info"); return; }
+                if (result.status === "matches_found") {
+                    const currentLang = I18n.getCurrentLanguage();
+                    outputArea.innerHTML = result.matches.map(m => {
+                        const conditionName = currentLang === 'fr' ? (m.condition_fr || m.condition_en) : m.condition_en;
+                        const kwHtml = m.matchedKeywords.map(k => `<span class="keyword">${k}</span>`).join(' ');
+                        return `
+                            <div class="output-item">
+                                <div class="condition-name">${conditionName} (ID: ${m.id || 'N/A'})</div>
+                                <div class="match-score">${I18n.T('matchScore', {score: m.score, total: m.totalRuleKeywords})}</div>
+                                <div class="matched-keywords-info"><strong>${I18n.T('matchedRuleKeywordsLabel')}</strong> ${kwHtml || I18n.T('none')}</div>
+                            </div>`;
+                    }).join('');
+                }
+            }
+            return { 
+                setRuleEditorTextareaContent, getRuleEditorTextareaContent, getSymptomInput, 
+                showRuleError, clearRuleError, showMessageInOutput, displayResults,
+                showRuleEditorScreen, hideRuleEditorScreen, renderRulesGrid
+            };
+        })();
+
+        // --- EVENT HANDLERS & APP LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const el = id => document.getElementById(id);
+            el('languageToggle')?.addEventListener('click', I18n.toggleLanguage);
+            el('manageRulesBtn').addEventListener('click', UIManager.showRuleEditorScreen);
+            el('exitRuleEditorBtn').addEventListener('click', UIManager.hideRuleEditorScreen);
+
+            el('loadDefaultRulesBtn').addEventListener('click', () => {
+                UIManager.clearRuleError();
+                const defaultRules = RuleManager.getDefaultRulesSourceForEditor();
+                RuleManager.setSourceRulesForEditor(defaultRules); 
+                UIManager.setRuleEditorTextareaContent(defaultRules); 
+                UIManager.renderRulesGrid(); 
+                alert(I18n.T("rulesLoadedSuccess", {count: defaultRules.length}));
+            });
+
+            el('applyRulesBtn').addEventListener('click', () => {
+                UIManager.clearRuleError();
+                const rulesText = UIManager.getRuleEditorTextareaContent();
+                if (!rulesText.trim()) { alert(I18n.T("rulesEmpty")); return; }
+                try {
+                    const parsedRules = JSON.parse(rulesText);
+                    if (!Array.isArray(parsedRules)) throw new Error("Rules must be a JSON array.");
+                     parsedRules.forEach((r, i) => { 
+                        if (typeof r !== 'object' || r === null) throw new Error(`Rule ${i} not object.`);
+                        if (typeof r.id !== 'number' && typeof r.id !== 'string') throw new Error(`Rule ${i} missing or invalid 'id'.`); // Check for id
+                        if (!Array.isArray(r.symptoms) || !r.symptoms.every(s => typeof s === 'string')) throw new Error(`Rule ${i} bad symptoms.`);
+                        if (typeof r.condition_en !== 'string') throw new Error(`Rule ${i} missing 'condition_en'.`);
+                    });
+                    RuleManager.setSourceRulesForEditor(parsedRules); 
+                    const numAppliedToEngine = RuleManager.processAndSetEngineRules(parsedRules); 
+                    UIManager.renderRulesGrid(); 
+                    alert(I18n.T("rulesAppliedSuccess", {count: numAppliedToEngine}));
+                } catch (e) { UIManager.showRuleError("rulesParseError", e); }
+            });
+
+            el('saveRulesBtn').addEventListener('click', () => {
+                UIManager.clearRuleError();
+                try {
+                    const rulesToSave = JSON.parse(UIManager.getRuleEditorTextareaContent());
+                     if (!Array.isArray(rulesToSave)) throw new Error("Rules format is not a valid array.");
+                    RuleManager.saveRulesToStorage(rulesToSave);
+                    alert(I18n.T("rulesSavedSuccess"));
+                } catch (e) { UIManager.showRuleError("rulesParseError", e); }
+            });
+
+            el('exportRulesBtn').addEventListener('click', () => {
+                UIManager.clearRuleError();
+                try {
+                    const rulesJson = UIManager.getRuleEditorTextareaContent();
+                    JSON.parse(rulesJson); 
+                    const blob = new Blob([rulesJson], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'medical_rules.json';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                } catch (e) { UIManager.showRuleError("rulesParseError", e); }
+            });
+            
+            const importFileInput = el('importRulesFile');
+            importFileInput.addEventListener('change', (event) => {
+                UIManager.clearRuleError();
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedRules = JSON.parse(e.target.result);
+                            if (!Array.isArray(importedRules)) throw new Error("Imported file is not a valid JSON array of rules.");
+                            RuleManager.setSourceRulesForEditor(importedRules);
+                            UIManager.setRuleEditorTextareaContent(importedRules);
+                            UIManager.renderRulesGrid();
+                            alert(I18n.T("rulesImportedSuccess"));
+                        } catch (err) { UIManager.showRuleError("rulesImportError", err); } 
+                        finally { importFileInput.value = ''; }
+                    };
+                    reader.onerror = () => { UIManager.showRuleError("rulesImportError", {message: "File could not be read."}); importFileInput.value = ''; };
+                    reader.readAsText(file);
+                }
+            });
+
+            el('diagnoseBtn').addEventListener('click', () => {
+                const txt = UIManager.getSymptomInput();
+                if (!txt.trim()) { UIManager.showMessageInOutput("symptomsPleaseEnter", "warning"); return; }
+                UIManager.displayResults(ReasoningEngine.findMatches(txt));
+            });
+
+            I18n.setLanguage('en'); 
+            RuleManager.loadRulesFromStorage(); 
+        });
+    </script>
+</body>
+</html>
