@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuzzy Reasoning Engine - Canadian Cities</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for buttons and general appearance */
+        .btn-primary {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            font-size: 1rem; /* text-base */
+            border: none;
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8; /* blue-700 */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+            padding: 0.5rem 1rem; /* py-2 px-4 */
+            font-size: 0.875rem; /* text-sm */
+            border: none;
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 0.5rem;
+        }
+        /* Ensure table content doesn't overflow excessively */
+        #kbTable td {
+            max-width: 180px; /* Adjust as needed */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #kbTable td.description-col {
+            white-space: normal; /* Allow descriptions to wrap */
+            max-width: 250px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <header class="bg-blue-700 text-white p-6 rounded-lg shadow-lg mb-8">
+            <h1 class="text-3xl font-bold text-center">Fuzzy Reasoning Engine: Canadian Cities & Attractions</h1>
+        </header>
+
+        <nav class="mb-6 text-center">
+            <button id="navKbManagement" class="btn-primary mr-2">Knowledge Base Management</button>
+            <button id="navRunQuery" class="btn-primary">Run Query</button>
+        </nav>
+
+        <div id="kbManagementScreen" class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Knowledge Base Management</h2>
+            <div class="mb-4 space-x-2 flex flex-wrap gap-2">
+                <button id="btnImport" class="btn-primary">IMPORT</button>
+                <button id="btnExport" class="btn-primary">EXPORT</button>
+                <button id="btnAddNew" class="btn-primary">ADD NEW</button>
+                <button id="btnEditSelected" class="btn-primary">EDIT SELECTED</button>
+                <button id="btnDeleteSelected" class="btn-primary bg-red-600 hover:bg-red-700">DELETE SELECTED</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="kbTable" class="min-w-full bg-white border border-gray-300">
+                    <thead class="bg-blue-100">
+                        <tr>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700">Select</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700">ID</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700">Topic</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700">English Name</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700">French Name</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700 description-col">English Description</th>
+                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-blue-700 description-col">French Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+             <p id="kbMessage" class="mt-4 text-sm text-gray-600"></p>
+        </div>
+
+        <div id="runQueryScreen" class="bg-white p-6 rounded-lg shadow-md" style="display:none;">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Run Query</h2>
+            <div class="mb-4">
+                <label for="queryInput" class="block text-sm font-medium text-gray-700 mb-1">Enter your query (e.g., "old port attractions", "montreal museums"):</label>
+                <textarea id="queryInput" rows="3" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="algorithmSelect" class="block text-sm font-medium text-gray-700 mb-1">Fuzzy Matching Algorithm:</label>
+                <select id="algorithmSelect" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="combined" selected>Combined (Jaccard + Levenshtein)</option>
+                    <option value="jaccard">Token-based (Jaccard - TL1)</option>
+                    <option value="levenshtein">Sequence-based (Levenshtein - TL2)</option>
+                </select>
+            </div>
+            <button id="btnRunQuery" class="btn-primary">RUN QUERY</button>
+            <div id="queryResults" class="mt-6">
+                <h3 class="text-xl font-semibold mb-2 text-blue-600">Top 3 Matches:</h3>
+                <div id="resultsList" class="space-y-4">
+                    </div>
+                 <p id="queryMessage" class="mt-4 text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="entryModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle" class="text-xl font-semibold mb-4">Add New Entry</h3>
+            <form id="entryForm">
+                <input type="hidden" id="entryId">
+                <div class="mb-3">
+                    <label for="entryTopic" class="block text-sm font-medium text-gray-700">Topic:</label>
+                    <input type="text" id="entryTopic" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-3">
+                    <label for="entryEnglishName" class="block text-sm font-medium text-gray-700">English Name:</label>
+                    <input type="text" id="entryEnglishName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-3">
+                    <label for="entryFrenchName" class="block text-sm font-medium text-gray-700">French Name:</label>
+                    <input type="text" id="entryFrenchName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                </div>
+                <div class="mb-3">
+                    <label for="entryEnglishDescription" class="block text-sm font-medium text-gray-700">English Description:</label>
+                    <textarea id="entryEnglishDescription" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="entryFrenchDescription" class="block text-sm font-medium text-gray-700">French Description:</label>
+                    <textarea id="entryFrenchDescription" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required></textarea>
+                </div>
+                <div class="mt-4 space-x-2">
+                    <button type="submit" class="btn-primary">Save Entry</button>
+                    <button type="button" id="btnCancelModal" class="btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="ioModal" class="modal">
+        <div class="modal-content">
+            <h3 id="ioModalTitle" class="text-xl font-semibold mb-4">Import/Export Data</h3>
+            <textarea id="ioTextArea" rows="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" placeholder="Paste JSON data here to import, or copy data from here to export."></textarea>
+            <div class="mt-4 space-x-2">
+                <button id="btnConfirmIO" class="btn-primary">Confirm</button>
+                <button type="button" id="btnCancelIOModal" class="btn-secondary">Close</button>
+            </div>
+            <p id="ioMessage" class="mt-2 text-sm text-red-600"></p>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content w-full max-w-md">
+            <h3 id="confirmModalTitle" class="text-lg font-semibold mb-4">Confirm Action</h3>
+            <p id="confirmModalMessage" class="mb-6">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="btnConfirmYes" class="btn-primary bg-red-600 hover:bg-red-700">Yes</button>
+                <button id="btnConfirmNo" class="btn-secondary">No</button>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+    // --- CONFIGURATION ---
+    const WEIGHTS = {
+        name: 0.6,
+        description: 0.4,
+        type1: 0.7, // Weight for Jaccard similarity (used in 'combined' mode)
+        type2: 0.3  // Weight for Levenshtein similarity (used in 'combined' mode)
+    };
+
+    const ENGLISH_STOP_WORDS = new Set(["and", "or", "the", "a", "an", "is", "are", "of", "to", "in", "for", "with", "on", "it", "this", "that", "s"]);
+    const FRENCH_STOP_WORDS = new Set(["et", "ou", "le", "la", "les", "un", "une", "des", "est", "sont", "de", "à", "pour", "avec", "sur", "il", "elle", "ce", "cette", "aux", "du", "en"]);
+
+    // --- KNOWLEDGE BASE DATA ---
+    let knowledgeBase = [
+        // Sample data
+        { id: 1, topic: "city", english_name: "Toronto", french_name: "Toronto", english_description: "CN Tower, Ripley's Aquarium of Canada, Royal Ontario Museum, Art Gallery of Ontario, St. Lawrence Market", french_description: "Tour CN, Aquarium Ripley du Canada, Musée Royal de l'Ontario, Musée des beaux-arts de l'Ontario, Marché St. Lawrence" },
+        { id: 2, topic: "city", english_name: "Montreal", french_name: "Montréal", english_description: "Old Montreal, Mount Royal Park, Notre-Dame Basilica, Montreal Museum of Fine Arts, Jean-Talon Market", french_description: "Vieux-Montréal, Parc du Mont-Royal, Basilique Notre-Dame, Musée des beaux-arts de Montréal, Marché Jean-Talon" },
+        { id: 3, topic: "city", english_name: "Vancouver", french_name: "Vancouver", english_description: "Stanley Park, Granville Island, Grouse Mountain, Capilano Suspension Bridge, Gastown", french_description: "Parc Stanley, Granville Island, Mont Grouse, Pont suspendu de Capilano, Gastown" },
+        { id: 4, topic: "city", english_name: "Calgary", french_name: "Calgary", english_description: "Calgary Tower, Calgary Stampede, Heritage Park Historical Village, Studio Bell, Peace Bridge", french_description: "Tour de Calgary, Stampede de Calgary, Village historique Heritage Park, Studio Bell, Pont de la Paix" },
+        { id: 5, topic: "city", english_name: "Ottawa", french_name: "Ottawa", english_description: "Parliament Hill, Rideau Canal, Canadian Museum of History, National Gallery of Canada, ByWard Market", french_description: "Colline du Parlement, Canal Rideau, Musée canadien de l'histoire, Musée des beaux-arts du Canada, Marché By" },
+        { id: 6, topic: "city", english_name: "Edmonton", french_name: "Edmonton", english_description: "West Edmonton Mall, Muttart Conservatory, Fort Edmonton Park, Art Gallery of Alberta, Elk Island National Park", french_description: "West Edmonton Mall, Conservatoire Muttart, Parc Fort Edmonton, Musée des beaux-arts de l'Alberta, Parc national Elk Island" },
+        { id: 7, topic: "city", english_name: "Quebec City", french_name: "Québec", english_description: "Old Quebec, Plains of Abraham, Montmorency Falls, Citadelle of Quebec, Musée de la civilisation", french_description: "Vieux-Québec, Plaines d'Abraham, Chute Montmorency, Citadelle de Québec, Musée de la civilisation" },
+        { id: 8, topic: "city", english_name: "Winnipeg", french_name: "Winnipeg", english_description: "The Forks, Canadian Museum for Human Rights, Assiniboine Park Zoo, Exchange District, Manitoba Museum", french_description: "La Fourche, Musée canadien pour les droits de la personne, Zoo du parc Assiniboine, Quartier de la Bourse, Musée du Manitoba" },
+        { id: 9, topic: "city", english_name: "Hamilton", french_name: "Hamilton", english_description: "Royal Botanical Gardens, Canadian Warplane Heritage Museum, Dundurn Castle, Art Gallery of Hamilton, Webster's Falls", french_description: "Jardins botaniques royaux, Musée canadien du patrimoine des avions de guerre, Château Dundurn, Galerie d'art de Hamilton, Chutes Webster" },
+        { id: 10, topic: "city", english_name: "Halifax", french_name: "Halifax", english_description: "Halifax Citadel National Historic Site, Peggy's Cove, Halifax Public Gardens, Maritime Museum of the Atlantic, Halifax Waterfront Boardwalk", french_description: "Lieu historique national de la Citadelle-d'Halifax, Peggy's Cove, Jardins publics d'Halifax, Musée maritime de l'Atlantique, Promenade du front de mer d'Halifax" }
+    ];
+    let nextId = knowledgeBase.length > 0 ? Math.max(...knowledgeBase.map(item => item.id)) + 1 : 1;
+    let selectedKbEntryId = null;
+
+    // --- DOM ELEMENTS ---
+    const kbManagementScreen = document.getElementById('kbManagementScreen');
+    const runQueryScreen = document.getElementById('runQueryScreen');
+    const navKbManagement = document.getElementById('navKbManagement');
+    const navRunQuery = document.getElementById('navRunQuery');
+    const kbTableBody = document.getElementById('kbTable').getElementsByTagName('tbody')[0];
+    const kbMessage = document.getElementById('kbMessage');
+    const queryMessage = document.getElementById('queryMessage');
+
+    const entryModal = document.getElementById('entryModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const entryForm = document.getElementById('entryForm');
+    const entryIdInput = document.getElementById('entryId');
+    const entryTopicInput = document.getElementById('entryTopic');
+    const entryEnglishNameInput = document.getElementById('entryEnglishName');
+    const entryFrenchNameInput = document.getElementById('entryFrenchName');
+    const entryEnglishDescriptionInput = document.getElementById('entryEnglishDescription');
+    const entryFrenchDescriptionInput = document.getElementById('entryFrenchDescription');
+    const btnCancelModal = document.getElementById('btnCancelModal');
+
+    const ioModal = document.getElementById('ioModal');
+    const ioModalTitle = document.getElementById('ioModalTitle');
+    const ioTextArea = document.getElementById('ioTextArea');
+    const btnConfirmIO = document.getElementById('btnConfirmIO');
+    const btnCancelIOModal = document.getElementById('btnCancelIOModal');
+    const ioMessage = document.getElementById('ioMessage');
+    let currentIOAction = ''; // 'import' or 'export'
+
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmModalTitle = document.getElementById('confirmModalTitle');
+    const confirmModalMessage = document.getElementById('confirmModalMessage');
+    const btnConfirmYes = document.getElementById('btnConfirmYes');
+    const btnConfirmNo = document.getElementById('btnConfirmNo');
+    let confirmActionCallback = null;
+
+    const algorithmSelect = document.getElementById('algorithmSelect'); // New DOM element
+
+
+    // --- UTILITY FUNCTIONS ---
+    function showScreen(screenToShow) {
+        kbManagementScreen.style.display = 'none';
+        runQueryScreen.style.display = 'none';
+        screenToShow.style.display = 'block';
+    }
+
+    function showModal(modal) {
+        modal.style.display = 'block';
+    }
+
+    function closeModal(modal) {
+        modal.style.display = 'none';
+    }
+
+    function showKbMessage(message, isError = false) {
+        kbMessage.textContent = message;
+        kbMessage.className = `mt-4 text-sm ${isError ? 'text-red-600' : 'text-green-600'}`;
+        setTimeout(() => kbMessage.textContent = '', 3000);
+    }
+    function showQueryMessage(message, isError = false) {
+        queryMessage.textContent = message;
+        queryMessage.className = `mt-4 text-sm ${isError ? 'text-red-600' : 'text-green-600'}`;
+        setTimeout(() => queryMessage.textContent = '', 3000);
+    }
+
+    function showCustomConfirm(title, message, callback) {
+        confirmModalTitle.textContent = title;
+        confirmModalMessage.textContent = message;
+        confirmActionCallback = callback;
+        showModal(confirmModal);
+    }
+
+    btnConfirmYes.addEventListener('click', () => {
+        if (confirmActionCallback) {
+            confirmActionCallback();
+        }
+        closeModal(confirmModal);
+        confirmActionCallback = null;
+    });
+
+    btnConfirmNo.addEventListener('click', () => {
+        closeModal(confirmModal);
+        confirmActionCallback = null;
+    });
+
+
+    // --- KNOWLEDGE BASE MANAGEMENT FUNCTIONS ---
+    function renderKbTable() {
+        kbTableBody.innerHTML = ''; // Clear existing rows
+        knowledgeBase.forEach(entry => {
+            const row = kbTableBody.insertRow();
+            row.innerHTML = `
+                <td class="py-2 px-4 border-b"><input type="radio" name="kbSelect" value="${entry.id}" class="form-radio h-4 w-4 text-blue-600"></td>
+                <td class="py-2 px-4 border-b">${entry.id}</td>
+                <td class="py-2 px-4 border-b">${entry.topic}</td>
+                <td class="py-2 px-4 border-b">${entry.english_name}</td>
+                <td class="py-2 px-4 border-b">${entry.french_name}</td>
+                <td class="py-2 px-4 border-b description-col" title="${entry.english_description}">${entry.english_description.substring(0,100) + (entry.english_description.length > 100 ? '...' : '')}</td>
+                <td class="py-2 px-4 border-b description-col" title="${entry.french_description}">${entry.french_description.substring(0,100) + (entry.french_description.length > 100 ? '...' : '')}</td>
+            `;
+            row.addEventListener('click', () => {
+                const radio = row.querySelector('input[type="radio"]');
+                if (radio) radio.checked = true;
+                selectedKbEntryId = entry.id;
+            });
+        });
+        selectedKbEntryId = null; // Reset selection after render
+    }
+
+    document.getElementById('btnAddNew').addEventListener('click', () => {
+        modalTitle.textContent = 'Add New Entry';
+        entryForm.reset();
+        entryIdInput.value = '';
+        showModal(entryModal);
+    });
+
+    document.getElementById('btnEditSelected').addEventListener('click', () => {
+        const selectedRadio = document.querySelector('input[name="kbSelect"]:checked');
+        if (!selectedRadio) {
+            showKbMessage('Please select an entry to edit.', true);
+            return;
+        }
+        selectedKbEntryId = parseInt(selectedRadio.value);
+        const entry = knowledgeBase.find(e => e.id === selectedKbEntryId);
+        if (entry) {
+            modalTitle.textContent = 'Edit Entry';
+            entryIdInput.value = entry.id;
+            entryTopicInput.value = entry.topic;
+            entryEnglishNameInput.value = entry.english_name;
+            entryFrenchNameInput.value = entry.french_name;
+            entryEnglishDescriptionInput.value = entry.english_description;
+            entryFrenchDescriptionInput.value = entry.french_description;
+            showModal(entryModal);
+        }
+    });
+
+    entryForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = entryIdInput.value ? parseInt(entryIdInput.value) : null;
+        const entryData = {
+            topic: entryTopicInput.value,
+            english_name: entryEnglishNameInput.value,
+            french_name: entryFrenchNameInput.value,
+            english_description: entryEnglishDescriptionInput.value,
+            french_description: entryFrenchDescriptionInput.value,
+        };
+
+        if (id) { // Editing existing entry
+            const index = knowledgeBase.findIndex(e => e.id === id);
+            if (index !== -1) {
+                knowledgeBase[index] = { ...knowledgeBase[index], ...entryData };
+                showKbMessage('Entry updated successfully.');
+            }
+        } else { // Adding new entry
+            entryData.id = nextId++;
+            knowledgeBase.push(entryData);
+            showKbMessage('Entry added successfully.');
+        }
+        renderKbTable();
+        closeModal(entryModal);
+    });
+
+    btnCancelModal.addEventListener('click', () => closeModal(entryModal));
+
+    document.getElementById('btnDeleteSelected').addEventListener('click', () => {
+        const selectedRadio = document.querySelector('input[name="kbSelect"]:checked');
+        if (!selectedRadio) {
+            showKbMessage('Please select an entry to delete.', true);
+            return;
+        }
+        selectedKbEntryId = parseInt(selectedRadio.value);
+        showCustomConfirm('Delete Entry', `Are you sure you want to delete entry ID ${selectedKbEntryId}? This action cannot be undone.`, () => {
+            knowledgeBase = knowledgeBase.filter(e => e.id !== selectedKbEntryId);
+            renderKbTable();
+            showKbMessage('Entry deleted successfully.');
+            selectedKbEntryId = null;
+        });
+    });
+
+    // Import/Export functionality
+    document.getElementById('btnImport').addEventListener('click', () => {
+        currentIOAction = 'import';
+        ioModalTitle.textContent = 'Import Knowledge Base (JSON)';
+        ioTextArea.value = '';
+        ioTextArea.placeholder = 'Paste JSON data here to import.';
+        ioMessage.textContent = '';
+        showModal(ioModal);
+    });
+
+    document.getElementById('btnExport').addEventListener('click', () => {
+        currentIOAction = 'export';
+        ioModalTitle.textContent = 'Export Knowledge Base (JSON)';
+        ioTextArea.value = JSON.stringify(knowledgeBase, null, 2);
+        ioTextArea.placeholder = 'Copy data from here to export.';
+        ioMessage.textContent = '';
+        showModal(ioModal);
+    });
+
+    btnConfirmIO.addEventListener('click', () => {
+        if (currentIOAction === 'import') {
+            try {
+                const newData = JSON.parse(ioTextArea.value);
+                if (Array.isArray(newData) && newData.every(item => typeof item.id !== 'undefined' && item.topic && item.english_name)) {
+                    knowledgeBase = newData.map(item => ({...item, id: parseInt(item.id)})); // Ensure IDs are numbers
+                    nextId = knowledgeBase.length > 0 ? Math.max(...knowledgeBase.map(item => item.id)) + 1 : 1;
+                    renderKbTable();
+                    showKbMessage('Knowledge base imported successfully.');
+                    closeModal(ioModal);
+                } else {
+                    ioMessage.textContent = 'Invalid JSON format. Must be an array of objects with required fields (id, topic, english_name).';
+                }
+            } catch (error) {
+                ioMessage.textContent = 'Error parsing JSON: ' + error.message;
+            }
+        } else if (currentIOAction === 'export') {
+            navigator.clipboard.writeText(ioTextArea.value)
+                .then(() => {
+                    ioMessage.textContent = 'Data copied to clipboard!';
+                    setTimeout(() => ioMessage.textContent = '', 2000);
+                })
+                .catch(err => {
+                    ioMessage.textContent = 'Failed to copy. Please copy manually.';
+                    console.error('Clipboard copy failed:', err);
+                });
+        }
+    });
+
+    btnCancelIOModal.addEventListener('click', () => closeModal(ioModal));
+
+
+    // --- FUZZY MATCHING ENGINE ---
+
+    function preprocessText(text, lang = 'english') {
+        if (!text || typeof text !== 'string') return [];
+        text = text.toLowerCase();
+        const tokens = text.split(/[^a-z0-9àâçéèêëîïôûùüÿñæœ]+/u).filter(Boolean);
+        const stopWords = lang === 'french' ? FRENCH_STOP_WORDS : ENGLISH_STOP_WORDS;
+        return tokens.filter(token => !stopWords.has(token));
+    }
+
+    function jaccardSimilarity(set1, set2) {
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        const union = new Set([...set1, ...set2]);
+        if (union.size === 0) return 0;
+        return intersection.size / union.size;
+    }
+
+    function levenshteinDistance(s1, s2) {
+        if (!s1 || !s2) return (s1 || s2 || '').length;
+        const m = s1.length;
+        const n = s2.length;
+        const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+        for (let j = 1; j <= n; j++) {
+            for (let i = 1; i <= m; i++) {
+                const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                dp[i][j] = Math.min(
+                    dp[i - 1][j] + 1,      // deletion
+                    dp[i][j - 1] + 1,      // insertion
+                    dp[i - 1][j - 1] + cost // substitution
+                );
+            }
+        }
+        return dp[m][n];
+    }
+
+    function normalizedLevenshteinSimilarity(s1, s2) {
+        if (!s1 && !s2) return 1; 
+        if (!s1 || !s2) return 0; 
+        const maxLength = Math.max(s1.length, s2.length);
+        if (maxLength === 0) return 1;
+        const distance = levenshteinDistance(s1, s2);
+        return 1 - (distance / maxLength);
+    }
+
+    function calculateFieldScore(queryTokens, fieldText, fieldLang, algorithmType) {
+        const fieldTokens = preprocessText(fieldText, fieldLang);
+        const queryTokenSet = new Set(queryTokens);
+        const fieldTokenSet = new Set(fieldTokens);
+
+        const scoreT1 = jaccardSimilarity(queryTokenSet, fieldTokenSet); // Jaccard
+
+        const preprocessedQueryStr = queryTokens.join(' ');
+        const preprocessedFieldStr = fieldTokens.join(' ');
+        const scoreT2 = normalizedLevenshteinSimilarity(preprocessedQueryStr, preprocessedFieldStr); // Levenshtein
+        
+        if (algorithmType === 'jaccard') {
+            return scoreT1;
+        } else if (algorithmType === 'levenshtein') {
+            return scoreT2;
+        } else { // 'combined' or default
+            return (WEIGHTS.type1 * scoreT1) + (WEIGHTS.type2 * scoreT2);
+        }
+    }
+
+    function calculateMatchScore(query, record, algorithmType) {
+        const queryTokensEn = preprocessText(query, 'english');
+        const queryTokensFr = preprocessText(query, 'french');
+
+        const scoreName = Math.max(
+            calculateFieldScore(queryTokensEn, record.english_name, 'english', algorithmType),
+            calculateFieldScore(queryTokensEn, record.french_name, 'french', algorithmType),
+            calculateFieldScore(queryTokensFr, record.english_name, 'english', algorithmType),
+            calculateFieldScore(queryTokensFr, record.french_name, 'french', algorithmType)
+        );
+
+        const scoreDescription = Math.max(
+             calculateFieldScore(queryTokensEn, record.english_description, 'english', algorithmType),
+             calculateFieldScore(queryTokensEn, record.french_description, 'french', algorithmType),
+             calculateFieldScore(queryTokensFr, record.english_description, 'english', algorithmType),
+             calculateFieldScore(queryTokensFr, record.french_description, 'french', algorithmType)
+        );
+
+        const finalScore = (WEIGHTS.name * scoreName) + (WEIGHTS.description * scoreDescription);
+        return finalScore;
+    }
+
+
+    // --- RUN QUERY SCREEN FUNCTIONS ---
+    const queryInput = document.getElementById('queryInput');
+    const btnRunQuery = document.getElementById('btnRunQuery');
+    const resultsList = document.getElementById('resultsList');
+
+    btnRunQuery.addEventListener('click', () => {
+        const query = queryInput.value.trim();
+        const selectedAlgorithm = algorithmSelect.value; // Get selected algorithm
+
+        if (!query) {
+            showQueryMessage('Please enter a query.', true);
+            resultsList.innerHTML = '<p class="text-gray-500">Enter a query to see results.</p>';
+            return;
+        }
+        if (knowledgeBase.length === 0) {
+            showQueryMessage('Knowledge base is empty. Please add or import entries.', true);
+            resultsList.innerHTML = '<p class="text-gray-500">Knowledge base is empty.</p>';
+            return;
+        }
+
+        const scoredResults = knowledgeBase.map(record => ({
+            record,
+            score: calculateMatchScore(query, record, selectedAlgorithm) // Pass selected algorithm
+        }));
+
+        scoredResults.sort((a, b) => b.score - a.score); 
+
+        resultsList.innerHTML = ''; 
+        const top3 = scoredResults.slice(0, 3);
+
+        if (top3.length === 0 || top3.every(item => item.score <= 0)) { // Check if all top scores are 0 or less
+            resultsList.innerHTML = '<p class="text-gray-500">No relevant matches found for the selected algorithm.</p>';
+        } else {
+            top3.forEach(item => {
+                if (item.score > 0) { 
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'p-4 border border-gray-200 rounded-md shadow-sm bg-gray-50';
+                    resultDiv.innerHTML = `
+                        <h4 class="font-semibold text-lg text-blue-600">${item.record.english_name} / ${item.record.french_name}</h4>
+                        <p class="text-sm text-gray-700"><strong>ID:</strong> ${item.record.id}</p>
+                        <p class="text-sm text-gray-700"><strong>Topic:</strong> ${item.record.topic}</p>
+                        <p class="text-sm text-gray-700 description-col" title="${item.record.english_description}"><strong>EN Desc:</strong> ${item.record.english_description.substring(0,150) + (item.record.english_description.length > 150 ? '...' : '')}</p>
+                        <p class="text-sm text-gray-700 description-col" title="${item.record.french_description}"><strong>FR Desc:</strong> ${item.record.french_description.substring(0,150) + (item.record.french_description.length > 150 ? '...' : '')}</p>
+                        <p class="text-md font-semibold text-green-600 mt-2">Similarity Score: ${(item.score * 100).toFixed(2)}%</p>
+                    `;
+                    resultsList.appendChild(resultDiv);
+                }
+            });
+             if (resultsList.children.length === 0) { // If after filtering positive scores, list is empty
+                resultsList.innerHTML = '<p class="text-gray-500">No sufficiently relevant matches found for the selected algorithm.</p>';
+            }
+        }
+    });
+
+
+    // --- INITIALIZATION ---
+    navKbManagement.addEventListener('click', () => showScreen(kbManagementScreen));
+    navRunQuery.addEventListener('click', () => showScreen(runQueryScreen));
+
+    renderKbTable(); 
+    showScreen(kbManagementScreen); 
+    console.log("Fuzzy Reasoning Engine Initialized with Algorithm Selection.");
+
+</script>
+</body>
+</html>
