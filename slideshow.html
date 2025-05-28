@@ -1,1 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPMN Process Viewer</title>
+    <style>
+        @page {
+            size: landscape;
+            margin: 0.5in;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            padding-top: 70px; /* Space for top buttons */
+            padding-bottom: 70px; /* Space for bottom buttons */
+            box-sizing: border-box;
+        }
+
+        .top-controls {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-button {
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .control-button:hover {
+            background-color: #0056b3;
+        }
+        .control-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            text-align: center;
+            width: calc(100% - 40px);
+            max-width: 1050px; /* Max width for the diagram container */
+            margin-bottom: 20px;
+            flex-grow: 1; /* Allow container to take available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        svg {
+            font-family: Arial, sans-serif;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        .task-text, .event-text, .gateway-text, .flow-label, .lane-label, .process-title-svg {
+            font-size: 12px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        .lane-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .process-title-svg {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .gateway-text {
+            font-size: 11px;
+        }
+        .flow-label {
+            font-size: 10px;
+            fill: #333;
+        }
+        .event-text {
+            fill: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .bottom-controls {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        /* Print specific styles */
+        @media print {
+            body {
+                padding-top: 0;
+                padding-bottom: 0;
+                background-color: white; /* Ensure white background for printing */
+                display: block; /* Override flex for printing */
+            }
+            .top-controls, .bottom-controls {
+                display: none !important; /* Hide all controls when printing */
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+                width: 100%;
+                max-width: none;
+                padding: 0;
+                margin: 0;
+                height: auto;
+            }
+            svg {
+                width: 100%; /* Make SVG fill the printable area */
+                height: auto;
+                max-height: 95vh; /* Adjust as needed */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-controls">
+        <button id="printButton" class="control-button">Print</button>
+        <button id="languageToggle" class="control-button">Switch to French (Français)</button>
+    </div>
+
+    <div class="container">
+        <svg id="bpmnSvg" width="1000" height="650" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                </marker>
+            </defs>
+            <g id="slideContentContainer"></g>
+        </svg>
+    </div>
+
+    <div class="bottom-controls">
+        <button id="prevButton" class="control-button">Previous</button>
+        <button id="nextButton" class="control-button">Next</button>
+    </div>
+
+    <script>
+        const translations = {
+            // Slide 1: Pay Claim Approval
+            payClaimApproval: {
+                processTitle: { en: "Pay Claim Approval Process", fr: "Processus d'approbation des demandes de paiement" },
+                laneEmployee: { en: "Employee", fr: "Employé(e)" },
+                laneManager: { en: "Manager", fr: "Gestionnaire" },
+                laneFinance: { en: "Finance", fr: "Finances" },
+                eventStart: { en: "Start", fr: "Début" },
+                taskSubmitClaim: { en: "Submit Pay Claim", fr: "Soumettre la demande" },
+                taskReviewClaim: { en: "Review Claim", fr: "Examiner la demande" },
+                gatewayApproved: { en: "Approved?", fr: "Approuvé(e)?" },
+                taskCommunicateRejection: { en: "Communicate Rejection", fr: "Communiquer le rejet" },
+                eventEndRejected: { en: "End (Rejected)", fr: "Fin (Rejetée)" },
+                taskProcessApproved: { en: "Process Approved Claim", fr: "Traiter demande approuvée" },
+                eventEndProcessed: { en: "End (Processed)", fr: "Fin (Traitée)" },
+                flowYes: { en: "Yes", fr: "Oui" },
+                flowNo: { en: "No", fr: "Non" }
+            },
+            // Slide 2: Pay Claim Adjustment
+            payClaimAdjustment: {
+                processTitle: { en: "Pay Claim Adjustment Process", fr: "Processus d'ajustement des demandes de paiement" },
+                laneEmployee: { en: "Employee", fr: "Employé(e)" },
+                laneManager: { en: "Manager", fr: "Gestionnaire" },
+                laneHRPayroll: { en: "HR/Payroll", fr: "RH/Paie" },
+                eventStartAdjustment: { en: "Error Identified / Adjustment Request", fr: "Erreur identifiée / Demande d'ajustement" },
+                taskSubmitAdjustment: { en: "Submit Adjustment Request", fr: "Soumettre demande d'ajustement" },
+                taskReviewAdjustment: { en: "Review Adjustment", fr: "Examiner l'ajustement" },
+                gatewayAdjustmentApproved: { en: "Adjustment OK?", fr: "Ajustement OK?" },
+                taskUpdatePayroll: { en: "Update Payroll System", fr: "Mettre à jour système de paie" },
+                taskCommunicateUpdate: { en: "Communicate Update", fr: "Communiquer la mise à jour" },
+                eventEndAdjusted: { en: "End (Adjusted)", fr: "Fin (Ajustée)" },
+                eventEndAdjustmentDenied: { en: "End (Denied)", fr: "Fin (Refusée)" },
+                 flowYes: { en: "Yes", fr: "Oui" },
+                flowNo: { en: "No", fr: "Non" }
+            },
+            // Slide 3: Pay Stub Generation
+            payStubGeneration: {
+                processTitle: { en: "Pay Stub Generation Process", fr: "Processus de génération des fiches de paie" },
+                laneSystem: { en: "Payroll System (Automated)", fr: "Système de paie (Automatisé)" },
+                laneHRPayroll: { en: "HR/Payroll", fr: "RH/Paie" },
+                laneEmployeePortal: { en: "Employee / Portal", fr: "Employé(e) / Portail" },
+                eventScheduledRun: { en: "Scheduled Payroll Run", fr: "Exécution planifiée de la paie" },
+                taskCalculatePay: { en: "Calculate Gross/Deductions/Net", fr: "Calculer Brut/Déductions/Net" },
+                taskGenerateStubData: { en: "Generate Pay Stub Data", fr: "Générer données de la fiche" },
+                taskReviewRegister: { en: "Review Payroll Register (Optional)", fr: "Vérifier registre de paie (Optionnel)" },
+                gatewayPayrollApproved: { en: "Payroll OK?", fr: "Paie OK?" },
+                taskDistributeStubs: { en: "Distribute Pay Stubs", fr: "Distribuer les fiches de paie" },
+                eventEndStubsDistributed: { en: "End (Stubs Distributed)", fr: "Fin (Fiches distribuées)" },
+                dataPayStub: { en: "Pay Stub", fr: "Fiche de Paie" },
+                flowYes: { en: "Yes", fr: "Oui" },
+                flowNo: { en: "No", fr: "Non" } // For potential rejection path if review fails
+            },
+            // General UI
+            ui: {
+                toggleButtonToFr: { en: "Switch to French (Français)", fr: "Switch to English (Anglais)" },
+                toggleButtonToEn: { en: "Switch to English (Anglais)", fr: "Switch to French (Français)" },
+                printButton: { en: "Print", fr: "Imprimer" },
+                prevButton: { en: "Previous", fr: "Précédent" },
+                nextButton: { en: "Next", fr: "Suivant" }
+            }
+        };
+
+        const slides = [
+            // Slide 1: Pay Claim Approval (Detailed)
+            {
+                id: "payClaimApproval",
+                draw: function(svgContainer, lang) {
+                    const t = translations.payClaimApproval;
+                    svgContainer.innerHTML = `
+                        <text x="500" y="30" class="process-title-svg">${t.processTitle[lang]}</text>
+                        <rect x="20" y="60" width="960" height="160" fill="#E6E6FA" stroke="#A9A9A9" rx="5"/>
+                        <text x="70" y="85" class="lane-label">${t.laneEmployee[lang]}</text>
+                        <rect x="20" y="220" width="960" height="200" fill="#ADD8E6" stroke="#A9A9A9" rx="5"/>
+                        <text x="70" y="245" class="lane-label">${t.laneManager[lang]}</text>
+                        <rect x="20" y="420" width="960" height="160" fill="#90EE90" stroke="#A9A9A9" rx="5"/>
+                        <text x="70" y="445" class="lane-label">${t.laneFinance[lang]}</text>
+                        <circle cx="100" cy="140" r="20" fill="#4CAF50" stroke="black" stroke-width="1.5"/>
+                        <text x="100" y="140" class="event-text">${t.eventStart[lang]}</text>
+                        <rect x="180" y="115" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="255" y="140" class="task-text">${t.taskSubmitClaim[lang]}</text>
+                        <rect x="180" y="295" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="255" y="320" class="task-text">${t.taskReviewClaim[lang]}</text>
+                        <polygon points="400,320 435,290 470,320 435,350" fill="#FFEB3B" stroke="black"/>
+                        <text x="435" y="320" class="gateway-text">${t.gatewayApproved[lang]}</text>
+                        <rect x="530" y="240" width="160" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="610" y="265" class="task-text">${t.taskCommunicateRejection[lang]}</text>
+                        <circle cx="780" cy="265" r="20" fill="#F44336" stroke="black" stroke-width="2"/>
+                        <text x="780" y="265" class="event-text">${t.eventEndRejected[lang]}</text>
+                        <rect x="530" y="475" width="160" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="610" y="500" class="task-text">${t.taskProcessApproved[lang]}</text>
+                        <circle cx="780" cy="500" r="20" fill="#4CAF50" stroke="black" stroke-width="2"/>
+                        <text x="780" y="500" class="event-text">${t.eventEndProcessed[lang]}</text>
+                        <line x1="120" y1="140" x2="180" y2="140" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <line x1="255" y1="165" x2="255" y2="295" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <line x1="330" y1="320" x2="400" y2="320" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <line x1="435" y1="350" x2="435" y2="475" stroke="#333" stroke-width="1.5"/>
+                        <line x1="435" y1="475" x2="530" y2="475" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <text x="455" y="370" class="flow-label">${t.flowYes[lang]}</text>
+                        <line x1="690" y1="500" x2="760" y2="500" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <line x1="470" y1="320" x2="530" y2="265" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                        <text x="490" y="300" class="flow-label">${t.flowNo[lang]}</text>
+                        <line x1="690" y1="265" x2="760" y2="265" stroke="#333" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+                    `;
+                }
+            },
+            // Slide 2: Pay Claim Adjustment (Conceptual)
+            {
+                id: "payClaimAdjustment",
+                draw: function(svgContainer, lang) {
+                    const t = translations.payClaimAdjustment;
+                    svgContainer.innerHTML = `
+                        <text x="500" y="30" class="process-title-svg">${t.processTitle[lang]}</text>
+                        <rect x="20" y="60" width="960" height="150" fill="#E6E6FA" stroke="#A9A9A9" rx="5"/>
+                        <text x="80" y="85" class="lane-label">${t.laneEmployee[lang]}</text>
+                        <rect x="20" y="210" width="960" height="200" fill="#ADD8E6" stroke="#A9A9A9" rx="5"/>
+                        <text x="80" y="235" class="lane-label">${t.laneManager[lang]}</text>
+                        <rect x="20" y="410" width="960" height="200" fill="#F0E68C" stroke="#A9A9A9" rx="5"/>
+                        <text x="80" y="435" class="lane-label">${t.laneHRPayroll[lang]}</text>
+                        <circle cx="100" cy="135" r="20" fill="#4CAF50" stroke="black"/>
+                        <text x="100" y="135" class="event-text" font-size="8px">${t.eventStartAdjustment[lang].substring(0,25)}...</text>
+                        <rect x="200" y="110" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="275" y="135" class="task-text">${t.taskSubmitAdjustment[lang]}</text>
+                        <line x1="120" y1="135" x2="200" y2="135" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <rect x="200" y="285" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="275" y="310" class="task-text">${t.taskReviewAdjustment[lang]}</text>
+                        <line x1="275" y1="160" x2="275" y2="285" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <polygon points="400,310 430,285 460,310 430,335" fill="#FFEB3B" stroke="black"/>
+                        <text x="430" y="310" class="gateway-text">${t.gatewayAdjustmentApproved[lang]}</text>
+                        <line x1="350" y1="310" x2="400" y2="310" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <rect x="200" y="485" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="275" y="510" class="task-text">${t.taskUpdatePayroll[lang]}</text>
+                        <line x1="430" y1="335" x2="430" y2="485" stroke="#333" />
+                        <line x1="430" y1="485" x2="350" y2="485" stroke="#333" marker-end="url(#arrowhead)"/>
+                        <text x="450" y="355" class="flow-label">${t.flowYes[lang]}</text>
+
+                        <rect x="520" y="485" width="150" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="595" y="510" class="task-text">${t.taskCommunicateUpdate[lang]}</text>
+                        <line x1="350" y1="510" x2="520" y2="510" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <circle cx="750" cy="510" r="20" fill="#4CAF50" stroke="black"/>
+                        <text x="750" y="510" class="event-text">${t.eventEndAdjusted[lang]}</text>
+                        <line x1="670" y1="510" x2="730" y2="510" stroke="#333" marker-end="url(#arrowhead)"/>
+                        
+                        <circle cx="550" cy="310" r="20" fill="#F44336" stroke="black"/>
+                        <text x="550" y="310" class="event-text">${t.eventEndAdjustmentDenied[lang]}</text>
+                        <line x1="460" y1="310" x2="530" y2="310" stroke="#333" marker-end="url(#arrowhead)"/>
+                        <text x="480" y="290" class="flow-label">${t.flowNo[lang]}</text>
+                    `;
+                }
+            },
+            // Slide 3: Pay Stub Generation (Conceptual)
+            {
+                id: "payStubGeneration",
+                draw: function(svgContainer, lang) {
+                    const t = translations.payStubGeneration;
+                    svgContainer.innerHTML = `
+                        <text x="500" y="30" class="process-title-svg">${t.processTitle[lang]}</text>
+                        <rect x="20" y="60" width="960" height="200" fill="#D3D3D3" stroke="#A9A9A9" rx="5"/>
+                        <text x="150" y="85" class="lane-label">${t.laneSystem[lang]}</text>
+                        <rect x="20" y="260" width="960" height="150" fill="#F0E68C" stroke="#A9A9A9" rx="5"/>
+                        <text x="100" y="285" class="lane-label">${t.laneHRPayroll[lang]}</text>
+                        <rect x="20" y="410" width="960" height="150" fill="#B0E0E6" stroke="#A9A9A9" rx="5"/>
+                        <text x="120" y="435" class="lane-label">${t.laneEmployeePortal[lang]}</text>
+                        <circle cx="100" cy="160" r="20" fill="#4CAF50" stroke="black"/>
+                        <text x="100" y="160" class="event-text">${t.eventScheduledRun[lang].substring(0,15)}...</text>
+
+                        <rect x="200" y="100" width="180" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="290" y="125" class="task-text">${t.taskCalculatePay[lang]}</text>
+                        <line x1="120" y1="160" x2="245" y2="160" stroke="#333" /> <line x1="245" y1="160" x2="245" y2="150" stroke="#333" marker-end="url(#arrowhead)"/>
+
+
+                        <rect x="200" y="190" width="180" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="290" y="215" class="task-text">${t.taskGenerateStubData[lang]}</text>
+                        <line x1="290" y1="150" x2="290" y2="190" stroke="#333" marker-end="url(#arrowhead)"/>
+                        
+                        <rect x="450" y="190" width="40" height="50" fill="#FFFFE0" stroke="black" stroke-dasharray="4 2"/>
+                        <text x="470" y="215" class="task-text" font-size="9px">${t.dataPayStub[lang]}</text>
+                        <line x1="380" y1="215" x2="450" y2="215" stroke="#333" stroke-dasharray="4 2" marker-end="url(#arrowhead)"/>
+
+                        <rect x="200" y="315" width="180" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="290" y="340" class="task-text">${t.taskReviewRegister[lang]}</text>
+                        <line x1="290" y1="240" x2="290" y2="315" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <polygon points="450,340 480,315 510,340 480,365" fill="#FFEB3B" stroke="black"/>
+                        <text x="480" y="340" class="gateway-text">${t.gatewayPayrollApproved[lang]}</text>
+                        <line x1="380" y1="340" x2="450" y2="340" stroke="#333" marker-end="url(#arrowhead)"/>
+
+                        <rect x="200" y="465" width="180" height="50" fill="white" stroke="black" rx="5"/>
+                        <text x="290" y="490" class="task-text">${t.taskDistributeStubs[lang]}</text>
+                        <line x1="480" y1="365" x2="480" y2="465" stroke="#333" />
+                        <line x1="480" y1="465" x2="380" y2="465" stroke="#333" marker-end="url(#arrowhead)"/>
+                        <text x="500" y="385" class="flow-label">${t.flowYes[lang]}</text>
+
+                        <circle cx="450" cy="490" r="20" fill="#4CAF50" stroke="black"/>
+                        <text x="450" y="490" class="event-text">${t.eventEndStubsDistributed[lang].substring(0,10)}...</text>
+                        <line x1="380" y1="490" x2="430" y2="490" stroke="#333" marker-end="url(#arrowhead)"/>
+                    `;
+                }
+            }
+        ];
+
+        let currentLanguage = 'en';
+        let currentSlideIndex = 0;
+
+        const svgContainer = document.getElementById('slideContentContainer');
+        const languageToggleButton = document.getElementById('languageToggle');
+        const printButton = document.getElementById('printButton');
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+
+        function renderCurrentSlide() {
+            if (slides[currentSlideIndex] && typeof slides[currentSlideIndex].draw === 'function') {
+                slides[currentSlideIndex].draw(svgContainer, currentLanguage);
+            } else {
+                svgContainer.innerHTML = `<text x="500" y="325" text-anchor="middle" font-size="16px" fill="red">Error: Slide content not found or draw function missing.</text>`;
+            }
+            updateNavigationButtons();
+            updateUIText();
+        }
+
+        function updateNavigationButtons() {
+            prevButton.disabled = currentSlideIndex === 0;
+            nextButton.disabled = currentSlideIndex === slides.length - 1;
+        }
+
+        function updateUIText() {
+            const uiTrans = translations.ui;
+            languageToggleButton.textContent = currentLanguage === 'en' ? uiTrans.toggleButtonToFr[currentLanguage] : uiTrans.toggleButtonToEn[currentLanguage];
+            printButton.textContent = uiTrans.printButton[currentLanguage];
+            prevButton.textContent = uiTrans.prevButton[currentLanguage];
+            nextButton.textContent = uiTrans.nextButton[currentLanguage];
+        }
+
+        languageToggleButton.addEventListener('click', () => {
+            currentLanguage = currentLanguage === 'en' ? 'fr' : 'en';
+            renderCurrentSlide();
+        });
+
+        printButton.addEventListener('click', () => {
+            window.print();
+        });
+
+        prevButton.addEventListener('click', () => {
+            if (currentSlideIndex > 0) {
+                currentSlideIndex--;
+                renderCurrentSlide();
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (currentSlideIndex < slides.length - 1) {
+                currentSlideIndex++;
+                renderCurrentSlide();
+            }
+        });
+
+        // Initial Render
+        renderCurrentSlide();
+
+    </script>
+</body>
+</html>
 
