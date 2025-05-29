@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toastmasters Meeting Timer</title>
+    <link href="https://www.opendyslexic.org/opendyslexic.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Variables for theming */
+        :root {
+            --bg-color: #f3f4f6; /* gray-100 */
+            --card-bg-color: #ffffff;
+            --panel-bg-color: #f9fafb; /* gray-50 */
+            --text-color-primary: #1f2937; /* gray-900 */
+            --text-color-secondary: #4b5563; /* gray-700 */
+            --text-color-accent: #2563eb; /* blue-700 */
+            --border-color: #e5e7eb; /* gray-200 */
+            --input-bg-color: #ffffff;
+            --input-border-color: #d1d5db; /* gray-300 */
+            --button-green-bg: #16a34a; /* green-600 */
+            --button-green-hover-bg: #15803d; /* green-700 */
+            --button-red-bg: #dc2626; /* red-600 */
+            --button-red-hover-bg: #b91c1c; /* red-700 */
+            --button-yellow-bg: #d97706; /* yellow-600 */
+            --button-yellow-hover-bg: #b45309; /* yellow-700 */
+            --button-purple-bg: #9333ea; /* purple-600 */
+            --button-purple-hover-bg: #7e22ce; /* purple-700 */
+            --button-blue-bg: #2563eb; /* blue-600 */
+            --button-blue-hover-bg: #1d4ed8; /* blue-700 */
+            --button-gray-bg: #4b5563; /* gray-700 */
+            --button-gray-hover-bg: #374151; /* gray-800 */
+            --table-header-bg: #e5e7eb; /* gray-200 */
+            --table-header-text: #4b5563; /* gray-700 */
+            --table-row-hover-bg: #f3f4f6; /* gray-100 */
+            --highlight-row-bg: #dbeafe; /* blue-100 */
+
+            /* Font sizes */
+            --font-family-base: 'Inter', sans-serif;
+            --font-size-base: 1rem; /* 16px */
+            --font-size-sm: 0.875rem; /* 14px */
+            --font-size-md: 1rem; /* 16px */
+            --font-size-lg: 1.25rem; /* 20px */
+            --font-size-xl: 2.25rem; /* 36px */
+            --font-size-timer: 4.5rem; /* 72px */
+            --font-size-h1: 1.875rem; /* 30px */
+            --font-size-h2: 1.5rem; /* 24px */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: var(--font-family-base);
+            color: var(--text-color-primary);
+            font-size: var(--font-size-base);
+        }
+
+        /* Responsive font sizes for mobile */
+        @media (max-width: 768px) {
+            :root {
+                --font-size-base: 0.95rem;
+                --font-size-sm: 0.8rem;
+                --font-size-md: 0.95rem;
+                --font-size-lg: 1.1rem;
+                --font-size-xl: 1.75rem;
+                --font-size-timer: 3.5rem;
+                --font-size-h1: 1.5rem;
+                --font-size-h2: 1.25rem;
+            }
+        }
+
+
+        .bg-white { background-color: var(--card-bg-color); }
+        .bg-gray-50 { background-color: var(--panel-bg-color); }
+        .bg-gray-100 { background-color: var(--bg-color); } /* For recorded-times background */
+        .bg-gray-200 { background-color: var(--table-header-bg); } /* For timer display background */
+
+        .text-gray-800 { color: var(--text-color-primary); }
+        .text-gray-700 { color: var(--text-color-secondary); }
+        .text-gray-600 { color: var(--text-color-secondary); }
+        .text-gray-900 { color: var(--text-color-primary); }
+        .text-blue-700 { color: var(--text-color-accent); }
+
+        .border-gray-200 { border-color: var(--border-color); }
+
+        .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+        .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+
+        /* Buttons */
+        #start-btn { background-color: var(--button-green-bg); }
+        #start-btn:hover { background-color: var(--button-green-hover-bg); }
+        #stop-btn { background-color: var(--button-red-bg); }
+        #stop-btn:hover { background-color: var(--button-red-hover-bg); }
+        #reset-btn { background-color: var(--button-yellow-bg); }
+        #reset-btn:hover { background-color: var(--button-yellow-hover-bg); }
+        #export-csv-btn { background-color: var(--button-purple-bg); }
+        #export-csv-btn:hover { background-color: var(--button-purple-hover-bg); }
+        #prev-btn, #next-btn { background-color: var(--button-blue-bg); }
+        #prev-btn:hover, #next-btn:hover { background-color: var(--button-blue-hover-bg); }
+        #lang-toggle-btn { background-color: var(--button-gray-bg); }
+        #lang-toggle-btn:hover { background-color: var(--button-gray-hover-bg); }
+
+        /* Table specific styles */
+        .min-w-full thead tr { background-color: var(--table-header-bg); color: var(--table-header-text); }
+        .min-w-full tbody tr:hover { background-color: var(--table-row-hover-bg); }
+        .min-w-full tbody tr.bg-blue-100 { background-color: var(--highlight-row-bg); }
+
+        /* Input field styles */
+        #speaker-name-input {
+            background-color: var(--input-bg-color);
+            border-color: var(--input-border-color);
+            color: var(--text-color-secondary);
+        }
+
+        /* Apply font sizes using variables */
+        #app-title { font-size: var(--font-size-h1); }
+        #current-role-label { font-size: var(--font-size-lg); }
+        #current-role { font-size: var(--font-size-xl); }
+        #role-description-display { font-size: var(--font-size-md); }
+        #speaker-name-label { font-size: var(--font-size-md); }
+        #speaker-name-input { font-size: var(--font-size-md); }
+        #timer-display { font-size: var(--font-size-timer); }
+        #recorded-times p, #recorded-times span { font-size: var(--font-size-sm); }
+        #motivation-message { font-size: var(--font-size-md); }
+        .grid button, .flex button { font-size: var(--font-size-md); }
+        #agenda-title { font-size: var(--font-size-h2); }
+        .min-w-full th { font-size: var(--font-size-sm); }
+        .min-w-full td { font-size: var(--font-size-sm); }
+        #theme-select { font-size: var(--font-size-md); }
+
+        /* Light indicator styles */
+        .light-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0; /* Default grey */
+            border: 2px solid #ccc;
+            transition: background-color 0.3s ease;
+        }
+
+        .light-indicator.green {
+            background-color: #22c55e; /* Tailwind green-500 */
+        }
+
+        .light-indicator.yellow {
+            background-color: #eab308; /* Tailwind yellow-500 */
+        }
+
+        .light-indicator.red {
+            background-color: #ef4444; /* Tailwind red-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-4xl flex flex-col md:flex-row gap-8">
+        <div class="flex-1 flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg shadow-inner">
+            <h1 id="app-title" class="text-3xl font-bold text-gray-800 mb-6 text-center">Toastmasters Meeting Timer</h1>
+
+            <div class="mb-6 text-center">
+                <p id="current-role-label" class="text-xl font-semibold text-gray-700">Current Role:</p>
+                <p id="current-role" class="text-4xl font-extrabold text-blue-700 mt-2 mb-4">Meet and Greet</p>
+            </div>
+
+            <div class="mb-4 w-full max-w-sm text-center">
+                <p id="role-description-display" class="text-md text-gray-600 italic"></p>
+            </div>
+
+            <div class="mb-6 w-full max-w-sm">
+                <label for="speaker-name-input" id="speaker-name-label" class="block text-gray-700 text-sm font-bold mb-2">Speaker Name:</label>
+                <input type="text" id="speaker-name-input" placeholder="Enter Speaker Name"
+                       class="shadow appearance-none border rounded-lg w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-blue-500"
+                       aria-label="Speaker Name Input">
+            </div>
+
+            <div id="timer-display" class="text-7xl font-mono font-bold mb-8 p-4 rounded-lg shadow-md min-w-[200px] text-center">
+                00:00
+            </div>
+
+            <div class="flex space-x-4 mb-8">
+                <div id="green-light" class="light-indicator"></div>
+                <div id="yellow-light" class="light-indicator"></div>
+                <div id="red-light" class="light-indicator"></div>
+            </div>
+
+            <div id="recorded-times" class="text-sm text-gray-700 mb-4 w-full max-w-sm text-center p-3 rounded-lg shadow-inner">
+                <p><strong id="meeting-date-label">Meeting Date:</strong> <span id="meeting-date-display"></span></p>
+                <p><strong id="start-time-label">Start Time:</strong> <span id="start-time-display">N/A</span></p>
+                <p><strong id="stop-time-label">Stop Time:</strong> <span id="stop-time-display">N/A</span></p>
+                <p><strong id="actual-duration-label">Actual Duration:</strong> <span id="actual-duration-display">00:00</span></p>
+                <p id="motivation-message" class="text-blue-700 font-semibold mt-2 italic"></p>
+            </div>
+
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-sm">
+                <button id="start-btn" class="text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Start Timer">Start</button>
+                <button id="stop-btn" class="text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Stop Timer">Stop</button>
+                <button id="reset-btn" class="text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Reset Timer">Reset</button>
+                <button id="export-csv-btn" class="text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Export to CSV">Export CSV</button>
+            </div>
+            <div class="flex space-x-4 mt-4 w-full max-w-sm">
+                <button id="prev-btn" class="flex-1 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Previous Role">Previous Role</button>
+                <button id="next-btn" class="flex-1 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105" aria-label="Next Role">Next Role</button>
+            </div>
+
+            <div class="flex items-center space-x-4 mt-4">
+                <button id="lang-toggle-btn" class="text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out" aria-label="Toggle Language"></button>
+                <select id="theme-select" class="p-2 rounded-lg border border-gray-300 bg-white text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Select Display Theme">
+                    <option value="default">Default</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="blue-ocean">Blue Ocean</option>
+                    <option value="forest-green">Forest Green</option>
+                    <option value="warm-sunset">Warm Sunset</option>
+                    <option value="purple-haze">Purple Haze</option>
+                    <option value="monochrome">Monochrome</option>
+                    <option value="high-contrast">High Contrast</option>
+                    <option value="soft-pastel">Soft Pastel</option>
+                    <option value="vibrant-citrus">Vibrant Citrus</option>
+                    <option value="large-font">Large Font</option>
+                    <option value="dyslexic-font">Dyslexic Font</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex-1 p-4 rounded-lg shadow-inner overflow-y-auto max-h-[70vh]">
+            <h2 id="agenda-title" class="text-2xl font-bold text-gray-800 mb-4 text-center">Meeting Agenda</h2>
+            <table class="min-w-full bg-white rounded-lg shadow-md" role="table">
+                <thead>
+                    <tr class="uppercase text-sm leading-normal">
+                        <th id="table-header-role" class="py-3 px-6 text-left" role="columnheader">Role / Agenda Item</th>
+                        <th id="table-header-allotted" class="py-3 px-6 text-left" role="columnheader">Allotted Time</th>
+                        <th id="table-header-green" class="py-3 px-6 text-left" role="columnheader">Green</th>
+                        <th id="table-header-yellow" class="py-3 px-6 text-left" role="columnheader">Yellow</th>
+                        <th id="table-header-red" class="py-3 px-6 text-left" role="columnheader">Red</th>
+                        <th id="table-header-speaker" class="py-3 px-6 text-left" role="columnheader">Speaker</th>
+                        <th id="table-header-actual" class="py-3 px-6 text-left" role="columnheader">Actual Time</th>
+                    </tr>
+                </thead>
+                <tbody id="roles-table-body" class="text-sm font-light">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Data for Toastmasters roles and timing (English base)
+        const rolesData = [
+            { role: "Meet and Greet", allottedTime: "5 min", greenLight: "N/A", yellowLight: "N/A", redLight: "N/A", notes: "Pre-meeting mingle", keyPoints: ["Informal networking", "Welcome new guests", "Build camaraderie"] },
+            { role: "Chair", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "General host for the meeting", keyPoints: ["Open the meeting", "Introduce the theme", "Keep meeting on track"] },
+            { role: "Intro of Evaluation Team", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "By the General Evaluator", keyPoints: ["Introduce evaluators", "Explain evaluation process", "Set expectations for feedback"] },
+            { role: "Word of the Day", allottedTime: "30 sec - 1 min", greenLight: "30 sec", yellowLight: "45 sec", redLight: "1 min", notes: "Improve vocabulary", keyPoints: ["Introduce new word", "Provide definition and usage", "Encourage members to use it"] },
+            { role: "Thought by Guest", allottedTime: "30 sec - 1 min", greenLight: "30 sec", yellowLight: "45 sec", redLight: "1 min", notes: "Reflection for the membership", keyPoints: ["Share a brief, inspiring thought", "Offer a moment of reflection", "Connect to meeting theme"] },
+            { role: "Joke", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Joke in good taste", keyPoints: ["Deliver a light-hearted joke", "Set a positive mood", "Keep it appropriate for all"] },
+            { role: "Toast", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Propose a toast", keyPoints: ["Propose a toast to a person or idea", "Keep it concise and meaningful", "Encourage participation"] },
+            { role: "Announcements for Good of TM", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Announcements for all members", keyPoints: ["Share club news and events", "Promote upcoming activities", "Encourage member involvement"] },
+            { role: "Table Topic Master Intro", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Intro to impromptu speaking session", keyPoints: ["Explain Table Topics purpose", "Introduce the theme", "Encourage participation"] },
+            { role: "Each Table Topic Speaker", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Impromptu speech", keyPoints: ["Speak on an impromptu topic", "Organize thoughts quickly", "Practice quick thinking and delivery"] },
+            { role: "Vote for Best Table Topic", allottedTime: "30 sec - 1 min", greenLight: "30 sec", yellowLight: "45 sec", redLight: "1 min", notes: "Voting for favorite impromptu speaker", keyPoints: ["Cast your vote for best speaker", "Recognize strong impromptu skills", "Participate in meeting awards"] },
+            { role: "Table Topic Evaluator", allottedTime: "5-7 min", greenLight: "5 min", yellowLight: "6 min", redLight: "7 min", notes: "Evaluates TT master, session, and speakers", keyPoints: ["Evaluate Table Topic Master", "Assess overall session flow", "Provide feedback to speakers"] },
+            { role: "Break", allottedTime: "5 min", greenLight: "N/A", yellowLight: "N/A", redLight: "N/A", notes: "Short recess", keyPoints: ["Opportunity to stretch and refresh", "Network informally", "Prepare for next session"] },
+            { role: "Education Session", allottedTime: "10-15 min", greenLight: "10 min", yellowLight: "12 min 30 sec", redLight: "15 min", notes: "Prepared educational segment", keyPoints: ["Deliver educational content", "Share insights on communication/leadership", "Engage audience with learning"] },
+            { role: "Evaluator for Education Session", allottedTime: "2-3 min", greenLight: "2 min", yellowLight: "2 min 30 sec", redLight: "3 min", notes: "Evaluates the education session", keyPoints: ["Evaluate educational presentation", "Provide constructive feedback", "Focus on content and delivery"] },
+            { role: "Grammarian", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Evaluates grammar and acts as \"Ah-Counter\"", keyPoints: ["Monitor grammar and word usage", "Note filler words (Ah-Counter)", "Provide report at end of meeting"] },
+            { role: "Timer", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Reports on timing for all roles and speeches", keyPoints: ["Explain timing rules", "Provide time signals", "Report on speaker timings"] },
+            { role: "General Evaluator", allottedTime: "3-5 min", greenLight: "3 min", yellowLight: "4 min", redLight: "5 min", notes: "Evaluates evaluators, Chair, and overall meeting", keyPoints: ["Evaluate all evaluators", "Assess the Chair's performance", "Provide overall meeting feedback"] },
+            { role: "Vote for Best Evaluator", allottedTime: "30 sec - 1 min", greenLight: "30 sec", yellowLight: "45 sec", redLight: "1 min", notes: "Voting for favorite evaluator", keyPoints: ["Vote for the most impactful evaluator", "Recognize effective feedback", "Participate in meeting awards"] },
+            { role: "Quizmaster", allottedTime: "1-2 min", greenLight: "1 min", yellowLight: "1 min 30 sec", redLight: "2 min", notes: "Informal quiz/engagement", keyPoints: ["Conduct a fun, informal quiz", "Engage the audience", "Reinforce meeting content"] },
+            { role: "Chair Closes Meeting", allottedTime: "2-3 min", greenLight: "2 min", yellowLight: "2 min 30 sec", redLight: "3 min", notes: "Awards, final announcements, guest comments", keyPoints: ["Announce award winners", "Make final club announcements", "Invite guest comments and close meeting"] }
+        ];
+
+        // Global variables for timer state
+        let currentRoleIndex = 0;
+        let timerInterval = null;
+        let elapsedSeconds = 0; // Time in seconds, now counting UP
+        let isRunning = false;
+        let sessionStartTime = null; // Timestamp when the current timer session started (for accumulating actual duration)
+        const meetingDate = new Date().toLocaleDateString(); // Current meeting date
+        let currentLanguage = 'en'; // Default language
+        let currentTheme = 'default'; // Default theme
+
+        // DOM elements
+        const appTitleEl = document.getElementById('app-title');
+        const currentRoleLabelEl = document.getElementById('current-role-label');
+        const currentRoleEl = document.getElementById('current-role');
+        const roleDescriptionDisplayEl = document.getElementById('role-description-display');
+        const speakerNameLabelEl = document.getElementById('speaker-name-label');
+        const speakerNameInput = document.getElementById('speaker-name-input');
+        const timerDisplayEl = document.getElementById('timer-display');
+        const greenLightEl = document.getElementById('green-light');
+        const yellowLightEl = document.getElementById('yellow-light');
+        const redLightEl = document.getElementById('red-light');
+        const meetingDateLabelEl = document.getElementById('meeting-date-label');
+        const meetingDateDisplay = document.getElementById('meeting-date-display');
+        const startTimeLabelEl = document.getElementById('start-time-label');
+        const startTimeDisplay = document.getElementById('start-time-display');
+        const stopTimeLabelEl = document.getElementById('stop-time-label');
+        const stopTimeDisplay = document.getElementById('stop-time-display');
+        const actualDurationLabelEl = document.getElementById('actual-duration-label');
+        const actualDurationDisplay = document.getElementById('actual-duration-display');
+        const motivationMessageEl = document.getElementById('motivation-message');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const langToggleButton = document.getElementById('lang-toggle-btn');
+        const themeSelect = document.getElementById('theme-select');
+        const agendaTitleEl = document.getElementById('agenda-title');
+        const tableHeaderRole = document.getElementById('table-header-role');
+        const tableHeaderAllotted = document.getElementById('table-header-allotted');
+        const tableHeaderGreen = document.getElementById('table-header-green');
+        const tableHeaderYellow = document.getElementById('table-header-yellow');
+        const tableHeaderRed = document.getElementById('table-header-red');
+        const tableHeaderSpeaker = document.getElementById('table-header-speaker');
+        const tableHeaderActual = document.getElementById('table-header-actual');
+        const rolesTableBody = document.getElementById('roles-table-body');
+
+
+        // All translations for static and dynamic text
+        const translations = {
+            en: {
+                "appTitle": "Toastmasters Meeting Timer",
+                "currentRoleLabel": "Current Role:",
+                "speakerNameLabel": "Speaker Name:",
+                "speakerNamePlaceholder": "Enter Speaker Name",
+                "meetingDateLabel": "Meeting Date:",
+                "startTimeLabel": "Start Time:",
+                "stopTimeLabel": "Stop Time:",
+                "actualDurationLabel": "Actual Duration:",
+                "startBtn": "Start",
+                "stopBtn": "Stop",
+                "resetBtn": "Reset",
+                "exportCsvBtn": "Export CSV",
+                "prevBtn": "Previous Role",
+                "nextBtn": "Next Role",
+                "langToggleButton": "Français", // Text for the toggle button
+                "agendaTitle": "Meeting Agenda",
+                "tableHeaderRole": "Role / Agenda Item",
+                "tableHeaderAllotted": "Allotted Time",
+                "tableHeaderGreen": "Green",
+                "tableHeaderYellow": "Yellow",
+                "tableHeaderRed": "Red",
+                "tableHeaderSpeaker": "Speaker",
+                "tableHeaderActual": "Actual Time",
+                // Role-specific names and key points
+                "Meet and Greet_role": "Meet and Greet", "Meet and Greet_keyPoints": ["Informal networking", "Welcome new guests", "Build camaraderie"],
+                "Chair_role": "Chair", "Chair_keyPoints": ["Open the meeting", "Introduce the theme", "Keep meeting on track"],
+                "Intro of Evaluation Team_role": "Intro of Evaluation Team", "Intro of Evaluation Team_keyPoints": ["Introduce evaluators", "Explain evaluation process", "Set expectations for feedback"],
+                "Word of the Day_role": "Word of the Day", "Word of the Day_keyPoints": ["Introduce new word", "Provide definition and usage", "Encourage members to use it"],
+                "Thought by Guest_role": "Thought by Guest", "Thought by Guest_keyPoints": ["Share a brief, inspiring thought", "Offer a moment of reflection", "Connect to meeting theme"],
+                "Joke_role": "Joke", "Joke_keyPoints": ["Deliver a light-hearted joke", "Set a positive mood", "Keep it appropriate for all"],
+                "Toast_role": "Toast", "Toast_keyPoints": ["Propose a toast to a person or idea", "Keep it concise and meaningful", "Encourage participation"],
+                "Announcements for Good of TM_role": "Announcements for Good of TM", "Announcements for Good of TM_keyPoints": ["Share club news and events", "Promote upcoming activities", "Encourage member involvement"],
+                "Table Topic Master Intro_role": "Table Topic Master Intro", "Table Topic Master Intro_keyPoints": ["Explain Table Topics purpose", "Introduce the theme", "Encourage participation"],
+                "Each Table Topic Speaker_role": "Each Table Topic Speaker", "Each Table Topic Speaker_keyPoints": ["Speak on an impromptu topic", "Organize thoughts quickly", "Practice quick thinking and delivery"],
+                "Vote for Best Table Topic_role": "Vote for Best Table Topic", "Vote for Best Table Topic_keyPoints": ["Cast your vote for best speaker", "Recognize strong impromptu skills", "Participate in meeting awards"],
+                "Table Topic Evaluator_role": "Table Topic Evaluator", "Table Topic Evaluator_keyPoints": ["Evaluate Table Topic Master", "Assess overall session flow", "Provide feedback to speakers"],
+                "Break_role": "Break", "Break_keyPoints": ["Opportunity to stretch and refresh", "Network informally", "Prepare for next session"],
+                "Education Session_role": "Education Session", "Education Session_keyPoints": ["Deliver educational content", "Share insights on communication/leadership", "Engage audience with learning"],
+                "Evaluator for Education Session_role": "Evaluator for Education Session", "Evaluator for Education Session_keyPoints": ["Evaluate educational presentation", "Provide constructive feedback", "Focus on content and delivery"],
+                "Grammarian_role": "Grammarian", "Grammarian_keyPoints": ["Monitor grammar and word usage", "Note filler words (Ah-Counter)", "Provide report at end of meeting"],
+                "Timer_role": "Timer", "Timer_keyPoints": ["Explain timing rules", "Provide time signals", "Report on speaker timings"],
+                "General Evaluator_role": "General Evaluator", "General Evaluator_keyPoints": ["Evaluate all evaluators", "Assess the Chair's performance", "Provide overall meeting feedback"],
+                "Vote for Best Evaluator_role": "Vote for Best Evaluator", "Vote for Best Evaluator_keyPoints": ["Vote for the most impactful evaluator", "Recognize effective feedback", "Participate in meeting awards"],
+                "Quizmaster_role": "Quizmaster", "Quizmaster_keyPoints": ["Conduct a fun, informal quiz", "Engage the audience", "Reinforce meeting content"],
+                "Chair Closes Meeting_role": "Chair Closes Meeting", "Chair Closes Meeting_keyPoints": ["Announce award winners", "Make final club announcements", "Invite guest comments and close meeting"],
+                // Motivational messages
+                "Meet and Greet_motivational": [
+                    "Welcome everyone!", "Great to see you all!", "Connecting is key!", "Warm welcomes all around!", "Setting a friendly tone!",
+                    "Building rapport!", "Making new connections!", "The energy is great!", "Fantastic start to the meeting!", "Mingling with purpose!",
+                    "Breaking the ice!", "Smiles all around!", "Glad you're here!", "Creating a welcoming atmosphere!", "Your presence makes a difference!",
+                    "Enjoy the company!", "Networking at its best!", "A perfect beginning!", "Setting the stage for success!", "Embrace the camaraderie!"
+                ],
+                "Chair_motivational": [
+                    "Lead with confidence!", "Guiding the meeting well!", "Excellent chairmanship!", "Keeping us on track!", "Your leadership shines!",
+                    "Commanding presence!", "Smooth transitions!", "Master of ceremonies!", "Setting the pace!", "Inspiring the team!",
+                    "A true leader!", "Holding the reins with grace!", "Facilitating success!", "Your guidance is appreciated!", "On point!",
+                    "Making it happen!", "Steering us forward!", "Leading by example!", "The meeting is in good hands!", "Fantastic direction!"
+                ],
+                "Intro of Evaluation Team_motivational": [
+                    "Setting up for insightful feedback!", "Preparing for growth!", "Highlighting our evaluators!", "Appreciating our team!", "Great introduction!",
+                    "Paving the way for valuable insights!", "Ensuring constructive feedback!", "The evaluation team is ready!", "Ready for growth!", "Learning and improving!",
+                    "Feedback is a gift!", "Supporting our speakers!", "Building better communicators!", "A crucial part of our meeting!", "Empowering our members!",
+                    "Focused on development!", "Your insights are valued!", "Making evaluations count!", "The backbone of our progress!", "Excellent setup for success!"
+                ],
+                "Word of the Day_motivational": [
+                    "Expanding our vocabulary!", "A new word to master!", "Enriching our language!", "Learning something new!", "Great choice of word!",
+                    "Vocabulary power!", "Speaking with precision!", "Adding to our lexicon!", "Word of the day, indeed!", "Using words wisely!",
+                    "Enhancing our expression!", "A linguistic journey!", "Making words work for us!", "Broadening our horizons!", "The power of language!",
+                    "Unlocking new phrases!", "Elevating our speech!", "A word for every occasion!", "Mastering the dictionary!", "Speak with impact!"
+                ],
+                "Thought by Guest_motivational": [
+                    "Insightful reflection!", "A moment of contemplation!", "Sharing wisdom!", "Valuable perspective!", "Thought-provoking!",
+                    "Inspiring thoughts!", "A fresh viewpoint!", "Deep thinking!", "Connecting with ideas!", "Enriching our minds!",
+                    "Food for thought!", "Reflecting on purpose!", "A moment of quiet strength!", "Guest wisdom shared!", "Thank you for the thought!",
+                    "Adding depth to our meeting!", "A thoughtful contribution!", "Ideas to ponder!", "Expanding our horizons!", "Meaningful insights!"
+                ],
+                "Joke_motivational": [
+                    "Bringing laughter!", "A moment of humor!", "Lightening the mood!", "Great comedic timing!", "Funny and engaging!",
+                    "A delightful diversion!", "Spreading joy!", "Humor is key!", "Making us smile!", "Well-delivered humor!",
+                    "The power of laughter!", "A perfect break!", "Chuckle-worthy!", "Keeping it light!", "A good laugh!",
+                    "Entertaining us all!", "Your humor is appreciated!", "Brightening our day!", "A refreshing moment!", "Fantastic wit!"
+                ],
+                "Toast_motivational": [
+                    "A heartfelt toast!", "Celebrating success!", "Raising a glass!", "Cheers to that!", "A moment of recognition!",
+                    "Honoring achievements!", "Expressing gratitude!", "A fitting tribute!", "Well-deserved applause!", "To our future!",
+                    "Celebrating together!", "A special moment!", "Making memories!", "Your words resonate!", "A toast to excellence!",
+                    "Saluting our efforts!", "Uniting us all!", "A beautiful sentiment!", "For the good times!", "Here's to us!"
+                ],
+                "Announcements for Good of TM_motivational": [
+                    "Keeping us informed!", "Important updates!", "Staying connected!", "For the benefit of all!", "Timely information!",
+                    "Sharing what's new!", "Keeping our club thriving!", "Essential news!", "Helping us grow!", "Staying organized!",
+                    "Your attention is appreciated!", "Making sure everyone knows!", "For a stronger club!", "Building our community!", "Informing our path!",
+                    "Crucial insights!", "Forward momentum!", "Staying ahead!", "Your contributions matter!", "Excellent communication!"
+                ],
+                "Table Topic Master Intro_motivational": [
+                    "Setting the stage for impromptu!", "Ready for spontaneous speaking!", "Unleashing creativity!", "The challenge awaits!", "Engaging and exciting!",
+                    "Inspiring quick thinking!", "A test of wit!", "Getting us ready!", "The fun begins!", "Impromptu mastery!",
+                    "Think on your feet!", "Embrace the challenge!", "Spur-of-the-moment brilliance!", "Ready, set, speak!", "A fantastic intro!",
+                    "Igniting our minds!", "Making it interesting!", "Your creativity shines!", "The spotlight is yours!", "Prepare to impress!"
+                ],
+                "Each Table Topic Speaker_motivational": [
+                    "Speaking off the cuff!", "Quick thinking, great delivery!", "Impressive impromptu!", "Articulate and confident!", "Well done!",
+                    "Mastering the moment!", "Spontaneous brilliance!", "Clear and concise!", "Engaging and thoughtful!", "Fantastic response!",
+                    "Your voice is powerful!", "Connecting with the audience!", "Natural talent!", "Overcoming the challenge!", "A true speaker!",
+                    "Making it look easy!", "Inspiring us all!", "Your message resonates!", "Confident and poised!", "Excellent impromptu!"
+                ],
+                "Vote for Best Table Topic_motivational": [
+                    "Time to choose your favorite!", "Casting your vote!", "Recognizing excellence!", "Your choice matters!", "Deciding the best!",
+                    "Honoring top speakers!", "A tough choice!", "Voting for impact!", "Supporting our peers!", "Making your voice heard!",
+                    "The power of your vote!", "Selecting the standout!", "Appreciating great speaking!", "Choosing the best!", "Your opinion counts!",
+                    "Fair and square!", "Celebrating talent!", "The moment of decision!", "Picking the winner!", "Vote wisely!"
+                ],
+                "Table Topic Evaluator_motivational": [
+                    "Insightful feedback!", "Constructive and clear!", "Helping us grow!", "Excellent evaluation!", "Valuable insights!",
+                    "Guiding us to improvement!", "Thoughtful analysis!", "Precise and helpful!", "Your feedback is a gift!", "Empowering speakers!",
+                    "Detail-oriented evaluation!", "Spotting areas for growth!", "Supporting development!", "Making us better!", "A true mentor!",
+                    "Your words resonate!", "Clear and actionable!", "Focused on success!", "Building confidence!", "Outstanding evaluation!"
+                ],
+                "Break_motivational": [
+                    "Time to recharge!", "Enjoy your break!", "A moment to refresh!", "Stretch your legs!", "Quick refresh!",
+                    "Catch your breath!", "Short recess!", "Back in a few!", "Relax and return!", "Energy boost!",
+                    "A well-deserved pause!", "Take a moment!", "Rejuvenate!", "Ready for more!", "Brief interlude!",
+                    "Enjoy the pause!", "Refresh and refocus!", "A little break!", "See you soon!", "Ready for the next session!"
+                ],
+                "Education Session_motivational": [
+                    "Learning and growing!", "Valuable insights shared!", "Enriching our knowledge!", "Expanding our skills!", "Highly informative!",
+                    "A session of discovery!", "Deepening our understanding!", "Practical wisdom!", "Inspiring new ideas!", "Mastering new concepts!",
+                    "Education in action!", "Building our expertise!", "Your knowledge shines!", "A true learning experience!", "Empowering ourselves!",
+                    "Gaining new perspectives!", "Sharpening our tools!", "Growth is key!", "Continuous improvement!", "Excellent educational content!"
+                ],
+                "Evaluator for Education Session_motivational": [
+                    "Insightful feedback on learning!", "Evaluating the education!", "Helping us refine our sessions!", "Constructive analysis!", "Valuable perspective!",
+                    "Ensuring quality education!", "Thoughtful review!", "Guiding future learning!", "Your feedback strengthens us!", "Appreciating the session!",
+                    "Focused on educational impact!", "Refining our teaching!", "Supporting effective learning!", "Making our sessions better!", "A keen eye for detail!",
+                    "Enhancing our educational journey!", "Clear and helpful insights!", "Improving our content!", "A true learning partner!", "Excellent evaluation of education!"
+                ],
+                "Grammarian_motivational": [
+                    "Master of language!", "Sharpening our grammar!", "Enhancing our speech!", "Attentive to detail!", "Guiding our linguistic journey!",
+                    "Polishing our words!", "Improving clarity!", "A keen ear for language!", "Making every word count!", "Grammar excellence!",
+                    "Helping us speak precisely!", "Spotting linguistic gems!", "Your insights are invaluable!", "Elevating our communication!", "A true wordsmith!",
+                    "Building better sentences!", "Focused on accuracy!", "The guardian of language!", "Making us articulate!", "Excellent linguistic guidance!"
+                ],
+                "Timer_motivational": [
+                    "Keeping us on track!", "Master of time!", "Precise and punctual!", "Ensuring efficiency!", "Your role is crucial!",
+                    "Guiding our pace!", "Time is of the essence!", "Helping us respect schedules!", "A vital function!", "Keeping us disciplined!",
+                    "The rhythm of the meeting!", "Your accuracy is appreciated!", "On the dot!", "Making every minute count!", "A true timekeeper!",
+                    "Ensuring smooth flow!", "Focused on timing!", "The heartbeat of the meeting!", "Helping us finish on time!", "Excellent timing!"
+                ],
+                "General Evaluator_motivational": [
+                    "Overall assessment!", "Comprehensive feedback!", "Guiding our growth!", "Seeing the big picture!", "Excellent insights!",
+                    "Evaluating the evaluators!", "A holistic review!", "Ensuring meeting quality!", "Your leadership is vital!", "Inspiring improvement!",
+                    "A detailed and thoughtful review!", "Spotting opportunities for excellence!", "Strengthening our entire meeting!", "Making us all better!", "A true leader of growth!",
+                    "Your perspective is invaluable!", "Clear and actionable feedback!", "Focused on overall success!", "Building a stronger club!", "Outstanding general evaluation!"
+                ],
+                "Vote for Best Evaluator_motivational": [
+                    "Choosing the top feedback!", "Casting your vote for insights!", "Recognizing evaluation excellence!", "Your choice shapes our growth!", "Deciding the most helpful!",
+                    "Honoring insightful feedback!", "A tough decision!", "Voting for impact!", "Supporting our mentors!", "Making your voice heard for evaluators!",
+                    "The power of your vote in feedback!", "Selecting the standout evaluator!", "Appreciating great insights!", "Choosing the best guide!", "Your opinion helps us improve!",
+                    "Fair and just!", "Celebrating analytical talent!", "The moment of truth for feedback!", "Picking the most impactful!", "Vote for growth!"
+                ],
+                "Quizmaster_motivational": [
+                    "Engaging our minds!", "Testing our knowledge!", "Fun and interactive!", "A great way to learn!", "Keeping us on our toes!",
+                    "Challenging our memory!", "Sparking participation!", "Making it exciting!", "A delightful quiz!", "Well-crafted questions!",
+                    "Brain power in action!", "Learning through fun!", "Your quiz is a hit!", "Keeping us sharp!", "An excellent engagement!",
+                    "Interactive and lively!", "Testing our listening skills!", "A stimulating challenge!", "Making us think!", "Fantastic quiz!"
+                ],
+                "Chair Closes Meeting_motivational": [
+                    "Bringing us to a close!", "Concluding with grace!", "Awards and recognition!", "Final thoughts and farewells!", "A strong finish!",
+                    "Summarizing our achievements!", "Thanking everyone!", "A successful meeting!", "Looking forward to next time!", "Wrapping up beautifully!",
+                    "Celebrating our efforts!", "A perfect conclusion!", "Your closing remarks inspire!", "Sending us off with a smile!", "Awards well-deserved!",
+                    "Final announcements complete!", "Guest comments appreciated!", "A memorable meeting!", "See you next time!", "Meeting adjourned with success!"
+                ]
+            },
+            fr: {
+                "appTitle": "Minuteur de réunion Toastmasters",
+                "currentRoleLabel": "Rôle actuel :",
+                "speakerNameLabel": "Nom de l'orateur :",
+                "speakerNamePlaceholder": "Entrez le nom de l'orateur",
+                "meetingDateLabel": "Date de la réunion :",
+                "startTimeLabel": "Heure de début :",
+                "stopTimeLabel": "Heure de fin :",
+                "actualDurationLabel": "Durée réelle :",
+                "startBtn": "Démarrer",
+                "stopBtn": "Arrêter",
+                "resetBtn": "Réinitialiser",
+                "exportCsvBtn": "Exporter CSV",
+                "prevBtn": "Rôle précédent",
+                "nextBtn": "Rôle suivant",
+                "langToggleButton": "English", // Text for the toggle button
+                "agendaTitle": "Ordre du jour de la réunion",
+                "tableHeaderRole": "Rôle / Point de l'ordre du jour",
+                "tableHeaderAllotted": "Temps alloué",
+                "tableHeaderGreen": "Vert",
+                "tableHeaderYellow": "Jaune",
+                "tableHeaderRed": "Rouge",
+                "tableHeaderSpeaker": "Orateur",
+                "tableHeaderActual": "Temps réel",
+                // Role-specific names and key points
+                "Meet and Greet_role": "Rencontre et Salutations", "Meet and Greet_keyPoints": ["Réseautage informel", "Accueillir les nouveaux invités", "Développer la camaraderie"],
+                "Chair_role": "Président", "Chair_keyPoints": ["Ouvrir la réunion", "Introduire le thème", "Maintenir la réunion sur la bonne voie"],
+                "Intro of Evaluation Team_role": "Présentation de l'équipe d'évaluation", "Intro of Evaluation Team_keyPoints": ["Présenter les évaluateurs", "Expliquer le processus d'évaluation", "Définir les attentes en matière de feedback"],
+                "Word of the Day_role": "Mot du jour", "Word of the Day_keyPoints": ["Introduire un nouveau mot", "Fournir la définition et l'utilisation", "Encourager les membres à l'utiliser"],
+                "Thought by Guest_role": "Pensée de l'invité", "Thought by Guest_keyPoints": ["Partager une pensée brève et inspirante", "Offrir un moment de réflexion", "Lier au thème de la réunion"],
+                "Joke_role": "Blague", "Joke_keyPoints": ["Raconter une blague légère", "Créer une ambiance positive", "La garder appropriée pour tous"],
+                "Toast_role": "Toast", "Toast_keyPoints": ["Proposer un toast à une personne ou une idée", "Le garder concis et significatif", "Encourager la participation"],
+                "Announcements for Good of TM_role": "Annonces pour le bien du TM", "Announcements for Good of TM_keyPoints": ["Partager les nouvelles et événements du club", "Promouvoir les activités à venir", "Encourager la participation des membres"],
+                "Table Topic Master Intro_role": "Introduction du Maître des Sujets Impromptus", "Table Topic Master Intro_keyPoints": ["Expliquer le but des Sujets Impromptus", "Introduire le thème", "Encourager la participation"],
+                "Each Table Topic Speaker_role": "Chaque orateur de sujet impromptu", "Each Table Topic Speaker_keyPoints": ["Parler sur un sujet impromptu", "Organiser rapidement ses pensées", "Pratiquer la réflexion rapide et la prestation"],
+                "Vote for Best Table Topic_role": "Vote pour le meilleur sujet impromptu", "Vote for Best Table Topic_keyPoints": ["Voter pour le meilleur orateur", "Reconnaître les solides compétences impromptues", "Participer aux prix de la réunion"],
+                "Table Topic Evaluator_role": "Évaluateur des sujets impromptus", "Table Topic Evaluator_keyPoints": ["Évaluer le Maître des Sujets Impromptus", "Évaluer le déroulement général de la session", "Fournir des commentaires aux orateurs"],
+                "Break_role": "Pause", "Break_keyPoints": ["Occasion de s'étirer et de se rafraîchir", "Réseauter informellement", "Se préparer pour la prochaine session"],
+                "Education Session_role": "Session éducative", "Education Session_keyPoints": ["Délivrer du contenu éducatif", "Partager des insights sur la communication/le leadership", "Engager le public dans l'apprentissage"],
+                "Evaluator for Education Session_role": "Évaluateur de la session éducative", "Evaluator for Education Session_keyPoints": ["Évaluer la présentation éducative", "Fournir des commentaires constructifs", "Se concentrer sur le contenu et la prestation"],
+                "Grammarian_role": "Grammairien", "Grammarian_keyPoints": ["Surveiller la grammaire et l'utilisation des mots", "Noter les mots de remplissage (compteur de euh)", "Fournir un rapport à la fin de la réunion"],
+                "Timer_role": "Chronométreur", "Timer_keyPoints": ["Expliquer les règles de chronométrage", "Fournir des signaux de temps", "Rapporter les temps des orateurs"],
+                "General Evaluator_role": "Évaluateur général", "General Evaluator_keyPoints": ["Évaluer tous les évaluateurs", "Évaluer la performance du président", "Fournir un feedback général sur la réunion"],
+                "Vote for Best Evaluator_role": "Vote pour le meilleur évaluateur", "Vote for Best Evaluator_keyPoints": ["Voter pour l'évaluateur le plus percutant", "Reconnaître les commentaires efficaces", "Participer aux prix de la réunion"],
+                "Quizmaster_role": "Maître de quiz", "Quizmaster_keyPoints": ["Animer un quiz amusant et informel", "Engager le public", "Renforcer le contenu de la réunion"],
+                "Chair Closes Meeting_role": "Le président clôt la réunion", "Chair Closes Meeting_keyPoints": ["Annoncer les gagnants des prix", "Faire les annonces finales du club", "Inviter les commentaires des invités et clore la réunion"]
+            }
+        };
+
+        // Theme definitions
+        const themes = {
+            'default': {
+                '--bg-color': '#f3f4f6', '--card-bg-color': '#ffffff', '--panel-bg-color': '#f9fafb',
+                '--text-color-primary': '#1f2937', '--text-color-secondary': '#4b5563', '--text-color-accent': '#2563eb',
+                '--border-color': '#e5e7eb', '--input-bg-color': '#ffffff', '--input-border-color': '#d1d5db',
+                '--button-green-bg': '#16a34a', '--button-green-hover-bg': '#15803d',
+                '--button-red-bg': '#dc2626', '--button-red-hover-bg': '#b91c1c',
+                '--button-yellow-bg': '#d97706', '--button-yellow-hover-bg': '#b45309',
+                '--button-purple-bg': '#9333ea', '--button-purple-hover-bg': '#7e22ce',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#4b5563', '--button-gray-hover-bg': '#374151',
+                '--table-header-bg': '#e5e7eb', '--table-header-text': '#4b5563',
+                '--table-row-hover-bg': '#f3f4f6', '--highlight-row-bg': '#dbeafe',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'dark': {
+                '--bg-color': '#1f2937', '--card-bg-color': '#374151', '--panel-bg-color': '#4b5563',
+                '--text-color-primary': '#f9fafb', '--text-color-secondary': '#d1d5db', '--text-color-accent': '#60a5fa',
+                '--border-color': '#4b5563', '--input-bg-color': '#374151', '--input-border-color': '#6b7280',
+                '--button-green-bg': '#059669', '--button-green-hover-bg': '#047857',
+                '--button-red-bg': '#ef4444', '--button-red-hover-bg': '#dc2626',
+                '--button-yellow-bg': '#fbbf24', '--button-yellow-hover-bg': '#f59e0b',
+                '--button-purple-bg': '#a78bfa', '--button-purple-hover-bg': '#8b5cf6',
+                '--button-blue-bg': '#3b82f6', '--button-blue-hover-bg': '#2563eb',
+                '--button-gray-bg': '#6b7280', '--button-gray-hover-bg': '#4b5563',
+                '--table-header-bg': '#4b5563', '--table-header-text': '#f9fafb',
+                '--table-row-hover-bg': '#374151', '--highlight-row-bg': '#1e3a8a',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'blue-ocean': {
+                '--bg-color': '#bfdbfe', /* blue-200 */ '--card-bg-color': '#eff6ff', /* blue-50 */ '--panel-bg-color': '#dbeafe', /* blue-100 */
+                '--text-color-primary': '#1e3a8a', /* blue-900 */ '--text-color-secondary': '#3b82f6', /* blue-600 */ '--text-color-accent': '#1d4ed8', /* blue-800 */
+                '--border-color': '#93c5fd', /* blue-300 */ '--input-bg-color': '#ffffff', '--input-border-color': '#60a5fa', /* blue-400 */
+                '--button-green-bg': '#10b981', '--button-green-hover-bg': '#059669',
+                '--button-red-bg': '#ef4444', '--button-red-hover-bg': '#dc2626',
+                '--button-yellow-bg': '#fcd34d', '--button-yellow-hover-bg': '#fbbf24',
+                '--button-purple-bg': '#818cf8', '--button-purple-hover-bg': '#6366f1',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#60a5fa', '--button-gray-hover-bg': '#3b82f6',
+                '--table-header-bg': '#93c5fd', '--table-header-text': '#1e3a8a',
+                '--table-row-hover-bg': '#dbeafe', '--highlight-row-bg': '#93c5fd',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'forest-green': {
+                '--bg-color': '#d1fae5', /* green-100 */ '--card-bg-color': '#ecfdf5', /* green-50 */ '--panel-bg-color': '#a7f3d0', /* green-200 */
+                '--text-color-primary': '#064e3b', /* green-900 */ '--text-color-secondary': '#047857', /* green-700 */ '--text-color-accent': '#065f46', /* green-800 */
+                '--border-color': '#6ee7b7', /* green-300 */ '--input-bg-color': '#ffffff', '--input-border-color': '#34d399', /* green-400 */
+                '--button-green-bg': '#059669', '--button-green-hover-bg': '#047857',
+                '--button-red-bg': '#ef4444', '--button-red-hover-bg': '#dc2626',
+                '--button-yellow-bg': '#fcd34d', '--button-yellow-hover-bg': '#fbbf24',
+                '--button-purple-bg': '#818cf8', '--button-purple-hover-bg': '#6366f1',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#34d399', '--button-gray-hover-bg': '#10b981',
+                '--table-header-bg': '#6ee7b7', '--table-header-text': '#064e3b',
+                '--table-row-hover-bg': '#d1fae5', '--highlight-row-bg': '#a7f3d0',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'warm-sunset': {
+                '--bg-color': '#fef3c7', /* amber-100 */ '--card-bg-color': '#fffbeb', /* amber-50 */ '--panel-bg-color': '#fde68a', /* amber-200 */
+                '--text-color-primary': '#78350f', /* amber-900 */ '--text-color-secondary': '#b45309', /* amber-700 */ '--text-color-accent': '#c2410c', /* orange-700 */
+                '--border-color': '#fcd34d', /* amber-300 */ '--input-bg-color': '#ffffff', '--input-border-color': '#fbbf24', /* amber-400 */
+                '--button-green-bg': '#10b981', '--button-green-hover-bg': '#059669',
+                '--button-red-bg': '#ef4444', '--button-red-hover-bg': '#dc2626',
+                '--button-yellow-bg': '#d97706', '--button-yellow-hover-bg': '#b45309',
+                '--button-purple-bg': '#818cf8', '--button-purple-hover-bg': '#6366f1',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#f59e0b', '--button-gray-hover-bg': '#d97706',
+                '--table-header-bg': '#fcd34d', '--table-header-text': '#78350f',
+                '--table-row-hover-bg': '#fef3c7', '--highlight-row-bg': '#fde68a',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'purple-haze': {
+                '--bg-color': '#ede9fe', /* violet-100 */ '--card-bg-color': '#f5f3ff', /* violet-50 */ '--panel-bg-color': '#ddd6fe', /* violet-200 */
+                '--text-color-primary': '#4c1d95', /* violet-900 */ '--text-color-secondary': '#7c3aed', /* violet-600 */ '--text-color-accent': '#6d28d9', /* violet-700 */
+                '--border-color': '#a78bfa', /* violet-300 */ '--input-bg-color': '#ffffff', '--input-border-color': '#8b5cf6', /* violet-400 */
+                '--button-green-bg': '#10b981', '--button-green-hover-bg': '#059669',
+                '--button-red-bg': '#ef4444', '--button-red-hover-bg': '#dc2626',
+                '--button-yellow-bg': '#fcd34d', '--button-yellow-hover-bg': '#fbbf24',
+                '--button-purple-bg': '#9333ea', '--button-purple-hover-bg': '#7e22ce',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#8b5cf6', '--button-gray-hover-bg': '#7c3aed',
+                '--table-header-bg': '#a78bfa', '--table-header-text': '#4c1d95',
+                '--table-row-hover-bg': '#ede9fe', '--highlight-row-bg': '#ddd6fe',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'monochrome': {
+                '--bg-color': '#e0e0e0', '--card-bg-color': '#ffffff', '--panel-bg-color': '#f5f5f5',
+                '--text-color-primary': '#212121', '--text-color-secondary': '#424242', '--text-color-accent': '#616161',
+                '--border-color': '#9e9e9e', '--input-bg-color': '#ffffff', '--input-border-color': '#757575',
+                '--button-green-bg': '#4caf50', '--button-green-hover-bg': '#388e3c',
+                '--button-red-bg': '#f44336', '--button-red-hover-bg': '#d32f2f',
+                '--button-yellow-bg': '#ffeb3b', '--button-yellow-hover-bg': '#fbc02d',
+                '--button-purple-bg': '#9c27b0', '--button-purple-hover-bg': '#7b1fa2',
+                '--button-blue-bg': '#2196f3', '--button-blue-hover-bg': '#1976d2',
+                '--button-gray-bg': '#616161', '--button-gray-hover-bg': '#424242',
+                '--table-header-bg': '#bdbdbd', '--table-header-text': '#212121',
+                '--table-row-hover-bg': '#e0e0e0', '--highlight-row-bg': '#c5cae9', /* Light blue for highlight */
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'high-contrast': {
+                '--bg-color': '#000000', '--card-bg-color': '#1a1a1a', '--panel-bg-color': '#333333',
+                '--text-color-primary': '#ffffff', '--text-color-secondary': '#e0e0e0', '--text-color-accent': '#00ffff', /* Cyan */
+                '--border-color': '#666666', '--input-bg-color': '#000000', '--input-border-color': '#ffffff',
+                '--button-green-bg': '#00ff00', '--button-green-hover-bg': '#00cc00',
+                '--button-red-bg': '#ff0000', '--button-red-hover-bg': '#cc0000',
+                '--button-yellow-bg': '#ffff00', '--button-yellow-hover-bg': '#cccc00',
+                '--button-purple-bg': '#ff00ff', '--button-purple-hover-bg': '#cc00cc',
+                '--button-blue-bg': '#0000ff', '--button-blue-hover-bg': '#0000cc',
+                '--button-gray-bg': '#808080', '--button-gray-hover-bg': '#666666',
+                '--table-header-bg': '#444444', '--table-header-text': '#ffffff',
+                '--table-row-hover-bg': '#222222', '--highlight-row-bg': '#000066',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'soft-pastel': {
+                '--bg-color': '#f0f8ff', /* AliceBlue */ '--card-bg-color': '#ffffff', '--panel-bg-color': '#f8f8ff', /* GhostWhite */
+                '--text-color-primary': '#6a5acd', /* SlateBlue */ '--text-color-secondary': '#8a2be2', /* BlueViolet */ '--text-color-accent': '#4169e1', /* RoyalBlue */
+                '--border-color': '#b0e0e6', /* PowderBlue */ '--input-bg-color': '#ffffff', '--input-border-color': '#add8e6', /* LightBlue */
+                '--button-green-bg': '#98fb98', '--button-green-hover-bg': '#7fffd4',
+                '--button-red-bg': '#ffb6c1', '--button-red-hover-bg': '#ff8c00',
+                '--button-yellow-bg': '#ffe4b5', '--button-yellow-hover-bg': '#ffd700',
+                '--button-purple-bg': '#e6e6fa', '--button-purple-hover-bg': '#dda0dd',
+                '--button-blue-bg': '#87cefa', '--button-blue-hover-bg': '#6495ed',
+                '--button-gray-bg': '#d3d3d3', '--button-gray-hover-bg': '#c0c0c0',
+                '--table-header-bg': '#e0ffff', '--table-header-text': '#6a5acd',
+                '--table-row-hover-bg': '#f0f8ff', '--highlight-row-bg': '#e6e6fa',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'vibrant-citrus': {
+                '--bg-color': '#fffacd', /* LemonChiffon */ '--card-bg-color': '#ffffff', '--panel-bg-color': '#ffffe0', /* LightYellow */
+                '--text-color-primary': '#8b4513', /* SaddleBrown */ '--text-color-secondary': '#a0522d', /* Sienna */ '--text-color-accent': '#ff8c00', /* DarkOrange */
+                '--border-color': '#ffd700', /* Gold */ '--input-bg-color': '#ffffff', '--input-border-color': '#ffa500', /* Orange */
+                '--button-green-bg': '#32cd32', '--button-green-hover-bg': '#228b22',
+                '--button-red-bg': '#ff4500', '--button-red-hover-bg': '#dc143c',
+                '--button-yellow-bg': '#ffd700', '--button-yellow-hover-bg': '#ffc125',
+                '--button-purple-bg': '#9932cc', '--button-purple-hover-bg': '#8a2be2',
+                '--button-blue-bg': '#00bfff', '--button-blue-hover-bg': '#1e90ff',
+                '--button-gray-bg': '#bdb76b', '--button-gray-hover-bg': '#8b8b00',
+                '--table-header-bg': '#ffebcd', '--table-header-text': '#8b4513',
+                '--table-row-hover-bg': '#fffacd', '--highlight-row-bg': '#ffefd5',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            },
+            'large-font': {
+                '--bg-color': '#f3f4f6', '--card-bg-color': '#ffffff', '--panel-bg-color': '#f9fafb',
+                '--text-color-primary': '#1f2937', '--text-color-secondary': '#4b5563', '--text-color-accent': '#2563eb',
+                '--border-color': '#e5e7eb', '--input-bg-color': '#ffffff', '--input-border-color': '#d1d5db',
+                '--button-green-bg': '#16a34a', '--button-green-hover-bg': '#15803d',
+                '--button-red-bg': '#dc2626', '--button-red-hover-bg': '#b91c1c',
+                '--button-yellow-bg': '#d97706', '--button-yellow-hover-bg': '#b45309',
+                '--button-purple-bg': '#9333ea', '--button-purple-hover-bg': '#7e22ce',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#4b5563', '--button-gray-hover-bg': '#374151',
+                '--table-header-bg': '#e5e7eb', '--table-header-text': '#4b5563',
+                '--table-row-hover-bg': '#f3f4f6', '--highlight-row-bg': '#dbeafe',
+                '--font-family-base': 'Inter, sans-serif',
+                '--font-size-base': '1.2rem', /* Increased */
+                '--font-size-sm': '1rem', /* Increased */
+                '--font-size-md': '1.1rem', /* Increased */
+                '--font-size-lg': '1.5rem', /* Increased */
+                '--font-size-xl': '2.8rem', /* Increased */
+                '--font-size-timer': '5.5rem', /* Increased */
+                '--font-size-h1': '2.2rem', /* Increased */
+                '--font-size-h2': '1.8rem' /* Increased */
+            },
+            'dyslexic-font': {
+                '--bg-color': '#f3f4f6', '--card-bg-color': '#ffffff', '--panel-bg-color': '#f9fafb',
+                '--text-color-primary': '#1f2937', '--text-color-secondary': '#4b5563', '--text-color-accent': '#2563eb',
+                '--border-color': '#e5e7eb', '--input-bg-color': '#ffffff', '--input-border-color': '#d1d5db',
+                '--button-green-bg': '#16a34a', '--button-green-hover-bg': '#15803d',
+                '--button-red-bg': '#dc2626', '--button-red-hover-bg': '#b91c1c',
+                '--button-yellow-bg': '#d97706', '--button-yellow-hover-bg': '#b45309',
+                '--button-purple-bg': '#9333ea', '--button-purple-hover-bg': '#7e22ce',
+                '--button-blue-bg': '#2563eb', '--button-blue-hover-bg': '#1d4ed8',
+                '--button-gray-bg': '#4b5563', '--button-gray-hover-bg': '#374151',
+                '--table-header-bg': '#e5e7eb', '--table-header-text': '#4b5563',
+                '--table-row-hover-bg': '#f3f4f6', '--highlight-row-bg': '#dbeafe',
+                '--font-family-base': 'OpenDyslexic, Arial, sans-serif', /* Dyslexic-friendly font */
+                '--font-size-base': '1rem', '--font-size-sm': '0.875rem', '--font-size-md': '1rem',
+                '--font-size-lg': '1.25rem', '--font-size-xl': '2.25rem', '--font-size-timer': '4.5rem',
+                '--font-size-h1': '1.875rem', '--font-size-h2': '1.5rem'
+            }
+        };
+
+
+        /**
+         * Converts a time string (e.g., "1 min 30 sec", "5 min", "30 sec") to total seconds.
+         * Returns null if the string is "N/A".
+         * @param {string} timeStr - The time string to convert.
+         * @returns {number|null} The total time in seconds, or null.
+         */
+        function timeToSeconds(timeStr) {
+            if (timeStr === "N/A") return null;
+            let totalSeconds = 0;
+            const parts = timeStr.split(' ');
+            for (let i = 0; i < parts.length; i++) {
+                if (parts[i] === 'min') {
+                    totalSeconds += parseInt(parts[i - 1]) * 60;
+                } else if (parts[i] === 'sec') {
+                    totalSeconds += parseInt(parts[i - 1]);
+                }
+            }
+            return totalSeconds;
+        }
+
+        // Pre-process rolesData to include times in seconds for easier calculation
+        const processedRolesData = rolesData.map(role => {
+            const green = timeToSeconds(role.greenLight);
+            const yellow = timeToSeconds(role.yellowLight);
+            const red = timeToSeconds(role.redLight);
+
+            return {
+                ...role,
+                greenLightSec: green,
+                yellowLightSec: yellow,
+                redLightSec: red,
+                speakerName: "", // Initialize speaker name
+                startTime: null, // Timestamp of when the timer was first started for this role
+                stopTime: null,  // Timestamp of when the timer was last stopped for this role
+                totalTimeSpokenSec: 0 // Accumulated time the timer was running for this role
+            };
+        });
+
+        /**
+         * Formats time in seconds into MM:SS string.
+         * @param {number} seconds - The total seconds.
+         * @returns {string} Formatted time string.
+         */
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        /**
+         * Formats a timestamp into a human-readable time string (HH:MM:SS).
+         * @param {number|null} timestamp - The timestamp in milliseconds.
+         * @returns {string} Formatted time string or "N/A".
+         */
+        function formatTimestampToTime(timestamp) {
+            if (timestamp === null) return "N/A";
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        }
+
+        /**
+         * Updates the timer display and light indicators.
+         */
+        function updateTimerDisplay() {
+            timerDisplayEl.textContent = formatTime(elapsedSeconds);
+            updateLights();
+        }
+
+        /**
+         * Controls the visibility and color of the light indicators based on elapsedSeconds (counting up).
+         */
+        function updateLights() {
+            const currentRole = processedRolesData[currentRoleIndex];
+
+            // Reset all lights
+            greenLightEl.classList.remove('green');
+            yellowLightEl.classList.remove('yellow');
+            redLightEl.classList.remove('red');
+
+            // If no specific light times are defined for the role, do not light up
+            if (currentRole.greenLightSec === null && currentRole.yellowLightSec === null && currentRole.redLightSec === null) {
+                return;
+            }
+
+            // Green light turns on when elapsedSeconds reaches or exceeds greenLightSec
+            if (currentRole.greenLightSec !== null && elapsedSeconds >= currentRole.greenLightSec) {
+                greenLightEl.classList.add('green');
+            }
+            // Yellow light turns on when elapsedSeconds reaches or exceeds yellowLightSec
+            if (currentRole.yellowLightSec !== null && elapsedSeconds >= currentRole.yellowLightSec) {
+                yellowLightEl.classList.add('yellow');
+            }
+            // Red light turns on when elapsedSeconds reaches or exceeds redLightSec
+            if (currentRole.redLightSec !== null && elapsedSeconds >= currentRole.redLightSec) {
+                redLightEl.classList.add('red');
+            }
+        }
+
+        /**
+         * Updates the display of recorded times (start, stop, actual duration).
+         */
+        function updateRecordedTimesDisplay() {
+            const currentLang = translations[currentLanguage];
+            meetingDateLabelEl.textContent = currentLang.meetingDateLabel;
+            startTimeLabelEl.textContent = currentLang.startTimeLabel;
+            stopTimeLabelEl.textContent = currentLang.stopTimeLabel;
+            actualDurationLabelEl.textContent = currentLang.actualDurationLabel;
+
+            const currentRole = processedRolesData[currentRoleIndex];
+            meetingDateDisplay.textContent = meetingDate;
+            startTimeDisplay.textContent = formatTimestampToTime(currentRole.startTime);
+            stopTimeDisplay.textContent = formatTimestampToTime(currentRole.stopTime);
+            actualDurationDisplay.textContent = formatTime(currentRole.totalTimeSpokenSec);
+        }
+
+        /**
+         * Updates the motivational message based on the current role and language.
+         */
+        function updateMotivationMessage() {
+            const currentRole = processedRolesData[currentRoleIndex];
+            const messages = translations[currentLanguage][`${currentRole.role}_motivational`];
+            if (messages && messages.length > 0) {
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                motivationMessageEl.textContent = messages[randomIndex];
+            } else {
+                motivationMessageEl.textContent = ""; // Clear message if no specific messages for this role/language
+            }
+        }
+
+        /**
+         * Starts the timer countdown.
+         */
+        function startTimer() {
+            if (isRunning) return; // Prevent multiple intervals
+            isRunning = true;
+
+            // Record session start time for calculating actual duration
+            sessionStartTime = Date.now();
+
+            // Record the overall start time for the role if it's the first start
+            if (processedRolesData[currentRoleIndex].startTime === null) {
+                processedRolesData[currentRoleIndex].startTime = sessionStartTime;
+            }
+
+            // Display initial motivational message when timer starts
+            updateMotivationMessage();
+
+            timerInterval = setInterval(() => {
+                elapsedSeconds++; // Increment for count-up timer
+                updateTimerDisplay();
+
+                // Change motivational message every minute
+                if (elapsedSeconds > 0 && elapsedSeconds % 60 === 0) {
+                    updateMotivationMessage();
+                }
+            }, 1000);
+            updateRecordedTimesDisplay(); // Update display immediately after starting
+        }
+
+        /**
+         * Stops the timer.
+         */
+        function stopTimer() {
+            if (!isRunning) return; // Only stop if running
+            clearInterval(timerInterval);
+            isRunning = false;
+
+            // Calculate and accumulate actual duration for this session
+            if (sessionStartTime !== null) {
+                const durationOfThisSession = (Date.now() - sessionStartTime) / 1000;
+                processedRolesData[currentRoleIndex].totalTimeSpokenSec += durationOfThisSession;
+                processedRolesData[currentRoleIndex].stopTime = Date.now(); // Record stop time
+            }
+            sessionStartTime = null; // Reset session start time
+            updateRecordedTimesDisplay(); // Update display immediately after stopping
+            updateTableForCurrentRole(); // Update table with final actual time
+        }
+
+        /**
+         * Resets the timer to 0 for the current role and clears recorded times.
+         */
+        function resetTimer() {
+            stopTimer();
+            const currentRole = processedRolesData[currentRoleIndex];
+            elapsedSeconds = 0; // Reset to 0 for count-up
+            currentRole.startTime = null;
+            currentRole.stopTime = null;
+            currentRole.totalTimeSpokenSec = 0;
+            updateTimerDisplay();
+            updateRecordedTimesDisplay();
+            updateTableForCurrentRole(); // Update table to reflect reset
+            updateMotivationMessage(); // Update message on reset
+        }
+
+        /**
+         * Loads the details of a specific role into the UI.
+         * @param {number} index - The index of the role to load.
+         */
+        function loadRole(index) {
+            stopTimer(); // Stop timer when changing roles
+            currentRoleIndex = index;
+            const role = processedRolesData[currentRoleIndex];
+            const currentLang = translations[currentLanguage];
+
+            currentRoleEl.textContent = currentLang[`${role.role}_role`]; // Translated role name
+            // Display key points for role description
+            const keyPoints = currentLang[`${role.role}_keyPoints`];
+            if (keyPoints && keyPoints.length > 0) {
+                roleDescriptionDisplayEl.innerHTML = keyPoints.map(point => `- ${point}`).join('<br>');
+            } else {
+                roleDescriptionDisplayEl.textContent = ""; // Clear if no key points
+            }
+
+            speakerNameInput.value = role.speakerName; // Load speaker name
+            elapsedSeconds = 0; // Always start at 0 for count-up
+            updateTimerDisplay(); // Update display and lights immediately
+            updateRecordedTimesDisplay(); // Update recorded times display
+            highlightCurrentRoleInTable(index);
+            updateMotivationMessage(); // Update message when role changes
+        }
+
+        /**
+         * Highlights the currently active role in the agenda table.
+         * @param {number} index - The index of the role to highlight.
+         */
+        function highlightCurrentRoleInTable(index) {
+            const rows = rolesTableBody.getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].classList.remove('font-bold'); // Remove font-bold from all rows
+                rows[i].style.backgroundColor = ''; // Clear inline style for background
+                if (i === index) {
+                    rows[i].style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-row-bg');
+                    rows[i].classList.add('font-bold'); // Add font bold to highlighted row
+                    // Scroll to the highlighted row if it's not in view
+                    rows[i].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        /**
+         * Navigates to the next role in the list.
+         */
+        function nextRole() {
+            if (currentRoleIndex < processedRolesData.length - 1) {
+                loadRole(currentRoleIndex + 1);
+            } else {
+                console.log("End of roles list.");
+            }
+        }
+
+        /**
+         * Navigates to the previous role in the list.
+         */
+        function prevRole() {
+            if (currentRoleIndex > 0) {
+                loadRole(currentRoleIndex - 1);
+            } else {
+                console.log("Beginning of roles list.");
+            }
+        }
+
+        /**
+         * Populates the roles table with data, using current language translations.
+         */
+        function populateRolesTable() {
+            rolesTableBody.innerHTML = ''; // Clear existing rows
+            const currentLang = translations[currentLanguage];
+
+            processedRolesData.forEach((role, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('border-b', 'border-gray-200', 'cursor-pointer');
+                // Apply hover background color via CSS variable
+                row.onmouseover = () => row.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--table-row-hover-bg');
+                row.onmouseout = () => {
+                    if (currentRoleIndex !== index) { // Only remove hover if not the currently selected row
+                        row.style.backgroundColor = '';
+                    }
+                };
+
+                row.innerHTML = `
+                    <td class="py-3 px-6 text-left whitespace-nowrap">${currentLang[`${role.role}_role`]}</td>
+                    <td class="py-3 px-6 text-left">${role.allottedTime}</td>
+                    <td class="py-3 px-6 text-left">${role.greenLight}</td>
+                    <td class="py-3 px-6 text-left">${role.yellowLight}</td>
+                    <td class="py-3 px-6 text-left">${role.redLight}</td>
+                    <td class="py-3 px-6 text-left" id="speaker-name-${index}">${role.speakerName}</td>
+                    <td class="py-3 px-6 text-left" id="actual-time-${index}">${formatTime(role.totalTimeSpokenSec)}</td>
+                `;
+                row.addEventListener('click', () => loadRole(index));
+                rolesTableBody.appendChild(row);
+            });
+            // Re-apply highlight after populating table
+            highlightCurrentRoleInTable(currentRoleIndex);
+        }
+
+        /**
+         * Updates the speaker name and actual time in the table for the current role.
+         * This is called when the speaker input changes or timer stops/resets.
+         */
+        function updateTableForCurrentRole() {
+            const currentRole = processedRolesData[currentRoleIndex];
+            const speakerCell = document.getElementById(`speaker-name-${currentRoleIndex}`);
+            const actualTimeCell = document.getElementById(`actual-time-${currentRoleIndex}`);
+
+            if (speakerCell) {
+                speakerCell.textContent = currentRole.speakerName;
+            }
+            if (actualTimeCell) {
+                actualTimeCell.textContent = formatTime(currentRole.totalTimeSpokenSec);
+            }
+        }
+
+        /**
+         * Updates all UI text elements based on the currentLanguage.
+         */
+        function updateUIForLanguage() {
+            const currentLang = translations[currentLanguage];
+
+            // Update HTML lang attribute
+            document.documentElement.lang = currentLanguage;
+
+            appTitleEl.textContent = currentLang.appTitle;
+            currentRoleLabelEl.textContent = currentLang.currentRoleLabel;
+            speakerNameLabelEl.textContent = currentLang.speakerNameLabel;
+            speakerNameInput.placeholder = currentLang.speakerNamePlaceholder;
+            startBtn.textContent = currentLang.startBtn;
+            stopBtn.textContent = currentLang.stopBtn;
+            resetBtn.textContent = currentLang.resetBtn;
+            exportCsvBtn.textContent = currentLang.exportCsvBtn;
+            prevBtn.textContent = currentLang.prevBtn;
+            nextBtn.textContent = currentLang.nextBtn;
+            langToggleButton.textContent = currentLang.langToggleButton; // Update toggle button text
+            agendaTitleEl.textContent = currentLang.agendaTitle;
+            tableHeaderRole.textContent = currentLang.tableHeaderRole;
+            tableHeaderAllotted.textContent = currentLang.tableHeaderAllotted;
+            tableHeaderGreen.textContent = currentLang.tableHeaderGreen;
+            tableHeaderYellow.textContent = currentLang.tableHeaderYellow;
+            tableHeaderRed.textContent = currentLang.tableHeaderRed;
+            tableHeaderSpeaker.textContent = currentLang.tableHeaderSpeaker;
+            tableHeaderActual.textContent = currentLang.tableHeaderActual;
+
+            // Update aria-labels for language toggle
+            langToggleButton.setAttribute('aria-label', currentLanguage === 'en' ? 'Switch to French' : 'Switch to English');
+
+            // Update recorded times labels
+            updateRecordedTimesDisplay();
+
+            // Reload current role to update role name, notes, and motivational message
+            loadRole(currentRoleIndex);
+
+            // Repopulate table with translated role names
+            populateRolesTable();
+        }
+
+        /**
+         * Sets the application theme by updating CSS variables.
+         * @param {string} themeName - The name of the theme to apply.
+         */
+        function setTheme(themeName) {
+            currentTheme = themeName;
+            const themeColors = themes[themeName];
+            const root = document.documentElement;
+            for (const [prop, value] of Object.entries(themeColors)) {
+                root.style.setProperty(prop, value);
+            }
+            // Re-apply highlight to ensure it uses the new theme's highlight color
+            highlightCurrentRoleInTable(currentRoleIndex);
+            // Re-populate table to ensure hover styles are correctly applied with new theme variables
+            populateRolesTable();
+        }
+
+
+        /**
+         * Exports the roles data to a CSV file, including new timing and speaker data.
+         */
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Add header row
+            const headers = [
+                "Role / Agenda Item", "Allotted Time", "Green Light", "Yellow Light", "Red Light", "Notes",
+                "Speaker", "Meeting Date", "Start Time", "Stop Time", "Actual Duration (seconds)"
+            ];
+            csvContent += headers.join(",") + "\n";
+
+            // Add data rows
+            processedRolesData.forEach(role => {
+                // Use English role name and notes for CSV consistency
+                const englishRole = rolesData.find(r => r.role === role.role);
+                const englishRoleName = englishRole ? englishRole.role : role.role;
+                const englishNotes = englishRole ? englishRole.notes : ""; // Original notes for CSV
+
+                const row = [
+                    `"${englishRoleName.replace(/"/g, '""')}"`,
+                    role.allottedTime,
+                    role.greenLight,
+                    role.yellowLight,
+                    role.redLight,
+                    `"${englishNotes.replace(/"/g, '""')}"`, // Handle commas and quotes in notes
+                    `"${role.speakerName.replace(/"/g, '""')}"`, // Handle commas and quotes in speaker name
+                    meetingDate,
+                    formatTimestampToTime(role.startTime),
+                    formatTimestampToTime(role.stopTime),
+                    role.totalTimeSpokenSec
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            // Create a temporary link and trigger download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Toastmasters_Meeting_Summary_${meetingDate.replace(/\//g, '-')}.csv`);
+            document.body.appendChild(link); // Required for Firefox
+            link.click();
+            document.body.removeChild(link);
+        }
+
+
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+        stopBtn.addEventListener('click', stopTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        prevBtn.addEventListener('click', prevRole);
+        nextBtn.addEventListener('click', nextRole);
+        exportCsvBtn.addEventListener('click', exportToCSV);
+        langToggleButton.addEventListener('click', toggleLanguage);
+        themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
+
+        // Event listener for speaker name input
+        speakerNameInput.addEventListener('input', (e) => {
+            processedRolesData[currentRoleIndex].speakerName = e.target.value;
+            updateTableForCurrentRole(); // Update table immediately when speaker name changes
+        });
+
+        /**
+         * Toggles the application language between English and French.
+         */
+        function toggleLanguage() {
+            currentLanguage = (currentLanguage === 'en') ? 'fr' : 'en';
+            updateUIForLanguage();
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            populateRolesTable();
+            updateUIForLanguage(); // Initial UI update based on default language
+            setTheme(currentTheme); // Apply default theme on load
+        });
+    </script>
+</body>
+</html>
