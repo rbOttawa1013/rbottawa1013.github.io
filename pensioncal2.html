@@ -1,0 +1,1234 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRSP First Monte Carlo Simulation with Scenarios</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        html {
+            box-sizing: border-box;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #fff;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* shadow-lg */
+        }
+        input[type="number"], input[type="text"], select {
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+            box-sizing: border-box; /* Ensure consistency */
+            transition: border-color 0.2s ease-in-out;
+        }
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6; /* ring-blue-500 */
+        }
+        .multi-select-box {
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+        }
+        .multi-select-box:focus-within {
+            border-color: #3b82f6; /* ring-blue-500 */
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600; /* font-semibold */
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            transform: translateY(-1px);
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* bg-blue-700 */
+        }
+        .result-box {
+            background-color: #f9fafb; /* bg-gray-50 */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .scenario-table th, .scenario-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+        .scenario-table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+        .scenario-table tbody tr:hover {
+            background-color: #f0f4f8;
+        }
+        /* Chart container for responsiveness */
+        .chart-container {
+            position: relative;
+            height: 400px; /* Fixed height for portrait orientation */
+            width: 100%;
+            margin-top: 2rem;
+            background-color: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">RRSP First Monte Carlo Simulation with Scenarios</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="p-6 bg-white rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Financial Profile</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="currentAge" class="block text-sm font-medium text-gray-700 mb-1">Current Age</label>
+                        <input type="number" id="currentAge" value="59" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="rrspValue" class="block text-sm font-medium text-gray-700 mb-1">RRSP Value ($)</label>
+                        <input type="number" id="rrspValue" value="120000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="tfsaValue" class="block text-sm font-medium text-gray-700 mb-1">TFSA Value ($)</label>
+                        <input type="number" id="tfsaValue" value="240000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="pensionValue" class="block text-sm font-medium text-gray-700 mb-1">Pension ($/year)</label>
+                        <input type="number" id="pensionValue" value="60000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="pensionStartAge" class="block text-sm font-medium text-gray-700 mb-1">Pension Start Age</label>
+                        <input type="number" id="pensionStartAge" value="59" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="bridgeBenefit" class="block text-sm font-medium text-gray-700 mb-1">Bridge Benefit ($/year, until age 65)</label>
+                        <input type="number" id="bridgeBenefit" value="14000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="expenses" class="block text-sm font-medium text-gray-700 mb-1">Annual Expenses ($/year)</label>
+                        <input type="number" id="expenses" value="60000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="cppMax" class="block text-sm font-medium text-gray-700 mb-1">CPP Max ($/year, 2025 est.)</label>
+                        <input type="number" id="cppMax" value="16375" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="oasMax" class="block text-sm font-medium text-gray-700 mb-1">OAS Max ($/year, 2025 est.)</label>
+                        <input type="number" id="oasMax" value="8732" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="tfsaAnnualContributionLimit" class="block text-sm font-medium text-gray-700 mb-1">Annual TFSA Contribution Limit ($)</label>
+                        <input type="number" id="tfsaAnnualContributionLimit" value="7000" class="p-2 border rounded-md w-full">
+                    </div>
+                     <div>
+                        <label for="initialTfsaUnusedRoom" class="block text-sm font-medium text-gray-700 mb-1">Initial TFSA Unused Room ($)</label>
+                        <input type="number" id="initialTfsaUnusedRoom" value="0" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="rrspAnnualWithdrawalRate" class="block text-sm font-medium text-gray-700 mb-1">RRSP Annual Withdrawal Rate (%)</label>
+                        <input type="number" id="rrspAnnualWithdrawalRate" value="4" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="tfsaAnnualWithdrawalRate" class="block text-sm font-medium text-gray-700 mb-1">TFSA Annual Withdrawal Rate (%)</label>
+                        <input type="number" id="tfsaAnnualWithdrawalRate" value="4" step="0.1" class="p-2 border rounded-md w-full"> </div>
+                    <div>
+                        <label class="inline-flex items-center text-sm font-medium text-gray-700">
+                            <input type="checkbox" id="alwaysIncludeTfsaWithdrawal" class="form-checkbox">
+                            <span class="ml-2">Always Include TFSA Withdrawal</span>
+                        </label>
+                    </div>
+                    <div id="tfsaStartAgeContainer">
+                        <label for="tfsaStartAge" class="block text-sm font-medium text-gray-700 mb-1">TFSA Start Age (for fixed withdrawal)</label>
+                        <input type="number" id="tfsaStartAge" value="65" class="p-2 border rounded-md w-full">
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-white rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Stochastic Variables</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="maxLifeExpectancy" class="block text-sm font-medium text-gray-700 mb-1">Max Life Expectancy (Years)</label>
+                        <input type="number" id="maxLifeExpectancy" value="100" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="lifeExpectancyMean" class="block text-sm font-medium text-gray-700 mb-1">Life Expectancy Mean</label>
+                        <input type="number" id="lifeExpectancyMean" value="85" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="lifeExpectancySD" class="block text-sm font-medium text-gray-700 mb-1">Life Expectancy SD</label>
+                        <input type="number" id="lifeExpectancySD" value="5" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="inflationMean" class="block text-sm font-medium text-gray-700 mb-1">Inflation Mean (%)</label>
+                        <input type="number" id="inflationMean" value="2" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="inflationSD" class="block text-sm font-medium text-gray-700 mb-1">Inflation SD (%)</label>
+                        <input type="number" id="inflationSD" value="0.5" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="rrspReturnMean" class="block text-sm font-medium text-gray-700 mb-1">RRSP Return Mean (%)</label>
+                        <input type="number" id="rrspReturnMean" value="4.5" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="rrspReturnSD" class="block text-sm font-medium text-gray-700 mb-1">RRSP Return SD (%)</label>
+                        <input type="number" id="rrspReturnSD" value="8" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="tfsaReturnMean" class="block text-sm font-medium text-gray-700 mb-1">TFSA Return Mean (%)</label>
+                        <input type="number" id="tfsaReturnMean" value="4" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="tfsaReturnSD" class="block text-sm font-medium text-gray-700 mb-1">TFSA Return SD (%)</label>
+                        <input type="number" id="tfsaReturnSD" value="6" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <label for="discountRate" class="block text-sm font-medium text-gray-700 mb-1">Discount Rate (%)</label>
+                        <input type="number" id="discountRate" value="4" step="0.1" class="p-2 border rounded-md w-full">
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-white rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Scenario Selection</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="numSimulationsInput" class="block text-sm font-medium text-gray-700 mb-1">Number of Simulations per Scenario</label>
+                        <input type="number" id="numSimulationsInput" value="100000" class="p-2 border rounded-md w-full">
+                    </div>
+                    <div>
+                        <fieldset class="multi-select-box p-2 space-y-2">
+                            <legend class="text-sm font-medium text-gray-700 mb-1">CPP Start Ages</legend>
+                            <label><input type="checkbox" name="cppAge" value="65" checked> 65</label>
+                            <label><input type="checkbox" name="cppAge" value="66"> 66</label>
+                            <label><input type="checkbox" name="cppAge" value="67"> 67</label>
+                            <label><input type="checkbox" name="cppAge" value="68"> 68</label>
+                            <label><input type="checkbox" name="cppAge" value="69"> 69</label>
+                            <label><input type="checkbox" name="cppAge" value="70"> 70</label>
+                        </fieldset>
+                    </div>
+                    <div>
+                        <fieldset class="multi-select-box p-2 space-y-2">
+                            <legend class="text-sm font-medium text-gray-700 mb-1">OAS Start Ages</legend>
+                            <label><input type="checkbox" name="oasAge" value="65" checked> 65</label>
+                            <label><input type="checkbox" name="oasAge" value="66"> 66</label>
+                            <label><input type="checkbox" name="oasAge" value="67"> 67</label>
+                            <label><input type="checkbox" name="oasAge" value="68"> 68</label>
+                            <label><input type="checkbox" name="oasAge" value="69"> 69</label>
+                            <label><input type="checkbox" name="oasAge" value="70"> 70</label>
+                        </fieldset>
+                    </div>
+                    <div>
+                        <fieldset class="multi-select-box p-2 space-y-2">
+                            <legend class="text-sm font-medium text-gray-700 mb-1">Withdrawal Strategies</legend>
+                            <label><input type="checkbox" name="withdrawalStrategy" value="RRSP-First" checked> RRSP-First</label>
+                            <label><input type="checkbox" name="withdrawalStrategy" value="TFSA-First"> TFSA-First</label>
+                            <label><input type="checkbox" name="withdrawalStrategy" value="Hybrid"> Hybrid (50/50)</label>
+                        </fieldset>
+                    </div>
+                    <div>
+                        <label for="stressTest" class="block text-sm font-medium text-gray-700 mb-1">Stress Test Scenario</label>
+                        <select id="stressTest" class="p-2 border rounded-md w-full">
+                            <option value="Baseline">Baseline</option>
+                            <option value="Market Crash">Market Crash (-20% initial portfolio)</option>
+                            <option value="Health Shock">Health Shock (10% chance of $20k/yr post-75)</option>
+                            <option value="Combined Stress">Combined Stress</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Display Mode</label>
+                        <div class="flex flex-col space-y-2">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="displayMode" value="NPV_Nominal" class="form-radio" checked>
+                                <span class="ml-2 text-gray-700">NPV (Nominal - Future Dollars)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="displayMode" value="NPV_Real" class="form-radio">
+                                <span class="ml-2 text-gray-700">NPV (Real - Today's Dollars)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="displayMode" value="Pension_Amounts_Nominal" class="form-radio">
+                                <span class="ml-2 text-gray-700">Actual Pension Amount (Net/Gross) (Nominal)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="displayMode" value="Pension_Amounts_Real" class="form-radio">
+                                <span class="ml-2 text-gray-700">Actual Pension Amount (Net/Gross) (Real - Today's Dollars)</span>
+                            </label>
+                        </div>
+                    </div>
+                     <div class="mt-4">
+                        <fieldset class="multi-select-box p-2 space-y-2">
+                            <legend class="text-sm font-medium text-gray-700 mb-1">Graph Data Selection</legend>
+                            <label><input type="checkbox" name="graphData" value="Pension"> Pension</label>
+                            <label><input type="checkbox" name="graphData" value="BridgeBenefit"> Bridge Benefit</label>
+                            <label><input type="checkbox" name="graphData" value="CPP"> CPP</label>
+                            <label><input type="checkbox" name="graphData" value="OAS"> OAS</label>
+                            <label><input type="checkbox" name="graphData" value="RRSPWithdrawal"> RRSP/RRIF Withdrawal</label>
+                            <label><input type="checkbox" name="graphData" value="TFSAWithdrawal" checked> TFSA Withdrawal</label> </fieldset>
+                        <p class="text-xs text-gray-500 mt-1">If no items are selected, "Gross Pension" and "Net Pension" will be displayed. This filter applies to Pension Amount display modes only.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-center mb-8">
+            <button id="runSimulation" class="btn-primary">Run Simulation</button>
+        </div>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="loading-spinner"></div>
+            <p class="mt-4 text-lg text-gray-600">Running simulations... This may take a moment.</p>
+            <p id="progressMessage" class="mt-2 text-sm text-gray-500"></p>
+        </div>
+
+        <div id="results" class="hidden">
+            <h2 class="text-2xl font-bold text-center mb-4 text-gray-800">Simulation Results Summary</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-md scenario-table">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Stress Test</th>
+                            <th>CPP Start Age</th>
+                            <th>OAS Start Age</th>
+                            <th>Mean NPV</th>
+                            <th>95% CI Lower</th>
+                            <th>95% CI Upper</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="npvCumulativeChart"></canvas>
+            </div>
+
+            <p id="overallSummary" class="mt-8 text-gray-700 leading-relaxed"></p>
+        </div>
+    </div>
+
+    <script>
+        // Helper function for normal distribution (Box-Muller transform)
+        function boxMullerTransform() {
+            let u = 0, v = 0;
+            while (u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+            while (v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function getRandomNormal(mean, stdDev) {
+            return mean + boxMullerTransform() * stdDev;
+        }
+
+        // CRA RRIF Minimum Withdrawal Rates (as a factor of RRIF balance)
+        const rrifRates = {
+            71: 0.0528, 72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582,
+            76: 0.0598, 77: 0.0617, 78: 0.0636, 79: 0.0658, 80: 0.0682,
+            81: 0.0708, 82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851,
+            86: 0.0899, 87: 0.0955, 88: 0.1021, 89: 0.1099, 90: 0.1192,
+            91: 0.1306, 92: 0.1449, 93: 0.1634, 94: 0.1879, 95: 0.2000 // 20% for 95+
+        };
+
+        // Base Tax Brackets (Federal and Ontario 2025 - these will be indexed annually)
+        const baseFederalTaxBrackets = [
+            { limit: 57375, rate: 0.15 },
+            { limit: 114750, rate: 0.205 },
+            { limit: 177882, rate: 0.26 },
+            { limit: 253414, rate: 0.29 },
+            { limit: Infinity, rate: 0.33 }
+        ];
+
+        const baseOntarioTaxBrackets = [
+            { limit: 52886, rate: 0.0505 },
+            { limit: 105775, rate: 0.0915 },
+            { limit: 150000, rate: 0.1116 },
+            { limit: 220000, rate: 0.1216 },
+            { limit: Infinity, rate: 0.1316 }
+        ];
+
+        // Base values for credits/thresholds that will be indexed
+        const baseOASClawbackThreshold = 90997; // 2025 base
+        const baseFederalAgeAmount = 8790; // 2025 Federal Age Amount
+        const baseAgeAmountClawbackThreshold = 41791; // 2025 Federal Age Amount Clawback Threshold
+        const baseFederalBPA = 16129; // 2025 Federal Basic Personal Amount (for non-high income)
+        const baseFederalBPAPhaseOutStart = 177882; // Income where BPA starts phasing out
+        const baseFederalBPAPhaseOutEnd = 253414; // Income where BPA is fully phased out
+
+        // Ontario Health Premium brackets (fixed for now, could be indexed if data available)
+        const ontarioHealthPremiumBrackets = [
+            { limit: 20000, premium: 0 },
+            { limit: 25000, premium: 300 }, // 6% of income over 20k
+            { limit: 36000, premium: 450 }, // 1% of income over 25k + 300
+            { limit: 38500, premium: 600 }, // 2% of income over 36k + 450
+            { limit: 48000, premium: 750 }, // 3% of income over 38.5k + 600
+            { limit: 200599, premium: 900 }, // 4% of income over 48k + 750 (maxes out at 900)
+            { limit: Infinity, premium: 900 }
+        ];
+
+        function calculateTax(income, age, annualInflationFactor) {
+            let federalTax = 0;
+            let provincialTax = 0;
+            let totalTax = 0;
+            let taxableIncome = income;
+
+            // --- Index tax brackets for the current year ---
+            const indexedFederalTaxBrackets = baseFederalTaxBrackets.map(b => ({
+                limit: b.limit === Infinity ? Infinity : b.limit * annualInflationFactor,
+                rate: b.rate
+            }));
+            const indexedOntarioTaxBrackets = baseOntarioTaxBrackets.map(b => ({
+                limit: b.limit === Infinity ? Infinity : b.limit * annualInflationFactor,
+                rate: b.rate
+            }));
+
+            // --- Federal Tax Calculation ---
+            let remainingFederalIncome = taxableIncome;
+            for (const bracket of indexedFederalTaxBrackets) {
+                const previousLimit = (indexedFederalTaxBrackets.indexOf(bracket) === 0) ? 0 : indexedFederalTaxBrackets[indexedFederalTaxBrackets.indexOf(bracket) - 1].limit;
+                const amountInBracket = Math.min(remainingFederalIncome, bracket.limit - previousLimit);
+                federalTax += amountInBracket * bracket.rate;
+                remainingFederalIncome -= amountInBracket;
+                if (remainingFederalIncome <= 0) break;
+            }
+
+            // --- Ontario Tax Calculation ---
+            let remainingProvincialIncome = taxableIncome;
+            for (const bracket of indexedOntarioTaxBrackets) {
+                const previousLimit = (indexedOntarioTaxBrackets.indexOf(bracket) === 0) ? 0 : indexedOntarioTaxBrackets[indexedOntarioTaxBrackets.indexOf(bracket) - 1].limit;
+                const amountInBracket = Math.min(remainingProvincialIncome, bracket.limit - previousLimit);
+                provincialTax += amountInBracket * bracket.rate;
+                remainingProvincialIncome -= amountInBracket;
+                if (remainingProvincialIncome <= 0) break;
+            }
+
+            totalTax = federalTax + provincialTax;
+
+            // --- Apply Federal Basic Personal Amount (BPA) Credit ---
+            let indexedFederalBPA = baseFederalBPA * annualInflationFactor;
+            let indexedFederalBPAPhaseOutStart = baseFederalBPAPhaseOutStart * annualInflationFactor;
+            let indexedFederalBPAPhaseOutEnd = baseFederalBPAPhaseOutEnd * annualInflationFactor;
+
+            let effectiveBPA = indexedFederalBPA;
+            if (income > indexedFederalBPAPhaseOutStart) {
+                if (income < indexedFederalBPAPhaseOutEnd) {
+                    effectiveBPA = indexedFederalBPA - (indexedFederalBPA * ((income - indexedFederalBPAPhaseOutStart) / (indexedFederalBPAPhaseOutEnd - indexedFederalBPAPhaseOutStart)));
+                } else {
+                    effectiveBPA = 0; // Fully phased out
+                }
+            }
+            effectiveBPA = Math.max(0, effectiveBPA);
+            totalTax = Math.max(0, totalTax - (effectiveBPA * 0.15)); // 15% federal non-refundable credit rate
+
+            // --- Apply Federal Age Amount Credit ---
+            if (age >= 65) {
+                let indexedAgeAmountBase = baseFederalAgeAmount * annualInflationFactor;
+                let indexedAgeAmountClawbackThreshold = baseAgeAmountClawbackThreshold * annualInflationFactor;
+                
+                let effectiveAgeAmount = Math.max(0, indexedAgeAmountBase - Math.max(0, income - indexedAgeAmountClawbackThreshold) * 0.15); // 15% clawback rate
+                totalTax = Math.max(0, totalTax - (effectiveAgeAmount * 0.15)); // 15% federal non-refundable credit rate
+            }
+
+            // --- Calculate Ontario Health Premium (OHP) ---
+            let ohp = 0;
+            // OHP is calculated based on income segments, not just limits from brackets
+            if (taxableIncome <= 20000) {
+                ohp = 0;
+            } else if (taxableIncome <= 25000) {
+                ohp = (taxableIncome - 20000) * 0.06;
+            } else if (taxableIncome <= 36000) {
+                ohp = 300 + (taxableIncome - 25000) * 0.06;
+            } else if (taxableIncome <= 38500) {
+                ohp = 450 + (taxableIncome - 36000) * 0.06;
+            } else if (taxableIncome <= 48000) {
+                ohp = 600 + (taxableIncome - 38500) * 0.06;
+            } else if (taxableIncome <= 200599) { // Max premium reached at 200599.00
+                ohp = 750 + (taxableIncome - 48000) * 0.04; // This specific calculation is for the 48k-200599 range
+            } else { // Income > 200599
+                ohp = 900; // Max premium
+            }
+            ohp = Math.min(ohp, 900); // Ensure OHP doesn't exceed the absolute max of $900
+            totalTax += ohp; // OHP is added to total tax
+
+            return totalTax;
+        }
+
+        document.getElementById('runSimulation').addEventListener('click', runAllScenarios);
+
+        let npvCumulativeChartInstance; // Global chart instance
+
+        // Color palette for chart lines
+        const chartColors = [
+            'rgb(255, 99, 132)', // Red
+            'rgb(54, 162, 235)', // Blue
+            'rgb(255, 205, 86)', // Yellow
+            'rgb(75, 192, 192)', // Green
+            'rgb(153, 102, 255)', // Purple
+            'rgb(255, 159, 64)', // Orange
+            'rgb(201, 203, 207)', // Grey
+            'rgb(100, 149, 237)', // CornflowerBlue
+            'rgb(218, 112, 214)', // Orchid
+            'rgb(60, 179, 113)' // MediumSeaGreen
+        ];
+
+        async function runAllScenarios() {
+            // 1. Scenario Setup/Initialization: Gather all input values
+            const params = initializeSimulationParams();
+
+            document.getElementById('runSimulation').disabled = true;
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('resultsTableBody').innerHTML = ''; // Clear previous results
+            document.getElementById('overallSummary').textContent = '';
+
+            if (npvCumulativeChartInstance) {
+                npvCumulativeChartInstance.destroy(); // Destroy previous chart instance
+            }
+
+            let effectiveDiscountRate = params.discountRate;
+            if (params.displayMode === 'NPV_Real' || params.displayMode === 'Pension_Amounts_Real') {
+                effectiveDiscountRate = (1 + params.discountRate) / (1 + params.inflationMean) - 1;
+            }
+
+            const allScenarioResults = [];
+            let scenarioCounter = 0;
+            const totalScenarios = params.selectedStrategies.length * params.selectedCppAges.length * params.selectedOasAges.length;
+
+            if (totalScenarios === 0) {
+                alert("Please select at least one CPP Start Age, OAS Start Age, and Withdrawal Strategy.");
+                document.getElementById('runSimulation').disabled = false;
+                document.getElementById('loading').classList.add('hidden');
+                return;
+            }
+
+            if (params.numSimulations <= 0) {
+                 alert("Number of simulations must be greater than 0.");
+                document.getElementById('runSimulation').disabled = false;
+                document.getElementById('loading').classList.add('hidden');
+                return;
+            }
+
+            if (totalScenarios * params.numSimulations > 50000000) { // Arbitrary threshold for very high total simulations
+                if (!confirm(`You are about to run ${totalScenarios} scenarios with ${params.numSimulations.toLocaleString()} simulations each, totaling ${ (totalScenarios * params.numSimulations).toLocaleString()} simulations. This may take a very long time and could freeze your browser. Do you wish to proceed?`)) {
+                    document.getElementById('runSimulation').disabled = false;
+                    document.getElementById('loading').classList.add('hidden');
+                    return;
+                }
+            }
+
+            // Loop through selected strategies, CPP ages, and OAS ages
+            for (const currentStrategy of params.selectedStrategies) {
+                for (const cppStartAge of params.selectedCppAges) {
+                    for (const oasStartAge of params.selectedOasAges) {
+                        scenarioCounter++;
+                        document.getElementById('progressMessage').textContent = `Running scenario ${scenarioCounter} of ${totalScenarios}: Strategy: ${currentStrategy}, CPP Age ${cppStartAge}, OAS Age ${oasStartAge}, Stress Test: ${params.selectedStressTest}`;
+                        
+                        // 2. Run multiple simulations for the current scenario
+                        const rawSimulationData = await runScenarioBatch(
+                            { ...params, currentStrategy, cppStartAge, oasStartAge, effectiveDiscountRate },
+                            params.numSimulations,
+                            1000 // batchSize
+                        );
+
+                        // 3. Aggregate results for the current scenario
+                        const aggregatedResults = aggregateSimulationResults(
+                            rawSimulationData,
+                            params.currentAge,
+                            params.maxLifeExpectancy,
+                            params.inflationMean,
+                            effectiveDiscountRate // Pass effectiveDiscountRate for cumulative NPV
+                        );
+
+                        allScenarioResults.push({
+                            strategy: currentStrategy,
+                            stressTest: params.selectedStressTest,
+                            cppStartAge: cppStartAge,
+                            oasStartAge: oasStartAge,
+                            meanNPV: aggregatedResults.meanNPV,
+                            lowerBound: aggregatedResults.lowerBound,
+                            upperBound: aggregatedResults.upperBound,
+                            cumulativeNpvData: aggregatedResults.cumulativeNpvData,
+                            averagedAnnualGrossPension: aggregatedResults.averagedAnnualGrossPension,
+                            averagedAnnualNetPension: aggregatedResults.averagedAnnualNetPension,
+                            averagedAnnualGrossPensionReal: aggregatedResults.averagedAnnualGrossPensionReal,
+                            averagedAnnualNetPensionReal: aggregatedResults.averagedAnnualNetPensionReal,
+                            averagedAnnualPensionIncome: aggregatedResults.averagedAnnualPensionIncome,
+                            averagedAnnualBridgeBenefit: aggregatedResults.averagedAnnualBridgeBenefit,
+                            averagedAnnualCppPayment: aggregatedResults.averagedAnnualCppPayment,
+                            averagedAnnualOasPayment: aggregatedResults.averagedAnnualOasPayment,
+                            averagedAnnualTFSAWithdrawal: aggregatedResults.averagedAnnualTFSAWithdrawal,
+                            averagedAnnualRRSPWithdrawal: aggregatedResults.averagedAnnualRRSPWithdrawal,
+                            averagedAnnualTotalTaxableIncome: aggregatedResults.averagedAnnualTotalTaxableIncome,
+                            averagedAnnualTotalTax: aggregatedResults.averagedAnnualTotalTax,
+                            averagedAnnualOasClawbackAmount: aggregatedResults.averagedAnnualOasClawbackAmount
+                        });
+                    }
+                }
+            }
+
+            const tableBody = document.getElementById('resultsTableBody');
+            allScenarioResults.forEach(result => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = result.strategy;
+                row.insertCell().textContent = result.stressTest;
+                row.insertCell().textContent = result.cppStartAge;
+                row.insertCell().textContent = result.oasStartAge;
+                row.insertCell().textContent = `$${result.meanNPV.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                row.insertCell().textContent = `$${result.lowerBound.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                row.insertCell().textContent = `$${result.upperBound.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            });
+
+            renderChart(allScenarioResults, params.currentAge, params.maxLifeExpectancy, params.displayMode, params.selectedGraphData, params.inflationMean);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('results').classList.remove('hidden');
+            document.getElementById('runSimulation').disabled = false;
+            document.getElementById('progressMessage').textContent = '';
+
+            const summaryText = `The table above summarizes the results for each simulated scenario. Each scenario was run with ${params.numSimulations.toLocaleString()} iterations. The graph below illustrates the projected financial trajectory based on your selected display mode. You can compare different withdrawal strategies, stress test impacts, and the effect of varying CPP and OAS start ages on your projected retirement income.`;
+            document.getElementById('overallSummary').textContent = summaryText;
+        }
+
+        // ----------------------------------------------------
+        // Modularity Improvements: Extracted Functions
+        // ----------------------------------------------------
+
+        function initializeSimulationParams() {
+            return {
+                currentAge: parseInt(document.getElementById('currentAge').value),
+                rrspValue: parseFloat(document.getElementById('rrspValue').value),
+                tfsaValue: parseFloat(document.getElementById('tfsaValue').value),
+                pensionValue: parseFloat(document.getElementById('pensionValue').value),
+                pensionStartAge: parseInt(document.getElementById('pensionStartAge').value),
+                bridgeBenefit: parseFloat(document.getElementById('bridgeBenefit').value),
+                initialExpenses: parseFloat(document.getElementById('expenses').value),
+                initialCppMax: parseFloat(document.getElementById('cppMax').value),
+                initialOasMax: parseFloat(document.getElementById('oasMax').value),
+                tfsaAnnualContributionLimit: parseFloat(document.getElementById('tfsaAnnualContributionLimit').value),
+                initialTfsaUnusedRoom: parseFloat(document.getElementById('initialTfsaUnusedRoom').value),
+                rrspAnnualWithdrawalRate: parseFloat(document.getElementById('rrspAnnualWithdrawalRate').value) / 100,
+                tfsaAnnualWithdrawalRate: parseFloat(document.getElementById('tfsaAnnualWithdrawalRate').value) / 100,
+                
+                numSimulations: parseInt(document.getElementById('numSimulationsInput').value),
+                maxLifeExpectancy: parseInt(document.getElementById('maxLifeExpectancy').value),
+                lifeExpectancyMean: parseFloat(document.getElementById('lifeExpectancyMean').value),
+                lifeExpectancySD: parseFloat(document.getElementById('lifeExpectancySD').value),
+                inflationMean: parseFloat(document.getElementById('inflationMean').value) / 100,
+                inflationSD: parseFloat(document.getElementById('inflationSD').value) / 100,
+                rrspReturnMean: parseFloat(document.getElementById('rrspReturnMean').value) / 100,
+                rrspReturnSD: parseFloat(document.getElementById('rrspReturnSD').value) / 100,
+                tfsaReturnMean: parseFloat(document.getElementById('tfsaReturnMean').value) / 100,
+                tfsaReturnSD: parseFloat(document.getElementById('tfsaReturnSD').value) / 100,
+                discountRate: parseFloat(document.getElementById('discountRate').value) / 100,
+
+                alwaysIncludeTfsaWithdrawal: document.getElementById('alwaysIncludeTfsaWithdrawal').checked,
+                tfsaFixedWithdrawalStartAge: parseInt(document.getElementById('tfsaStartAge').value),
+
+                selectedCppAges: Array.from(document.querySelectorAll('input[name="cppAge"]:checked')).map(cb => parseInt(cb.value)),
+                selectedOasAges: Array.from(document.querySelectorAll('input[name="oasAge"]:checked')).map(cb => parseInt(cb.value)),
+                selectedStrategies: Array.from(document.querySelectorAll('input[name="withdrawalStrategy"]:checked')).map(cb => cb.value),
+                selectedStressTest: document.getElementById('stressTest').value,
+                displayMode: document.querySelector('input[name="displayMode"]:checked').value,
+                selectedGraphData: Array.from(document.querySelectorAll('input[name="graphData"]:checked')).map(cb => cb.value)
+            };
+        }
+
+        // Runs a single Monte Carlo iteration for one specific scenario
+        function runSingleIteration(params) {
+            let currentRRSP = params.rrspValue;
+            let currentTFSA = params.tfsaValue;
+            let currentPension = params.pensionValue;
+            let currentExpenses = params.initialExpenses;
+            let currentCppMax = params.initialCppMax;
+            let currentOasMax = params.initialOasMax;
+            let currentOASClawbackThreshold = baseOASClawbackThreshold;
+
+            let currentTfsaUnusedRoom = params.initialTfsaUnusedRoom;
+            let tfsaWithdrawalsThisYear = 0; // For TFSA room reinstatement next year
+
+            if (params.selectedStressTest === 'Market Crash' || params.selectedStressTest === 'Combined Stress') {
+                currentRRSP *= 0.8;
+                currentTFSA *= 0.8;
+            }
+
+            let totalNPV = 0;
+            let annualCashFlowsForSim = [];
+            let annualGrossPensionForSim = [];
+            let annualNetPensionForSim = [];
+            
+            let annualPensionIncomeForSim = [];
+            let annualBridgeBenefitForSim = [];
+            let annualCppPaymentForSim = [];
+            let annualOasPaymentForSim = [];
+            let annualTFSAWithdrawalForSim = [];
+            let annualRRSPWithdrawalForSim = [];
+            let annualTotalTaxableIncomeForSim = [];
+            let annualTotalTaxForSim = [];
+            let annualOasClawbackAmountForSim = [];
+
+            let simulatedLifeExpectancy = Math.round(getRandomNormal(params.lifeExpectancyMean, params.lifeExpectancySD));
+            simulatedLifeExpectancy = Math.max(params.currentAge + 1, Math.min(params.maxLifeExpectancy, simulatedLifeExpectancy));
+
+            for (let age = params.currentAge; age <= simulatedLifeExpectancy; age++) {
+                const yearIndex = age - params.currentAge;
+
+                const annualInflation = Math.max(0, Math.min(0.04, getRandomNormal(params.inflationMean, params.inflationSD)));
+                const annualInflationFactor = (1 + annualInflation);
+
+                const annualRRSPReturn = getRandomNormal(params.rrspReturnMean, params.rrspReturnSD);
+                const annualTFSAReturn = getRandomNormal(params.tfsaReturnMean, params.tfsaReturnSD);
+
+                if (age > params.currentAge) { 
+                    currentExpenses *= annualInflationFactor;
+                    currentPension *= annualInflationFactor;
+                    currentOASClawbackThreshold *= annualInflationFactor;
+                    currentCppMax *= annualInflationFactor;
+                    currentOasMax *= annualInflationFactor;
+
+                    currentTfsaUnusedRoom += params.tfsaAnnualContributionLimit * annualInflationFactor;
+                    currentTfsaUnusedRoom += tfsaWithdrawalsThisYear; // Re-instate last year's withdrawals
+                    tfsaWithdrawalsThisYear = 0; // Reset for current year
+                } else {
+                    currentTfsaUnusedRoom += params.tfsaAnnualContributionLimit; // Add initial year's room
+                }
+
+                if ((params.selectedStressTest === 'Health Shock' || params.selectedStressTest === 'Combined Stress') && age >= 75) {
+                    if (Math.random() < 0.10) {
+                        currentExpenses += (20000 * annualInflationFactor);
+                    }
+                }
+
+                // --- Calculate Base Income Sources (Gross) ---
+                let currentYearPensionGross = 0;
+                if (age >= params.pensionStartAge) {
+                    currentYearPensionGross = currentPension;
+                }
+                annualPensionIncomeForSim.push(currentYearPensionGross);
+
+                let currentYearBridgeGross = 0;
+                if (age < 65) {
+                    currentYearBridgeGross = params.bridgeBenefit;
+                }
+                annualBridgeBenefitForSim.push(currentYearBridgeGross);
+
+                let cppPaymentGross = 0;
+                if (age >= params.cppStartAge) {
+                    let adjustmentFactor = 1;
+                    if (params.cppStartAge < 65) {
+                        adjustmentFactor = 1 - (65 - params.cppStartAge) * 0.006 * 12;
+                    } else if (params.cppStartAge > 65) {
+                        adjustmentFactor = 1 + (params.cppStartAge - 65) * 0.007 * 12;
+                    }
+                    cppPaymentGross = currentCppMax * adjustmentFactor;
+                }
+                annualCppPaymentForSim.push(cppPaymentGross);
+
+                let oasPaymentGross = 0;
+                if (age >= params.oasStartAge) {
+                    let adjustmentFactor = 1;
+                    if (params.oasStartAge > 65 && params.oasStartAge <= 70) {
+                        adjustmentFactor = 1 + (params.oasStartAge - 65) * 0.006 * 12; 
+                    }
+                    oasPaymentGross = currentOasMax * adjustmentFactor;
+                }
+                annualOasPaymentForSim.push(oasPaymentGross);
+
+                // Combined non-portfolio income (before portfolio withdrawals)
+                let totalNonPortfolioIncome = currentYearPensionGross + currentYearBridgeGross + cppPaymentGross + oasPaymentGross;
+                
+                // Funds needed from portfolios (RRSP/TFSA) to cover expenses
+                let fundsNeededFromPortfolios = currentExpenses - totalNonPortfolioIncome;
+                
+                // Calculate mandatory RRSP withdrawal based on rate or RRIF rules
+                let mandatoryRRSPWithdrawal = 0;
+                if (currentRRSP > 0) {
+                    mandatoryRRSPWithdrawal = (age < 71) ? currentRRSP * params.rrspAnnualWithdrawalRate : currentRRSP * (rrifRates[Math.min(age, 95)] || 0.20);
+                }
+                mandatoryRRSPWithdrawal = Math.min(mandatoryRRSPWithdrawal, currentRRSP);
+
+
+                let rrspWithdrawal = 0; // Actual RRSP withdrawal for this year
+                let tfsaWithdrawal = 0; // Actual TFSA withdrawal for this year
+
+                // --- Handle "Always Include TFSA Withdrawal" option first ---
+                if (params.alwaysIncludeTfsaWithdrawal && age >= params.tfsaFixedWithdrawalStartAge && currentTFSA > 0) {
+                    let fixedTFSAWithdrawalAmount = currentTFSA * params.tfsaAnnualWithdrawalRate;
+                    tfsaWithdrawal = Math.min(fixedTFSAWithdrawalAmount, currentTFSA);
+                    fundsNeededFromPortfolios -= tfsaWithdrawal; // Reduce funds needed by this fixed withdrawal
+                }
+
+                // --- Apply main withdrawal strategies ---
+                if (params.currentStrategy === 'RRSP-First') {
+                    if (currentRRSP > 0) {
+                        rrspWithdrawal = Math.min(Math.max(mandatoryRRSPWithdrawal, fundsNeededFromPortfolios), currentRRSP);
+                    }
+                    let remainingNeededAfterRRSP = fundsNeededFromPortfolios - rrspWithdrawal;
+                    if (remainingNeededAfterRRSP > 0 && currentTFSA > 0) {
+                        tfsaWithdrawal += Math.min(remainingNeededAfterRRSP, currentTFSA - tfsaWithdrawal); // Add to already taken fixed TFSA
+                    }
+                } else if (params.currentStrategy === 'TFSA-First') {
+                    if (fundsNeededFromPortfolios > 0 && currentTFSA > 0) {
+                        tfsaWithdrawal += Math.min(fundsNeededFromPortfolios, currentTFSA - tfsaWithdrawal); // Add to already taken fixed TFSA
+                    }
+                    let remainingNeededAfterTFSA = fundsNeededFromPortfolios - (tfsaWithdrawal - (params.alwaysIncludeTfsaWithdrawal && age >= params.tfsaFixedWithdrawalStartAge ? currentTFSA * params.tfsaAnnualWithdrawalRate : 0)); // Only count the *additional* TFSA withdrawal
+                    if (remainingNeededAfterTFSA > 0 && currentRRSP > 0) {
+                        rrspWithdrawal = Math.min(Math.max(mandatoryRRSPWithdrawal, remainingNeededAfterTFSA), currentRRSP);
+                    }
+                } else if (params.currentStrategy === 'Hybrid') {
+                    // Start with mandatory RRSP withdrawal
+                    rrspWithdrawal = mandatoryRRSPWithdrawal;
+
+                    let remainingToCoverFromPortfolios = fundsNeededFromPortfolios - rrspWithdrawal;
+
+                    if (remainingToCoverFromPortfolios > 0) {
+                        let rrspShare = remainingToCoverFromPortfolios * 0.5; // Fixed 50/50 split of the remaining need
+                        let tfsaShare = remainingToCoverFromPortfolios * 0.5;
+
+                        let actualRRSPWithdrawalForExpenses = Math.min(rrspShare, currentRRSP - rrspWithdrawal);
+                        let actualTFSAWithdrawalForExpenses = Math.min(tfsaShare, currentTFSA - tfsaWithdrawal); // Take from remaining TFSA
+
+                        rrspWithdrawal += actualRRSPWithdrawalForExpenses;
+                        tfsaWithdrawal += actualTFSAWithdrawalForExpenses;
+
+                        // Redistribute any shortfall if one account is depleted
+                        let shortfall = remainingToCoverFromPortfolios - (actualRRSPWithdrawalForExpenses + actualTFSAWithdrawalForExpenses);
+                        if (shortfall > 0) {
+                            let rrspAvailable = currentRRSP - rrspWithdrawal;
+                            let tfsaAvailable = currentTFSA - tfsaWithdrawal;
+
+                            let takeFromRRSP = Math.min(shortfall, rrspAvailable);
+                            rrspWithdrawal += takeFromRRSP;
+                            shortfall -= takeFromRRSP;
+
+                            if (shortfall > 0) {
+                                let takeFromTFSA = Math.min(shortfall, tfsaAvailable);
+                                tfsaWithdrawal += takeFromTFSA;
+                            }
+                        }
+                    }
+                }
+                
+                // Ensure withdrawals don't exceed balances (final clamp)
+                rrspWithdrawal = Math.min(rrspWithdrawal, currentRRSP);
+                tfsaWithdrawal = Math.min(tfsaWithdrawal, currentTFSA);
+
+                tfsaWithdrawalsThisYear = tfsaWithdrawal; // Update for room reinstatement next year
+
+                currentRRSP -= rrspWithdrawal;
+                currentTFSA -= tfsaWithdrawal;
+                
+                let incomeForTaxCalc = totalNonPortfolioIncome + rrspWithdrawal;
+                
+                annualTFSAWithdrawalForSim.push(tfsaWithdrawal);
+                annualRRSPWithdrawalForSim.push(rrspWithdrawal);
+                annualGrossPensionForSim.push(currentYearPensionGross + cppPaymentGross + oasPaymentGross);
+                annualTotalTaxableIncomeForSim.push(incomeForTaxCalc);
+
+                let oasClawback = 0;
+                if (age >= params.oasStartAge && incomeForTaxCalc > currentOASClawbackThreshold) {
+                    oasClawback = Math.min(oasPaymentGross, (incomeForTaxCalc - currentOASClawbackThreshold) * 0.15);
+                }
+                annualOasClawbackAmountForSim.push(oasClawback);
+
+                const tax = calculateTax(incomeForTaxCalc, age, annualInflationFactor);
+                annualTotalTaxForSim.push(tax);
+
+                let afterTaxNetCashFlow = (incomeForTaxCalc - tax - oasClawback) - currentExpenses + tfsaWithdrawal;
+                
+                let currentYearNetPension = currentYearPensionGross + cppPaymentGross + oasPaymentGross;
+                if (incomeForTaxCalc > 0) {
+                    currentYearNetPension -= (tax * (currentYearNetPension / incomeForTaxCalc));
+                    currentYearNetPension -= (oasClawback * (currentYearNetPension / (currentYearPensionGross + cppPaymentGross + oasPaymentGross)));
+                }
+                currentYearNetPension = Math.max(0, currentYearNetPension);
+                annualNetPensionForSim.push(currentYearNetPension);
+
+                totalNPV += afterTaxNetCashFlow / Math.pow(1 + params.effectiveDiscountRate, yearIndex);
+                annualCashFlowsForSim.push(afterTaxNetCashFlow);
+
+                currentRRSP *= (1 + annualRRSPReturn);
+                currentTFSA *= (1 + annualTFSAReturn);
+                
+                if (afterTaxNetCashFlow > 0 && currentTfsaUnusedRoom > 0) {
+                    let contributionAmount = Math.min(afterTaxNetCashFlow, currentTfsaUnusedRoom);
+                    currentTFSA += contributionAmount;
+                    currentTfsaUnusedRoom -= contributionAmount;
+                }
+            }
+
+            return {
+                finalNpv: totalNPV,
+                annualCashFlows: annualCashFlowsForSim,
+                annualGrossPension: annualGrossPensionForSim,
+                annualNetPension: annualNetPensionForSim,
+                annualPensionIncome: annualPensionIncomeForSim,
+                annualBridgeBenefit: annualBridgeBenefitForSim,
+                annualCppPayment: annualCppPaymentForSim,
+                annualOasPayment: annualOasPaymentForSim,
+                annualTFSAWithdrawal: annualTFSAWithdrawalForSim,
+                annualRRSPWithdrawal: annualRRSPWithdrawalForSim,
+                annualTotalTaxableIncome: annualTotalTaxableIncomeForSim,
+                annualTotalTax: annualTotalTaxForSim,
+                annualOasClawbackAmount: annualOasClawbackAmountForSim
+            };
+        }
+
+        // Runs all simulations for a single scenario in batches
+        function runScenarioBatch(scenarioParams, numSimulations, batchSize) {
+            return new Promise(resolve => {
+                const rawSimulationData = [];
+                let completedSimulations = 0;
+
+                const runBatch = () => {
+                    for (let i = 0; i < batchSize && completedSimulations < numSimulations; i++) {
+                        rawSimulationData.push(runSingleIteration(scenarioParams));
+                        completedSimulations++;
+                    }
+                    if (completedSimulations < numSimulations) {
+                        setTimeout(runBatch, 0); // Schedule next batch
+                    } else {
+                        resolve(rawSimulationData); // Resolve promise with all simulation data
+                    }
+                };
+                runBatch(); // Start the first batch
+            });
+        }
+
+        // Aggregates raw simulation data into averaged results for one scenario
+        function aggregateSimulationResults(rawSimulationData, currentAge, maxLifeExpectancy, inflationMean, effectiveDiscountRate) {
+            const numSimulations = rawSimulationData.length;
+            const maxYears = maxLifeExpectancy - currentAge + 1;
+
+            const summedAnnualCashFlows = new Array(maxYears).fill(0);
+            const countPerYear = new Array(maxYears).fill(0); // To handle varying simulation lengths
+            const summedAnnualGrossPension = new Array(maxYears).fill(0);
+            const summedAnnualNetPension = new Array(maxYears).fill(0);
+            const summedAnnualGrossPensionReal = new Array(maxYears).fill(0);
+            const summedAnnualNetPensionReal = new Array(maxYears).fill(0);
+            
+            const summedAnnualPensionIncome = new Array(maxYears).fill(0);
+            const summedAnnualBridgeBenefit = new Array(maxYears).fill(0);
+            const summedAnnualCppPayment = new Array(maxYears).fill(0);
+            const summedAnnualOasPayment = new Array(maxYears).fill(0);
+            const summedAnnualTFSAWithdrawal = new Array(maxYears).fill(0);
+            const summedAnnualRRSPWithdrawal = new Array(maxYears).fill(0);
+            const summedAnnualTotalTaxableIncome = new Array(maxYears).fill(0);
+            const summedAnnualTotalTax = new Array(maxYears).fill(0);
+            const summedAnnualOasClawbackAmount = new Array(maxYears).fill(0);
+
+            rawSimulationData.forEach(simResult => {
+                simResult.annualCashFlows.forEach((cashFlow, yearIdx) => {
+                    if (yearIdx < maxYears) {
+                        summedAnnualCashFlows[yearIdx] += cashFlow;
+                        countPerYear[yearIdx]++;
+                    }
+                });
+                simResult.annualGrossPension.forEach((grossPension, yearIdx) => {
+                    if (yearIdx < maxYears) {
+                        summedAnnualGrossPension[yearIdx] += grossPension;
+                        summedAnnualGrossPensionReal[yearIdx] += grossPension / Math.pow((1 + inflationMean), yearIdx);
+                    }
+                });
+                simResult.annualNetPension.forEach((netPension, yearIdx) => {
+                    if (yearIdx < maxYears) {
+                        summedAnnualNetPension[yearIdx] += netPension;
+                        summedAnnualNetPensionReal[yearIdx] += netPension / Math.pow((1 + inflationMean), yearIdx);
+                    }
+                });
+                simResult.annualPensionIncome.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualPensionIncome[yearIdx] += val; });
+                simResult.annualBridgeBenefit.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualBridgeBenefit[yearIdx] += val; });
+                simResult.annualCppPayment.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualCppPayment[yearIdx] += val; });
+                simResult.annualOasPayment.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualOasPayment[yearIdx] += val; });
+                simResult.annualTFSAWithdrawal.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualTFSAWithdrawal[yearIdx] += val; });
+                simResult.annualRRSPWithdrawal.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualRRSPWithdrawal[yearIdx] += val; });
+                simResult.annualTotalTaxableIncome.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualTotalTaxableIncome[yearIdx] += val; });
+                simResult.annualTotalTax.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualTotalTax[yearIdx] += val; });
+                simResult.annualOasClawbackAmount.forEach((val, yearIdx) => { if (yearIdx < maxYears) summedAnnualOasClawbackAmount[yearIdx] += val; });
+            });
+
+            const averagedAnnualCashFlows = summedAnnualCashFlows.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualGrossPension = summedAnnualGrossPension.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualNetPension = summedAnnualNetPension.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualGrossPensionReal = summedAnnualGrossPensionReal.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualNetPensionReal = summedAnnualNetPensionReal.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            
+            const averagedAnnualPensionIncome = summedAnnualPensionIncome.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualBridgeBenefit = summedAnnualBridgeBenefit.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualCppPayment = summedAnnualCppPayment.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualOasPayment = summedAnnualOasPayment.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualTFSAWithdrawal = summedAnnualTFSAWithdrawal.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualRRSPWithdrawal = summedAnnualRRSPWithdrawal.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualTotalTaxableIncome = summedAnnualTotalTaxableIncome.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualTotalTax = summedAnnualTotalTax.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+            const averagedAnnualOasClawbackAmount = summedAnnualOasClawbackAmount.map((sum, i) => (countPerYear[i] > 0 ? sum / countPerYear[i] : 0));
+
+            let cumulativeNpv = 0;
+            const cumulativeNpvData = [];
+            for (let i = 0; i < averagedAnnualCashFlows.length; i++) {
+                cumulativeNpv += averagedAnnualCashFlows[i] / Math.pow(1 + effectiveDiscountRate, i);
+                cumulativeNpvData.push(cumulativeNpv);
+            }
+
+            const finalNpvs = rawSimulationData.map(res => res.finalNpv).sort((a, b) => a - b);
+            const meanNPV = finalNpvs.reduce((sum, val) => sum + val, 0) / numSimulations;
+            const lowerBound = finalNpvs[Math.floor(numSimulations * 0.025)];
+            const upperBound = finalNpvs[Math.floor(numSimulations * 0.975)];
+
+            return {
+                meanNPV, lowerBound, upperBound,
+                cumulativeNpvData,
+                averagedAnnualGrossPension, averagedAnnualNetPension,
+                averagedAnnualGrossPensionReal, averagedAnnualNetPensionReal,
+                averagedAnnualPensionIncome, averagedAnnualBridgeBenefit,
+                averagedAnnualCppPayment, averagedAnnualOasPayment,
+                averagedAnnualTFSAWithdrawal, averagedAnnualRRSPWithdrawal,
+                averagedAnnualTotalTaxableIncome, averagedAnnualTotalTax,
+                averagedAnnualOasClawbackAmount
+            };
+        }
+
+        // Prepares datasets for Chart.js
+        function prepareChartDatasets(allScenarioResults, displayMode, selectedGraphData, currentAge, maxLifeExpectancy, inflationMean) {
+            const labels = Array.from({ length: maxLifeExpectancy - currentAge + 1 }, (_, i) => currentAge + i);
+            let datasets = [];
+            let chartTitle = '';
+            let yAxisLabel = '';
+
+            const shouldApplyGraphDataFilter = selectedGraphData.length > 0 && displayMode.startsWith('Pension_Amounts');
+
+            if (displayMode === 'NPV_Nominal' || displayMode === 'NPV_Real') {
+                datasets = allScenarioResults.map((scenario, index) => {
+                    const color = chartColors[index % chartColors.length];
+                    return {
+                        label: `${scenario.strategy} (${scenario.stressTest}) - CPP:${scenario.cppStartAge}, OAS:${scenario.oasStartAge}`,
+                        data: scenario.cumulativeNpvData,
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0.1,
+                        scenarioData: scenario
+                    };
+                });
+                chartTitle = `Cumulative NPV Over Time for Selected Scenarios (${displayMode === 'NPV_Nominal' ? 'Nominal' : 'Real'} Dollars)`;
+                yAxisLabel = `Cumulative NPV (CAD - ${displayMode === 'NPV_Nominal' ? 'Nominal' : 'Real'} Dollars)`;
+            } else if (displayMode.startsWith('Pension_Amounts')) {
+                const isRealMode = displayMode === 'Pension_Amounts_Real';
+                const currencyMode = isRealMode ? 'Real' : 'Nominal';
+
+                allScenarioResults.forEach((scenario, scenarioIndex) => {
+                    if (shouldApplyGraphDataFilter) {
+                        selectedGraphData.forEach((component, componentIndex) => {
+                            const colorIndex = (scenarioIndex * selectedGraphData.length + componentIndex) % chartColors.length;
+                            const color = chartColors[colorIndex];
+
+                            let dataArray;
+                            let labelPrefix;
+
+                            switch(component) {
+                                case 'Pension': dataArray = scenario.averagedAnnualPensionIncome; labelPrefix = 'Pension'; break;
+                                case 'BridgeBenefit': dataArray = scenario.averagedAnnualBridgeBenefit; labelPrefix = 'Bridge Benefit'; break;
+                                case 'CPP': dataArray = scenario.averagedAnnualCppPayment; labelPrefix = 'CPP'; break;
+                                case 'OAS': dataArray = scenario.averagedAnnualOasPayment; labelPrefix = 'OAS'; break;
+                                case 'RRSPWithdrawal': dataArray = scenario.averagedAnnualRRSPWithdrawal; labelPrefix = 'RRSP/RRIF Withdrawal'; break;
+                                case 'TFSAWithdrawal': dataArray = scenario.averagedAnnualTFSAWithdrawal; labelPrefix = 'TFSA Withdrawal'; break;
+                                default: dataArray = []; labelPrefix = 'Unknown';
+                            }
+
+                            const finalData = isRealMode ? dataArray.map((val, yearIdx) => val / Math.pow((1 + inflationMean), yearIdx)) : dataArray;
+
+                            datasets.push({
+                                label: `${labelPrefix}: ${scenario.strategy} (${scenario.stressTest}) - CPP:${scenario.cppStartAge}, OAS:${scenario.oasStartAge}`,
+                                data: finalData,
+                                borderColor: color,
+                                backgroundColor: color,
+                                fill: false,
+                                tension: 0.1,
+                                scenarioData: scenario,
+                                componentType: component
+                            });
+                        });
+                    } else { // Default to Gross/Net Pension if no specific components selected
+                        const grossColor = chartColors[(scenarioIndex * 2) % chartColors.length];
+                        const netColor = chartColors[((scenarioIndex * 2) + 1) % chartColors.length];
+
+                        datasets.push({
+                            label: `Gross Pension: ${scenario.strategy} (${scenario.stressTest}) - CPP:${scenario.cppStartAge}, OAS:${scenario.oasStartAge}`,
+                            data: isRealMode ? scenario.averagedAnnualGrossPensionReal : scenario.averagedAnnualGrossPension,
+                            borderColor: grossColor,
+                            backgroundColor: grossColor,
+                            fill: false,
+                            tension: 0.1,
+                            borderDash: [5, 5],
+                            scenarioData: scenario,
+                            componentType: 'GrossPension'
+                        });
+                        datasets.push({
+                            label: `Net Pension: ${scenario.strategy} (${scenario.stressTest}) - CPP:${scenario.cppStartAge}, OAS:${scenario.oasStartAge}`,
+                            data: isRealMode ? scenario.averagedAnnualNetPensionReal : scenario.averagedAnnualNetPension,
+                            borderColor: netColor,
+                            backgroundColor: netColor,
+                            fill: false,
+                            tension: 0.1,
+                            scenarioData: scenario,
+                            componentType: 'NetPension'
+                        });
+                    }
+                });
+                chartTitle = `Average Annual Amounts (${currencyMode} Dollars)`;
+                yAxisLabel = `Annual Amount (CAD - ${currencyMode} Dollars)`;
+            }
+
+            return { labels, datasets, chartTitle, yAxisLabel };
+        }
+
+        // Renders the Chart.js graph
+        function renderChart(allScenarioResults, currentAge, maxLifeExpectancy, displayMode, selectedGraphData, inflationMean) {
+            const ctx = document.getElementById('npvCumulativeChart').getContext('2d');
+            
+            const chartData = prepareChartDatasets(allScenarioResults, displayMode, selectedGraphData, currentAge, maxLifeExpectancy, inflationMean);
+
+            if (npvCumulativeChartInstance) {
+                npvCumulativeChartInstance.destroy();
+            }
+
+            npvCumulativeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: chartData.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 20,
+                                padding: 10
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: chartData.chartTitle
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.parsed.y;
+                                    const formattedValue = `$${value.toLocaleString(undefined, { minimumFractionDigits: (Math.abs(value) < 1 && value !== 0) ? 2 : 0, maximumFractionDigits: (Math.abs(value) < 1 && value !== 0) ? 2 : 0 })}`;
+                                    return label + formattedValue;
+                                },
+                                afterBody: function(context) {
+                                    const scenario = context[0].dataset.scenarioData;
+                                    const dataIndex = context[0].dataIndex;
+                                    const tooltipLines = [];
+                                    const isPensionAmountsMode = displayMode.startsWith('Pension_Amounts');
+                                    
+                                    // Helper to format currency (consistent with main label)
+                                    const formatCurrency = (amount) => {
+                                        if (Math.abs(amount) < 1 && amount !== 0) {
+                                            return `$${amount.toFixed(2)}`;
+                                        }
+                                        return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                                    };
+
+                                    // Only show detailed breakdown for Pension Amount display modes
+                                    if (isPensionAmountsMode) {
+                                        const componentType = context[0].dataset.componentType;
+                                        const isGrossPensionLine = componentType === 'GrossPension';
+                                        const isNetPensionLine = componentType === 'NetPension';
+
+                                        // Always show gross amounts in tooltip for Pension Amount modes
+                                        tooltipLines.push(`Pension (Gross): ${formatCurrency(scenario.averagedAnnualPensionIncome[dataIndex])}`);
+                                        tooltipLines.push(`Bridge Benefit (Gross): ${formatCurrency(scenario.averagedAnnualBridgeBenefit[dataIndex])}`);
+                                        tooltipLines.push(`CPP (Gross): ${formatCurrency(scenario.averagedAnnualCppPayment[dataIndex])}`);
+                                        tooltipLines.push(`OAS (Gross): ${formatCurrency(scenario.averagedAnnualOasPayment[dataIndex])}`);
+                                        tooltipLines.push(`RRSP Withdrawal: ${formatCurrency(scenario.averagedAnnualRRSPWithdrawal[dataIndex])}`);
+                                        tooltipLines.push(`TFSA Withdrawal: ${formatCurrency(scenario.averagedAnnualTFSAWithdrawal[dataIndex])}`);
+
+                                        // Show net impact details only for the Net Pension line or if no individual components are filtered
+                                        if (isNetPensionLine || (selectedGraphData.length === 0 && isPensionAmountsMode)) {
+                                            tooltipLines.push(`Total Taxable Income: ${formatCurrency(scenario.averagedAnnualTotalTaxableIncome[dataIndex])}`);
+                                            tooltipLines.push(`Total Tax: ${formatCurrency(scenario.averagedAnnualTotalTax[dataIndex])}`);
+                                            tooltipLines.push(`OAS Clawback: ${formatCurrency(scenario.averagedAnnualOasClawbackAmount[dataIndex])}`);
+                                            tooltipLines.push('Note: Taxes & clawbacks apply to total taxable income.');
+                                        }
+                                    }
+                                    
+                                    return tooltipLines;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Age'
+                            },
+                            beginAtZero: true
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: chartData.yAxisLabel
+                            },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
