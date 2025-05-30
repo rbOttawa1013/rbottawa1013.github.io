@@ -1,1264 +1,1075 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
-import { v4 as uuidv4 } from 'uuid'; // For generating unique IDs
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Orchestrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Global Styles */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+            color: #1f2937; /* text-gray-900 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
-// --- Firebase Context ---
-const FirebaseContext = createContext(null);
+        /* Flashing and Ticking Animation for Clock Icon */
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        @keyframes tick {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-5deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .flashing-icon {
+            animation: flash 1s infinite alternate, tick 1s infinite linear;
+        }
 
-const FirebaseProvider = ({ children }) => {
-    const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null);
-    const [userId, setUserId] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
+        /* Custom scrollbar for modals if needed */
+        .modal-content-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content-area::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .modal-content-area::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .modal-content-area::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
 
-    useEffect(() => {
-        // Initialize Firebase
+        /* Ensure buttons have good touch targets and visual feedback */
+        button {
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="app-container">
+        </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Global State and Firebase Variables ---
+        let db = null;
+        let auth = null;
+        let userId = null;
+        let isAuthReady = false;
+
+        let workflows = [];
+        let jobRuns = [];
+        let currentWorkflow = null; // Workflow being edited or new workflow object
+        let selectedJobRun = null; // For the details modal
+        let isLoading = true;
+
+        // Modal states
+        let showJobDetailsModal = false;
+        let showConfirmationModal = false;
+        let confirmationModalConfig = { message: '', onConfirm: null, onCancel: null };
+        let itemToDelete = null; // Can be workflowId or stepIndex
+
+        const runningJobCountdowns = {}; // Stores interval IDs for running job countdowns
+        let countdownIntervals = {}; // To store setInterval IDs for countdowns
+
+        // --- Firebase Configuration and Initialization ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-
-        try {
-            const app = initializeApp(firebaseConfig);
-            const firestore = getFirestore(app);
-            const firebaseAuth = getAuth(app);
-
-            setDb(firestore);
-            setAuth(firebaseAuth);
-
-            // Authenticate user
-            const authenticate = async () => {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined') {
-                        await signInWithCustomToken(firebaseAuth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(firebaseAuth);
-                    }
-                } catch (error) {
-                    console.error("Firebase authentication failed:", error);
-                    // Fallback to anonymous if custom token fails or is not available
-                    await signInAnonymously(firebaseAuth);
-                }
-            };
-
-            // Listen for auth state changes
-            const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-                if (user) {
-                    setUserId(user.uid);
-                } else {
-                    // If no user, try to sign in anonymously (or handle logout)
-                    setUserId(null);
-                    // This might trigger an anonymous sign-in if not already authenticated
-                    authenticate();
-                }
-                setIsAuthReady(true);
-            });
-
-            authenticate(); // Initial authentication attempt
-
-            return () => unsubscribe(); // Cleanup auth listener
-        } catch (error) {
-            console.error("Failed to initialize Firebase:", error);
-            // Handle error, e.g., show a message to the user
-        }
-    }, []);
-
-    return (
-        <FirebaseContext.Provider value={{ db, auth, userId, isAuthReady }}>
-            {children}
-        </FirebaseContext.Provider>
-    );
-};
-
-// --- Utility Components ---
-
-// Confirmation Modal to replace alert/confirm
-const ConfirmationModal = ({ message, onConfirm, onCancel }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
-                <p className="text-gray-800 text-lg mb-6 text-center">{message}</p>
-                <div className="flex justify-around space-x-4">
-                    <button
-                        onClick={onConfirm}
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200"
-                    >
-                        Confirm
-                    </button>
-                    <button
-                        onClick={onCancel}
-                        className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition-colors duration-200"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Loading Spinner
-const LoadingSpinner = () => (
-    <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-    </div>
-);
-
-// --- Icons (using inline SVG for simplicity and no external dependencies) ---
-const PlusIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-);
-
-const EditIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-    </svg>
-);
-
-const PlayIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197 2.132A1 1 0 0110 13.82V10.18a1 1 0 011.555-.832l3.197 2.132a1 1 0 010 1.664z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-);
-
-const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-);
-
-const EyeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-);
-
-const ClockIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-);
-
-// --- Components ---
-
-const Header = ({ userId }) => {
-    return (
-        <header className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 shadow-lg rounded-b-xl">
-            <div className="container mx-auto flex justify-between items-center">
-                <h1 className="text-3xl font-extrabold tracking-tight">Workflow Orchestrator</h1>
-                <div className="flex items-center space-x-4">
-                    {userId && (
-                        <span className="text-sm bg-blue-700 px-3 py-1 rounded-full opacity-90">
-                            User ID: {userId}
-                        </span>
-                    )}
-                </div>
-            </div>
-            {/* CSS for flashing and ticking animation */}
-            <style>
-                {`
-                @keyframes flash {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0.4; }
-                }
-                @keyframes tick {
-                    0% { transform: rotate(0deg); }
-                    25% { transform: rotate(5deg); }
-                    50% { transform: rotate(0deg); }
-                    75% { transform: rotate(-5deg); }
-                    100% { transform: rotate(0deg); }
-                }
-                .flashing-icon {
-                  animation: flash 1s infinite alternate, tick 1s infinite linear;
-                }
-                `}
-            </style>
-        </header>
-    );
-};
-
-const WorkflowList = ({ workflows, onSelectWorkflow, onDeleteWorkflow, onCreateNewWorkflow, onRunWorkflow, onLoadDemoData }) => {
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [workflowToDelete, setWorkflowToDelete] = useState(null);
-
-    const handleDeleteClick = (workflow) => {
-        setWorkflowToDelete(workflow);
-        setShowConfirmModal(true);
-    };
-
-    const confirmDelete = () => {
-        if (workflowToDelete) {
-            onDeleteWorkflow(workflowToDelete.id);
-            setWorkflowToDelete(null);
-        }
-        setShowConfirmModal(false);
-    };
-
-    const cancelDelete = () => {
-        setWorkflowToDelete(null);
-        setShowConfirmModal(false);
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Workflows</h2>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <button
-                    onClick={onCreateNewWorkflow}
-                    className="flex-grow flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                >
-                    <PlusIcon /> <span className="ml-2">Create New Workflow</span>
-                </button>
-                <button
-                    onClick={onLoadDemoData}
-                    className="w-full sm:w-1/4 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                >
-                    <PlayIcon /> <span className="ml-2">Reset Demo</span>
-                </button>
-            </div>
-
-            {workflows.length === 0 ? (
-                <p className="text-center text-gray-500 italic">No workflows defined yet. Create one or load demo data!</p>
-            ) : (
-                <ul className="space-y-4">
-                    {workflows.map((workflow) => (
-                        <li key={workflow.id} className="flex flex-col sm:flex-row items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
-                            <span className="font-medium text-lg text-gray-700 mb-2 sm:mb-0 sm:mr-4 flex-grow truncate">{workflow.name}</span>
-                            <div className="flex flex-wrap justify-center sm:justify-end gap-2">
-                                <button
-                                    onClick={() => onSelectWorkflow(workflow)}
-                                    className="flex items-center bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm"
-                                >
-                                    <EditIcon /> <span className="ml-1">Edit</span>
-                                </button>
-                                <button
-                                    onClick={() => onRunWorkflow(workflow)}
-                                    className="flex items-center bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm"
-                                >
-                                    <PlayIcon /> <span className="ml-1">Run</span>
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteClick(workflow)}
-                                    className="flex items-center bg-red-500 hover:bg-red-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm"
-                                >
-                                    <TrashIcon /> <span className="ml-1">Delete</span>
-                                </button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-
-            {showConfirmModal && (
-                <ConfirmationModal
-                    message={`Are you sure you want to delete workflow "${workflowToDelete?.name}"? This action cannot be undone.`}
-                    onConfirm={confirmDelete}
-                    onCancel={cancelDelete}
-                />
-            )}
-        </div>
-    );
-};
-
-const WorkflowEditor = ({ workflow, onSaveWorkflow, onCancelEdit }) => {
-    const [editedWorkflow, setEditedWorkflow] = useState(workflow);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [stepToDeleteIndex, setStepToDeleteIndex] = useState(null);
-
-    useEffect(() => {
-        setEditedWorkflow(workflow);
-    }, [workflow]);
-
-    const handleWorkflowNameChange = (e) => {
-        setEditedWorkflow({ ...editedWorkflow, name: e.target.value });
-    };
-
-    const handleAddStep = () => {
-        setEditedWorkflow({
-            ...editedWorkflow,
-            steps: [
-                ...(editedWorkflow.steps || []),
-                {
-                    id: uuidv4(),
-                    name: `New Step ${editedWorkflow.steps ? editedWorkflow.steps.length + 1 : 1}`,
-                    pythonPath: '',
-                    parameters: [],
-                    onSuccess: 'continue',
-                    onFailure: 'stop',
-                    onWarning: 'continue',
-                    estimatedExecutionTime: 2, // Default to 2 seconds
-                },
-            ],
-        });
-    };
-
-    const handleStepChange = (index, field, value) => {
-        const newSteps = [...editedWorkflow.steps];
-        // Handle numeric input for estimatedExecutionTime
-        newSteps[index] = { ...newSteps[index], [field]: field === 'estimatedExecutionTime' ? Number(value) : value };
-        setEditedWorkflow({ ...editedWorkflow, steps: newSteps });
-    };
-
-    const handleAddParameter = (stepIndex) => {
-        const newSteps = [...editedWorkflow.steps];
-        newSteps[stepIndex].parameters = [
-            ...(newSteps[stepIndex].parameters || []),
-            { id: uuidv4(), name: '', type: 'text', value: '' },
-        ];
-        setEditedWorkflow({ ...editedWorkflow, steps: newSteps });
-    };
-
-    const handleParameterChange = (stepIndex, paramIndex, field, value) => {
-        const newSteps = [...editedWorkflow.steps];
-        newSteps[stepIndex].parameters[paramIndex] = {
-            ...newSteps[stepIndex].parameters[paramIndex],
-            [field]: value,
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Provide a fallback config if __firebase_config is not available,
+            // though it's expected to be provided by the environment.
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
-        setEditedWorkflow({ ...editedWorkflow, steps: newSteps });
-    };
 
-    const handleDeleteParameter = (stepIndex, paramIndex) => {
-        const newSteps = [...editedWorkflow.steps];
-        newSteps[stepIndex].parameters.splice(paramIndex, 1);
-        setEditedWorkflow({ ...editedWorkflow, steps: newSteps });
-    };
+        async function initializeFirebase() {
+            try {
+                const firebaseApp = initializeApp(firebaseConfig);
+                db = getFirestore(firebaseApp);
+                auth = getAuth(firebaseApp);
+                setLogLevel('debug'); // Optional: for Firestore logging
 
-    const handleDeleteStepClick = (index) => {
-        setStepToDeleteIndex(index);
-        setShowConfirmModal(true);
-    };
+                await setPersistence(auth, browserLocalPersistence); // Persist auth state
 
-    const confirmDeleteStep = () => {
-        if (stepToDeleteIndex !== null) {
-            const newSteps = [...editedWorkflow.steps];
-            newSteps.splice(stepToDeleteIndex, 1);
-            setEditedWorkflow({ ...editedWorkflow, steps: newSteps });
-            setStepToDeleteIndex(null);
+                return new Promise((resolve) => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            console.log("User authenticated:", userId);
+                        } else {
+                            // Try to authenticate
+                            try {
+                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                    await signInWithCustomToken(auth, __initial_auth_token);
+                                } else {
+                                    await signInAnonymously(auth);
+                                }
+                                // onAuthStateChanged will be triggered again if successful
+                            } catch (authError) {
+                                console.error("Firebase authentication failed:", authError);
+                                // Fallback to anonymous if custom token fails or is not available
+                                await signInAnonymously(auth).catch(e => console.error("Anonymous sign-in fallback failed:", e));
+                            }
+                        }
+                        isAuthReady = true;
+                        unsubscribe(); // Stop listening after initial check
+                        resolve();
+                        if (userId) {
+                            fetchAllData(); // Fetch data once user is confirmed
+                        }
+                        renderApp(); // Render the app UI
+                    });
+                });
+
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                isLoading = false;
+                isAuthReady = true; // Still set to true to allow rendering an error state if needed
+                renderApp();
+            }
         }
-        setShowConfirmModal(false);
-    };
 
-    const cancelDeleteStep = () => {
-        setStepToDeleteIndex(null);
-        setShowConfirmModal(false);
-    };
+        // --- Icon Helper Functions (Return SVG strings) ---
+        const PlusIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>`;
+        const EditIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>`;
+        const PlayIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197 2.132A1 1 0 0110 13.82V10.18a1 1 0 011.555-.832l3.197 2.132a1 1 0 010 1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        const TrashIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+        const EyeIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
+        const ClockIcon = (extraClasses = "") => `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${extraClasses}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
 
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-                {workflow.id ? 'Edit Workflow' : 'Create New Workflow'}
-            </h2>
+        // --- UI Rendering Functions ---
 
-            <div className="mb-6">
-                <label htmlFor="workflowName" className="block text-gray-700 text-sm font-bold mb-2">
-                    Workflow Name:
-                </label>
-                <input
-                    type="text"
-                    id="workflowName"
-                    value={editedWorkflow.name}
-                    onChange={handleWorkflowNameChange}
-                    className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="Enter workflow name"
-                />
-            </div>
+        function renderLoadingSpinner() {
+            return `
+                <div class="flex justify-center items-center h-screen">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+                </div>
+            `;
+        }
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Steps</h3>
-            {editedWorkflow.steps && editedWorkflow.steps.length === 0 && (
-                <p className="text-center text-gray-500 italic mb-4">No steps added yet. Click "Add Step" to begin.</p>
-            )}
-
-            <div className="space-y-6 mb-6">
-                {editedWorkflow.steps && editedWorkflow.steps.map((step, stepIndex) => (
-                    <div key={step.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-lg font-medium text-gray-700">Step {stepIndex + 1}:</h4>
-                            <button
-                                onClick={() => handleDeleteStepClick(stepIndex)}
-                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors duration-200"
-                                title="Delete Step"
-                            >
-                                <TrashIcon />
+        function renderConfirmationModal() {
+            if (!showConfirmationModal) return '';
+            return `
+                <div id="confirmation-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+                        <p class="text-gray-800 text-lg mb-6 text-center">${confirmationModalConfig.message}</p>
+                        <div class="flex justify-around space-x-4">
+                            <button id="confirm-action-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200">
+                                Confirm
+                            </button>
+                            <button id="cancel-action-btn" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition-colors duration-200">
+                                Cancel
                             </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label htmlFor={`stepName-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    Step Name:
-                                </label>
-                                <input
-                                    type="text"
-                                    id={`stepName-${stepIndex}`}
-                                    value={step.name}
-                                    onChange={(e) => handleStepChange(stepIndex, 'name', e.target.value)}
-                                    className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    placeholder="e.g., Data Ingestion"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor={`pythonPath-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    Simulated Python Path:
-                                </label>
-                                <input
-                                    type="text"
-                                    id={`pythonPath-${stepIndex}`}
-                                    value={step.pythonPath}
-                                    onChange={(e) => handleStepChange(stepIndex, 'pythonPath', e.target.value)}
-                                    className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    placeholder="e.g., /scripts/process_data.py"
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor={`estimatedExecutionTime-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    Estimated Execution Time (s):
-                                </label>
-                                <input
-                                    type="number"
-                                    id={`estimatedExecutionTime-${stepIndex}`}
-                                    value={step.estimatedExecutionTime}
-                                    onChange={(e) => handleStepChange(stepIndex, 'estimatedExecutionTime', e.target.value)}
-                                    className="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    min="0"
-                                />
-                            </div>
-                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label htmlFor={`onSuccess-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    On Success:
-                                </label>
-                                <select
-                                    id={`onSuccess-${stepIndex}`}
-                                    value={step.onSuccess}
-                                    onChange={(e) => handleStepChange(stepIndex, 'onSuccess', e.target.value)}
-                                    className="shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                >
-                                    <option value="continue">Continue to next step</option>
-                                    <option value="end">End workflow</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor={`onFailure-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    On Failure:
-                                </label>
-                                <select
-                                    id={`onFailure-${stepIndex}`}
-                                    value={step.onFailure}
-                                    onChange={(e) => handleStepChange(stepIndex, 'onFailure', e.target.value)}
-                                    className="shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                >
-                                    <option value="stop">Stop workflow</option>
-                                    <option value="notify">Notify administrator</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor={`onWarning-${stepIndex}`} className="block text-gray-700 text-sm font-bold mb-1">
-                                    On Warning:
-                                </label>
-                                <select
-                                    id={`onWarning-${stepIndex}`}
-                                    value={step.onWarning}
-                                    onChange={(e) => handleStepChange(stepIndex, 'onWarning', e.target.value)}
-                                    className="shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                >
-                                    <option value="continue">Continue to next step</option>
-                                    <option value="stop">Stop workflow</option>
-                                    <option value="notify">Notify administrator</option>
-                                </select>
-                            </div>
-                        </div>
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Completed': return 'bg-green-100 text-green-800';
+                case 'Failed': return 'bg-red-100 text-red-800';
+                case 'Warning': return 'bg-yellow-100 text-yellow-800';
+                case 'Running': return 'bg-blue-100 text-blue-800 animate-pulse';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+         function getStatusColorClassModal(status) {
+            switch (status) {
+                case 'Completed': return 'text-green-600';
+                case 'Failed': return 'text-red-600';
+                case 'Warning': return 'text-yellow-600';
+                case 'Running': return 'text-blue-600 animate-pulse';
+                default: return 'text-gray-600';
+            }
+        }
 
-                        <h5 className="text-md font-medium text-gray-700 mb-2">Parameters:</h5>
-                        {step.parameters && step.parameters.length === 0 && (
-                            <p className="text-gray-500 italic text-sm mb-2">No parameters for this step.</p>
-                        )}
-                        <div className="space-y-2 mb-4">
-                            {step.parameters && step.parameters.map((param, paramIndex) => (
-                                <div key={param.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-gray-100 p-3 rounded-md border border-gray-200">
-                                    <input
-                                        type="text" // Always text for name
-                                        value={param.name}
-                                        onChange={(e) => handleParameterChange(stepIndex, paramIndex, 'name', e.target.value)}
-                                        className="shadow-sm appearance-none border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/3"
-                                        placeholder="Param Name"
-                                    />
-                                    <select
-                                        value={param.type}
-                                        onChange={(e) => handleParameterChange(stepIndex, paramIndex, 'type', e.target.value)}
-                                        className="shadow-sm border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/4"
-                                    >
-                                        <option value="text">Text</option>
-                                        <option value="number">Number</option>
-                                        <option value="boolean">Boolean</option>
-                                        <option value="path">File Path</option>
-                                    </select>
-                                    {param.type === 'boolean' ? (
-                                        <input
-                                            type="checkbox"
-                                            checked={param.value === true}
-                                            onChange={(e) => handleParameterChange(stepIndex, paramIndex, 'value', e.target.checked)}
-                                            className="shadow-sm appearance-none border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-auto"
-                                        />
-                                    ) : (
-                                        <input
-                                            type={param.type === 'number' ? 'number' : 'text'}
-                                            value={param.value}
-                                            onChange={(e) => handleParameterChange(stepIndex, paramIndex, 'value', e.target.value)}
-                                            className="shadow-sm appearance-none border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/3"
-                                            placeholder="Value"
-                                        />
-                                    )}
-                                    <button
-                                        onClick={() => handleDeleteParameter(stepIndex, paramIndex)}
-                                        className="text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 transition-colors duration-200"
-                                        title="Delete Parameter"
-                                    >
-                                        <TrashIcon />
-                                    </button>
-                                </div>
-                            ))}
+        function formatTime(seconds) {
+            if (seconds < 0) return "00:00";
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+
+        function renderHeader() {
+            return `
+                <header class="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 shadow-lg rounded-b-xl">
+                    <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+                        <h1 class="text-3xl font-extrabold tracking-tight mb-2 sm:mb-0">Workflow Orchestrator</h1>
+                        <div class="flex items-center space-x-4">
+                            ${userId ? `<span class="text-xs sm:text-sm bg-blue-700 px-3 py-1 rounded-full opacity-90">User ID: ${userId}</span>` : ''}
                         </div>
-                        <button
-                            onClick={() => handleAddParameter(stepIndex)}
-                            className="flex items-center text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 py-1.5 px-3 rounded-md transition-colors duration-200"
-                        >
-                            <PlusIcon className="w-4 h-4 mr-1" /> Add Parameter
+                    </div>
+                </header>
+            `;
+        }
+
+        function renderWorkflowList() {
+            if (currentWorkflow) return renderWorkflowEditor(); // Show editor if a workflow is being edited/created
+
+            return `
+                <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Workflows</h2>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <button id="create-new-workflow-btn" class="flex-grow flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            ${PlusIcon()} <span class="ml-2">Create New Workflow</span>
+                        </button>
+                        <button id="load-demo-data-btn" class="w-full sm:w-auto sm:flex-shrink-0 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            ${PlayIcon()} <span class="ml-2">Reset Demo</span>
                         </button>
                     </div>
-                ))}
-            </div>
 
-            <button
-                onClick={handleAddStep}
-                className="mb-6 w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-            >
-                <PlusIcon /> <span className="ml-2">Add Step</span>
-            </button>
-
-            <div className="flex justify-end space-x-4">
-                <button
-                    onClick={() => onSaveWorkflow(editedWorkflow)}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-200"
-                >
-                    Save Workflow
-                </button>
-                <button
-                    onClick={onCancelEdit}
-                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-200"
-                >
-                    Cancel
-                </button>
-            </div>
-
-            {showConfirmModal && (
-                <ConfirmationModal
-                    message={`Are you sure you want to delete step "${editedWorkflow.steps[stepToDeleteIndex]?.name}"?`}
-                    onConfirm={confirmDeleteStep}
-                    onCancel={cancelDeleteStep}
-                />
-            )}
-        </div>
-    );
-};
-
-const JobDashboard = ({ jobRuns, onViewJobDetails }) => {
-    const [runningJobCountdowns, setRunningJobCountdowns] = useState({});
-
-    // Effect to manage countdowns for running jobs
-    useEffect(() => {
-        const intervals = {};
-        jobRuns.forEach(run => {
-            if (run.status === 'Running') {
-                // Calculate remaining time based on estimatedEndTime
-                const estimatedRemaining = Math.max(0, Math.floor((run.estimatedEndTime - Date.now()) / 1000));
-                setRunningJobCountdowns(prev => ({ ...prev, [run.id]: estimatedRemaining }));
-
-                intervals[run.id] = setInterval(() => {
-                    setRunningJobCountdowns(prev => {
-                        const newTime = Math.max(0, prev[run.id] - 1);
-                        if (newTime <= 0) {
-                            clearInterval(intervals[run.id]);
-                            return { ...prev, [run.id]: 0 };
-                        }
-                        return { ...prev, [run.id]: newTime };
-                    });
-                }, 1000);
-            } else {
-                // Clear countdown for completed/failed jobs
-                setRunningJobCountdowns(prev => {
-                    const newCountdowns = { ...prev };
-                    delete newCountdowns[run.id];
-                    return newCountdowns;
-                });
-            }
-        });
-
-        return () => {
-            // Cleanup all intervals on component unmount or jobRuns change
-            Object.values(intervals).forEach(clearInterval);
-        };
-    }, [jobRuns]); // Re-run when jobRuns change
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Completed': return 'bg-green-100 text-green-800';
-            case 'Failed': return 'bg-red-100 text-red-800';
-            case 'Warning': return 'bg-yellow-100 text-yellow-800';
-            case 'Running': return 'bg-blue-100 text-blue-800 animate-pulse';
-            default: return 'bg-gray-100 text-gray-800';
+                    ${workflows.length === 0 ? `
+                        <p class="text-center text-gray-500 italic">No workflows defined yet. Create one or load demo data!</p>
+                    ` : `
+                        <ul class="space-y-4">
+                            ${workflows.map(workflow => `
+                                <li key="${workflow.id}" class="flex flex-col sm:flex-row items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                                    <span class="font-medium text-lg text-gray-700 mb-2 sm:mb-0 sm:mr-4 flex-grow truncate" title="${workflow.name}">${workflow.name}</span>
+                                    <div class="flex flex-wrap justify-center sm:justify-end gap-2">
+                                        <button class="edit-workflow-btn flex items-center bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm" data-id="${workflow.id}">
+                                            ${EditIcon()} <span class="ml-1">Edit</span>
+                                        </button>
+                                        <button class="run-workflow-btn flex items-center bg-purple-500 hover:bg-purple-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm" data-id="${workflow.id}">
+                                            ${PlayIcon()} <span class="ml-1">Run</span>
+                                        </button>
+                                        <button class="delete-workflow-btn flex items-center bg-red-500 hover:bg-red-600 text-white text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm" data-id="${workflow.id}" data-name="${workflow.name}">
+                                            ${TrashIcon()} <span class="ml-1">Delete</span>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `}
+                </div>
+            `;
         }
-    };
 
-    const formatTime = (seconds) => {
-        if (seconds < 0) return "00:00"; // Ensure no negative time display
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    };
+        function renderWorkflowEditor() {
+            if (!currentWorkflow) return ''; // Should not happen if called correctly
 
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Job Run History</h2>
-            {jobRuns.length === 0 ? (
-                <p className="text-center text-gray-500 italic">No job runs yet. Run a workflow to see history!</p>
-            ) : (
-                <ul className="space-y-4">
-                    {jobRuns.map((run) => (
-                        <li key={run.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
-                            <div className="flex-grow mb-2 sm:mb-0">
-                                <p className="font-medium text-lg text-gray-700">
-                                    {run.workflowName}
-                                    {run.status === 'Running' && runningJobCountdowns[run.id] !== undefined && (
-                                        <span className="ml-3 inline-flex items-center text-blue-600 text-base font-semibold">
-                                            <ClockIcon className="mr-1 flashing-icon w-5 h-5" />
-                                            {formatTime(runningJobCountdowns[run.id])}
-                                        </span>
-                                    )}
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                    Started: {new Date(run.startTime).toLocaleString()}
-                                </p>
-                                {run.endTime && (
-                                    <p className="text-sm text-gray-500">
-                                        Ended: {new Date(run.endTime).toLocaleString()}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(run.status)}`}>
-                                    {run.status}
-                                </span>
-                                <button
-                                    onClick={() => onViewJobDetails(run)}
-                                    className="flex items-center bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm"
-                                >
-                                    <EyeIcon /> <span className="ml-1">Details</span>
+            const workflow = currentWorkflow; // currentWorkflow is the one being edited
+            return `
+                <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+                        ${workflow.id ? 'Edit Workflow' : 'Create New Workflow'}
+                    </h2>
+
+                    <div class="mb-6">
+                        <label for="workflowName" class="block text-gray-700 text-sm font-bold mb-2">Workflow Name:</label>
+                        <input type="text" id="workflowName" value="${workflow.name || ''}" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Enter workflow name">
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Steps</h3>
+                    ${(workflow.steps || []).length === 0 ? `
+                        <p class="text-center text-gray-500 italic mb-4">No steps added yet. Click "Add Step" to begin.</p>
+                    ` : ''}
+
+                    <div id="steps-container" class="space-y-6 mb-6">
+                        ${(workflow.steps || []).map((step, stepIndex) => `
+                            <div key="${step.id || stepIndex}" class="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="text-lg font-medium text-gray-700">Step ${stepIndex + 1}:</h4>
+                                    <button class="delete-step-btn text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors duration-200" data-index="${stepIndex}" data-name="${step.name}" title="Delete Step">
+                                        ${TrashIcon()}
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label for="stepName-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">Step Name:</label>
+                                        <input type="text" id="stepName-${stepIndex}" data-index="${stepIndex}" data-field="name" value="${step.name || ''}" class="step-input shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="e.g., Data Ingestion">
+                                    </div>
+                                    <div>
+                                        <label for="pythonPath-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">Simulated Python Path:</label>
+                                        <input type="text" id="pythonPath-${stepIndex}" data-index="${stepIndex}" data-field="pythonPath" value="${step.pythonPath || ''}" class="step-input shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="e.g., /scripts/process_data.py">
+                                    </div>
+                                    <div>
+                                        <label for="estimatedExecutionTime-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">Estimated Execution Time (s):</label>
+                                        <input type="number" id="estimatedExecutionTime-${stepIndex}" data-index="${stepIndex}" data-field="estimatedExecutionTime" value="${step.estimatedExecutionTime || 2}" class="step-input shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" min="0">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label for="onSuccess-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">On Success:</label>
+                                        <select id="onSuccess-${stepIndex}" data-index="${stepIndex}" data-field="onSuccess" class="step-input shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                            <option value="continue" ${step.onSuccess === 'continue' ? 'selected' : ''}>Continue to next step</option>
+                                            <option value="end" ${step.onSuccess === 'end' ? 'selected' : ''}>End workflow</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="onFailure-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">On Failure:</label>
+                                        <select id="onFailure-${stepIndex}" data-index="${stepIndex}" data-field="onFailure" class="step-input shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                            <option value="stop" ${step.onFailure === 'stop' ? 'selected' : ''}>Stop workflow</option>
+                                            <option value="notify" ${step.onFailure === 'notify' ? 'selected' : ''}>Notify administrator</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="onWarning-${stepIndex}" class="block text-gray-700 text-sm font-bold mb-1">On Warning:</label>
+                                        <select id="onWarning-${stepIndex}" data-index="${stepIndex}" data-field="onWarning" class="step-input shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                            <option value="continue" ${step.onWarning === 'continue' ? 'selected' : ''}>Continue to next step</option>
+                                            <option value="stop" ${step.onWarning === 'stop' ? 'selected' : ''}>Stop workflow</option>
+                                            <option value="notify" ${step.onWarning === 'notify' ? 'selected' : ''}>Notify administrator</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <h5 class="text-md font-medium text-gray-700 mb-2">Parameters:</h5>
+                                ${(step.parameters || []).length === 0 ? `
+                                    <p class="text-gray-500 italic text-sm mb-2">No parameters for this step.</p>
+                                ` : ''}
+                                <div class="parameters-container space-y-2 mb-4" data-step-index="${stepIndex}">
+                                    ${(step.parameters || []).map((param, paramIndex) => `
+                                        <div key="${param.id || paramIndex}" class="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-gray-100 p-3 rounded-md border border-gray-200">
+                                            <input type="text" data-param-index="${paramIndex}" data-field="name" value="${param.name || ''}" class="param-input shadow-sm appearance-none border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/3" placeholder="Param Name">
+                                            <select data-param-index="${paramIndex}" data-field="type" class="param-input shadow-sm border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/4">
+                                                <option value="text" ${param.type === 'text' ? 'selected' : ''}>Text</option>
+                                                <option value="number" ${param.type === 'number' ? 'selected' : ''}>Number</option>
+                                                <option value="boolean" ${param.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                                                <option value="path" ${param.type === 'path' ? 'selected' : ''}>File Path</option>
+                                            </select>
+                                            ${param.type === 'boolean' ? `
+                                                <input type="checkbox" data-param-index="${paramIndex}" data-field="value" ${param.value === true || param.value === 'true' ? 'checked' : ''} class="param-input shadow-sm appearance-none border rounded-md p-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-auto">
+                                            ` : `
+                                                <input type="${param.type === 'number' ? 'number' : 'text'}" data-param-index="${paramIndex}" data-field="value" value="${param.value || ''}" class="param-input shadow-sm appearance-none border rounded-md py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-1 focus:ring-blue-300 w-full sm:w-1/3" placeholder="Value">
+                                            `}
+                                            <button class="delete-parameter-btn text-red-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 transition-colors duration-200" data-param-index="${paramIndex}" title="Delete Parameter">
+                                                ${TrashIcon()}
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button class="add-parameter-btn flex items-center text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 py-1.5 px-3 rounded-md transition-colors duration-200" data-step-index="${stepIndex}">
+                                    ${PlusIcon()} <span class="ml-1">Add Parameter</span>
                                 </button>
                             </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-};
-
-const JobDetailsModal = ({ jobRun, onClose }) => {
-    if (!jobRun) return null;
-
-    const getStatusColorClass = (status) => {
-        switch (status) {
-            case 'Completed': return 'text-green-600';
-            case 'Failed': return 'text-red-600';
-            case 'Warning': return 'text-yellow-600';
-            case 'Running': return 'text-blue-600 animate-pulse';
-            default: return 'text-gray-600';
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-2xl font-bold text-gray-800">Job Details: {jobRun.workflowName}</h3>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
-                    >
-                        &times;
-                    </button>
-                </div>
-
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-lg font-semibold text-gray-700 mb-2">Overall Status: <span className={getStatusColorClass(jobRun.status)}>{jobRun.status}</span></p>
-                    <p className="text-sm text-gray-600">Started: {new Date(jobRun.startTime).toLocaleString()}</p>
-                    {jobRun.endTime && (
-                        <p className="text-sm text-gray-600">Ended: {new Date(jobRun.endTime).toLocaleString()}</p>
-                    )}
-                    <p className="text-sm text-gray-600">Run by User ID: {jobRun.userId}</p>
-                </div>
-
-                <h4 className="text-xl font-semibold text-gray-800 mb-4">Step Execution Details:</h4>
-                {jobRun.steps && jobRun.steps.length === 0 ? (
-                    <p className="text-center text-gray-500 italic">No steps executed yet for this run.</p>
-                ) : (
-                    <div className="space-y-6">
-                        {jobRun.steps && jobRun.steps.map((step, index) => (
-                            <div key={index} className="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-200">
-                                <p className="font-semibold text-lg text-gray-800 mb-2">
-                                    Step {index + 1}: {step.stepName} <span className={`ml-2 text-sm ${getStatusColorClass(step.status)}`}>({step.status})</span>
-                                </p>
-                                <p className="text-xs text-gray-600">Path: {step.pythonPath}</p>
-                                <p className="text-xs text-gray-600">Estimated Duration: {step.estimatedExecutionTime || 0}s</p> {/* Display estimated time */}
-                                <p className="text-xs text-gray-600">Started: {new Date(step.startTime).toLocaleString()}</p>
-                                {step.endTime && (
-                                    <p className="text-xs text-gray-600">Ended: {new Date(step.endTime).toLocaleString()}</p>
-                                )}
-                                {step.parametersUsed && Object.keys(step.parametersUsed).length > 0 && (
-                                    <div className="mt-2">
-                                        <p className="text-sm font-medium text-gray-700">Parameters Used:</p>
-                                        <ul className="list-disc list-inside text-xs text-gray-600 ml-2">
-                                            {Object.entries(step.parametersUsed).map(([key, value]) => (
-                                                <li key={key}>{key}: {JSON.stringify(value)}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                <div className="mt-4 bg-gray-800 text-white p-3 rounded-md text-sm font-mono overflow-x-auto max-h-40">
-                                    <pre className="whitespace-pre-wrap break-words">{step.log}</pre>
-                                </div>
-                            </div>
-                        ))}
+                        `).join('')}
                     </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
+                    <button id="add-step-btn" class="mb-6 w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                        ${PlusIcon()} <span class="ml-2">Add Step</span>
+                    </button>
 
-// --- Main App Component ---
-const App = () => {
-    const { db, userId, isAuthReady } = useContext(FirebaseContext);
-    const [workflows, setWorkflows] = useState([]);
-    const [jobRuns, setJobRuns] = useState([]);
-    const [currentWorkflow, setCurrentWorkflow] = useState(null); // Workflow being edited
-    const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
-    const [selectedJobRun, setSelectedJobRun] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    // Fetch workflows
-    useEffect(() => {
-        if (!isAuthReady || !db || !userId) return;
-
-        const workflowsRef = collection(db, `artifacts/default-app-id/users/${userId}/workflows`);
-        const unsubscribe = onSnapshot(workflowsRef, (snapshot) => {
-            const fetchedWorkflows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setWorkflows(fetchedWorkflows);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching workflows:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [db, userId, isAuthReady]);
-
-    // Fetch job runs (limited to recent runs for dashboard)
-    useEffect(() => {
-        if (!isAuthReady || !db || !userId) return;
-
-        const jobRunsRef = collection(db, `artifacts/default-app-id/users/${userId}/jobRuns`);
-        // Note: For a real app, you might want to query with orderBy and limit for performance
-        const unsubscribe = onSnapshot(jobRunsRef, (snapshot) => {
-            const fetchedJobRuns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort by start time, most recent first
-            fetchedJobRuns.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
-            setJobRuns(fetchedJobRuns);
-        }, (error) => {
-            console.error("Error fetching job runs:", error);
-        });
-
-        return () => unsubscribe();
-    }, [db, userId, isAuthReady]);
-
-    const handleCreateNewWorkflow = () => {
-        setCurrentWorkflow({
-            name: 'New Workflow',
-            steps: [],
-        });
-    };
-
-    const handleSelectWorkflow = (workflow) => {
-        setCurrentWorkflow(workflow);
-    };
-
-    const handleSaveWorkflow = async (workflowToSave) => {
-        if (!db || !userId) {
-            console.error("Firestore not initialized or user not authenticated.");
-            return;
+                    <div class="flex justify-end space-x-4">
+                        <button id="save-workflow-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-200">
+                            Save Workflow
+                        </button>
+                        <button id="cancel-edit-workflow-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
         }
 
-        const workflowsCollectionRef = collection(db, `artifacts/default-app-id/users/${userId}/workflows`);
-        try {
-            if (workflowToSave.id) {
-                // Update existing workflow
-                const workflowDocRef = doc(workflowsCollectionRef, workflowToSave.id);
-                await setDoc(workflowDocRef, workflowToSave);
-                console.log("Workflow updated successfully!");
+        function renderJobDashboard() {
+             // Clear existing intervals before re-rendering
+            Object.values(countdownIntervals).forEach(clearInterval);
+            countdownIntervals = {};
+
+            const sortedJobRuns = [...jobRuns].sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+
+            return `
+                <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 mt-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Job Run History</h2>
+                    ${sortedJobRuns.length === 0 ? `
+                        <p class="text-center text-gray-500 italic">No job runs yet. Run a workflow to see history!</p>
+                    ` : `
+                        <ul class="space-y-4">
+                            ${sortedJobRuns.map(run => {
+                                let countdownHtml = '';
+                                if (run.status === 'Running') {
+                                    const estimatedRemaining = Math.max(0, Math.floor(((run.estimatedEndTime || run.startTime) - Date.now()) / 1000));
+                                    runningJobCountdowns[run.id] = estimatedRemaining; // Initialize or update
+                                    countdownHtml = `
+                                        <span class="ml-3 inline-flex items-center text-blue-600 text-base font-semibold">
+                                            ${ClockIcon('mr-1 flashing-icon w-5 h-5')}
+                                            <span id="countdown-${run.id}">${formatTime(runningJobCountdowns[run.id])}</span>
+                                        </span>`;
+
+                                    if (!countdownIntervals[run.id]) { // Start interval only if not already running
+                                        countdownIntervals[run.id] = setInterval(() => {
+                                            const countdownElement = document.getElementById(`countdown-${run.id}`);
+                                            if (runningJobCountdowns[run.id] > 0) {
+                                                runningJobCountdowns[run.id]--;
+                                                if(countdownElement) countdownElement.textContent = formatTime(runningJobCountdowns[run.id]);
+                                            } else {
+                                                if(countdownElement) countdownElement.textContent = formatTime(0);
+                                                clearInterval(countdownIntervals[run.id]);
+                                                delete countdownIntervals[run.id];
+                                                // Optionally, re-fetch or update job status if it should have finished
+                                            }
+                                        }, 1000);
+                                    }
+                                } else {
+                                     if (countdownIntervals[run.id]) {
+                                        clearInterval(countdownIntervals[run.id]);
+                                        delete countdownIntervals[run.id];
+                                    }
+                                    delete runningJobCountdowns[run.id]; // Remove from countdown tracking
+                                }
+
+                                return `
+                                <li key="${run.id}" class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                                    <div class="flex-grow mb-2 sm:mb-0">
+                                        <p class="font-medium text-lg text-gray-700">
+                                            ${run.workflowName}
+                                            ${countdownHtml}
+                                        </p>
+                                        <p class="text-sm text-gray-500">
+                                            Started: ${new Date(run.startTime).toLocaleString()}
+                                        </p>
+                                        ${run.endTime ? `
+                                            <p class="text-sm text-gray-500">
+                                                Ended: ${new Date(run.endTime).toLocaleString()}
+                                            </p>
+                                        ` : ''}
+                                    </div>
+                                    <div class="flex items-center gap-2 sm:gap-4 mt-2 sm:mt-0">
+                                        <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(run.status)}">
+                                            ${run.status}
+                                        </span>
+                                        <button class="view-job-details-btn flex items-center bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm py-2 px-3 rounded-md transition-colors duration-200 shadow-sm" data-id="${run.id}">
+                                            ${EyeIcon()} <span class="ml-1">Details</span>
+                                        </button>
+                                    </div>
+                                </li>`;
+                            }).join('')}
+                        </ul>
+                    `}
+                </div>
+            `;
+        }
+
+
+        function renderJobDetailsModal() {
+            if (!showJobDetailsModal || !selectedJobRun) return '';
+
+            const jobRun = selectedJobRun;
+            return `
+                <div id="job-details-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl sm:text-2xl font-bold text-gray-800">Job Details: ${jobRun.workflowName}</h3>
+                            <button id="close-job-details-modal-btn" class="text-gray-500 hover:text-gray-700 text-3xl leading-none">&times;</button>
+                        </div>
+
+                        <div class="modal-content-area flex-grow overflow-y-auto pr-2">
+                            <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <p class="text-lg font-semibold text-gray-700 mb-2">Overall Status: <span class="${getStatusColorClassModal(jobRun.status)}">${jobRun.status}</span></p>
+                                <p class="text-sm text-gray-600">Started: ${new Date(jobRun.startTime).toLocaleString()}</p>
+                                ${jobRun.endTime ? `<p class="text-sm text-gray-600">Ended: ${new Date(jobRun.endTime).toLocaleString()}</p>` : ''}
+                                <p class="text-sm text-gray-600">Run by User ID: ${jobRun.userId}</p>
+                            </div>
+
+                            <h4 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Step Execution Details:</h4>
+                            ${(jobRun.steps || []).length === 0 ? `
+                                <p class="text-center text-gray-500 italic">No steps executed yet for this run.</p>
+                            ` : `
+                                <div class="space-y-6">
+                                    ${(jobRun.steps || []).map((step, index) => `
+                                        <div key="${step.stepId || index}" class="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-200">
+                                            <p class="font-semibold text-lg text-gray-800 mb-2">
+                                                Step ${index + 1}: ${step.stepName} <span class="ml-2 text-sm ${getStatusColorClassModal(step.status)}">(${step.status})</span>
+                                            </p>
+                                            <p class="text-xs text-gray-600">Path: ${step.pythonPath}</p>
+                                            <p class="text-xs text-gray-600">Estimated Duration: ${step.estimatedExecutionTime || 0}s</p>
+                                            <p class="text-xs text-gray-600">Started: ${new Date(step.startTime).toLocaleString()}</p>
+                                            ${step.endTime ? `<p class="text-xs text-gray-600">Ended: ${new Date(step.endTime).toLocaleString()}</p>` : ''}
+                                            ${step.parametersUsed && Object.keys(step.parametersUsed).length > 0 ? `
+                                                <div class="mt-2">
+                                                    <p class="text-sm font-medium text-gray-700">Parameters Used:</p>
+                                                    <ul class="list-disc list-inside text-xs text-gray-600 ml-2">
+                                                        ${Object.entries(step.parametersUsed).map(([key, value]) => `
+                                                            <li>${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}</li>
+                                                        `).join('')}
+                                                    </ul>
+                                                </div>
+                                            ` : ''}
+                                            <div class="mt-4 bg-gray-800 text-white p-3 rounded-md text-sm font-mono overflow-x-auto max-h-40">
+                                                <pre class="whitespace-pre-wrap break-words">${step.log || 'No log available.'}</pre>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Main App Rendering Function ---
+        function renderApp() {
+            const appContainer = document.getElementById('app-container');
+            if (!appContainer) {
+                console.error("App container not found!");
+                return;
+            }
+
+            if (isLoading && !isAuthReady) {
+                appContainer.innerHTML = renderLoadingSpinner();
+                return;
+            }
+            
+            // Construct the main layout
+            let mainContentHtml = '';
+            if (currentWorkflow) {
+                mainContentHtml = renderWorkflowEditor();
             } else {
-                // Add new workflow
-                await addDoc(workflowsCollectionRef, workflowToSave);
-                console.log("New workflow added successfully!");
+                mainContentHtml = renderWorkflowList();
             }
-            setCurrentWorkflow(null); // Exit editor
-        } catch (e) {
-            console.error("Error saving workflow: ", e);
-        }
-    };
 
-    const handleDeleteWorkflow = async (workflowId) => {
-        if (!db || !userId) {
-            console.error("Firestore not initialized or user not authenticated.");
-            return;
-        }
-
-        const workflowDocRef = doc(db, `artifacts/default-app-id/users/${userId}/workflows`, workflowId);
-        try {
-            await deleteDoc(workflowDocRef);
-            console.log("Workflow deleted successfully!");
-        } catch (e) {
-            console.error("Error deleting workflow: ", e);
-        }
-    };
-
-    const handleRunWorkflow = async (workflow) => {
-        if (!db || !userId) {
-            console.error("Firestore not initialized or user not authenticated.");
-            return;
+            appContainer.innerHTML = `
+                ${renderHeader()}
+                <main class="container mx-auto p-4 md:p-8 flex flex-col gap-8 mt-4 sm:mt-8">
+                    <section id="workflow-section">
+                        ${mainContentHtml}
+                    </section>
+                    <section id="dashboard-section">
+                        ${renderJobDashboard()}
+                    </section>
+                </main>
+                <div id="modal-container">
+                    ${renderConfirmationModal()}
+                    ${renderJobDetailsModal()}
+                </div>
+            `;
+            attachEventListeners();
         }
 
-        const jobRunsCollectionRef = collection(db, `artifacts/default-app-id/users/${userId}/jobRuns`);
 
-        // Calculate total estimated time for the workflow
-        const totalEstimatedWorkflowTime = workflow.steps.reduce((sum, step) => sum + (step.estimatedExecutionTime || 2), 0);
-        const estimatedEndTime = Date.now() + (totalEstimatedWorkflowTime * 1000); // Calculate estimated end time
+        // --- Event Handlers and Logic ---
+        function attachEventListeners() {
+            // Workflow List Buttons
+            const createNewWorkflowBtn = document.getElementById('create-new-workflow-btn');
+            if (createNewWorkflowBtn) createNewWorkflowBtn.addEventListener('click', handleCreateNewWorkflow);
+
+            const loadDemoDataBtn = document.getElementById('load-demo-data-btn');
+            if (loadDemoDataBtn) loadDemoDataBtn.addEventListener('click', handleLoadDemoData);
+
+            document.querySelectorAll('.edit-workflow-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const workflowId = e.currentTarget.dataset.id;
+                    const workflow = workflows.find(w => w.id === workflowId);
+                    if (workflow) handleSelectWorkflow(workflow);
+                });
+            });
+            document.querySelectorAll('.run-workflow-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const workflowId = e.currentTarget.dataset.id;
+                    const workflow = workflows.find(w => w.id === workflowId);
+                    if (workflow) handleRunWorkflow(workflow);
+                });
+            });
+            document.querySelectorAll('.delete-workflow-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    itemToDelete = e.currentTarget.dataset.id;
+                    confirmationModalConfig = {
+                        message: `Are you sure you want to delete workflow "${e.currentTarget.dataset.name}"? This action cannot be undone.`,
+                        onConfirm: () => {
+                            handleDeleteWorkflow(itemToDelete);
+                            closeConfirmationModal();
+                        },
+                        onCancel: closeConfirmationModal
+                    };
+                    openConfirmationModal();
+                });
+            });
+
+            // Workflow Editor Buttons & Inputs
+            const workflowNameInput = document.getElementById('workflowName');
+            if (workflowNameInput) workflowNameInput.addEventListener('input', (e) => {
+                if (currentWorkflow) currentWorkflow.name = e.target.value;
+            });
+
+            const addStepBtn = document.getElementById('add-step-btn');
+            if (addStepBtn) addStepBtn.addEventListener('click', handleAddStepToWorkflow);
+
+            const saveWorkflowBtn = document.getElementById('save-workflow-btn');
+            if (saveWorkflowBtn) saveWorkflowBtn.addEventListener('click', () => handleSaveWorkflow(currentWorkflow));
+
+            const cancelEditWorkflowBtn = document.getElementById('cancel-edit-workflow-btn');
+            if (cancelEditWorkflowBtn) cancelEditWorkflowBtn.addEventListener('click', () => {
+                currentWorkflow = null;
+                renderApp();
+            });
+
+            // Step specific inputs and buttons (need to be delegated or re-attached on re-render of editor)
+            const stepsContainer = document.getElementById('steps-container');
+            if (stepsContainer) {
+                stepsContainer.addEventListener('click', (e) => {
+                    if (e.target.closest('.delete-step-btn')) {
+                        const btn = e.target.closest('.delete-step-btn');
+                        itemToDelete = parseInt(btn.dataset.index);
+                        confirmationModalConfig = {
+                            message: `Are you sure you want to delete step "${btn.dataset.name || `Step ${itemToDelete + 1}`}"?`,
+                            onConfirm: () => {
+                                handleDeleteStepFromWorkflow(itemToDelete);
+                                closeConfirmationModal();
+                            },
+                            onCancel: closeConfirmationModal
+                        };
+                        openConfirmationModal();
+                    }
+                    if (e.target.closest('.add-parameter-btn')) {
+                        const btn = e.target.closest('.add-parameter-btn');
+                        handleAddParameterToStep(parseInt(btn.dataset.stepIndex));
+                    }
+                     if (e.target.closest('.delete-parameter-btn')) {
+                        const btn = e.target.closest('.delete-parameter-btn');
+                        const stepIndex = parseInt(btn.closest('.parameters-container').dataset.stepIndex);
+                        const paramIndex = parseInt(btn.dataset.paramIndex);
+                        handleDeleteParameterFromStep(stepIndex, paramIndex);
+                    }
+                });
+
+                stepsContainer.addEventListener('input', (e) => {
+                    if (e.target.classList.contains('step-input')) {
+                        const stepIndex = parseInt(e.target.dataset.index);
+                        const field = e.target.dataset.field;
+                        let value = e.target.value;
+                        if (field === 'estimatedExecutionTime') value = Number(value);
+                        handleStepChange(stepIndex, field, value);
+                    }
+                    if (e.target.classList.contains('param-input')) {
+                        const stepIndex = parseInt(e.target.closest('.parameters-container').dataset.stepIndex);
+                        const paramIndex = parseInt(e.target.dataset.paramIndex);
+                        const field = e.target.dataset.field;
+                        let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+                         if (e.target.type === 'number' && field === 'value') value = Number(value);
+                        handleParameterChange(stepIndex, paramIndex, field, value);
+                    }
+                });
+            }
 
 
-        // Create initial job run document
-        const newJobRun = {
-            workflowId: workflow.id,
-            workflowName: workflow.name,
-            status: 'Running',
-            startTime: Date.now(),
-            endTime: null,
-            userId: userId,
-            steps: [], // To store execution details for each step
-            estimatedTotalTime: totalEstimatedWorkflowTime, // Store estimated total time
-            estimatedEndTime: estimatedEndTime, // Store estimated end time
-        };
-        const jobRunDocRef = await addDoc(jobRunsCollectionRef, newJobRun);
+            // Job Dashboard Buttons
+            document.querySelectorAll('.view-job-details-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const jobRunId = e.currentTarget.dataset.id;
+                    const jobRun = jobRuns.find(jr => jr.id === jobRunId);
+                    if (jobRun) handleViewJobDetails(jobRun);
+                });
+            });
 
-        let currentJobRun = { ...newJobRun, id: jobRunDocRef.id };
-        let overallWorkflowStatus = 'Completed'; // Assume success unless a step changes it
+            // Modal Buttons
+            const confirmActionBtn = document.getElementById('confirm-action-btn');
+            if (confirmActionBtn) confirmActionBtn.addEventListener('click', () => {
+                if (confirmationModalConfig.onConfirm) confirmationModalConfig.onConfirm();
+            });
+            const cancelActionBtn = document.getElementById('cancel-action-btn');
+            if (cancelActionBtn) cancelActionBtn.addEventListener('click', () => {
+                if (confirmationModalConfig.onCancel) confirmationModalConfig.onCancel();
+            });
+             const jobDetailsModalBackdrop = document.getElementById('job-details-modal-backdrop');
+            if (jobDetailsModalBackdrop) jobDetailsModalBackdrop.addEventListener('click', (e) => {
+                if (e.target === jobDetailsModalBackdrop) handleCloseJobDetailsModal(); // Close on backdrop click
+            });
+            const confirmationModalBackdrop = document.getElementById('confirmation-modal-backdrop');
+            if (confirmationModalBackdrop) confirmationModalBackdrop.addEventListener('click', (e) => {
+                if (e.target === confirmationModalBackdrop) closeConfirmationModal();
+            });
 
-        for (const step of workflow.steps) {
-            const stepStartTime = Date.now();
-            let stepStatus = 'Running';
-            let stepLog = `Executing simulated Python script: ${step.pythonPath}\n`;
 
-            // Update job run status to reflect current step running
-            currentJobRun.steps.push({
-                stepId: step.id,
-                stepName: step.name,
-                pythonPath: step.pythonPath,
-                parametersUsed: step.parameters.reduce((acc, p) => ({ ...acc, [p.name]: p.value }), {}),
+            const closeJobDetailsBtn = document.getElementById('close-job-details-modal-btn');
+            if (closeJobDetailsBtn) closeJobDetailsBtn.addEventListener('click', handleCloseJobDetailsModal);
+        }
+
+        function openConfirmationModal() {
+            showConfirmationModal = true;
+            renderApp(); // Re-render to show modal
+        }
+
+        function closeConfirmationModal() {
+            showConfirmationModal = false;
+            itemToDelete = null;
+            confirmationModalConfig = { message: '', onConfirm: null, onCancel: null };
+            renderApp(); // Re-render to hide modal
+        }
+
+
+        // --- Workflow Management ---
+        function handleCreateNewWorkflow() {
+            currentWorkflow = {
+                name: 'New Workflow',
+                steps: [],
+                // id will be generated by Firestore on save
+            };
+            renderApp();
+        }
+
+        function handleSelectWorkflow(workflow) {
+            currentWorkflow = JSON.parse(JSON.stringify(workflow)); // Deep copy to avoid modifying original
+            renderApp();
+        }
+
+        async function handleSaveWorkflow(workflowToSave) {
+            if (!db || !userId) {
+                console.error("Firestore not initialized or user not authenticated.");
+                // TODO: Show user-friendly error
+                return;
+            }
+            if (!workflowToSave.name || workflowToSave.name.trim() === "") {
+                // TODO: Show user-friendly error for workflow name
+                console.error("Workflow name cannot be empty.");
+                return;
+            }
+
+            const workflowsCollectionPath = `artifacts/${appId}/users/${userId}/workflows`;
+            const workflowsCollectionRef = collection(db, workflowsCollectionPath);
+
+            // Sanitize steps: ensure parameters is an array
+            const finalWorkflowToSave = {
+                ...workflowToSave,
+                steps: (workflowToSave.steps || []).map(step => ({
+                    ...step,
+                    parameters: step.parameters || [] // Ensure parameters is always an array
+                }))
+            };
+
+
+            try {
+                if (finalWorkflowToSave.id) { // Update existing
+                    const workflowDocRef = doc(workflowsCollectionRef, finalWorkflowToSave.id);
+                    await setDoc(workflowDocRef, finalWorkflowToSave);
+                    console.log("Workflow updated successfully!");
+                } else { // Add new
+                    // Remove temporary ID if it exists, Firestore will generate one
+                    const { id, ...newWorkflowData } = finalWorkflowToSave;
+                    await addDoc(workflowsCollectionRef, newWorkflowData);
+                    console.log("New workflow added successfully!");
+                }
+                currentWorkflow = null; // Exit editor
+                // Data will be re-fetched by onSnapshot, triggering a re-render
+            } catch (e) {
+                console.error("Error saving workflow: ", e);
+                // TODO: Show user-friendly error
+            }
+        }
+
+        async function handleDeleteWorkflow(workflowId) {
+            if (!db || !userId) return;
+            const workflowDocRef = doc(db, `artifacts/${appId}/users/${userId}/workflows`, workflowId);
+            try {
+                await deleteDoc(workflowDocRef);
+                console.log("Workflow deleted successfully!");
+                // onSnapshot will update the UI
+            } catch (e) {
+                console.error("Error deleting workflow: ", e);
+            }
+        }
+
+        // --- Workflow Editor Step/Parameter Logic ---
+        function handleAddStepToWorkflow() {
+            if (!currentWorkflow) return;
+            if (!currentWorkflow.steps) currentWorkflow.steps = [];
+            currentWorkflow.steps.push({
+                id: crypto.randomUUID(), // Temporary client-side ID
+                name: `New Step ${currentWorkflow.steps.length + 1}`,
+                pythonPath: '',
+                parameters: [],
+                onSuccess: 'continue',
+                onFailure: 'stop',
+                onWarning: 'continue',
+                estimatedExecutionTime: 2,
+            });
+            renderApp();
+        }
+
+        function handleDeleteStepFromWorkflow(stepIndex) {
+            if (!currentWorkflow || !currentWorkflow.steps) return;
+            currentWorkflow.steps.splice(stepIndex, 1);
+            renderApp();
+        }
+
+        function handleStepChange(stepIndex, field, value) {
+            if (!currentWorkflow || !currentWorkflow.steps || !currentWorkflow.steps[stepIndex]) return;
+            currentWorkflow.steps[stepIndex][field] = value;
+            // No re-render here, input values are directly in DOM. Save will pick them up.
+            // Or, if you want live update of the currentWorkflow object:
+            // renderApp(); // This would re-render the whole editor, potentially losing focus.
+            // More granular update would be better if needed beyond form submission.
+        }
+
+        function handleAddParameterToStep(stepIndex) {
+            if (!currentWorkflow || !currentWorkflow.steps || !currentWorkflow.steps[stepIndex]) return;
+            if (!currentWorkflow.steps[stepIndex].parameters) currentWorkflow.steps[stepIndex].parameters = [];
+            currentWorkflow.steps[stepIndex].parameters.push({
+                id: crypto.randomUUID(), // Temporary client-side ID
+                name: '',
+                type: 'text',
+                value: ''
+            });
+            renderApp();
+        }
+        function handleDeleteParameterFromStep(stepIndex, paramIndex) {
+            if (!currentWorkflow || !currentWorkflow.steps || !currentWorkflow.steps[stepIndex] || !currentWorkflow.steps[stepIndex].parameters) return;
+            currentWorkflow.steps[stepIndex].parameters.splice(paramIndex, 1);
+            renderApp();
+        }
+
+
+        function handleParameterChange(stepIndex, paramIndex, field, value) {
+            if (!currentWorkflow || !currentWorkflow.steps || !currentWorkflow.steps[stepIndex] || !currentWorkflow.steps[stepIndex].parameters || !currentWorkflow.steps[stepIndex].parameters[paramIndex]) return;
+            currentWorkflow.steps[stepIndex].parameters[paramIndex][field] = value;
+             // If type changes, reset value for boolean
+            if (field === 'type' && value === 'boolean') {
+                currentWorkflow.steps[stepIndex].parameters[paramIndex].value = false; // Default to false
+                renderApp(); // Re-render to show checkbox
+            } else if (field === 'type' && value !== 'boolean' && typeof currentWorkflow.steps[stepIndex].parameters[paramIndex].value === 'boolean') {
+                 currentWorkflow.steps[stepIndex].parameters[paramIndex].value = ''; // Reset if switching from boolean
+                 renderApp(); // Re-render to show text/number input
+            }
+        }
+
+
+        // --- Job Run Logic ---
+        async function handleRunWorkflow(workflow) {
+            if (!db || !userId) return;
+
+            const jobRunsCollectionPath = `artifacts/${appId}/users/${userId}/jobRuns`;
+            const jobRunsCollectionRef = collection(db, jobRunsCollectionPath);
+
+            const totalEstimatedWorkflowTime = (workflow.steps || []).reduce((sum, step) => sum + (Number(step.estimatedExecutionTime) || 2), 0);
+            const estimatedEndTime = Date.now() + (totalEstimatedWorkflowTime * 1000);
+
+            const newJobRun = {
+                workflowId: workflow.id,
+                workflowName: workflow.name,
                 status: 'Running',
-                startTime: stepStartTime,
+                startTime: Date.now(),
                 endTime: null,
-                log: 'Starting...',
-                estimatedExecutionTime: step.estimatedExecutionTime, // Store estimated time in job run
-            });
-            await setDoc(jobRunDocRef, currentJobRun);
+                userId: userId,
+                steps: [],
+                estimatedTotalTime: totalEstimatedWorkflowTime,
+                estimatedEndTime: estimatedEndTime,
+            };
+            const jobRunDocRef = await addDoc(jobRunsCollectionRef, newJobRun);
+            let currentJobRunData = { ...newJobRun, id: jobRunDocRef.id }; // Keep local copy with ID
+            renderApp(); // Update dashboard to show new running job
 
-            // Simulate Python script execution using estimatedExecutionTime
-            const simulatedDuration = (step.estimatedExecutionTime || 2) * 1000; // Convert seconds to milliseconds
-            await new Promise(resolve => setTimeout(resolve, simulatedDuration));
+            let overallWorkflowStatus = 'Completed';
 
-            const randomOutcome = Math.random();
-            if (randomOutcome < 0.1) { // 10% chance of failure
-                stepStatus = 'Failed';
-                stepLog += `Error: Simulated script failed with a critical error.\n`;
-                overallWorkflowStatus = 'Failed';
-            } else if (randomOutcome < 0.3) { // 20% chance of warning (total 30% non-success)
-                stepStatus = 'Warning';
-                stepLog += `Warning: Simulated script completed with warnings.\n`;
-                if (overallWorkflowStatus !== 'Failed') { // Don't overwrite a prior failure
-                    overallWorkflowStatus = 'Warning';
-                }
-            } else { // 70% chance of success
-                stepStatus = 'Completed';
-                stepLog += `Success: Simulated script completed successfully.\n`;
-            }
+            for (const step of (workflow.steps || [])) {
+                const stepStartTime = Date.now();
+                let stepStatus = 'Running';
+                let stepLog = `Executing simulated Python script: ${step.pythonPath || 'N/A'}\n`;
 
-            const stepEndTime = Date.now();
-            const updatedStepIndex = currentJobRun.steps.findIndex(s => s.stepId === step.id && s.status === 'Running');
-            if (updatedStepIndex !== -1) {
-                currentJobRun.steps[updatedStepIndex] = {
-                    ...currentJobRun.steps[updatedStepIndex],
-                    status: stepStatus,
-                    endTime: stepEndTime,
-                    log: stepLog,
+                const currentStepExecutionData = {
+                    stepId: step.id, // Use the ID from the workflow definition
+                    stepName: step.name,
+                    pythonPath: step.pythonPath,
+                    parametersUsed: (step.parameters || []).reduce((acc, p) => ({ ...acc, [p.name]: p.value }), {}),
+                    status: 'Running',
+                    startTime: stepStartTime,
+                    endTime: null,
+                    log: 'Starting...',
+                    estimatedExecutionTime: Number(step.estimatedExecutionTime) || 2,
                 };
-            }
+                currentJobRunData.steps.push(currentStepExecutionData);
+                await setDoc(jobRunDocRef, currentJobRunData); // Update Firestore with the new step starting
 
-            await setDoc(jobRunDocRef, currentJobRun);
+                const simulatedDuration = (Number(step.estimatedExecutionTime) || 2) * 1000;
+                await new Promise(resolve => setTimeout(resolve, simulatedDuration));
 
-            // Check conditional actions
-            if (stepStatus === 'Failed' && step.onFailure === 'stop') {
-                overallWorkflowStatus = 'Failed';
-                stepLog += `Workflow stopped due to step failure.\n`;
-                if (updatedStepIndex !== -1) {
-                    currentJobRun.steps[updatedStepIndex].log = stepLog;
+                const randomOutcome = Math.random();
+                if (randomOutcome < 0.1) { // 10% chance of failure
+                    stepStatus = 'Failed';
+                    stepLog += `Error: Simulated script failed with a critical error.\n`;
+                    overallWorkflowStatus = 'Failed';
+                } else if (randomOutcome < 0.3) { // 20% chance of warning
+                    stepStatus = 'Warning';
+                    stepLog += `Warning: Simulated script completed with warnings.\n`;
+                    if (overallWorkflowStatus !== 'Failed') overallWorkflowStatus = 'Warning';
+                } else { // 70% chance of success
+                    stepStatus = 'Completed';
+                    stepLog += `Success: Simulated script completed successfully.\n`;
                 }
-                break; // Stop workflow execution
-            }
-            if (stepStatus === 'Warning' && step.onWarning === 'stop') {
-                overallWorkflowStatus = 'Warning';
-                stepLog += `Workflow stopped due to step warning.\n`;
-                if (updatedStepIndex !== -1) {
-                    currentJobRun.steps[updatedStepIndex].log = stepLog;
+
+                const stepEndTime = Date.now();
+                const executedStepIndex = currentJobRunData.steps.findIndex(s => s.stepId === step.id && s.status === 'Running');
+                if (executedStepIndex !== -1) {
+                    currentJobRunData.steps[executedStepIndex].status = stepStatus;
+                    currentJobRunData.steps[executedStepIndex].endTime = stepEndTime;
+                    currentJobRunData.steps[executedStepIndex].log = stepLog;
                 }
-                break; // Stop workflow execution
-            }
-            if (stepStatus === 'Completed' && step.onSuccess === 'end') {
-                overallWorkflowStatus = 'Completed';
-                stepLog += `Workflow ended early due to step success action.\n`;
-                if (updatedStepIndex !== -1) {
-                    currentJobRun.steps[updatedStepIndex].log = stepLog;
+                await setDoc(jobRunDocRef, currentJobRunData); // Update Firestore with step completion
+
+                if ((stepStatus === 'Failed' && step.onFailure === 'stop') ||
+                    (stepStatus === 'Warning' && step.onWarning === 'stop') ||
+                    (stepStatus === 'Completed' && step.onSuccess === 'end')) {
+                    if (stepStatus === 'Failed') overallWorkflowStatus = 'Failed';
+                    else if (stepStatus === 'Warning' && overallWorkflowStatus !== 'Failed') overallWorkflowStatus = 'Warning';
+                    // No need to change overallWorkflowStatus if it's 'Completed' and onSuccess is 'end'
+
+                    currentJobRunData.steps[executedStepIndex].log += `Workflow processing ${step.onSuccess === 'end' ? 'ended' : 'stopped'} due to step outcome.\n`;
+                    await setDoc(jobRunDocRef, currentJobRunData);
+                    break; // Stop workflow execution
                 }
-                break; // Stop workflow execution
             }
-        }
 
-        // Final update to job run status
-        await updateDoc(jobRunDocRef, {
-            status: overallWorkflowStatus,
-            endTime: Date.now(),
-        });
-        console.log(`Workflow "${workflow.name}" finished with status: ${overallWorkflowStatus}`);
-    };
-
-    const handleViewJobDetails = (jobRun) => {
-        setSelectedJobRun(jobRun);
-        setShowJobDetailsModal(true);
-    };
-
-    const handleCloseJobDetailsModal = () => {
-        setShowJobDetailsModal(false);
-        setSelectedJobRun(null);
-    };
-
-    const handleLoadDemoData = async () => {
-        if (!db || !userId) {
-            console.error("Firestore not initialized or user not authenticated.");
-            return;
-        }
-
-        const workflowsCollectionRef = collection(db, `artifacts/default-app-id/users/${userId}/workflows`);
-        const jobRunsCollectionRef = collection(db, `artifacts/default-app-id/users/${userId}/jobRuns`);
-
-        // Clear existing data first
-        const existingWorkflows = await getDocs(workflowsCollectionRef);
-        for (const docSnapshot of existingWorkflows.docs) {
-            await deleteDoc(doc(workflowsCollectionRef, docSnapshot.id));
-        }
-        const existingJobRuns = await getDocs(jobRunsCollectionRef);
-        for (const docSnapshot of existingJobRuns.docs) {
-            await deleteDoc(doc(jobRunsCollectionRef, docSnapshot.id));
-        }
-
-        // Define demo workflows
-        const demoWorkflows = [
-            {
-                id: uuidv4(),
-                name: 'Daily Data Pipeline',
-                steps: [
-                    {
-                        id: uuidv4(),
-                        name: 'Extract Data',
-                        pythonPath: '/scripts/extract_daily.py',
-                        parameters: [{ id: uuidv4(), name: 'source_db', type: 'text', value: 'production' }],
-                        onSuccess: 'continue',
-                        onFailure: 'stop',
-                        onWarning: 'continue',
-                        estimatedExecutionTime: 3, // Demo specific time
-                    },
-                    {
-                        id: uuidv4(),
-                        name: 'Transform Data',
-                        pythonPath: '/scripts/transform_data.py',
-                        parameters: [{ id: uuidv4(), name: 'transform_type', type: 'text', value: 'standard' }],
-                        onSuccess: 'continue',
-                        onFailure: 'stop',
-                        onWarning: 'stop', // Stop on warning for this critical step
-                        estimatedExecutionTime: 5, // Demo specific time
-                    },
-                    {
-                        id: uuidv4(),
-                        name: 'Load to Warehouse',
-                        pythonPath: '/scripts/load_warehouse.py',
-                        parameters: [{ id: uuidv4(), name: 'target_table', type: 'text', value: 'daily_metrics' }],
-                        onSuccess: 'end',
-                        onFailure: 'stop',
-                        onWarning: 'continue',
-                        estimatedExecutionTime: 2, // Demo specific time
-                    },
-                ],
-            },
-            {
-                id: uuidv4(),
-                name: 'Monthly Report Generation',
-                steps: [
-                    {
-                        id: uuidv4(),
-                        name: 'Aggregate Data',
-                        pythonPath: '/scripts/aggregate_monthly.py',
-                        parameters: [{ id: uuidv4(), name: 'month', type: 'number', value: 4 }],
-                        onSuccess: 'continue',
-                        onFailure: 'stop',
-                        onWarning: 'continue',
-                        estimatedExecutionTime: 7, // Demo specific time
-                    },
-                    {
-                        id: uuidv4(),
-                        name: 'Generate PDF Report',
-                        pythonPath: '/scripts/generate_report.py',
-                        parameters: [{ id: uuidv4(), name: 'output_format', type: 'text', value: 'pdf' }],
-                        onSuccess: 'continue',
-                        onFailure: 'stop',
-                        onWarning: 'continue',
-                        estimatedExecutionTime: 4, // Demo specific time
-                    },
-                    {
-                        id: uuidv4(),
-                        name: 'Distribute Report',
-                        pythonPath: '/scripts/distribute_report.py',
-                        parameters: [{ id: uuidv4(), name: 'email_list', type: 'text', value: 'reports@example.com' }],
-                        onSuccess: 'end',
-                        onFailure: 'stop',
-                        onWarning: 'continue',
-                        estimatedExecutionTime: 1, // Demo specific time
-                    },
-                ],
-            },
-        ];
-
-        // Save demo workflows
-        for (const workflow of demoWorkflows) {
-            await setDoc(doc(workflowsCollectionRef, workflow.id), workflow);
-        }
-
-        // Define demo job runs (simulated history)
-        const demoJobRuns = [];
-        const now = Date.now();
-
-        // Helper to calculate estimated total time
-        const calculateEstimatedTotalTime = (workflowSteps) =>
-            workflowSteps.reduce((sum, step) => sum + (step.estimatedExecutionTime || 2), 0);
-
-        // Run 1: Daily Data Pipeline - Completed
-        const workflow1 = demoWorkflows[0];
-        let run1Steps = [];
-        let timeOffset = 0;
-        for (const step of workflow1.steps) {
-            const start = now - 3600000 - timeOffset; // 1 hour ago
-            const end = start + (step.estimatedExecutionTime || 2) * 1000;
-            run1Steps.push({
-                stepId: step.id,
-                stepName: step.name,
-                pythonPath: step.pythonPath,
-                parametersUsed: step.parameters.reduce((acc, p) => ({ ...acc, [p.name]: p.value }), {}),
-                status: 'Completed',
-                startTime: start,
-                endTime: end,
-                log: `Simulated execution of ${step.pythonPath} completed successfully.`,
-                estimatedExecutionTime: step.estimatedExecutionTime,
+            await updateDoc(jobRunDocRef, {
+                status: overallWorkflowStatus,
+                endTime: Date.now(),
             });
-            timeOffset += (step.estimatedExecutionTime || 2) * 1000 + 1000; // Add 1s buffer
+            console.log(`Workflow "${workflow.name}" finished with status: ${overallWorkflowStatus}`);
+            // onSnapshot for jobRuns will update the UI
         }
-        demoJobRuns.push({
-            id: uuidv4(),
-            workflowId: workflow1.id,
-            workflowName: workflow1.name,
-            status: 'Completed',
-            startTime: now - 3600000 - timeOffset,
-            endTime: now - 3600000,
-            userId: userId,
-            steps: run1Steps,
-            estimatedTotalTime: calculateEstimatedTotalTime(workflow1.steps),
-            estimatedEndTime: now - 3600000, // For completed jobs, estimated matches actual end
-        });
 
-        // Run 2: Daily Data Pipeline - Failed at Transform
-        let run2Steps = [];
-        timeOffset = 0;
-        const workflow1_run2_id = uuidv4();
-        let run2OverallStatus = 'Completed';
-        for (let i = 0; i < workflow1.steps.length; i++) {
-            const step = workflow1.steps[i];
-            const start = now - 1800000 - timeOffset; // 30 mins ago
-            const end = start + (step.estimatedExecutionTime || 2) * 1000;
-            let status = 'Completed';
-            let log = `Simulated execution of ${step.pythonPath} completed successfully.`;
-            if (i === 1) { // Transform Data step
-                status = 'Failed';
-                log = `Error: Simulated script ${step.pythonPath} failed due to data validation error.`;
-                run2OverallStatus = 'Failed';
-            } else if (i > 1) { // Subsequent steps are not run
-                status = 'Skipped';
-                log = `Step skipped due to prior failure.`;
+
+        function handleViewJobDetails(jobRun) {
+            selectedJobRun = jobRun;
+            showJobDetailsModal = true;
+            renderApp();
+        }
+
+        function handleCloseJobDetailsModal() {
+            showJobDetailsModal = false;
+            selectedJobRun = null;
+            renderApp();
+        }
+
+        // --- Demo Data ---
+        async function handleLoadDemoData() {
+            if (!db || !userId) return;
+            isLoading = true;
+            renderApp();
+
+            const workflowsCollectionPath = `artifacts/${appId}/users/${userId}/workflows`;
+            const jobRunsCollectionPath = `artifacts/${appId}/users/${userId}/jobRuns`;
+            const workflowsCollectionRef = collection(db, workflowsCollectionPath);
+            const jobRunsCollectionRef = collection(db, jobRunsCollectionPath);
+
+            // Clear existing data
+            const existingWorkflowsSnap = await getDocs(workflowsCollectionRef);
+            for (const docSnap of existingWorkflowsSnap.docs) {
+                await deleteDoc(doc(workflowsCollectionRef, docSnap.id));
             }
-            run2Steps.push({
-                stepId: step.id,
-                stepName: step.name,
-                pythonPath: step.pythonPath,
-                parametersUsed: step.parameters.reduce((acc, p) => ({ ...acc, [p.name]: p.value }), {}),
-                status: status,
-                startTime: start,
-                endTime: status !== 'Skipped' ? end : null,
-                log: log,
-                estimatedExecutionTime: step.estimatedExecutionTime,
-            });
-            timeOffset += (step.estimatedExecutionTime || 2) * 1000 + 1000;
-            if (status === 'Failed') break; // Stop after failure
-        }
-        demoJobRuns.push({
-            id: workflow1_run2_id,
-            workflowId: workflow1.id,
-            workflowName: workflow1.name,
-            status: run2OverallStatus,
-            startTime: now - 1800000 - timeOffset,
-            endTime: now - 1800000 + (run2Steps.length * 6000), // Approximate end time
-            userId: userId,
-            steps: run2Steps,
-            estimatedTotalTime: calculateEstimatedTotalTime(workflow1.steps),
-            estimatedEndTime: now - 1800000 + (run2Steps.length * 6000),
-        });
-
-        // Run 3: Monthly Report Generation - Completed with Warning
-        const workflow2 = demoWorkflows[1];
-        let run3Steps = [];
-        timeOffset = 0;
-        let run3OverallStatus = 'Completed';
-        for (let i = 0; i < workflow2.steps.length; i++) {
-            const step = workflow2.steps[i];
-            const start = now - 600000 - timeOffset; // 10 mins ago
-            const end = start + (step.estimatedExecutionTime || 2) * 1000;
-            let status = 'Completed';
-            let log = `Simulated execution of ${step.pythonPath} completed successfully.`;
-            if (i === 1) { // Generate PDF Report step
-                status = 'Warning';
-                log = `Warning: Report generated but some data points were missing.`;
-                run3OverallStatus = 'Warning';
+            const existingJobRunsSnap = await getDocs(jobRunsCollectionRef);
+            for (const docSnap of existingJobRunsSnap.docs) {
+                await deleteDoc(doc(jobRunsCollectionRef, docSnap.id));
             }
-            run3Steps.push({
-                stepId: step.id,
-                stepName: step.name,
-                pythonPath: step.pythonPath,
-                parametersUsed: step.parameters.reduce((acc, p) => ({ ...acc, [p.name]: p.value }), {}),
-                status: status,
-                startTime: start,
-                endTime: end,
-                log: log,
-                estimatedExecutionTime: step.estimatedExecutionTime,
-            });
-            timeOffset += (step.estimatedExecutionTime || 2) * 1000 + 1000;
-        }
-        demoJobRuns.push({
-            id: uuidv4(),
-            workflowId: workflow2.id,
-            workflowName: workflow2.name,
-            status: run3OverallStatus,
-            startTime: now - 600000 - timeOffset,
-            endTime: now - 600000,
-            userId: userId,
-            steps: run3Steps,
-            estimatedTotalTime: calculateEstimatedTotalTime(workflow2.steps),
-            estimatedEndTime: now - 600000,
-        });
 
-
-        // Save demo job runs
-        for (const jobRun of demoJobRuns) {
-            await setDoc(doc(jobRunsCollectionRef, jobRun.id), jobRun);
-        }
-
-        console.log("Demo data loaded successfully!");
-    };
-
-
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-100 font-sans antialiased text-gray-900">
-            <style>
-                {`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-                body {
-                    font-family: 'Inter', sans-serif;
+            const demoWorkflows = [
+                {
+                    id: crypto.randomUUID(), name: 'Daily Data Pipeline', steps: [
+                        { id: crypto.randomUUID(), name: 'Extract Data', pythonPath: '/scripts/extract_daily.py', parameters: [{ id: crypto.randomUUID(), name: 'source_db', type: 'text', value: 'production' }], onSuccess: 'continue', onFailure: 'stop', onWarning: 'continue', estimatedExecutionTime: 3 },
+                        { id: crypto.randomUUID(), name: 'Transform Data', pythonPath: '/scripts/transform_data.py', parameters: [{ id: crypto.randomUUID(), name: 'transform_type', type: 'text', value: 'standard' }], onSuccess: 'continue', onFailure: 'stop', onWarning: 'stop', estimatedExecutionTime: 5 },
+                        { id: crypto.randomUUID(), name: 'Load to Warehouse', pythonPath: '/scripts/load_warehouse.py', parameters: [{ id: crypto.randomUUID(), name: 'target_table', type: 'text', value: 'daily_metrics' }], onSuccess: 'end', onFailure: 'stop', onWarning: 'continue', estimatedExecutionTime: 2 },
+                    ],
+                },
+                {
+                    id: crypto.randomUUID(), name: 'Monthly Report Generation', steps: [
+                        { id: crypto.randomUUID(), name: 'Aggregate Data', pythonPath: '/scripts/aggregate_monthly.py', parameters: [{ id: crypto.randomUUID(), name: 'month', type: 'number', value: new Date().getMonth() + 1 }], onSuccess: 'continue', onFailure: 'stop', onWarning: 'continue', estimatedExecutionTime: 7 },
+                        { id: crypto.randomUUID(), name: 'Generate PDF Report', pythonPath: '/scripts/generate_report.py', parameters: [{ id: crypto.randomUUID(), name: 'output_format', type: 'text', value: 'pdf' }], onSuccess: 'continue', onFailure: 'stop', onWarning: 'continue', estimatedExecutionTime: 4 },
+                        { id: crypto.randomUUID(), name: 'Distribute Report', pythonPath: '/scripts/distribute_report.py', parameters: [{ id: crypto.randomUUID(), name: 'email_list', type: 'text', value: 'reports@example.com' }], onSuccess: 'end', onFailure: 'stop', onWarning: 'continue', estimatedExecutionTime: 1 },
+                    ],
                 }
-                `}
-            </style>
-            <Header userId={userId} />
-            <main className="container mx-auto p-4 md:p-8 flex flex-col gap-8 mt-8"> {/* Changed to flex-col */}
-                <section>
-                    {currentWorkflow ? (
-                        <WorkflowEditor
-                            workflow={currentWorkflow}
-                            onSaveWorkflow={handleSaveWorkflow}
-                            onCancelEdit={() => setCurrentWorkflow(null)}
-                        />
-                    ) : (
-                        <WorkflowList
-                            workflows={workflows}
-                            onSelectWorkflow={handleSelectWorkflow}
-                            onDeleteWorkflow={handleDeleteWorkflow}
-                            onCreateNewWorkflow={handleCreateNewWorkflow}
-                            onRunWorkflow={handleRunWorkflow}
-                            onLoadDemoData={handleLoadDemoData}
-                        />
-                    )}
-                </section>
-                <section> {/* This section will now appear below the first section */}
-                    <JobDashboard
-                        jobRuns={jobRuns}
-                        onViewJobDetails={handleViewJobDetails}
-                    />
-                </section>
-            </main>
-            {showJobDetailsModal && (
-                <JobDetailsModal
-                    jobRun={selectedJobRun}
-                    onClose={handleCloseJobDetailsModal}
-                />
-            )}
-        </div>
-    );
-};
+            ];
+            for (const wf of demoWorkflows) {
+                // Use the predefined ID for consistency if needed, or let Firestore generate
+                await setDoc(doc(workflowsCollectionRef, wf.id), wf);
+            }
 
-// Root component for the React app
-const AppWrapper = () => (
-    <FirebaseProvider>
-        <App />
-    </FirebaseProvider>
-);
+            const demoJobRunsData = []; // Populate if you want historical demo runs
+            // Example of a completed demo job run:
+            const now = Date.now();
+            const wf1 = demoWorkflows[0];
+            const totalTimeWf1 = (wf1.steps || []).reduce((sum, s) => sum + (s.estimatedExecutionTime || 0), 0) * 1000;
+            demoJobRunsData.push({
+                id: crypto.randomUUID(), workflowId: wf1.id, workflowName: wf1.name, status: 'Completed',
+                startTime: now - (totalTimeWf1 + 3600000), endTime: now - 3600000, userId: userId,
+                steps: wf1.steps.map((s, i) => ({
+                    stepId: s.id, stepName: s.name, pythonPath: s.pythonPath, parametersUsed: (s.parameters || []).reduce((acc, p) => ({...acc, [p.name]: p.value}), {}),
+                    status: 'Completed', startTime: now - (totalTimeWf1 + 3600000) + (i * 2000), endTime: now - (totalTimeWf1 + 3600000) + (i * 2000) + ((s.estimatedExecutionTime || 2) * 1000),
+                    log: `Simulated successful execution of ${s.name}`, estimatedExecutionTime: s.estimatedExecutionTime
+                })),
+                estimatedTotalTime: totalTimeWf1 / 1000, estimatedEndTime: now - 3600000
+            });
 
-export default AppWrapper;
+            for (const jr of demoJobRunsData) {
+                 await setDoc(doc(jobRunsCollectionRef, jr.id), jr);
+            }
+
+            console.log("Demo data loaded!");
+            // Data will be re-fetched by onSnapshot, triggering a re-render
+            // Explicitly call fetchAllData then renderApp if onSnapshot doesn't immediately reflect for new collections
+            await fetchAllData();
+            isLoading = false;
+            renderApp();
+        }
+
+
+        // --- Data Fetching ---
+        let workflowsUnsubscribe = null;
+        let jobRunsUnsubscribe = null;
+
+        function fetchAllData() {
+            if (!db || !userId || !isAuthReady) return;
+            isLoading = true;
+            renderApp(); // Show loading state
+
+            // Clean up previous listeners
+            if (workflowsUnsubscribe) workflowsUnsubscribe();
+            if (jobRunsUnsubscribe) jobRunsUnsubscribe();
+
+            const workflowsCollectionPath = `artifacts/${appId}/users/${userId}/workflows`;
+            workflowsUnsubscribe = onSnapshot(collection(db, workflowsCollectionPath), (snapshot) => {
+                workflows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                isLoading = false; // Assuming job runs also load or this is the primary loading indicator
+                renderApp();
+            }, (error) => {
+                console.error("Error fetching workflows:", error);
+                isLoading = false;
+                renderApp();
+            });
+
+            const jobRunsCollectionPath = `artifacts/${appId}/users/${userId}/jobRuns`;
+            jobRunsUnsubscribe = onSnapshot(collection(db, jobRunsCollectionPath), (snapshot) => {
+                jobRuns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // No isLoading = false here, let workflow fetch control it or use a combined loading state
+                renderApp();
+            }, (error) => {
+                console.error("Error fetching job runs:", error);
+                renderApp();
+            });
+        }
+
+
+        // --- Initialize App ---
+        async function initApp() {
+            renderApp(); // Initial render (likely shows loading)
+            await initializeFirebase();
+            // fetchAllData and subsequent renders are handled by onAuthStateChanged and onSnapshot
+        }
+
+        // Start the application
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
+
