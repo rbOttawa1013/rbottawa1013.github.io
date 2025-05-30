@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Retirement Withdrawal Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for the table container */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* gray-300 */
+            border-radius: 10px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* gray-400 */
+        }
+        .error-message {
+            color: #ef4444; /* red-500 */
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        .input-group.disabled-field {
+            opacity: 0.5;
+            pointer-events: none; /* Disable interaction */
+        }
+        /* Dark mode styles */
+        .dark body {
+            background: linear-gradient(to bottom right, #1a202c, #2d3748);
+            color: #e2e8f0;
+        }
+        .dark .bg-white {
+            background: #2d3748;
+            color: #e2e8f0;
+        }
+        .dark .text-gray-700 {
+            color: #e2e8f0;
+        }
+        .dark .text-indigo-700 {
+            color: #9f7aea; /* lighter indigo for dark mode */
+        }
+        .dark .text-gray-500 {
+            color: #a0a0a0;
+        }
+        .dark .shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        }
+        .dark .border {
+            border-color: #4a5568;
+        }
+        .dark .bg-gray-100 {
+            background-color: #4a5568;
+        }
+        .dark .bg-gray-50 {
+            background-color: #2d3748;
+        }
+        .dark input, .dark select {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border-color: #6b7280;
+        }
+        .dark input:focus, .dark select:focus {
+            border-color: #818cf8; /* indigo-400 */
+        }
+        .dark .form-checkbox {
+            background-color: #4a5568;
+            border-color: #6b7280;
+        }
+        /* Accessibility: Skip to Content */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+        .focus\:not-sr-only:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            clip: auto;
+            margin: 10px;
+            padding: 5px;
+            background-color: #fff;
+            color: #000;
+            z-index: 1000;
+            border-radius: 5px;
+        }
+        /* Input padding for better touch targets */
+        input[type="number"] {
+            padding: 0.75rem; /* py-3 px-3 */
+            font-size: 1rem;
+        }
+        .form-checkbox {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 text-gray-800 flex flex-col items-center">
+
+    <button id="themeToggle" class="fixed top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 rounded-full shadow-md hover:scale-105 transition-transform z-50">
+        <svg class="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+    </button>
+
+    <a href="#calculator-content" class="sr-only focus:not-sr-only">Skip to Calculator Content</a>
+
+    <div id="calculator-content" class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full transform transition-all duration-300 hover:scale-[1.01]">
+        <h1 class="text-4xl font-extrabold text-center text-indigo-700 mb-8">
+            Advanced Retirement Withdrawal Calculator
+        </h1>
+
+        <div class="flex flex-wrap -mx-2 mb-6">
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule,fixedPercentageOfPortfolio,fixedDollarWithdrawals,limitToIncome,totalReturnFlexible,spendingFloor,minimizeMandatoryDistributions,amortizedWithdrawal,monteCarlo">
+                <label for="initialSavings" class="block text-gray-700 text-sm font-bold mb-2">
+                    Initial Savings ($)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The total amount of savings you start with at retirement.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="initialSavings"
+                    value="500000"
+                    step="1000"
+                    min="0"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="initialSavingsError"
+                >
+                <p id="initialSavingsError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="fixedDollarWithdrawals,totalReturnFlexible,spendingFloor">
+                <label for="annualWithdrawal" class="block text-gray-700 text-sm font-bold mb-2">
+                    Initial Annual Withdrawal ($)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The desired annual withdrawal amount for strategies that start with a fixed dollar value.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="annualWithdrawal"
+                    value="20000"
+                    step="100"
+                    min="0"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="annualWithdrawalError"
+                >
+                <p id="annualWithdrawalError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule,totalReturnFlexible,spendingFloor">
+                <label for="inflationRate" class="block text-gray-700 text-sm font-bold mb-2">
+                    Inflation Rate (%)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The annual rate at which the cost of living increases.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="inflationRate"
+                    value="3"
+                    step="0.1"
+                    min="-10"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="inflationRateError"
+                >
+                <p id="inflationRateError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule,fixedPercentageOfPortfolio,fixedDollarWithdrawals,limitToIncome,totalReturnFlexible,spendingFloor,minimizeMandatoryDistributions,amortizedWithdrawal,monteCarlo">
+                <label for="investmentReturn" class="block text-gray-700 text-sm font-bold mb-2">
+                    Investment Return (%)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The average annual return on your investments.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="investmentReturn"
+                    value="5"
+                    step="0.1"
+                    min="-100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="investmentReturnError"
+                >
+                <p id="investmentReturnError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="fixedPercentageOfPortfolio">
+                <label for="fixedPercentageRate" class="block text-gray-700 text-sm font-bold mb-2">
+                    Fixed % Rate (%)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The fixed percentage of your portfolio to withdraw annually for the 'Fixed Percentage' strategy.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="fixedPercentageRate"
+                    value="4"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="fixedPercentageRateError"
+                >
+                <p id="fixedPercentageRateError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule">
+                <label for="xPercentRuleRate" class="block text-gray-700 text-sm font-bold mb-2">
+                    X% Rule Rate (%)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The initial percentage of your starting savings to withdraw annually, adjusted for inflation.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="xPercentRuleRate"
+                    value="4"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="xPercentRuleRateError"
+                >
+                <p id="xPercentRuleRateError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="minimizeMandatoryDistributions">
+                <label for="age" class="block text-gray-700 text-sm font-bold mb-2">
+                    Current Age (for RMD)
+                    <span class="ml-1 text-gray-500 cursor-help" title="Your current age, used for Required Minimum Distribution (RMD) calculations.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="age"
+                    value="65"
+                    step="1"
+                    min="0"
+                    max="120"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="ageError"
+                >
+                <p id="ageError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="amortizedWithdrawal">
+                <label for="lifeExpectancy" class="block text-gray-700 text-sm font-bold mb-2">
+                    Life Expectancy (Years)
+                    <span class="ml-1 text-gray-500 cursor-help" title="Your estimated remaining life expectancy in years, used for amortized withdrawals.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="lifeExpectancy"
+                    value="25"
+                    step="1"
+                    min="1"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="lifeExpectancyError"
+                >
+                <p id="lifeExpectancyError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule,fixedDollarWithdrawals,totalReturnFlexible,spendingFloor">
+                <label for="taxRate" class="block text-gray-700 text-sm font-bold mb-2">
+                    Tax Rate (%)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The effective annual tax rate applied to withdrawals.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="taxRate"
+                    value="20"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="taxRateError"
+                >
+                <p id="taxRateError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="xPercentRule,fixedPercentageOfPortfolio,fixedDollarWithdrawals,limitToIncome,totalReturnFlexible,spendingFloor,minimizeMandatoryDistributions,amortizedWithdrawal">
+                <label for="fixedIncome" class="block text-gray-700 text-sm font-bold mb-2">
+                    Annual Fixed Income ($)
+                    <span class="ml-1 text-gray-500 cursor-help" title="Annual income from sources like Social Security or pensions, reducing the need for portfolio withdrawals.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="fixedIncome"
+                    value="0"
+                    step="100"
+                    min="0"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="fixedIncomeError"
+                >
+                <p id="fixedIncomeError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="monteCarlo">
+                <label for="sdPercentage" class="block text-gray-700 text-sm font-bold mb-2">
+                    SD % (for Monte Carlo)
+                    <span class="ml-1 text-gray-500 cursor-help" title="Standard deviation of annual investment returns, representing volatility. Higher value means more variability.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="sdPercentage"
+                    value="10"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="sdPercentageError"
+                >
+                <p id="sdPercentageError" class="error-message" role="alert"></p>
+            </div>
+
+            <div class="mb-4 w-full md:w-1/2 lg:w-1/4 px-2 input-group" data-input-for="monteCarlo">
+                <label for="numRuns" class="block text-gray-700 text-sm font-bold mb-2">
+                    Number of Runs (n)
+                    <span class="ml-1 text-gray-500 cursor-help" title="The number of simulations to perform for Monte Carlo analysis. Higher numbers provide smoother averages.">[?]</span>
+                </label>
+                <input
+                    type="number"
+                    id="numRuns"
+                    value="100"
+                    step="1"
+                    min="1"
+                    max="10000"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 transition duration-200 ease-in-out"
+                    aria-describedby="numRunsError"
+                >
+                <p id="numRunsError" class="error-message" role="alert"></p>
+            </div>
+        </div>
+
+        <div id="generalErrorMessage" class="error-message text-center mb-4 font-semibold" role="alert"></div>
+
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+            <div class="mb-4 text-center">
+                <label class="flex items-center justify-center space-x-2 cursor-pointer text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" id="monteCarlo" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                    <span>Enable Monte Carlo Simulation (Variable Returns)</span>
+                    <span class="ml-1 text-gray-500 cursor-help" title="Simulates variable investment returns over time for a more realistic projection.">[?]</span>
+                </label>
+            </div>
+            <div class="mb-4 text-center">
+                <label class="flex items-center justify-center space-x-2 cursor-pointer text-gray-700 dark:text-gray-200">
+                    <input type="checkbox" id="inflationAdjusted" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                    <span>Show Savings in Inflation-Adjusted Dollars</span>
+                    <span class="ml-1 text-gray-500 cursor-help" title="Displays your savings balance in today's purchasing power, accounting for inflation.">[?]</span>
+                </label>
+            </div>
+            </div>
+
+
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4 text-center">Select Withdrawal Algorithms</h2>
+        <div class="flex flex-wrap justify-center gap-4 mb-8">
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoXPercentRule" value="xPercentRule" checked class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">X% Rule (Inflation-Adj.)</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Withdraws a fixed percentage of initial savings, adjusted annually for inflation.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoFixedPercentageOfPortfolio" value="fixedPercentageOfPortfolio" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Fixed Percentage of Portfolio</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Withdraws a set percentage of the current portfolio balance each year.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoFixedDollarWithdrawals" value="fixedDollarWithdrawals" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Fixed Dollar Withdrawals</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Withdraws a constant nominal dollar amount each year, not adjusted for inflation.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoLimitToIncome" value="limitToIncome" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Limit Withdrawals to Income</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Withdrawals are limited to the investment income generated by the portfolio each year.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoTotalReturnFlexible" value="totalReturnFlexible" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Total Return (Flexible)</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Starts with an initial withdrawal, adjusted for inflation, but dynamically adjusts based on portfolio performance relative to an inflation-adjusted baseline.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoSpendingFloor" value="spendingFloor" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Create a Floor (Spending Floor)</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Maintains an inflation-adjusted withdrawal, but drastically reduces it if the portfolio falls below a safety floor.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoMinimizeMandatoryDistributions" value="minimizeMandatoryDistributions" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Minimize Mandatory Distributions</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Withdrawals are based on IRS Required Minimum Distribution (RMD) factors, which increase with age.">[?]</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="algoAmortizedWithdrawal" value="amortizedWithdrawal" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                <span class="text-gray-700 dark:text-gray-200">Amortized Withdrawal (Life Expectancy Based)</span>
+                <span class="ml-1 text-gray-500 cursor-help" title="Calculates annual withdrawals to theoretically deplete the portfolio over your remaining life expectancy, assuming a constant investment return.">[?]</span>
+            </label>
+        </div>
+
+        <div class="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">
+            <p class="mb-2">
+                <span class="font-bold">Note on "Bucket your money" and "Account Sequencing":</span>
+                These are asset allocation and tax optimization strategies, respectively.
+                They influence *how* funds are managed or *from where* withdrawals are sourced,
+                rather than defining the *annual withdrawal amount* directly over time.
+                Therefore, they cannot be simulated as distinct withdrawal algorithms in this calculator.
+            </p>
+        </div>
+
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4 text-center">Savings Projection Over Time</h2>
+        <div class="relative h-96 w-full mb-8">
+            <canvas id="savingsChart" aria-label="Line chart showing savings balance over time for selected withdrawal algorithms"></canvas>
+        </div>
+
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4 text-center">Withdrawal Amounts Over Time</h2>
+        <div class="relative h-96 w-full mb-8">
+            <canvas id="withdrawalChart" aria-label="Line chart showing annual withdrawal amounts over time for selected withdrawal algorithms"></canvas>
+        </div>
+
+        <div id="summaryResultsContainer" class="mb-8">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4 text-center">Algorithm Comparison Summary</h2>
+            <div class="text-center mb-4">
+                <button id="exportCsv" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition">Export as CSV</button>
+            </div>
+            <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 bg-white dark:bg-gray-800 dark:text-gray-200">
+                    <thead class="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Algorithm</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Years Lasted</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Start Savings</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">End Savings</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Year Zero</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Median W/D Rate (%)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Min W/D Rate (%)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Max W/D Rate (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-center mt-6">
+            <button id="resetButton" class="bg-gray-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-600 transition">Reset to Defaults</button>
+        </div>
+    </div>
+
+    <div id="algoModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-2xl w-full mx-4 shadow-xl">
+            <h3 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mb-4 text-center">Withdrawal Strategies Explained</h3>
+            <div class="max-h-96 overflow-y-auto pr-2">
+                <p class="mb-4 text-gray-700 dark:text-gray-300">
+                    Here's a brief explanation of each dynamic or adaptive approach to safely withdrawing funds during retirement:
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>X% Rule (Inflation-Adj.):</strong> You set an initial percentage (X%) of your starting portfolio value to withdraw. This dollar amount is then adjusted annually for inflation to maintain purchasing power.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Fixed Percentage of Portfolio:</strong> Instead of a fixed dollar amount, you withdraw a set percentage of your *current* portfolio balance each year. The dollar amount fluctuates directly with market performance.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Fixed Dollar Withdrawals:</strong> You take a constant nominal dollar amount out each year. This amount does *not* change with inflation or market performance, meaning your purchasing power decreases over time.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Limit Withdrawals to Income:</strong> Withdrawals are strictly limited to the investment income (e.g., dividends, interest) generated by your portfolio. This strategy aims to preserve capital but may result in highly variable and potentially low income.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Total Return (Flexible):</strong> Starts with an initial withdrawal (inflation-adjusted), but dynamically adjusts the withdrawal amount up or down if the portfolio significantly deviates (e.g., +/- 15%) from its inflation-adjusted initial value.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Create a Floor (Spending Floor):</strong> You set an initial inflation-adjusted withdrawal, but if your portfolio drops below a predefined "safety floor" (e.g., 20% of initial savings), withdrawals are drastically reduced to a minimal percentage of the remaining balance to prevent depletion.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Minimize Mandatory Distributions:</strong> Withdrawals are based on the IRS Required Minimum Distribution (RMD) factors, which are designed to deplete certain retirement accounts over your life expectancy and increase with age.
+                </p>
+                <p class="mb-3 text-gray-700 dark:text-gray-300">
+                    <strong>Amortized Withdrawal (Life Expectancy Based):</strong> Calculates a fixed annual withdrawal amount (like a loan payment) that, assuming a constant investment return, will theoretically deplete your portfolio precisely over your specified remaining life expectancy.
+                </p>
+            </div>
+            <div class="text-center mt-6">
+                <button id="closeModal" class="bg-indigo-600 text-white px-6 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingSpinner" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const initialSavingsInput = document.getElementById('initialSavings');
+        const annualWithdrawalInput = document.getElementById('annualWithdrawal');
+        const inflationRateInput = document.getElementById('inflationRate');
+        const investmentReturnInput = document.getElementById('investmentReturn');
+        const fixedPercentageRateInput = document.getElementById('fixedPercentageRate');
+        const xPercentRuleRateInput = document.getElementById('xPercentRuleRate');
+        const ageInput = document.getElementById('age');
+        const lifeExpectancyInput = document.getElementById('lifeExpectancy');
+        const taxRateInput = document.getElementById('taxRate');
+        const fixedIncomeInput = document.getElementById('fixedIncome');
+        const sdPercentageInput = document.getElementById('sdPercentage'); // New
+        const numRunsInput = document.getElementById('numRuns'); // New
+
+        const initialSavingsError = document.getElementById('initialSavingsError');
+        const annualWithdrawalError = document.getElementById('annualWithdrawalError');
+        const inflationRateError = document.getElementById('inflationRateError');
+        const investmentReturnError = document.getElementById('investmentReturnError');
+        const fixedPercentageRateError = document.getElementById('fixedPercentageRateError');
+        const xPercentRuleRateError = document.getElementById('xPercentRuleRateError');
+        const ageError = document.getElementById('ageError');
+        const lifeExpectancyError = document.getElementById('lifeExpectancyError');
+        const taxRateError = document.getElementById('taxRateError');
+        const fixedIncomeError = document.getElementById('fixedIncomeError');
+        const sdPercentageError = document.getElementById('sdPercentageError'); // New
+        const numRunsError = document.getElementById('numRunsError'); // New
+        const generalErrorMessage = document.getElementById('generalErrorMessage');
+
+        const algoCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="algo"]');
+        const allInputGroups = document.querySelectorAll('.input-group');
+
+        const summaryTableBody = document.getElementById('summaryTableBody');
+        const savingsChartCanvas = document.getElementById('savingsChart');
+        const withdrawalChartCanvas = document.getElementById('withdrawalChart');
+
+        const monteCarloCheckbox = document.getElementById('monteCarlo');
+        const inflationAdjustedCheckbox = document.getElementById('inflationAdjusted');
+        // const benchmarkSelect = document.getElementById('benchmark'); // Removed
+        const exportCsvBtn = document.getElementById('exportCsv');
+        const resetButton = document.getElementById('resetButton');
+
+        const algoModal = document.getElementById('algoModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const learnMoreBtn = document.getElementById('learnMoreBtn');
+
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // --- Constants ---
+        const CURRENCY_SYMBOL = '$';
+        const MAX_YEARS_PROJECTION = 100;
+        let savingsChartInstance;
+        let withdrawalChartInstance;
+
+        // Define colors for the chart lines
+        const CHART_COLORS = {
+            'xPercentRule': 'rgb(75, 192, 192)',
+            'fixedPercentageOfPortfolio': 'rgb(255, 99, 132)',
+            'fixedDollarWithdrawals': 'rgb(54, 162, 235)',
+            'limitToIncome': 'rgb(153, 102, 255)',
+            'totalReturnFlexible': 'rgb(255, 159, 64)',
+            'spendingFloor': 'rgb(201, 203, 207)',
+            'minimizeMandatoryDistributions': 'rgb(255, 205, 86)',
+            'amortizedWithdrawal': 'rgb(0, 128, 0)'
+        };
+
+        // Error Codes for validation
+        const ERROR_CODES = {
+            E001_NOT_A_NUMBER: "Input must be a valid number.",
+            E002_LESS_THAN_MIN: "Input cannot be less than the minimum allowed value.",
+            E003_GREATER_THAN_MAX: "Input cannot be greater than the maximum allowed value.",
+            E004_ZERO_INITIAL_SAVINGS_WITH_DRAWAL: "Initial savings cannot be zero if you plan to withdraw annually.",
+            E005_ZERO_ANNUAL_WITHDRAWAL_WITH_SAVINGS: "Annual withdrawal cannot be zero if initial savings are positive.",
+            E006_CALCULATION_ERROR: "An error occurred during calculation. Please check inputs.",
+            E007_NO_ALGORITHM_SELECTED: "Please select at least one withdrawal algorithm to see a projection.",
+            E008_TOO_LARGE: "Value is too large. Max is ",
+            E009_EXPORT_ERROR: "Cannot export due to invalid inputs.",
+            E010_CHART_LOAD_FAIL: "Failed to load charting library. Please try refreshing."
+        };
+
+        const MAX_SAFE_VALUE = 1e15; // Prevent overflow for very large numbers
+
+        // Simplified RMD factor table (based on IRS Uniform Lifetime Table, rounded for simplicity)
+        const RMD_FACTORS = {
+            60: 26.5, 61: 25.6, 62: 24.7, 63: 23.8, 64: 22.9, 65: 22.0,
+            66: 21.2, 67: 20.3, 68: 19.5, 69: 18.7, 70: 17.9, 71: 17.1,
+            72: 16.3, 73: 15.5, 74: 14.8, 75: 14.1, 76: 13.4, 77: 12.7,
+            78: 12.0, 79: 11.4, 80: 10.8, 81: 10.2, 82: 9.6, 83: 9.1,
+            84: 8.6, 85: 8.1, 86: 7.6, 87: 7.1, 88: 6.7, 89: 6.3,
+            90: 5.9, 91: 5.5, 92: 5.2, 93: 4.8, 94: 4.5, 95: 4.2,
+            96: 3.9, 97: 3.7, 98: 3.4, 99: 3.1, 100: 2.9, 101: 2.6,
+            102: 2.4, 103: 2.2, 104: 2.0, 105: 1.8, 106: 1.6, 107: 1.5,
+            108: 1.3, 109: 1.2, 110: 1.1, 111: 1.0, 112: 0.9, 113: 0.8,
+            114: 0.7, 115: 0.6, 116: 0.5, 117: 0.4, 118: 0.3, 119: 0.2,
+            120: 0.1
+        };
+
+        // Map of algorithm values to the IDs of input fields they require
+        const ALGORITHM_INPUT_MAP = {
+            'xPercentRule': ['initialSavings', 'xPercentRuleRate', 'inflationRate', 'investmentReturn', 'taxRate', 'fixedIncome'],
+            'fixedPercentageOfPortfolio': ['initialSavings', 'fixedPercentageRate', 'investmentReturn', 'fixedIncome'],
+            'fixedDollarWithdrawals': ['initialSavings', 'annualWithdrawal', 'investmentReturn', 'taxRate', 'fixedIncome'],
+            'limitToIncome': ['initialSavings', 'investmentReturn', 'fixedIncome'],
+            'totalReturnFlexible': ['initialSavings', 'annualWithdrawal', 'inflationRate', 'investmentReturn', 'taxRate', 'fixedIncome'],
+            'spendingFloor': ['initialSavings', 'annualWithdrawal', 'inflationRate', 'investmentReturn', 'taxRate', 'fixedIncome'],
+            'minimizeMandatoryDistributions': ['initialSavings', 'age', 'investmentReturn', 'fixedIncome'],
+            'amortizedWithdrawal': ['initialSavings', 'lifeExpectancy', 'investmentReturn', 'fixedIncome'],
+            // Monte Carlo inputs are handled separately for dynamic enabling, but included here for data-input-for clarity
+            'monteCarlo': ['investmentReturn', 'sdPercentage', 'numRuns']
+        };
+
+        // --- Utility Functions ---
+
+        /**
+         * Sanitizes a string value to prevent XSS attacks.
+         * @param {string} value - The input string to sanitize.
+         * @returns {string} The sanitized string.
+         */
+        function sanitizeInput(value) {
+            return String(value).replace(/[<>]/g, '');
+        }
+
+        /**
+         * Displays an error message for a specific input field.
+         * @param {HTMLElement} errorElement - The paragraph element to display the error.
+         * @param {string} message - The error message to display.
+         * @param {string} errorCode - The error code.
+         */
+        function displayInputError(errorElement, message, errorCode) {
+            errorElement.textContent = `${message} (Code: ${errorCode})`;
+        }
+
+        /**
+         * Clears an error message for a specific input field.
+         * @param {HTMLElement} errorElement - The paragraph element to clear.
+         */
+        function clearInputError(errorElement) {
+            errorElement.textContent = '';
+        }
+
+        /**
+         * Displays a general error message at the top of the calculator.
+         * @param {string} message - The general error message.
+         * @param {string} errorCode - The error code.
+         */
+        function displayGeneralError(message, errorCode) {
+            generalErrorMessage.textContent = `${message} (Code: ${errorCode})`;
+        }
+
+        /**
+         * Clears the general error message.
+         */
+        function clearGeneralError() {
+            generalErrorMessage.textContent = '';
+        }
+
+        /**
+         * Validates a numeric input field.
+         * @param {HTMLInputElement} inputElement - The input element to validate.
+         * @param {HTMLElement} errorElement - The error message element for this input.
+         * @param {string} fieldName - A human-readable name for the field (e.g., "Initial Savings").
+         * @param {number} min - The minimum allowed value.
+         * @param {number} [max] - The maximum allowed value (optional).
+         * @returns {object} An object containing the parsed value and an error code if invalid.
+         */
+        function validateNumberInput(inputElement, errorElement, fieldName, min, max = Infinity) {
+            clearInputError(errorElement);
+            const sanitizedValue = sanitizeInput(inputElement.value);
+            const value = parseFloat(sanitizedValue);
+            let validationResult = { value: null, errorCode: null, message: null };
+
+            if (inputElement.disabled) {
+                validationResult.value = value; // If disabled, we don't validate its content, just pass its current value
+                return validationResult;
+            }
+
+            if (isNaN(value)) {
+                validationResult.errorCode = "E001_NOT_A_NUMBER";
+                validationResult.message = `${fieldName} ${ERROR_CODES.E001_NOT_A_NUMBER}`;
+            } else if (value < min) {
+                validationResult.errorCode = "E002_LESS_THAN_MIN";
+                validationResult.message = `${fieldName} cannot be less than ${min}. ${ERROR_CODES.E002_LESS_THAN_MIN}`;
+            } else if (value > max) {
+                validationResult.errorCode = "E003_GREATER_THAN_MAX";
+                validationResult.message = `${fieldName} cannot be greater than ${max}. ${ERROR_CODES.E003_GREATER_THAN_MAX}`;
+            } else if (value > MAX_SAFE_VALUE) { // New check for excessively large numbers
+                validationResult.errorCode = "E008_TOO_LARGE";
+                validationResult.message = `${fieldName} is too large. ${ERROR_CODES.E008_TOO_LARGE}${MAX_SAFE_VALUE.toLocaleString()}.`;
+            }
+            else {
+                validationResult.value = value;
+            }
+
+            if (validationResult.errorCode) {
+                displayInputError(errorElement, validationResult.message, validationResult.errorCode);
+            }
+            return validationResult;
+        }
+
+        /**
+         * Reads and validates all user inputs.
+         * @returns {object} An object containing validated inputs and an isValid flag.
+         */
+        function validateAllInputs() {
+            clearGeneralError();
+            let allInputsValid = true;
+            const validatedValues = {};
+
+            // List of input elements and their corresponding error display elements
+            const inputElements = [
+                { input: initialSavingsInput, error: initialSavingsError, name: 'Initial Savings', min: 0 },
+                { input: annualWithdrawalInput, error: annualWithdrawalError, name: 'Initial Annual Withdrawal', min: 0 },
+                { input: inflationRateInput, error: inflationRateError, name: 'Inflation Rate', min: -10, max: 100 },
+                { input: investmentReturnInput, error: investmentReturnError, name: 'Investment Return', min: -100 },
+                { input: fixedPercentageRateInput, error: fixedPercentageRateError, name: 'Fixed % Rate', min: 0, max: 100 },
+                { input: xPercentRuleRateInput, error: xPercentRuleRateError, name: 'X% Rule Rate', min: 0, max: 100 },
+                { input: ageInput, error: ageError, name: 'Current Age', min: 0, max: 120 },
+                { input: lifeExpectancyInput, error: lifeExpectancyError, name: 'Life Expectancy', min: 1, max: 100 },
+                { input: taxRateInput, error: taxRateError, name: 'Tax Rate', min: 0, max: 100 },
+                { input: fixedIncomeInput, error: fixedIncomeError, name: 'Annual Fixed Income', min: 0 },
+                { input: sdPercentageInput, error: sdPercentageError, name: 'SD %', min: 0, max: 100 }, // New validation
+                { input: numRunsInput, error: numRunsError, name: 'Number of Runs', min: 1, max: 10000 } // New validation
+            ];
+
+            inputElements.forEach(item => {
+                const result = validateNumberInput(item.input, item.error, item.name, item.min, item.max);
+                if (result.errorCode) {
+                    allInputsValid = false;
+                }
+                validatedValues[item.input.id] = result.value;
+            });
+
+            // Cross-field validations, only if individual inputs are valid
+            if (allInputsValid) {
+                // Only validate if initialSavings is an active input and has a value
+                if (!initialSavingsInput.disabled && validatedValues.initialSavings === 0 && !annualWithdrawalInput.disabled && validatedValues.annualWithdrawal > 0) {
+                    displayGeneralError(ERROR_CODES.E004_ZERO_INITIAL_SAVINGS_WITH_DRAWAL, "E004");
+                    allInputsValid = false;
+                }
+                // Only validate if initialSavings and annualWithdrawal are active inputs and have values
+                if (!initialSavingsInput.disabled && !annualWithdrawalInput.disabled && validatedValues.initialSavings > 0 && validatedValues.annualWithdrawal === 0) {
+                    displayGeneralError(ERROR_CODES.E005_ZERO_ANNUAL_WITHDRAWAL_WITH_SAVINGS, "E005");
+                    allInputsValid = false;
+                }
+            }
+
+            return { inputs: validatedValues, isValid: allInputsValid };
+        }
+
+        /**
+         * Gets the RMD factor for a given age.
+         * @param {number} currentAge - The current age.
+         * @returns {number} The RMD distribution period factor.
+         */
+        function getRMDFactor(currentAge) {
+            const ages = Object.keys(RMD_FACTORS).map(Number).sort((a, b) => a - b);
+            if (currentAge <= ages[0]) return RMD_FACTORS[ages[0]];
+            if (currentAge >= ages[ages.length - 1]) return RMD_FACTORS[ages[ages.length - 1]];
+
+            for (let i = 0; i < ages.length - 1; i++) {
+                if (currentAge >= ages[i] && currentAge < ages[i + 1]) {
+                    return RMD_FACTORS[ages[i]];
+                }
+            }
+            return 1;
+        }
+
+        /**
+         * Calculates median of an array.
+         * @param {Array<number>} arr - The array of numbers.
+         * @returns {number} The median value.
+         */
+        function calculateMedian(arr) {
+            if (arr.length === 0) return 0;
+            const sortedArr = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sortedArr.length / 2);
+            if (sortedArr.length % 2 === 0) {
+                return (sortedArr[mid - 1] + sortedArr[mid]) / 2;
+            }
+            return sortedArr[mid];
+        }
+
+        /**
+         * Calculates min of an array.
+         * @param {Array<number>} arr - The array of numbers.
+         * @returns {number} The minimum value.
+         */
+        function calculateMin(arr) {
+            return arr.length === 0 ? 0 : Math.min(...arr);
+        }
+
+        /**
+         * Calculates max of an array.
+         * @param {Array<number>} arr - The array of numbers.
+         * @returns {number} The maximum value.
+         */
+        function calculateMax(arr) {
+            return arr.length === 0 ? 0 : Math.max(...arr);
+        }
+
+        /**
+         * Generates a random return based on a mean and volatility for Monte Carlo simulation.
+         * @param {number} mean - The average annual return (as a decimal).
+         * @param {number} volatility - The standard deviation of returns (as a decimal, e.g., 0.1 for 10%).
+         * @returns {number} A random annual return.
+         */
+        function getRandomReturn(mean, volatility) {
+            // Using Box-Muller transform for a more accurate normal distribution
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+            while(v === 0) v = Math.random();
+            const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return mean + (z * volatility);
+        }
+
+        /**
+         * Adjusts a series of financial data for inflation.
+         * @param {Array<number>} data - The financial data (e.g., savings balance) over time.
+         * @param {number} inflationRate - The annual inflation rate (as a percentage).
+         * @returns {Array<number>} The inflation-adjusted data.
+         */
+        function adjustForInflation(data, inflationRate) {
+            const annualInflationFactor = 1 + (inflationRate / 100);
+            return data.map((value, year) => value / Math.pow(annualInflationFactor, year));
+        }
+
+        // --- Algorithm Calculation Functions ---
+        // Each function now returns { savingsData: [], withdrawalAmounts: [], withdrawalRates: [], yearZero: null }
+
+        /**
+         * Calculates the projection for the "X% Rule (Inflation-Adjusted)" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateXPercentRule(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            let currentAnnualWithdrawal = params.initialSavings * (params.xPercentRuleRate / 100);
+            const annualInflationFactor = 1 + (params.inflationRate / 100);
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+            const taxFactor = 1 - (params.taxRate / 100);
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                let grossWithdrawal = currentAnnualWithdrawal;
+                if (taxFactor > 0) {
+                    grossWithdrawal = currentAnnualWithdrawal / taxFactor;
+                }
+                
+                const netWithdrawalFromPortfolio = Math.max(0, grossWithdrawal - params.fixedIncome);
+
+                currentSavings -= netWithdrawalFromPortfolio;
+
+                const withdrawalRate = (netWithdrawalFromPortfolio / startOfPeriodSavings) * 100;
+                if (!isNaN(withdrawalRate) && isFinite(withdrawalRate)) {
+                    withdrawalRates.push(withdrawalRate);
+                }
+                withdrawalAmounts.push(currentAnnualWithdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                currentAnnualWithdrawal *= annualInflationFactor;
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Fixed Percentage of Portfolio" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateFixedPercentageOfPortfolio(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            const fixedPercentageFactor = params.fixedPercentageRate / 100;
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+                
+                let withdrawal = currentSavings * fixedPercentageFactor;
+                
+                const netWithdrawalFromPortfolio = Math.max(0, withdrawal - params.fixedIncome);
+
+                currentSavings -= netWithdrawalFromPortfolio;
+
+                const withdrawalRate = fixedPercentageFactor * 100;
+                if (!isNaN(withdrawalRate) && isFinite(withdrawalRate)) {
+                    withdrawalRates.push(withdrawalRate);
+                }
+                withdrawalAmounts.push(withdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Fixed Dollar Withdrawals" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateFixedDollarWithdrawals(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            const fixedNominalWithdrawal = params.annualWithdrawal;
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+            const taxFactor = 1 - (params.taxRate / 100);
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                let grossWithdrawal = fixedNominalWithdrawal;
+                if (taxFactor > 0) {
+                    grossWithdrawal = fixedNominalWithdrawal / taxFactor;
+                }
+                
+                const netWithdrawalFromPortfolio = Math.max(0, grossWithdrawal - params.fixedIncome);
+
+                currentSavings -= netWithdrawalFromPortfolio;
+
+                const withdrawalRate = (netWithdrawalFromPortfolio / startOfPeriodSavings) * 100;
+                if (!isNaN(withdrawalRate) && isFinite(withdrawalRate)) {
+                    withdrawalRates.push(withdrawalRate);
+                }
+                withdrawalAmounts.push(fixedNominalWithdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Limit Withdrawals to Income" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateLimitToIncome(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                
+                const investmentIncome = currentSavings * actualInvestmentReturn;
+                let withdrawal = Math.max(0, investmentIncome);
+
+                const netWithdrawalFromPortfolio = Math.max(0, withdrawal - params.fixedIncome);
+
+                currentSavings += investmentIncome;
+                currentSavings -= netWithdrawalFromPortfolio;
+
+                const withdrawalRate = (netWithdrawalFromPortfolio / startOfPeriodSavings) * 100;
+                if (!isNaN(withdrawalRate) && isFinite(withdrawalRate)) {
+                    withdrawalRates.push(withdrawalRate);
+                }
+                withdrawalAmounts.push(withdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Total Return (Flexible)" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateTotalReturnFlexible(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            let currentAnnualWithdrawal = params.annualWithdrawal;
+            const annualInflationFactor = 1 + (params.inflationRate / 100);
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+            const taxFactor = 1 - (params.taxRate / 100);
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            const adjustmentThreshold = 0.15;
+            const adjustmentFactor = 0.05;
+
+            let initialPortfolioValue = params.initialSavings;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                const inflationAdjustedInitialPortfolio = initialPortfolioValue * Math.pow(annualInflationFactor, years);
+                const portfolioDeviation = inflationAdjustedInitialPortfolio > 0 ? (currentSavings - inflationAdjustedInitialPortfolio) / inflationAdjustedInitialPortfolio : 0;
+
+                if (portfolioDeviation < -adjustmentThreshold) {
+                    currentAnnualWithdrawal *= (1 - adjustmentFactor);
+                } else if (portfolioDeviation > adjustmentThreshold) {
+                    currentAnnualWithdrawal *= (1 + adjustmentFactor);
+                }
+
+                currentAnnualWithdrawal *= annualInflationFactor;
+
+                let grossWithdrawal = currentAnnualWithdrawal;
+                if (taxFactor > 0) {
+                    grossWithdrawal = currentAnnualWithdrawal / taxFactor;
+                }
+                
+                const netWithdrawalFromPortfolio = Math.max(0, grossWithdrawal - params.fixedIncome);
+
+                const withdrawal = Math.min(netWithdrawalFromPortfolio, currentSavings);
+                currentSavings -= withdrawal;
+
+                const effectiveWithdrawalRate = (withdrawal / startOfPeriodSavings) * 100;
+                if (!isNaN(effectiveWithdrawalRate) && isFinite(effectiveWithdrawalRate)) {
+                    withdrawalRates.push(effectiveWithdrawalRate);
+                }
+                withdrawalAmounts.push(currentAnnualWithdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Create a Floor (Spending Floor)" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateSpendingFloor(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            let currentAnnualWithdrawal = params.annualWithdrawal;
+            const annualInflationFactor = 1 + (params.inflationRate / 100);
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+            const taxFactor = 1 - (params.taxRate / 100);
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            const floorPercentage = 0.20;
+            const safetyFloor = params.initialSavings * floorPercentage;
+            const minimalWithdrawalRate = 0.01;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                let grossWithdrawalToTake = currentAnnualWithdrawal;
+
+                if (currentSavings < safetyFloor) {
+                    grossWithdrawalToTake = currentSavings * minimalWithdrawalRate;
+                }
+
+                let netWithdrawalFromPortfolio = grossWithdrawalToTake;
+                if (taxFactor > 0) {
+                    netWithdrawalFromPortfolio = grossWithdrawalToTake / taxFactor;
+                }
+                
+                netWithdrawalFromPortfolio = Math.max(0, netWithdrawalFromPortfolio - params.fixedIncome);
+
+                const withdrawal = Math.min(netWithdrawalFromPortfolio, currentSavings);
+                currentSavings -= withdrawal;
+
+                const effectiveWithdrawalRate = (withdrawal / startOfPeriodSavings) * 100;
+                if (!isNaN(effectiveWithdrawalRate) && isFinite(effectiveWithdrawalRate)) {
+                    withdrawalRates.push(effectiveWithdrawalRate);
+                }
+                withdrawalAmounts.push(grossWithdrawalToTake);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                currentAnnualWithdrawal *= annualInflationFactor;
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Minimize Mandatory Distributions" algorithm (RMD-Based).
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateMinimizeMandatoryDistributions(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            let currentAge = params.age;
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                const rmdFactor = getRMDFactor(currentAge);
+                let withdrawal = rmdFactor > 0 ? currentSavings / rmdFactor : currentSavings;
+
+                const netWithdrawalFromPortfolio = Math.max(0, withdrawal - params.fixedIncome);
+
+                withdrawal = Math.min(netWithdrawalFromPortfolio, currentSavings);
+                currentSavings -= withdrawal;
+
+                const effectiveWithdrawalRate = (withdrawal / startOfPeriodSavings) * 100;
+                if (!isNaN(effectiveWithdrawalRate) && isFinite(effectiveWithdrawalRate)) {
+                    withdrawalRates.push(effectiveWithdrawalRate);
+                }
+                withdrawalAmounts.push(withdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                currentAge++;
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+        /**
+         * Calculates the projection for the "Amortized Withdrawal (Life Expectancy Based)" algorithm.
+         * @param {object} params - Input parameters.
+         * @param {boolean} isMonteCarlo - True if this run is part of a Monte Carlo simulation.
+         * @returns {object} Contains savings data, withdrawal amounts, withdrawal rates, and year zero.
+         */
+        function calculateAmortizedWithdrawal(params, isMonteCarlo) {
+            let currentSavings = params.initialSavings;
+            let currentLifeExpectancy = params.lifeExpectancy;
+            const annualInvestmentMean = params.investmentReturn / 100;
+            const investmentVolatility = params.sdPercentage / 100;
+            const taxFactor = 1 - (params.taxRate / 100);
+
+            const savingsData = [params.initialSavings];
+            const withdrawalAmounts = [];
+            const withdrawalRates = [];
+            let years = 0;
+            let yearZero = null;
+
+            while (currentSavings > 0 && years < MAX_YEARS_PROJECTION) {
+                const startOfPeriodSavings = currentSavings;
+                const actualInvestmentReturn = isMonteCarlo ? getRandomReturn(annualInvestmentMean, investmentVolatility) : annualInvestmentMean;
+                currentSavings *= (1 + actualInvestmentReturn);
+
+                let grossWithdrawal;
+                if (currentLifeExpectancy <= 0) {
+                    grossWithdrawal = currentSavings;
+                } else if (actualInvestmentReturn === 0) {
+                    grossWithdrawal = currentSavings / currentLifeExpectancy;
+                } else {
+                    const numerator = actualInvestmentReturn * Math.pow(1 + actualInvestmentReturn, currentLifeExpectancy);
+                    const denominator = Math.pow(1 + actualInvestmentReturn, currentLifeExpectancy) - 1;
+                    grossWithdrawal = currentSavings * (numerator / denominator);
+                }
+
+                let netWithdrawalFromPortfolio = grossWithdrawal;
+                if (taxFactor > 0) {
+                    netWithdrawalFromPortfolio = grossWithdrawal / taxFactor;
+                }
+                
+                netWithdrawalFromPortfolio = Math.max(0, netWithdrawalFromPortfolio - params.fixedIncome);
+
+                const withdrawal = Math.min(netWithdrawalFromPortfolio, currentSavings);
+                currentSavings -= withdrawal;
+
+                const effectiveWithdrawalRate = (withdrawal / startOfPeriodSavings) * 100;
+                if (!isNaN(effectiveWithdrawalRate) && isFinite(effectiveWithdrawalRate)) {
+                    withdrawalRates.push(effectiveWithdrawalRate);
+                }
+                withdrawalAmounts.push(grossWithdrawal);
+
+                if (currentSavings <= 0 && yearZero === null) {
+                    yearZero = years + 1;
+                }
+
+                savingsData.push(Math.max(0, currentSavings));
+                currentLifeExpectancy--;
+                years++;
+            }
+            return { savingsData, withdrawalAmounts, withdrawalRates, yearZero };
+        }
+
+
+        // --- Main Calculation and UI Update Functions ---
+
+        /**
+         * Orchestrates the calculation of all selected algorithms and updates the charts and summary.
+         */
+        function calculateAllProjections() {
+            loadingSpinner.classList.remove('hidden');
+
+            setTimeout(() => {
+                updateInputStates();
+
+                const validationResult = validateAllInputs();
+                if (!validationResult.isValid) {
+                    clearChartAndTable();
+                    loadingSpinner.classList.add('hidden');
+                    return;
+                }
+                const inputs = validationResult.inputs;
+
+                const isMonteCarlo = monteCarloCheckbox.checked;
+                const numRuns = isMonteCarlo ? inputs.numRuns : 1;
+
+                const allAlgoResults = {}; // Stores results for each algo across all MC runs
+
+                let anyAlgoSelected = false;
+
+                algoCheckboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        anyAlgoSelected = true;
+                        const algoValue = checkbox.value;
+                        const algoLabel = checkbox.nextElementSibling.textContent;
+                        allAlgoResults[algoValue] = {
+                            label: algoLabel,
+                            allSavingsData: [], // Array of arrays for savings data from each run
+                            allWithdrawalAmounts: [], // Array of arrays for withdrawal amounts from each run
+                            allWithdrawalRates: [], // Array of arrays for withdrawal rates from each run
+                            allYearsLasted: [],
+                            allEndSavings: [],
+                            allYearZeros: []
+                        };
+
+                        for (let run = 0; run < numRuns; run++) {
+                            let result = { savingsData: [], withdrawalAmounts: [], withdrawalRates: [], yearZero: null };
+                            try {
+                                switch (algoValue) {
+                                    case 'xPercentRule':
+                                        result = calculateXPercentRule(inputs, isMonteCarlo);
+                                        break;
+                                    case 'fixedPercentageOfPortfolio':
+                                        result = calculateFixedPercentageOfPortfolio(inputs, isMonteCarlo);
+                                        break;
+                                    case 'fixedDollarWithdrawals':
+                                        result = calculateFixedDollarWithdrawals(inputs, isMonteCarlo);
+                                        break;
+                                    case 'limitToIncome':
+                                        result = calculateLimitToIncome(inputs, isMonteCarlo);
+                                        break;
+                                    case 'totalReturnFlexible':
+                                        result = calculateTotalReturnFlexible(inputs, isMonteCarlo);
+                                        break;
+                                    case 'spendingFloor':
+                                        result = calculateSpendingFloor(inputs, isMonteCarlo);
+                                        break;
+                                    case 'minimizeMandatoryDistributions':
+                                        result = calculateMinimizeMandatoryDistributions(inputs, isMonteCarlo);
+                                        break;
+                                    case 'amortizedWithdrawal':
+                                        result = calculateAmortizedWithdrawal(inputs, isMonteCarlo);
+                                        break;
+                                    default:
+                                        console.warn(`Unknown algorithm: ${algoValue}`);
+                                        continue;
+                                }
+                            } catch (error) {
+                                console.error(`Error calculating ${algoLabel} (Run ${run + 1}):`, error);
+                                displayGeneralError(`${ERROR_CODES.E006_CALCULATION_ERROR} for ${algoLabel}.`, "E006");
+                                clearChartAndTable();
+                                loadingSpinner.classList.add('hidden');
+                                return;
+                            }
+                            allAlgoResults[algoValue].allSavingsData.push(result.savingsData);
+                            allAlgoResults[algoValue].allWithdrawalAmounts.push(result.withdrawalAmounts);
+                            allAlgoResults[algoValue].allWithdrawalRates.push(result.withdrawalRates);
+                            allAlgoResults[algoValue].allYearsLasted.push(result.savingsData.length - 1);
+                            allAlgoResults[algoValue].allEndSavings.push(result.savingsData[result.savingsData.length - 1]);
+                            allAlgoResults[algoValue].allYearZeros.push(result.yearZero);
+                        }
+                    }
+                });
+
+                if (!anyAlgoSelected) {
+                    displayGeneralError(ERROR_CODES.E007_NO_ALGORITHM_SELECTED, "E007");
+                    clearChartAndTable();
+                    loadingSpinner.classList.add('hidden');
+                    return;
+                }
+
+                const savingsDatasets = [];
+                const withdrawalDatasets = [];
+                let maxLabelsLength = 0;
+                const summaryData = [];
+
+                for (const algoValue in allAlgoResults) {
+                    const algoData = allAlgoResults[algoValue];
+                    const label = algoData.label;
+
+                    // Calculate average savingsData and withdrawalAmounts for charts
+                    const averageSavingsData = Array(MAX_YEARS_PROJECTION + 1).fill(0);
+                    const averageWithdrawalAmounts = Array(MAX_YEARS_PROJECTION + 1).fill(0);
+
+                    let totalYearsLasted = 0;
+                    let totalEndSavings = 0;
+                    let totalMedianRates = 0;
+                    let totalMinRates = 0;
+                    let totalMaxRates = 0;
+                    let totalYearZerosSum = 0;
+                    let yearZeroHitCount = 0;
+
+                    for (let i = 0; i < numRuns; i++) {
+                        const runSavings = algoData.allSavingsData[i];
+                        const runWithdrawals = algoData.allWithdrawalAmounts[i];
+                        const runRates = algoData.allWithdrawalRates[i];
+
+                        for (let year = 0; year < runSavings.length; year++) {
+                            averageSavingsData[year] += runSavings[year];
+                        }
+                        for (let year = 0; year < runWithdrawals.length; year++) {
+                            averageWithdrawalAmounts[year] += runWithdrawals[year];
+                        }
+
+                        totalYearsLasted += algoData.allYearsLasted[i];
+                        totalEndSavings += algoData.allEndSavings[i];
+                        
+                        if (algoData.allYearZeros[i] !== null) {
+                            totalYearZerosSum += algoData.allYearZeros[i];
+                            yearZeroHitCount++;
+                        } else if (algoData.allYearsLasted[i] < MAX_YEARS_PROJECTION) {
+                            // If it didn't hit zero but also didn't last MAX_YEARS, it means it ran out.
+                            // This might happen with very low savings/high withdrawals.
+                            // For averaging yearZero, we consider it as hitting zero at its last year.
+                            totalYearZerosSum += algoData.allYearsLasted[i];
+                            yearZeroHitCount++;
+                        }
+
+
+                        if (runRates.length > 0) {
+                            totalMedianRates += calculateMedian(runRates);
+                            totalMinRates += calculateMin(runRates);
+                            totalMaxRates += calculateMax(runRates);
+                        }
+                    }
+
+                    // Divide by numRuns to get averages
+                    for (let year = 0; year < averageSavingsData.length; year++) {
+                        averageSavingsData[year] /= numRuns;
+                        averageWithdrawalAmounts[year] /= numRuns;
+                    }
+
+                    const avgYearsLasted = totalYearsLasted / numRuns;
+                    const avgEndSavings = totalEndSavings / numRuns;
+                    const avgYearZero = yearZeroHitCount > 0 ? totalYearZerosSum / yearZeroHitCount : null;
+                    const avgMedianRate = totalMedianRates / numRuns;
+                    const avgMinRate = totalMinRates / numRuns;
+                    const avgMaxRate = totalMaxRates / numRuns;
+
+                    const finalYearsLastedDisplay = avgYearsLasted >= MAX_YEARS_PROJECTION ? `${MAX_YEARS_PROJECTION}+` : avgYearsLasted.toFixed(0);
+                    const finalYearZeroDisplay = avgYearZero !== null ? avgYearZero.toFixed(0) : (avgYearsLasted >= MAX_YEARS_PROJECTION ? 'N/A' : 'Never');
+
+
+                    summaryData.push({
+                        algorithm: label,
+                        yearsLasted: finalYearsLastedDisplay,
+                        startSavings: inputs.initialSavings,
+                        endSavings: avgEndSavings,
+                        yearZero: finalYearZeroDisplay,
+                        medianWithdrawalRate: avgMedianRate,
+                        minWithdrawalRate: avgMinRate,
+                        maxWithdrawalRate: avgMaxRate
+                    });
+
+                    const currentLabelsLength = averageSavingsData.length;
+                    if (currentLabelsLength > maxLabelsLength) {
+                        maxLabelsLength = currentLabelsLength;
+                    }
+
+                    savingsDatasets.push({
+                        label: `${label} (${finalYearsLastedDisplay} yrs avg)`,
+                        data: inflationAdjustedCheckbox.checked ? adjustForInflation(averageSavingsData, inputs.inflationRate) : averageSavingsData,
+                        borderColor: CHART_COLORS[algoValue],
+                        backgroundColor: CHART_COLORS[algoValue].replace('rgb', 'rgba').replace(')', ', 0.2)'),
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    });
+
+                    withdrawalDatasets.push({
+                        label: `${label}`,
+                        data: averageWithdrawalAmounts,
+                        borderColor: CHART_COLORS[algoValue],
+                        backgroundColor: CHART_COLORS[algoValue].replace('rgb', 'rgba').replace(')', ', 0.2)'),
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0
+                    });
+                }
+
+                renderSummaryTable(summaryData);
+                updateSavingsChart(Array.from({ length: maxLabelsLength }, (_, i) => `Year ${i}`), savingsDatasets);
+                updateWithdrawalChart(Array.from({ length: maxLabelsLength }, (_, i) => `Year ${i}`), withdrawalDatasets);
+
+                loadingSpinner.classList.add('hidden');
+            }, 10);
+        }
+
+        /**
+         * Renders the summary projection data into the HTML table.
+         * @param {Array<Object>} summaryData - An array of objects, each representing an algorithm's summary.
+         */
+        function renderSummaryTable(summaryData) {
+            summaryTableBody.innerHTML = '';
+
+            if (summaryData.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        Select algorithms above to see their comparison summary.
+                    </td>
+                `;
+                summaryTableBody.appendChild(row);
+                return;
+            }
+
+            summaryData.forEach((data, index) => {
+                const row = document.createElement('tr');
+                row.className = index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : 'bg-white dark:bg-gray-800';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
+                        ${data.algorithm}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${data.yearsLasted}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${CURRENCY_SYMBOL}${data.startSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${CURRENCY_SYMBOL}${Math.max(0, data.endSavings).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${data.yearZero}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${data.medianWithdrawalRate.toFixed(2)}%
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${data.minWithdrawalRate.toFixed(2)}%
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${data.maxWithdrawalRate.toFixed(2)}%
+                    </td>
+                `;
+                summaryTableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Initializes or updates the Savings Chart.js graph with new data.
+         * @param {Array<string>} labels - Array of labels for the X-axis (e.g., years).
+         * @param {Array<Object>} datasets - Array of dataset objects for the chart.
+         */
+        function updateSavingsChart(labels, datasets) {
+            if (savingsChartInstance) {
+                savingsChartInstance.data.labels = labels;
+                savingsChartInstance.data.datasets = datasets;
+                savingsChartInstance.update();
+            } else {
+                const ctx = savingsChartCanvas.getContext('2d');
+                savingsChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += CURRENCY_SYMBOL + context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            legend: {
+                                labels: {
+                                    font: { size: 12, family: "'Inter', sans-serif" },
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Years',
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                },
+                                grid: {
+                                    color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: document.documentElement.classList.contains('dark') ? '#a0a0a0' : '#4A5568'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Savings Balance ($)',
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                },
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value, index, values) {
+                                        return CURRENCY_SYMBOL + value.toLocaleString();
+                                    },
+                                    color: document.documentElement.classList.contains('dark') ? '#a0a0a0' : '#4A5568'
+                                },
+                                grid: {
+                                    color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        /**
+         * Initializes or updates the Withdrawal Amounts Chart.js graph with new data.
+         * @param {Array<string>} labels - Array of labels for the X-axis (e.g., years).
+         * @param {Array<Object>} datasets - Array of dataset objects for the chart.
+         */
+        function updateWithdrawalChart(labels, datasets) {
+            if (withdrawalChartInstance) {
+                withdrawalChartInstance.data.labels = labels;
+                withdrawalChartInstance.data.datasets = datasets;
+                withdrawalChartInstance.update();
+            } else {
+                const ctx = withdrawalChartCanvas.getContext('2d');
+                withdrawalChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += CURRENCY_SYMBOL + context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            legend: {
+                                labels: {
+                                    font: { size: 12, family: "'Inter', sans-serif" },
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Years',
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                },
+                                grid: {
+                                    color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: document.documentElement.classList.contains('dark') ? '#a0a0a0' : '#4A5568'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Withdrawal Amount ($)',
+                                    color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#4A5568'
+                                },
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value, index, values) {
+                                        return CURRENCY_SYMBOL + value.toLocaleString();
+                                    },
+                                    color: document.documentElement.classList.contains('dark') ? '#a0a0a0' : '#4A5568'
+                                },
+                                grid: {
+                                    color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        /**
+         * Clears all charts and the summary table display.
+         */
+        function clearChartAndTable() {
+            if (savingsChartInstance) {
+                savingsChartInstance.destroy();
+                savingsChartInstance = null;
+            }
+            if (withdrawalChartInstance) {
+                withdrawalChartInstance.destroy();
+                withdrawalChartInstance = null;
+            }
+            summaryTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        Enter valid financial details and select an algorithm to see their comparison summary.
+                    </td>
+                </tr>
+            `;
+        }
+
+        /**
+         * Updates the enabled/disabled state and visual appearance of input fields
+         * based on the currently selected withdrawal algorithms.
+         */
+        function updateInputStates() {
+            const selectedAlgos = Array.from(algoCheckboxes)
+                                       .filter(cb => cb.checked)
+                                       .map(cb => cb.value);
+
+            const requiredInputIds = new Set();
+            selectedAlgos.forEach(algo => {
+                if (ALGORITHM_INPUT_MAP[algo]) {
+                    ALGORITHM_INPUT_MAP[algo].forEach(inputId => requiredInputIds.add(inputId));
+                }
+            });
+
+            // If Monte Carlo is enabled, also require SD % and Number of Runs
+            if (monteCarloCheckbox.checked) {
+                requiredInputIds.add('sdPercentage');
+                requiredInputIds.add('numRuns');
+            }
+
+            allInputGroups.forEach(group => {
+                const inputElement = group.querySelector('input');
+                const inputId = inputElement ? inputElement.id : null;
+
+                if (inputId && requiredInputIds.has(inputId)) {
+                    group.classList.remove('disabled-field');
+                    inputElement.disabled = false;
+                } else {
+                    group.classList.add('disabled-field');
+                    inputElement.disabled = true;
+                    clearInputError(document.getElementById(`${inputId}Error`));
+                }
+            });
+        }
+
+        /**
+         * Saves current input values and selected algorithms to localStorage.
+         */
+        function saveInputsToStorage() {
+            const inputs = {
+                initialSavings: initialSavingsInput.value,
+                annualWithdrawal: annualWithdrawalInput.value,
+                inflationRate: inflationRateInput.value,
+                investmentReturn: investmentReturnInput.value,
+                fixedPercentageRate: fixedPercentageRateInput.value,
+                xPercentRuleRate: xPercentRuleRateInput.value,
+                age: ageInput.value,
+                lifeExpectancy: lifeExpectancyInput.value,
+                taxRate: taxRateInput.value,
+                fixedIncome: fixedIncomeInput.value,
+                sdPercentage: sdPercentageInput.value, // New
+                numRuns: numRunsInput.value, // New
+                monteCarloChecked: monteCarloCheckbox.checked,
+                inflationAdjustedChecked: inflationAdjustedCheckbox.checked,
+                selectedAlgorithms: Array.from(algoCheckboxes).filter(cb => cb.checked).map(cb => cb.value)
+            };
+            localStorage.setItem('retirementCalculatorInputs', JSON.stringify(inputs));
+        }
+
+        /**
+         * Loads saved input values and selected algorithms from localStorage.
+         */
+        function loadInputsFromStorage() {
+            const savedInputs = JSON.parse(localStorage.getItem('retirementCalculatorInputs'));
+            if (savedInputs) {
+                initialSavingsInput.value = savedInputs.initialSavings || 500000;
+                annualWithdrawalInput.value = savedInputs.annualWithdrawal || 20000;
+                inflationRateInput.value = savedInputs.inflationRate || 3;
+                investmentReturnInput.value = savedInputs.investmentReturn || 5;
+                fixedPercentageRateInput.value = savedInputs.fixedPercentageRate || 4;
+                xPercentRuleRateInput.value = savedInputs.xPercentRuleRate || 4;
+                ageInput.value = savedInputs.age || 65;
+                lifeExpectancyInput.value = savedInputs.lifeExpectancy || 25;
+                taxRateInput.value = savedInputs.taxRate || 20;
+                fixedIncomeInput.value = savedInputs.fixedIncome || 0;
+                sdPercentageInput.value = savedInputs.sdPercentage || 10; // Default SD
+                numRunsInput.value = savedInputs.numRuns || 100; // Default runs
+
+                monteCarloCheckbox.checked = savedInputs.monteCarloChecked || false;
+                inflationAdjustedCheckbox.checked = savedInputs.inflationAdjustedChecked || false;
+
+                algoCheckboxes.forEach(cb => {
+                    cb.checked = savedInputs.selectedAlgorithms ? savedInputs.selectedAlgorithms.includes(cb.value) : (cb.value === 'xPercentRule');
+                });
+            }
+        }
+
+        /**
+         * Resets all inputs and checkboxes to their default values.
+         */
+        function resetToDefaults() {
+            initialSavingsInput.value = 500000;
+            annualWithdrawalInput.value = 20000;
+            inflationRateInput.value = 3;
+            investmentReturnInput.value = 5;
+            fixedPercentageRateInput.value = 4;
+            xPercentRuleRateInput.value = 4;
+            ageInput.value = 65;
+            lifeExpectancyInput.value = 25;
+            taxRateInput.value = 20;
+            fixedIncomeInput.value = 0;
+            sdPercentageInput.value = 10;
+            numRunsInput.value = 100;
+
+            monteCarloCheckbox.checked = false;
+            inflationAdjustedCheckbox.checked = false;
+
+            algoCheckboxes.forEach(cb => cb.checked = (cb.value === 'xPercentRule'));
+            saveInputsToStorage();
+            updateInputStates();
+            calculateAllProjections();
+        }
+
+        // --- Event Listeners ---
+        const debouncedCalculate = debounce(calculateAllProjections, 300);
+
+        initialSavingsInput.addEventListener('input', debouncedCalculate);
+        annualWithdrawalInput.addEventListener('input', debouncedCalculate);
+        inflationRateInput.addEventListener('input', debouncedCalculate);
+        investmentReturnInput.addEventListener('input', debouncedCalculate);
+        fixedPercentageRateInput.addEventListener('input', debouncedCalculate);
+        xPercentRuleRateInput.addEventListener('input', debouncedCalculate);
+        ageInput.addEventListener('input', debouncedCalculate);
+        lifeExpectancyInput.addEventListener('input', debouncedCalculate);
+        taxRateInput.addEventListener('input', debouncedCalculate);
+        fixedIncomeInput.addEventListener('input', debouncedCalculate);
+        sdPercentageInput.addEventListener('input', debouncedCalculate); // New
+        numRunsInput.addEventListener('input', debouncedCalculate); // New
+
+        algoCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                saveInputsToStorage();
+                calculateAllProjections();
+            });
+        });
+
+        monteCarloCheckbox.addEventListener('change', () => {
+            saveInputsToStorage();
+            calculateAllProjections();
+        });
+        inflationAdjustedCheckbox.addEventListener('change', () => {
+            saveInputsToStorage();
+            calculateAllProjections();
+        });
+
+        exportCsvBtn.addEventListener('click', () => {
+            const validationResult = validateAllInputs();
+            if (!validationResult.isValid) {
+                displayGeneralError("Cannot export due to invalid inputs.", "E009_EXPORT_ERROR");
+                return;
+            }
+
+            const inputs = validationResult.inputs;
+            const tempSummaryData = [];
+            const selectedAlgos = Array.from(algoCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+            // Temporarily disable Monte Carlo for export data collection if it's on,
+            // or perform a single run if it's off, to get consistent data for CSV
+            const isMonteCarloExport = monteCarloCheckbox.checked; // Check if MC was enabled for current view
+            const exportNumRuns = isMonteCarloExport ? inputs.numRuns : 1; // Use configured runs if MC, else 1
+
+            selectedAlgos.forEach(algoValue => {
+                let runResults = []; // Store results for each run for this algorithm
+                for (let i = 0; i < exportNumRuns; i++) {
+                    let result = { savingsData: [], withdrawalAmounts: [], withdrawalRates: [], yearZero: null };
+                    try {
+                        switch (algoValue) {
+                            case 'xPercentRule': result = calculateXPercentRule(inputs, isMonteCarloExport); break;
+                            case 'fixedPercentageOfPortfolio': result = calculateFixedPercentageOfPortfolio(inputs, isMonteCarloExport); break;
+                            case 'fixedDollarWithdrawals': result = calculateFixedDollarWithdrawals(inputs, isMonteCarloExport); break;
+                            case 'limitToIncome': result = calculateLimitToIncome(inputs, isMonteCarloExport); break;
+                            case 'totalReturnFlexible': result = calculateTotalReturnFlexible(inputs, isMonteCarloExport); break;
+                            case 'spendingFloor': result = calculateSpendingFloor(inputs, isMonteCarloExport); break;
+                            case 'minimizeMandatoryDistributions': result = calculateMinimizeMandatoryDistributions(inputs, isMonteCarloExport); break;
+                            case 'amortizedWithdrawal': result = calculateAmortizedWithdrawal(inputs, isMonteCarloExport); break;
+                        }
+                        runResults.push(result);
+                    } catch (error) {
+                        console.error(`Error during CSV export calculation for ${algoValue} (run ${i+1}):`, error);
+                        // Skip this run or handle error, but don't break the loop
+                    }
+                }
+
+                if (runResults.length === 0) return; // Skip if no successful runs
+
+                // Aggregate results for summary export
+                const label = document.querySelector(`input[value="${algoValue}"]`).nextElementSibling.textContent;
+                
+                let totalYearsLasted = 0;
+                let totalEndSavings = 0;
+                let totalMedianRates = 0;
+                let totalMinRates = 0;
+                let totalMaxRates = 0;
+                let totalYearZerosSum = 0;
+                let yearZeroHitCount = 0;
+
+                runResults.forEach(runResult => {
+                    totalYearsLasted += (runResult.savingsData.length - 1);
+                    totalEndSavings += runResult.savingsData[runResult.savingsData.length - 1];
+                    if (runResult.yearZero !== null) {
+                        totalYearZerosSum += runResult.yearZero;
+                        yearZeroHitCount++;
+                    } else if ((runResult.savingsData.length - 1) < MAX_YEARS_PROJECTION) {
+                         totalYearZerosSum += (runResult.savingsData.length - 1); // Treat as hitting zero at end of projection
+                         yearZeroHitCount++;
+                    }
+
+                    if (runResult.withdrawalRates.length > 0) {
+                        totalMedianRates += calculateMedian(runResult.withdrawalRates);
+                        totalMinRates += calculateMin(runResult.withdrawalRates);
+                        totalMaxRates += calculateMax(runResult.withdrawalRates);
+                    }
+                });
+
+                const avgYearsLasted = totalYearsLasted / runResults.length;
+                const avgEndSavings = totalEndSavings / runResults.length;
+                const avgYearZero = yearZeroHitCount > 0 ? totalYearZerosSum / yearZeroHitCount : null;
+                const avgMedianRate = totalMedianRates / runResults.length;
+                const avgMinRate = totalMinRates / runResults.length;
+                const avgMaxRate = totalMaxRates / runResults.length;
+
+                const finalYearsLastedDisplay = avgYearsLasted >= MAX_YEARS_PROJECTION ? `${MAX_YEARS_PROJECTION}+` : avgYearsLasted.toFixed(0);
+                const finalYearZeroDisplay = avgYearZero !== null ? avgYearZero.toFixed(0) : (avgYearsLasted >= MAX_YEARS_PROJECTION ? 'N/A' : 'Never');
+
+                tempSummaryData.push({
+                    algorithm: label,
+                    yearsLasted: finalYearsLastedDisplay,
+                    startSavings: inputs.initialSavings,
+                    endSavings: avgEndSavings,
+                    yearZero: finalYearZeroDisplay,
+                    medianWithdrawalRate: avgMedianRate,
+                    minWithdrawalRate: avgMinRate,
+                    maxWithdrawalRate: avgMaxRate
+                });
+            });
+
+
+            if (tempSummaryData.length === 0) {
+                displayGeneralError("No algorithms selected or no data to export.", "E007_NO_ALGORITHM_SELECTED");
+                return;
+            }
+
+            let csv = 'Algorithm,Years Lasted,Start Savings,End Savings,Year Zero,Median W/D Rate (%),Min W/D Rate (%),Max W/D Rate (%)\n';
+            tempSummaryData.forEach(data => {
+                csv += `"${data.algorithm}",${data.yearsLasted},${data.startSavings},${data.endSavings},${data.yearZero},${data.medianWithdrawalRate.toFixed(2)},${data.minWithdrawalRate.toFixed(2)},${data.maxWithdrawalRate.toFixed(2)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'retirement_calculator_summary.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        resetButton.addEventListener('click', resetToDefaults);
+
+        learnMoreBtn.addEventListener('click', () => {
+            algoModal.classList.remove('hidden');
+        });
+        closeModalBtn.addEventListener('click', () => {
+            algoModal.classList.add('hidden');
+        });
+
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            calculateAllProjections();
+        });
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadInputsFromStorage();
+            updateInputStates();
+            calculateAllProjections();
+            
+            if (localStorage.getItem('theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        });
+    </script>
+</body>
+</html>
