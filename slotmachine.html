@@ -1,1 +1,855 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invaders Slot Machine - Static Right UFO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #0c143d; 
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+        #slot-machine-container {
+            background: linear-gradient(to bottom, #1a237e, #0d123a);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.5), inset 0 0 15px rgba(0,0,0,0.5);
+            border: 4px solid #4a90e2;
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+        }
+        .reel {
+            background-color: #0a0f2c;
+            border: 2px solid #2a3f96;
+            overflow: hidden;
+            border-radius: 0.25rem;
+        }
+        .reel-strip {
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.1s linear; 
+        }
+        .symbol {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem; 
+            height: 80px; 
+            width: 80px;  
+            border-bottom: 1px dashed #2a3f96;
+            user-select: none;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+            position: relative; 
+        }
+        .symbol:last-child { border-bottom: none; }
+        .winning-symbol { 
+            background-color: rgba(255, 215, 0, 0.2); 
+            border-radius: 0.25rem;
+        }
+        .flash-win-outline { 
+            animation: doubleFlashGreen 1s linear forwards;
+        }
+        @keyframes doubleFlashGreen { 
+            0%, 48%, 98%, 100% { box-shadow: none; } 
+            25%, 75% { box-shadow: 0 0 12px 6px #39FF14, inset 0 0 8px 3px #39FF14; } 
+        }
+
+        #reels-container {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem; 
+            background-color: #1c2a5e;
+            padding: 1rem; 
+            border-radius: 0.5rem; 
+            border: 2px solid #3a5fbd;
+            margin-bottom: 1.5rem; 
+            position: relative; 
+            z-index: 1; 
+        }
+        .info-panel div {
+            background-color: #000;
+            padding: 0.5rem; 
+            border-radius: 0.25rem; 
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .info-panel .label { font-size: 0.65rem; color: #aaa; margin-bottom: 0.25rem; }
+        .info-panel .value { font-size: 1.25rem; font-weight: bold; }
+        #credits-display { color: #4caf50; } 
+        #bet-display { color: #fdd835; }    
+        #win-display { color: #e53935; }     
+
+        .control-button {
+            font-family: 'Press Start 2P', cursive;
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem; 
+            border-radius: 0.5rem; 
+            text-transform: uppercase;
+            transition: all 0.1s ease;
+            border: none;
+            box-shadow: 0 4px 0 #333, 0 6px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        .control-button:active { transform: translateY(2px); box-shadow: 0 2px 0 #333, 0 3px 5px rgba(0,0,0,0.3); }
+        #spin-button { background-color: #4caf50; box-shadow: 0 4px 0 #388e3c; font-size: 1.25rem; padding: 1rem 2rem; }
+        #spin-button:hover { background-color: #66bb6a; }
+        #spin-button:disabled { background-color: #555; color: #999; cursor: not-allowed; box-shadow: 0 4px 0 #333; }
+        .bet-button { background-color: #2196f3; box-shadow: 0 4px 0 #1976d2; font-size: 1rem; }
+        .bet-button:hover { background-color: #42a5f5; }
+        .bet-button.decrease { background-color: #f44336; box-shadow: 0 4px 0 #d32f2f; }
+        .bet-button.decrease:hover { background-color: #ef5350; }
+        #info-button {
+            background-color: #ff9800; 
+            box-shadow: 0 4px 0 #f57c00;
+            font-size: 1.2rem; 
+            padding: 0.7rem 0.9rem; 
+            min-width: 50px; 
+        }
+        #info-button:hover { background-color: #ffa726; }
+
+        #decorative-ufos { 
+            display: flex;
+            justify-content: space-around; 
+            align-items: center;
+            margin-bottom: 0.5rem; 
+            min-height: 40px; 
+        }
+        #decorative-ufos span { 
+            font-size: 2rem; 
+            opacity: 0.7; 
+            transition: transform 0.3s ease-in-out; 
+        }
+        #animated-ufo { 
+            position: absolute;
+            font-size: 3.5rem; 
+            opacity: 0.9;
+            animation: ufo-glow 2s ease-in-out infinite alternate, ufo-rotate 5s ease-in-out infinite;
+            z-index: 20; 
+            transition: top 1.5s ease-in-out, left 1.25s ease-in-out, transform 0.75s ease-in-out; 
+            text-shadow: 0 0 8px #0f0; 
+            transform: scale(1) translateX(0px); 
+        }
+        #static-ufo-right {
+            position: absolute;
+            font-size: 3rem; /* Slightly smaller than animated one */
+            opacity: 0.8;
+            right: -45px; /* Position off the right edge */
+            top: 30%;    /* Adjust vertical position as desired */
+            transform: rotate(10deg); /* Slight tilt */
+            z-index: 19; /* Below animated UFO if they overlap, above other elements */
+        }
+        #static-ufo-right::before { /* Red flashing light */
+            content: '';
+            position: absolute;
+            top: 5px;  /* Adjust to position on top of the UFO emoji */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background-color: red;
+            border-radius: 50%;
+            box-shadow: 0 0 6px 2px red;
+            animation: flashRedLight 1s infinite;
+        }
+
+        @keyframes flashRedLight {
+            0%, 100% { opacity: 1; box-shadow: 0 0 6px 2px red; }
+            50% { opacity: 0.3; box-shadow: 0 0 3px 1px darkred; }
+        }
+
+        @keyframes ufo-rotate { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+        @keyframes ufo-glow {
+            0% { text-shadow: 0 0 5px #fff, 0 0 10px #0f0, 0 0 15px #0f0, 0 0 20px #0f0; }
+            100% { text-shadow: 0 0 10px #fff, 0 0 20px #0f0, 0 0 30px #0f0, 0 0 40px #0f0; }
+        }
+        .title-text {
+            font-size: clamp(2rem, 6vw, 3.5rem); 
+            font-weight: bold; text-align: center; color: #fdd835; 
+            text-shadow: 2px 2px 0 #000, 4px 4px 0 #e53935; 
+            margin-bottom: 1rem; 
+        }
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.75); display: none; 
+            align-items: center; justify-content: center; z-index: 1000; 
+            padding: 1rem;
+        }
+        .modal-box { 
+            background-color: #0d123a; 
+            color: white; padding: 2rem;
+            border-radius: 0.75rem; border: 3px solid #4a90e2;
+            text-align: center; box-shadow: 0 0 25px rgba(74, 144, 226, 0.6);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto; 
+        }
+        .modal-box h2 { font-size: 1.75rem; margin-bottom: 1.5rem; color: #fdd835; text-shadow: 1px 1px 0 #000; }
+        .modal-box p { font-size: 1rem; margin-bottom: 1.5rem; }
+        .modal-close-button { 
+            background-color: #e53935; 
+            color: white; padding: 0.6rem 1.2rem;
+            border: none; border-radius: 0.35rem; cursor: pointer;
+            font-size: 0.9rem; margin-top: 1.5rem;
+            box-shadow: 0 3px 0 #b71c1c;
+        }
+        .modal-close-button:hover { background-color: #f44336; }
+
+        #payout-table-content table { width: 100%; border-collapse: separate; border-spacing: 0 0.5rem; }
+        #payout-table-content th, #payout-table-content td {
+            padding: 0.6rem; 
+            text-align: center;
+            background-color: rgba(28, 42, 94, 0.6); 
+            border: 1px solid #2a3f96;
+            font-size: 0.8rem; 
+        }
+        #payout-table-content th { background-color: #1c2a5e; color: #fdd835; font-size: 0.85rem; }
+        #payout-table-content td:first-child { text-align: left; font-size: 1.1rem; } 
+        #payout-table-content td .symbol-name { font-size: 0.65rem; display: block; color: #aaa; text-transform: capitalize; }
+        #payout-table-content .payout-value { font-weight: bold; color: #4caf50; }
+        #payout-table-content .probability-value { color: #fdd835; font-size: 0.75rem; }
+
+        #exploding-alien-container { 
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); 
+            z-index: 50; display: none; pointer-events: none; 
+        }
+        #exploding-alien-ship { font-size: 5rem; display: inline-block; }
+        #exploding-alien-ship.explode { animation: alienExplodeAnimation 0.8s ease-out forwards; }
+        @keyframes alienExplodeAnimation { 
+            0% { transform: scale(0.5); opacity: 0.5; content: "👾"; }
+            50% { transform: scale(1.5); opacity: 1; content: "👾"; } 
+            70% { transform: scale(1.3); opacity: 1; content: "💥"; font-size: 7rem;} 
+            100% { transform: scale(2.5); opacity: 0; content: "💥"; font-size: 7rem;}
+        }
+    </style>
+</head>
+<body>
+    <div id="slot-machine-container">
+        <div id="animated-ufo">🛸</div>
+        <div id="static-ufo-right">🛸</div> <div id="exploding-alien-container">
+            <span id="exploding-alien-ship"></span> 
+        </div>
+        <div id="decorative-ufos"> <span>🐮<span class="text-xs">🛸</span></span>
+          <span>🐷<span class="text-xs">🛸</span></span>
+          <span>🐔<span class="text-xs">🛸</span></span>
+          <span>👽<span class="text-xs">🛸</span></span>
+          <span>🐑<span class="text-xs">🛸</span></span>
+        </div>
+        <h1 class="title-text">INVADERS</h1>
+        <div id="reels-container"></div>
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 info-panel">
+            <div><div class="label">CREDITS</div><div id="credits-display" class="value">1000</div></div>
+            <div><div class="label">BET</div><div id="bet-display" class="value">10</div></div>
+            <div><div class="label">WIN</div><div id="win-display" class="value">0</div></div>
+        </div>
+        <div class="flex justify-center items-center mt-6 space-x-2 sm:space-x-4">
+            <button id="info-button" class="control-button">ℹ️</button>
+            <button id="decrease-bet" class="control-button bet-button decrease">-</button>
+            <button id="spin-button" class="control-button">Spin</button>
+            <button id="increase-bet" class="control-button bet-button">+</button>
+        </div>
+    </div>
+
+    <div id="message-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="message-title">Message</h2><p id="message-text">Something happened!</p>
+            <button id="message-ok-button" class="modal-close-button">OK</button>
+        </div>
+    </div>
+
+    <div id="payout-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div id="payout-table-content"></div>
+            <button id="payout-modal-close-button" class="modal-close-button">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Constants: Game Configuration ---
+        const NUM_REELS = 5;                    
+        const VISIBLE_ROWS = 4;                 
+        const SYMBOL_HEIGHT = 80;               
+        const SYMBOLS_PER_REEL_STRIP = 30;      
+        const BASE_SPIN_DURATION = 2000;        
+        const REEL_DELAY_INCREMENT = 300;       
+        const WINNING_SYMBOL_FLASH_DURATION = 1000; 
+        const ALIEN_EXPLOSION_CHANCE = 0.3;     
+        const ALIEN_EXPLOSION_ANIMATION_DURATION = 800; 
+        const BET_AMOUNTS = [1, 5, 10, 25, 50, 100, 200, 500]; 
+        const DECORATIVE_UFO_SHUFFLE_SPINS = 5; 
+
+        // --- Constants: UFO Animation ---
+        const UFO_SIDELINE_LEFT_OFFSET = -60;   
+        const UFO_FLIGHT_OUT_DURATION = 1250;   
+        const UFO_HOVER_DURATION = 1200;        
+        const UFO_FLIGHT_BACK_DURATION = 1250;  
+        const UFO_TRAJECTORIES = ['NORMAL', 'ZIGZAG', 'CORNER_TL_BR', 'CORNER_BL_TR', 'RANDOM_WALK'];
+        const UFO_ZIGZAG_SEGMENTS = 3; 
+        const UFO_RANDOM_WALK_STEPS = 6; 
+
+        // --- Symbol Definitions & Weights ---
+        const symbolData = {
+            INVADERS_LOGO: { emoji: '👾', payout: { 3: 50, 4: 200, 5: 1000 }, id: 'invaders', weight: 1 },
+            WILD:          { emoji: '🌟', payout: { 3: 100, 4: 500, 5: 2500 }, id: 'wild', isWild: true, weight: 1 },
+            COW_UFO:       { emoji: '🐮', payout: { 3: 40, 4: 150, 5: 750 }, id: 'cow_ufo', weight: 2 },
+            COWGIRL:       { emoji: '👩‍🌾', payout: { 3: 30, 4: 100, 5: 500 }, id: 'cowgirl', weight: 3 },
+            BARN:          { emoji: '🏡', payout: { 3: 20, 4: 80, 5: 400 }, id: 'barn', weight: 4 },
+            CAR:           { emoji: '🚗', payout: { 3: 15, 4: 60, 5: 300 }, id: 'car', weight: 5 },
+            CHICKENS:      { emoji: '🐔', payout: { 3: 10, 4: 40, 5: 200 }, id: 'chickens', weight: 6 },
+            DOG:           { emoji: '🐶', payout: { 3: 8,  4: 30, 5: 150 }, id: 'dog', weight: 7 },
+            MAILBOX:       { emoji: '📫', payout: { 3: 5,  4: 20, 5: 100 }, id: 'mailbox', weight: 8 },
+            MILK:          { emoji: '🥛', payout: { 3: 4,  4: 15, 5: 75  }, id: 'milk', weight: 9 },
+            BIRDHOUSE:     { emoji: '🛖', payout: { 3: 3,  4: 10, 5: 50  }, id: 'birdhouse', weight: 10 }
+        };
+        const allSymbolsArray = Object.values(symbolData); 
+        const weightedSymbols = []; 
+        let totalSymbolWeight = 0;  
+        allSymbolsArray.forEach(s => { 
+            totalSymbolWeight += s.weight;
+            for (let i = 0; i < s.weight; i++) weightedSymbols.push(s); 
+        });
+
+        // --- Game State Variables ---
+        let credits = 1000;
+        let currentBetIndex = 2; 
+        let currentBet = BET_AMOUNTS[currentBetIndex];
+        let isSpinning = false;         
+        let ufoState = 'IDLE_SIDE';     
+        let spinsUntilUfoFlight = Math.floor(Math.random() * 4) + 1; 
+        let spinsSinceDecorativeShuffle = 0; 
+
+        // --- DOM Cache & Animation State ---
+        let reelElements = [];          
+        let reelStripElements = [];     
+        let currentReelStrips = [];     
+        let finalReelPositions = [];    
+        let flashingSymbolTimeouts = [];
+        let ufoFlightTimeout;           
+
+        // --- Sound Synthesis Instances (Tone.js) ---
+        let spinSound, winSound, clickSound, reelStopSound, ufoFlySound, ufoReturnSound, explosionSound;
+
+        // --- DOM Element References ---
+        const reelsContainer = document.getElementById('reels-container');
+        const creditsDisplay = document.getElementById('credits-display');
+        const betDisplay = document.getElementById('bet-display');
+        const winDisplay = document.getElementById('win-display');
+        const spinButton = document.getElementById('spin-button');
+        const increaseBetButton = document.getElementById('increase-bet');
+        const decreaseBetButton = document.getElementById('decrease-bet');
+        const infoButton = document.getElementById('info-button');
+        const animatedUfo = document.getElementById('animated-ufo');
+        const staticUfoRight = document.getElementById('static-ufo-right'); // Added
+        const slotMachineContainer = document.getElementById('slot-machine-container');
+        const explodingAlienContainer = document.getElementById('exploding-alien-container');
+        const explodingAlienShip = document.getElementById('exploding-alien-ship');
+        const decorativeUfosContainer = document.getElementById('decorative-ufos'); 
+        const messageModal = document.getElementById('message-modal');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const messageOkButton = document.getElementById('message-ok-button');
+        const payoutModal = document.getElementById('payout-modal');
+        const payoutTableContent = document.getElementById('payout-table-content');
+        const payoutModalCloseButton = document.getElementById('payout-modal-close-button');
+
+        // --- Initialization Functions ---
+        document.addEventListener('DOMContentLoaded', init);
+
+        function init() {
+            console.log("Initializing Invaders Slot Machine...");
+            setupSounds(); 
+            createReels(); 
+            updateDisplays(); 
+            assignEventListeners();
+            setUfoToSidePosition(true); 
+            currentReelStrips.forEach((strip, reelIndex) => {
+                if (reelStripElements[reelIndex]) {
+                    reelStripElements[reelIndex].style.transform = `translateY(0px)`;
+                }
+            });
+            console.log("Initialization complete.");
+        }
+
+        // --- All other JavaScript functions (setupSounds, assignEventListeners, etc.) remain the same as v9 ---
+        // For brevity, only the changed/new parts are shown below.
+        // Ensure to copy ALL functions from the previous version if building from scratch.
+
+        // --- Copied functions from previous version for completeness ---
+        function setupSounds() {
+            Tone.start(); 
+            spinSound = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
+            spinSound.volume.value = -15;
+            winSound = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 0.2 }, }).toDestination();
+            winSound.volume.value = -10;
+            clickSound = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 2, envelope: { attack: 0.001, decay: 0.1, sustain: 0 } }).toDestination();
+            clickSound.volume.value = -10;
+            reelStopSound = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 3, envelope: { attack: 0.005, decay: 0.15, sustain: 0.01, release: 0.1 } }).toDestination();
+            reelStopSound.volume.value = -12;
+            ufoFlySound = new Tone.AMSynth({ harmonicity: 1.5, envelope: { attack: 0.1, decay: 0.2, sustain: 0.8, release: 0.5 }, modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 1, release: 0.2 } }).toDestination();
+            ufoFlySound.volume.value = -18;
+            ufoReturnSound = new Tone.FMSynth({ harmonicity: 0.8, modulationIndex: 5, envelope: { attack: 0.1, decay: 0.3, sustain: 0.1, release: 0.8 }, modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 0.5, release: 0.2 } }).toDestination();
+            ufoReturnSound.volume.value = -18;
+            explosionSound = new Tone.NoiseSynth({ noise: { type: "white" }, envelope: { attack: 0.005, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination();
+            explosionSound.volume.value = -5; 
+        }
+        function assignEventListeners() {
+            spinButton.addEventListener('click', handleSpin);
+            increaseBetButton.addEventListener('click', increaseBet);
+            decreaseBetButton.addEventListener('click', decreaseBet);
+            infoButton.addEventListener('click', showPayoutTable);
+            messageOkButton.addEventListener('click', () => { 
+                messageModal.style.display = 'none'; 
+                if (Tone.context.state === 'running') clickSound.triggerAttackRelease("C3", "8n", Tone.now());
+            });
+            payoutModalCloseButton.addEventListener('click', () => {
+                payoutModal.style.display = 'none';
+                if (Tone.context.state === 'running') clickSound.triggerAttackRelease("C3", "8n", Tone.now());
+            });
+        }
+        function updateDisplays() {
+            creditsDisplay.textContent = credits;
+            betDisplay.textContent = currentBet;
+        }
+        function showMessage(title, text) {
+            messageTitle.textContent = title;
+            messageText.textContent = text;
+            messageModal.style.display = 'flex';
+        }
+        function showPayoutTable() {
+            if (Tone.context.state === 'running') clickSound.triggerAttackRelease("C4", "8n", Tone.now());
+            generatePayoutTableHTML();
+            payoutModal.style.display = 'flex';
+        }
+        function generatePayoutTableHTML() {
+            let html = '<h2 class="text-2xl text-yellow-400 mb-6">PAYOUTS</h2>';
+            html += '<table>';
+            html += '<thead><tr><th>Symbol</th><th>Prob. (Reel)</th><th>3 Match</th><th>4 Match</th><th>5 Match</th></tr></thead>';
+            html += '<tbody>';
+            const sortedSymbols = [...allSymbolsArray].sort((a, b) => {
+                if (a.id === 'wild') return -1; if (b.id === 'wild') return 1;
+                const payoutA = a.payout ? (a.payout[5] || a.payout[4] || a.payout[3] || 0) : 0;
+                const payoutB = b.payout ? (b.payout[5] || b.payout[4] || b.payout[3] || 0) : 0;
+                return payoutB - payoutA; 
+            });
+            sortedSymbols.forEach(symbol => {
+                const probability = totalSymbolWeight > 0 ? (symbol.weight / totalSymbolWeight) * 100 : 0;
+                html += '<tr>';
+                html += `<td>${symbol.emoji} <span class="symbol-name">${symbol.id.replace(/_/g, ' ')}</span></td>`;
+                html += `<td class="probability-value">${probability.toFixed(2)}%</td>`;
+                if (symbol.payout) {
+                    html += `<td class="payout-value">${symbol.payout[3] || '-'}</td>`;
+                    html += `<td class="payout-value">${symbol.payout[4] || '-'}</td>`;
+                    html += `<td class="payout-value">${symbol.payout[5] || '-'}</td>`;
+                } else {
+                    html += `<td class="payout-value">-</td><td class="payout-value">-</td><td class="payout-value">-</td>`;
+                }
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            html += '<p class="text-xs mt-6 text-gray-400">All wins multiplied by (Bet / 10 credits). Probabilities are per symbol on a single reel stop.</p>';
+            payoutTableContent.innerHTML = html;
+        }
+        function createReels() {
+            reelsContainer.innerHTML = ''; reelElements = []; reelStripElements = []; currentReelStrips = [];
+            for (let i = 0; i < NUM_REELS; i++) {
+                const reel = document.createElement('div'); reel.classList.add('reel');
+                reel.style.height = `${VISIBLE_ROWS * SYMBOL_HEIGHT}px`; reel.style.width = `${SYMBOL_HEIGHT}px`;
+                const reelStrip = document.createElement('div'); reelStrip.classList.add('reel-strip'); reelStrip.dataset.reelIndex = i;
+                const stripSymbols = generateReelStrip(); currentReelStrips.push(stripSymbols);
+                const displayStrip = [...stripSymbols, ...stripSymbols.slice(0, VISIBLE_ROWS + 5)];
+                displayStrip.forEach(symbolObj => {
+                    const symbolDiv = document.createElement('div'); symbolDiv.classList.add('symbol');
+                    symbolDiv.textContent = symbolObj.emoji; symbolDiv.dataset.symbolId = symbolObj.id;
+                    reelStrip.appendChild(symbolDiv);
+                });
+                reel.appendChild(reelStrip); reelsContainer.appendChild(reel);
+                reelElements.push(reel); reelStripElements.push(reelStrip);
+            }
+        }
+        function generateReelStrip() {
+            const strip = [];
+            for (let i = 0; i < SYMBOLS_PER_REEL_STRIP; i++) strip.push(weightedSymbols[Math.floor(Math.random() * weightedSymbols.length)]);
+            return strip;
+        }
+        function animateReel(reelIndex, stopIndex) {
+            return new Promise(resolve => {
+                const reelStrip = reelStripElements[reelIndex]; const stripSymbols = currentReelStrips[reelIndex];
+                const revolutions = 3 + reelIndex; const targetOffsetWithinStrip = stopIndex * SYMBOL_HEIGHT;
+                const totalSpinDistance = (revolutions * stripSymbols.length * SYMBOL_HEIGHT) + targetOffsetWithinStrip;
+                const currentTransform = reelStrip.style.transform;
+                const currentY = currentTransform ? parseInt(currentTransform.match(/-?\d+/)[0]) : 0;
+                const currentEffectiveIndex = Math.round(Math.abs(currentY) / SYMBOL_HEIGHT) % stripSymbols.length;
+                reelStrip.style.transition = 'none';
+                reelStrip.style.transform = `translateY(-${currentEffectiveIndex * SYMBOL_HEIGHT}px)`;
+                reelStrip.offsetHeight; 
+                const duration = BASE_SPIN_DURATION + (reelIndex * REEL_DELAY_INCREMENT);
+                reelStrip.style.transition = `transform ${duration / 1000}s cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                reelStrip.style.transform = `translateY(-${totalSpinDistance}px)`;
+                setTimeout(() => {
+                    reelStrip.style.transition = 'none';
+                    reelStrip.style.transform = `translateY(-${targetOffsetWithinStrip}px)`;
+                    if (reelStopSound && Tone.context.state === 'running') {
+                        reelStopSound.triggerAttackRelease("G2", "16n", Tone.now() + 0.01 * reelIndex);
+                    }
+                    resolve();
+                }, duration);
+            });
+        }
+        function increaseBet() {
+            if (isSpinning || ufoState !== 'IDLE_SIDE') {
+                if (ufoState !== 'IDLE_SIDE') showMessage("UFO Busy", "Please wait for UFO activity to complete."); return;
+            }
+            if (Tone.context.state === 'running') clickSound.triggerAttackRelease("C4", "8n", Tone.now());
+            currentBetIndex = (currentBetIndex + 1) % BET_AMOUNTS.length;
+            currentBet = BET_AMOUNTS[currentBetIndex]; updateDisplays();
+        }
+        function decreaseBet() {
+            if (isSpinning || ufoState !== 'IDLE_SIDE') {
+                if (ufoState !== 'IDLE_SIDE') showMessage("UFO Busy", "Please wait for UFO activity to complete."); return;
+            }
+            if (Tone.context.state === 'running') clickSound.triggerAttackRelease("C4", "8n", Tone.now());
+            currentBetIndex = (currentBetIndex - 1 + BET_AMOUNTS.length) % BET_AMOUNTS.length;
+            currentBet = BET_AMOUNTS[currentBetIndex]; updateDisplays();
+        }
+        function triggerAlienExplosion() {
+            if (!explodingAlienContainer || !explodingAlienShip) return;
+            const reelsRect = reelsContainer.getBoundingClientRect();
+            const machineRect = slotMachineContainer.getBoundingClientRect(); 
+            const explosionLeft = (reelsRect.left - machineRect.left + reelsRect.width / 2);
+            const explosionTop = (reelsRect.top - machineRect.top + reelsRect.height / 2);
+            explodingAlienContainer.style.left = `${explosionLeft}px`;
+            explodingAlienContainer.style.top = `${explosionTop}px`;
+            explodingAlienContainer.style.display = 'block';
+            explodingAlienShip.textContent = '👾'; 
+            explodingAlienShip.className = 'explode'; 
+            if (explosionSound && Tone.context.state === 'running') {
+                explosionSound.triggerAttackRelease("8n", Tone.now());
+            }
+            setTimeout(() => {
+                explodingAlienContainer.style.display = 'none';
+                explodingAlienShip.className = ''; 
+                explodingAlienShip.textContent = ''; 
+            }, ALIEN_EXPLOSION_ANIMATION_DURATION);
+        }
+        function highlightWinningSymbols(winningLinesDetails) {
+            clearWinningHighlights(); 
+            winningLinesDetails.forEach(lineDetail => {
+                lineDetail.elements.forEach(el => {
+                    if (el) {
+                        el.classList.add('winning-symbol'); 
+                        el.classList.add('flash-win-outline'); 
+                        const timeoutId = setTimeout(() => {
+                            el.classList.remove('flash-win-outline');
+                        }, WINNING_SYMBOL_FLASH_DURATION);
+                        flashingSymbolTimeouts.push(timeoutId); 
+                    }
+                });
+            });
+        }
+        function clearWinningHighlights() {
+            flashingSymbolTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            flashingSymbolTimeouts = [];
+            document.querySelectorAll('.symbol.winning-symbol, .symbol.flash-win-outline').forEach(el => {
+                el.classList.remove('winning-symbol');
+                el.classList.remove('flash-win-outline');
+            });
+        }
+        function checkWins() {
+            let totalWin = 0;
+            const winningLinesDetails = []; 
+            for (let rowIndex = 0; rowIndex < VISIBLE_ROWS; rowIndex++) {
+                const lineSymbolsData = [];   
+                const lineSymbolElements = [];
+                for (let reelIndex = 0; reelIndex < NUM_REELS; reelIndex++) {
+                    const topSymbolIndexInStrip = finalReelPositions[reelIndex];
+                    const actualSymbolIndex = (topSymbolIndexInStrip + rowIndex) % SYMBOLS_PER_REEL_STRIP;
+                    const symbolObj = currentReelStrips[reelIndex][actualSymbolIndex];
+                    lineSymbolsData.push(symbolObj);
+                    if (reelStripElements[reelIndex] && reelStripElements[reelIndex].children[actualSymbolIndex]) {
+                        lineSymbolElements.push(reelStripElements[reelIndex].children[actualSymbolIndex]);
+                    } else {
+                        lineSymbolElements.push(null); 
+                    }
+                }
+                let paylineDefiningSymbol = null;
+                for (let k = 0; k < lineSymbolsData.length; k++) {
+                    if (!lineSymbolsData[k].isWild) {
+                        paylineDefiningSymbol = lineSymbolsData[k]; 
+                        break;
+                    }
+                }
+                if (paylineDefiningSymbol === null && lineSymbolsData.length > 0) {
+                    paylineDefiningSymbol = symbolData.WILD; 
+                }
+                if (!paylineDefiningSymbol) continue; 
+                let matchCount = 0;
+                for (let k = 0; k < lineSymbolsData.length; k++) {
+                    if (lineSymbolsData[k].id === paylineDefiningSymbol.id || lineSymbolsData[k].isWild) {
+                        matchCount++;
+                    } else {
+                        break; 
+                    }
+                }
+                if (matchCount >= 3) { 
+                    const payoutTable = paylineDefiningSymbol.payout;
+                    if (payoutTable && payoutTable[matchCount]) {
+                        const winAmount = payoutTable[matchCount] * (currentBet / BET_AMOUNTS[2]); 
+                        totalWin += winAmount;
+                        winningLinesDetails.push({ 
+                            elements: lineSymbolElements.slice(0, matchCount).filter(el => el), 
+                            amount: winAmount 
+                        });
+                    }
+                }
+            }
+            if (totalWin > 0) {
+                credits += totalWin;
+                winDisplay.textContent = totalWin;
+                const now = Tone.now();
+                if (winSound && Tone.context.state === 'running') { 
+                    winSound.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now);
+                    winSound.triggerAttackRelease("G4", "8n", now + 0.3);
+                }
+                highlightWinningSymbols(winningLinesDetails); 
+                showMessage("YOU WIN!", `Congratulations! You won ${totalWin} credits!`);
+                if (Math.random() < ALIEN_EXPLOSION_CHANCE) {
+                    triggerAlienExplosion();
+                }
+            }
+            updateDisplays(); 
+        }
+         // --- End of copied functions ---
+
+        // --- Decorative UFO Shuffle ---
+        function shuffleDecorativeUfos() {
+            if (!decorativeUfosContainer) return;
+            const icons = Array.from(decorativeUfosContainer.children);
+
+            // Fisher-Yates shuffle algorithm
+            for (let i = icons.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [icons[i], icons[j]] = [icons[j], icons[i]]; // Swap elements
+            }
+            // Re-append in shuffled order
+            icons.forEach(icon => decorativeUfosContainer.appendChild(icon));
+            console.log("Decorative UFOs shuffled.");
+        }
+
+
+        // --- UFO Animation Logic ---
+        function setUfoToSidePosition(isInitial = false) {
+            if (!animatedUfo || !slotMachineContainer) return;
+            ufoState = 'IDLE_SIDE'; 
+            clearTimeout(ufoFlightTimeout); 
+            animatedUfo.style.transition = `top 1.5s ease-in-out, left 1.25s ease-in-out, transform 0.75s ease-in-out`; // Restore default
+
+            const containerHeight = slotMachineContainer.offsetHeight; 
+            const ufoHeight = animatedUfo.offsetHeight;
+            const randomTopPercent = Math.random() * 0.65 + 0.15; 
+            let newTop = randomTopPercent * containerHeight;
+            newTop = Math.max(ufoHeight * 0.2, Math.min(newTop, containerHeight - ufoHeight * 1.2)); 
+
+            animatedUfo.style.left = `${UFO_SIDELINE_LEFT_OFFSET}px`;
+            animatedUfo.style.top = `${newTop}px`;
+            animatedUfo.style.transform = 'scale(1) translateX(0px) rotate(0deg)'; // Ensure rotation is reset
+        }
+        
+        function triggerUfoFlightSequence() {
+            if (ufoState !== 'IDLE_SIDE' || !animatedUfo || !slotMachineContainer) return;
+            ufoState = 'FLYING_OUT';
+            if (ufoFlySound && Tone.context.state === 'running') ufoFlySound.triggerAttackRelease("A3", "2s", Tone.now());
+
+            const containerWidth = slotMachineContainer.offsetWidth; 
+            const ufoWidth = animatedUfo.offsetWidth;
+            const ufoHeight = animatedUfo.offsetHeight; 
+            const containerHeight = slotMachineContainer.offsetHeight;
+            
+            // Randomly select a trajectory
+            const currentTrajectory = UFO_TRAJECTORIES[Math.floor(Math.random() * UFO_TRAJECTORIES.length)];
+            console.log("UFO Trajectory:", currentTrajectory);
+
+            // Set initial transform for flight
+            animatedUfo.style.transform = 'scale(1.15) translateX(10px) rotate(5deg)';
+            
+            // Default CSS transition for simple paths
+            animatedUfo.style.transition = `top ${UFO_FLIGHT_OUT_DURATION / 1000}s ease-in-out, left ${UFO_FLIGHT_OUT_DURATION / 1000}s ease-in-out, transform ${UFO_FLIGHT_OUT_DURATION / 2000}s ease-in-out`;
+
+
+            let targetLeft, targetTop;
+
+            switch (currentTrajectory) {
+                case 'NORMAL':
+                    targetLeft = containerWidth - ufoWidth * 0.8;
+                    targetTop = (Math.random() * 0.4 + 0.1) * containerHeight; // Fly higher
+                    targetTop = Math.max(ufoHeight * 0.1, Math.min(targetTop, containerHeight - ufoHeight * 2));
+                    animatedUfo.style.left = `${targetLeft}px`;
+                    animatedUfo.style.top = `${targetTop}px`;
+                    break;
+                case 'CORNER_TL_BR': // Top-Left to Bottom-Right
+                    targetLeft = containerWidth - ufoWidth * 0.8;
+                    targetTop = containerHeight - ufoHeight * 1.2;
+                    animatedUfo.style.left = `${targetLeft}px`;
+                    animatedUfo.style.top = `${targetTop}px`;
+                    break;
+                case 'CORNER_BL_TR': // Bottom-Left to Top-Right
+                    // Initial position might need adjustment for this path if starting low
+                    // setUfoToSidePosition(); // This might be too jarring, let's try to make it smoother
+                    animatedUfo.style.top = `${containerHeight * 0.75}px`; // Start lower for this path
+                    
+                    targetLeft = containerWidth - ufoWidth * 0.8;
+                    targetTop = ufoHeight * 0.2;
+                    // Needs a slight delay for the initial top position to apply before transition
+                    setTimeout(() => {
+                        animatedUfo.style.left = `${targetLeft}px`;
+                        animatedUfo.style.top = `${targetTop}px`;
+                    }, 50);
+                    break;
+                case 'ZIGZAG':
+                case 'RANDOM_WALK':
+                    // For JS-driven paths, shorten CSS transition for individual steps
+                    animatedUfo.style.transition = `top 0.3s ease-out, left 0.3s ease-out, transform 0.3s ease-out`;
+                    animateUfoPath(currentTrajectory, 0, UFO_FLIGHT_OUT_DURATION);
+                    return; // Skip common setTimeout for state change, handled by animateUfoPath
+            }
+
+            // Common timeout for CSS-transition based paths
+            ufoFlightTimeout = setTimeout(() => {
+                ufoState = 'AT_DESTINATION';
+                ufoFlightTimeout = setTimeout(() => { triggerUfoReturnFlight(); }, UFO_HOVER_DURATION); 
+            }, UFO_FLIGHT_OUT_DURATION);
+        }
+
+        function animateUfoPath(trajectory, step, totalDuration) {
+            if (ufoState !== 'FLYING_OUT') return; // Stop if state changed
+
+            const containerWidth = slotMachineContainer.offsetWidth;
+            const ufoWidth = animatedUfo.offsetWidth;
+            const ufoHeight = animatedUfo.offsetHeight;
+            const containerHeight = slotMachineContainer.offsetHeight;
+
+            let currentLeft = parseFloat(animatedUfo.style.left || UFO_SIDELINE_LEFT_OFFSET);
+            let currentTop = parseFloat(animatedUfo.style.top || containerHeight / 2);
+
+            let nextLeft, nextTop;
+            const numSteps = trajectory === 'ZIGZAG' ? UFO_ZIGZAG_SEGMENTS : UFO_RANDOM_WALK_STEPS;
+            const stepDuration = totalDuration / numSteps;
+
+            if (step >= numSteps) { // Path completed
+                ufoState = 'AT_DESTINATION';
+                ufoFlightTimeout = setTimeout(() => { triggerUfoReturnFlight(); }, UFO_HOVER_DURATION);
+                return;
+            }
+
+            const progress = (step + 1) / numSteps;
+            const finalTargetX = containerWidth - ufoWidth * 0.8; // General direction is right
+
+            if (trajectory === 'ZIGZAG') {
+                nextLeft = UFO_SIDELINE_LEFT_OFFSET + (finalTargetX - UFO_SIDELINE_LEFT_OFFSET) * progress;
+                const verticalMovementRange = containerHeight * 0.3; // How much it zigs/zags vertically
+                if (step % 2 === 0) { // Zag up
+                    nextTop = containerHeight * 0.25 - (Math.random() * verticalMovementRange * 0.3);
+                } else { // Zig down
+                    nextTop = containerHeight * 0.65 + (Math.random() * verticalMovementRange * 0.3);
+                }
+            } else { // RANDOM_WALK
+                const horizontalStep = (finalTargetX - UFO_SIDELINE_LEFT_OFFSET) / numSteps;
+                nextLeft = currentLeft + horizontalStep + (Math.random() * 60 - 30); // Random horizontal nudge
+                nextTop = currentTop + (Math.random() * 80 - 40); // Random vertical nudge
+            }
+            
+            // Clamp positions to stay roughly within view
+            nextLeft = Math.max(UFO_SIDELINE_LEFT_OFFSET * 0.5, Math.min(nextLeft, containerWidth - ufoWidth * 0.5));
+            nextTop = Math.max(ufoHeight * 0.1, Math.min(nextTop, containerHeight - ufoHeight * 1.1));
+
+            animatedUfo.style.left = `${nextLeft}px`;
+            animatedUfo.style.top = `${nextTop}px`;
+
+            ufoFlightTimeout = setTimeout(() => animateUfoPath(trajectory, step + 1, totalDuration), stepDuration);
+        }
+
+
+        function triggerUfoReturnFlight() {
+            if (ufoState !== 'AT_DESTINATION' || !animatedUfo) return;
+            ufoState = 'FLYING_BACK';
+            if (ufoReturnSound && Tone.context.state === 'running') ufoReturnSound.triggerAttackRelease("G3", "2s", Tone.now());
+            
+            // Restore default transition for the return flight
+            animatedUfo.style.transition = `top 1.5s ease-in-out, left ${UFO_FLIGHT_BACK_DURATION / 1000}s ease-in-out, transform 0.75s ease-in-out`;
+
+
+            const containerHeight = slotMachineContainer.offsetHeight; 
+            const ufoHeight = animatedUfo.offsetHeight;
+            const randomTopPercent = Math.random() * 0.65 + 0.15;
+            let newTop = randomTopPercent * containerHeight;
+            newTop = Math.max(ufoHeight * 0.2, Math.min(newTop, containerHeight - ufoHeight * 1.2));
+
+            animatedUfo.style.left = `${UFO_SIDELINE_LEFT_OFFSET}px`;
+            animatedUfo.style.top = `${newTop}px`;
+            animatedUfo.style.transform = 'scale(1) translateX(0px) rotate(0deg)'; 
+
+            ufoFlightTimeout = setTimeout(() => { setUfoToSidePosition(); }, UFO_FLIGHT_BACK_DURATION); 
+        }
+        
+
+        // --- Spin Logic ---
+        async function handleSpin() {
+            if (isSpinning || ufoState !== 'IDLE_SIDE') {
+                 if (ufoState !== 'IDLE_SIDE') showMessage("UFO Activity!", "The UFO is currently active. Please wait.");
+                 return;
+            }
+            if (credits < currentBet) { 
+                showMessage("Not Enough Credits", "You don't have enough credits to make this bet.");
+                return;
+            }
+
+            isSpinning = true; spinButton.disabled = true; winDisplay.textContent = '0'; clearWinningHighlights();
+            credits -= currentBet; updateDisplays();
+            if (Tone.context.state !== 'running') { await Tone.start(); }
+            if (spinSound && Tone.context.state === 'running') spinSound.triggerAttackRelease("4n", Tone.now());
+
+            finalReelPositions = []; const spinPromises = [];
+            for (let i = 0; i < NUM_REELS; i++) {
+                const stopIndex = Math.floor(Math.random() * SYMBOLS_PER_REEL_STRIP);
+                finalReelPositions.push(stopIndex);
+                spinPromises.push(animateReel(i, stopIndex));
+            }
+            await Promise.all(spinPromises); 
+
+            checkWins(); 
+
+            // Decorative UFO Shuffle Logic
+            spinsSinceDecorativeShuffle++;
+            if (spinsSinceDecorativeShuffle >= DECORATIVE_UFO_SHUFFLE_SPINS) {
+                shuffleDecorativeUfos();
+                spinsSinceDecorativeShuffle = 0;
+            }
+
+            // Main UFO flight logic
+            if (ufoState === 'IDLE_SIDE') {
+                spinsUntilUfoFlight--;
+                if (spinsUntilUfoFlight <= 0) {
+                    triggerUfoFlightSequence(); // This now handles random trajectories
+                    spinsUntilUfoFlight = Math.floor(Math.random() * 4) + 1; 
+                } else {
+                    setUfoToSidePosition(); 
+                }
+            }
+            isSpinning = false; spinButton.disabled = false;
+        }
+    </script>
+</body>
+</html>
