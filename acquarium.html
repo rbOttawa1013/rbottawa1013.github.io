@@ -1,1 +1,1608 @@
-//acquarium
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Aquarium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #1a202c; /* Dark background for contrast */
+            color: #e2e8f0;
+        }
+        canvas {
+            display: block;
+            background-color: #000; /* Fallback background */
+            border-radius: 1rem; /* Rounded corners for the canvas */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            flex-grow: 1; /* Allow canvas to take available space */
+        }
+        .settings-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d3748; /* Darker background for modal */
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+            border: 1px solid #4a5568;
+        }
+        .settings-panel h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #edf2f7;
+            text-align: center;
+        }
+        .settings-group {
+            margin-bottom: 1.25rem;
+        }
+        .settings-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #a0aec0;
+        }
+        .settings-group input[type="range"],
+        .settings-group select,
+        .settings-group input[type="checkbox"] {
+            width: 100%;
+            padding: 0.6rem;
+            border-radius: 0.5rem;
+            border: 1px solid #4a5568;
+            background-color: #4a5568;
+            color: #edf2f7;
+            appearance: none; /* Remove default browser styling */
+        }
+        .settings-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #63b3ed;
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.5);
+        }
+        .settings-group input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #63b3ed;
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.5);
+        }
+        .settings-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .button-container button {
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .button-container button:hover {
+            transform: translateY(-2px);
+        }
+        .button-container button.apply-button {
+            background-color: #48bb78; /* Green */
+            color: white;
+        }
+        .button-container button.apply-button:hover {
+            background-color: #38a169;
+        }
+        .button-container button.cancel-button {
+            background-color: #e53e3e; /* Red */
+            color: white;
+        }
+        .button-container button.cancel-button:hover {
+            background-color: #c53030;
+        }
+        .settings-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.25rem;
+            background-color: #4299e1; /* Blue */
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            z-index: 500; /* Above canvas, below modal */
+        }
+        .settings-button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d3748;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1001; /* Higher than settings panel */
+            display: none;
+            text-align: center;
+            color: #edf2f7;
+            border: 1px solid #4a5568;
+        }
+        .message-box button {
+            margin-top: 1rem;
+            padding: 0.6rem 1.2rem;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .message-box button:hover {
+            background-color: #3182ce;
+        }
+        .flex-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative; /* For settings button positioning */
+        }
+    </style>
+</head>
+<body>
+    <div class="flex-container">
+        <canvas id="aquariumCanvas"></canvas>
+        <button id="settingsButton" class="settings-button">Settings</button>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel">
+        <h2>Aquarium Settings</h2>
+
+        <div class="settings-group">
+            <label for="bubbleAmount">Amount of Bubbles:</label>
+            <input type="range" id="bubbleAmount" min="0" max="100" value="50">
+        </div>
+
+        <div class="settings-group">
+            <label for="seaweedAmount">Amount of Seaweed:</label>
+            <input type="range" id="seaweedAmount" min="0" max="50" value="20">
+        </div>
+
+        <div class="settings-group">
+            <label for="fishSchoolCount">Number of Fish Schools:</label>
+            <input type="range" id="fishSchoolCount" min="0" max="5" value="2">
+        </div>
+
+        <div class="settings-group">
+            <label for="independentFishCount">Number of Independent Fish:</label>
+            <input type="range" id="independentFishCount" min="0" max="50" value="20">
+        </div>
+
+        <div class="settings-group">
+            <label for="sharkCount">Number of Sharks:</label>
+            <input type="range" id="sharkCount" min="0" max="8" value="2">
+        </div>
+
+        <div class="settings-group">
+            <label for="shipwreckStyle">Style of Sunken Ship:</label>
+            <select id="shipwreckStyle">
+                <option value="default">Default Wreck</option>
+                <option value="pirate">Pirate Ship</option>
+                <option value="submarine">Submarine</option>
+                <option value="galleon">Spanish Galleon</option>
+            </select>
+        </div>
+
+        <div class="settings-group">
+            <label for="sandEffect">Sand Color/Effect:</label>
+            <select id="sandEffect">
+                <option value="default">Default Sand</option>
+                <option value="sparkling">Mixed Sparkling</option>
+                <option value="colorGrains">Mixed Color Grains</option>
+            </select>
+        </div>
+
+        <div class="settings-group">
+            <label for="timeOfDay">Time of Day:</label>
+            <select id="timeOfDay">
+                <option value="dawn">Dawn</option>
+                <option value="day">Day</option>
+                <option value="dusk">Dusk</option>
+                <option value="night">Night</option>
+            </select>
+        </div>
+
+        <div class="settings-group">
+            <label for="timeOfDayDuration">Time of Day Duration (minutes, 0 for fixed):</label>
+            <input type="range" id="timeOfDayDuration" min="0" max="120" value="30">
+        </div>
+
+        <div class="settings-group flex items-center">
+            <input type="checkbox" id="bubbleSoundEnabled">
+            <label for="bubbleSoundEnabled" class="mb-0">Bubble Touch Sound</label>
+        </div>
+
+        <div class="button-container">
+            <button id="applySettingsButton" class="apply-button">Apply & Close</button>
+            <button id="cancelSettingsButton" class="cancel-button">Cancel</button>
+        </div>
+    </div>
+
+    <div id="messageBox" class="message-box">
+        <p id="messageBoxText"></p>
+        <button id="messageBoxCloseButton">OK</button>
+    </div>
+
+    <script>
+        // Global variables for canvas and context
+        let canvas, ctx;
+        let aquariumApp; // Instance of the main AquariumApp
+
+        // --- Utility Functions ---
+
+        /**
+         * Generates a random number within a specified range.
+         * @param {number} min - The minimum value (inclusive).
+         * @param {number} max - The maximum value (exclusive).
+         * @returns {number} A random number.
+         */
+        function getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        /**
+         * Generates a random integer within a specified range.
+         * @param {number} min - The minimum value (inclusive).
+         * @param {number} max - The maximum value (inclusive).
+         * @returns {number} A random integer.
+         */
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        /**
+         * Shows a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageBoxText = document.getElementById('messageBoxText');
+            messageBoxText.textContent = message;
+            messageBox.style.display = 'block';
+        }
+
+        // Event listener for closing the message box
+        document.getElementById('messageBoxCloseButton').addEventListener('click', () => {
+            document.getElementById('messageBox').style.display = 'none';
+        });
+
+        // --- Drawing Utilities Class ---
+        class DrawingUtils {
+            /**
+             * Interpolates between two colors.
+             * @param {string} color1 - First color (e.g., '#RRGGBB').
+             * @param {string} color2 - Second color.
+             * @param {number} factor - Interpolation factor (0 to 1).
+             * @returns {string} The interpolated color in hex format.
+             */
+            static interpolateColor(color1, color2, factor) {
+                // Ensure factor is a valid number and clamped between 0 and 1
+                if (isNaN(factor) || factor < 0 || factor > 1) {
+                    console.warn("Invalid factor for color interpolation:", factor);
+                    factor = Math.max(0, Math.min(1, factor || 0)); // Clamp and default to 0 if NaN/undefined
+                }
+
+                const hexToRgb = hex => {
+                    // Remove '#' if present for consistent parsing
+                    const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
+
+                    // Ensure the hex string has 6 characters
+                    if (cleanHex.length !== 6) {
+                        console.error("Invalid hex string length for parsing:", cleanHex, "from original:", hex);
+                        return [0, 0, 0]; // Fallback to black
+                    }
+                    // Parse R, G, B components
+                    const r = parseInt(cleanHex.substring(0, 2), 16);
+                    const g = parseInt(cleanHex.substring(2, 4), 16);
+                    const b = parseInt(cleanHex.substring(4, 6), 16);
+
+                    // If any component is NaN after parsing, it means parsing failed. Return a default.
+                    if (isNaN(r) || isNaN(g) || isNaN(b)) {
+                        console.error("Failed to parse hex color component:", { hex, cleanHex, r, g, b });
+                        return [0, 0, 0]; // Fallback to black to prevent further errors
+                    }
+                    return [r, g, b];
+                };
+
+                const rgbToHex = rgb => {
+                    // Ensure values are within 0-255 range and round
+                    const safeRgb = rgb.map(x => Math.max(0, Math.min(255, Math.round(x))));
+                    return '#' + safeRgb.map(x => x.toString(16).padStart(2, '0')).join('');
+                };
+
+                const rgb1 = hexToRgb(color1);
+                const rgb2 = hexToRgb(color2);
+
+                const interpolatedRgb = rgb1.map((c1, i) => {
+                    // Ensure components from rgb1 and rgb2 are numbers before calculation
+                    if (isNaN(c1) || isNaN(rgb2[i])) {
+                        return 0; // Fallback for invalid component
+                    }
+                    return c1 + (rgb2[i] - c1) * factor;
+                });
+
+                return rgbToHex(interpolatedRgb);
+            }
+
+            /**
+             * Draws a rounded rectangle.
+             * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+             * @param {number} x - The x-coordinate of the top-left corner.
+             * @param {number} y - The y-coordinate of the top-left corner.
+             * @param {number} width - The width of the rectangle.
+             * @param {number} height - The height of the rectangle.
+             * @param {number} radius - The corner radius.
+             */
+            static drawRoundedRect(ctx, x, y, width, height, radius) {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+            }
+
+            /**
+             * Draws the water background with a gradient, adjusted for time of day.
+             * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+             * @param {number} width - Canvas width.
+             * @param {number} height - Canvas height.
+             * @param {number} timeOfDayPhase - A value from 0 to 1 representing the current phase of the day.
+             */
+            static drawWater(ctx, width, height, timeOfDayPhase) {
+                let topColor, bottomColor;
+
+                // Define colors for different phases
+                const colors = {
+                    dawnTop: '#87CEEB',    // Sky blue
+                    dawnBottom: '#4682B4', // Steel blue
+                    dayTop: '#63b3ed',     // Light blue
+                    dayBottom: '#3182ce',  // Darker blue
+                    duskTop: '#FF8C00',    // Dark orange
+                    duskBottom: '#8B0000', // Dark red
+                    nightTop: '#1A202C',   // Very dark blue/black
+                    nightBottom: '#2D3748' // Dark grey-blue
+                };
+
+                // Interpolate colors based on timeOfDayPhase (0-1)
+                // 0.0 - 0.25: Dawn to Day
+                // 0.25 - 0.5: Day
+                // 0.5 - 0.75: Day to Dusk
+                // 0.75 - 1.0: Dusk to Night, then Night to Dawn
+
+                if (timeOfDayPhase >= 0 && timeOfDayPhase < 0.25) { // Dawn to Day
+                    const factor = timeOfDayPhase / 0.25;
+                    topColor = DrawingUtils.interpolateColor(colors.dawnTop, colors.dayTop, factor);
+                    bottomColor = DrawingUtils.interpolateColor(colors.dawnBottom, colors.dayBottom, factor);
+                } else if (timeOfDayPhase >= 0.25 && timeOfDayPhase < 0.5) { // Day
+                    topColor = colors.dayTop;
+                    bottomColor = colors.dayBottom;
+                } else if (timeOfDayPhase >= 0.5 && timeOfDayPhase < 0.75) { // Day to Dusk
+                    const factor = (timeOfDayPhase - 0.5) / 0.25;
+                    topColor = DrawingUtils.interpolateColor(colors.dayTop, colors.duskTop, factor);
+                    bottomColor = DrawingUtils.interpolateColor(colors.dayBottom, colors.duskBottom, factor);
+                } else { // Dusk to Night, then Night to Dawn (wraps around)
+                    const factor = (timeOfDayPhase - 0.75) / 0.25;
+                    topColor = DrawingUtils.interpolateColor(colors.nightTop, colors.dawnTop, factor); // Night to Dawn
+                    bottomColor = DrawingUtils.interpolateColor(colors.nightBottom, colors.dawnBottom, factor); // Night to Dawn
+                }
+
+
+                const gradient = ctx.createLinearGradient(0, 0, 0, height);
+                gradient.addColorStop(0, topColor);
+                gradient.addColorStop(1, bottomColor);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            /**
+             * Draws the sandy seabed.
+             * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+             * @param {number} width - Canvas width.
+             * @param {number} height - Canvas height.
+             * @param {string} sandEffect - The chosen sand effect ('default', 'sparkling', 'colorGrains').
+             */
+            static drawSand(ctx, width, height, sandEffect) {
+                const sandHeight = height * 0.2; // Sand covers bottom 20%
+                const baseY = height - sandHeight;
+
+                ctx.beginPath();
+                ctx.moveTo(0, baseY);
+
+                // Create a curved sandy seabed
+                ctx.bezierCurveTo(
+                    width * 0.25, baseY + sandHeight * 0.3,
+                    width * 0.75, baseY - sandHeight * 0.1,
+                    width, baseY
+                );
+                ctx.lineTo(width, height);
+                ctx.lineTo(0, height);
+                ctx.closePath();
+
+                // Sand color based on effect
+                let sandColor = '#d2b48c'; // Default sand color
+                if (sandEffect === 'sparkling') {
+                    sandColor = '#e0c29f'; // Lighter for sparkling
+                } else if (sandEffect === 'colorGrains') {
+                    sandColor = '#c2a47c'; // Slightly darker for color grains
+                }
+
+                ctx.fillStyle = sandColor;
+                ctx.fill();
+
+                // Add details based on effect
+                if (sandEffect === 'sparkling' || sandEffect === 'colorGrains') {
+                    const numGrains = width * height / 1000; // Denser grains for larger canvases
+                    for (let i = 0; i < numGrains; i++) {
+                        const x = getRandomArbitrary(0, width);
+                        const y = getRandomArbitrary(baseY, height);
+                        const size = getRandomArbitrary(0.5, 1.5);
+
+                        if (sandEffect === 'sparkling') {
+                            ctx.fillStyle = `rgba(255, 255, 255, ${getRandomArbitrary(0.3, 0.8)})`;
+                            ctx.fillRect(x, y, size, size);
+                        } else if (sandEffect === 'colorGrains') {
+                            const colors = ['#8B4513', '#A0522D', '#D2B48C', '#F4A460']; // Brownish tones
+                            ctx.fillStyle = colors[getRandomInt(0, colors.length - 1)];
+                            ctx.fillRect(x, y, size, size);
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Base Game Object Class ---
+        class GameObject {
+            /**
+             * Base class for all animated objects in the aquarium.
+             * @param {number} x - Initial x-position.
+             * @param {number} y - Initial y-position.
+             * @param {number} size - Size factor for the object.
+             * @param {number} speed - Movement speed of the object.
+             */
+            constructor(x, y, size, speed) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = speed;
+                this.vx = 0; // Velocity x
+                this.vy = 0; // Velocity y
+            }
+
+            /**
+             * Updates the object's state (e.g., position).
+             * @param {number} deltaTime - Time elapsed since last frame.
+             * @param {number} canvasWidth - Width of the canvas.
+             * @param {number} canvasHeight - Height of the canvas.
+             */
+            update(deltaTime, canvasWidth, canvasHeight) {
+                this.x += this.vx * deltaTime;
+                this.y += this.vy * deltaTime;
+            }
+
+            /**
+             * Draws the object on the canvas.
+             * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+             */
+            draw(ctx) {
+                // To be implemented by subclasses
+            }
+        }
+
+        // --- Bubble Class ---
+        class Bubble extends GameObject {
+            /**
+             * Represents a single bubble rising in the aquarium.
+             * @param {number} x - Initial x-position.
+             * @param {number} y - Initial y-position.
+             * @param {number} size - Radius of the bubble.
+             */
+            constructor(x, y, size) {
+                super(x, y, size, getRandomArbitrary(0.5, 2)); // Speed for rising
+                this.vx = getRandomArbitrary(-0.2, 0.2); // Slight horizontal drift
+                this.vy = -this.speed; // Always rises
+                this.opacity = getRandomArbitrary(0.3, 0.8);
+            }
+
+            update(deltaTime, canvasWidth, canvasHeight) {
+                super.update(deltaTime, canvasWidth, canvasHeight);
+                this.opacity = Math.max(0, this.opacity - 0.001 * deltaTime); // Fade out
+                this.x += Math.sin(this.y * 0.05) * 0.1; // Gentle sine wave drift
+
+                // Reset bubble if it goes off screen or becomes too transparent
+                if (this.y < -this.size || this.opacity <= 0) {
+                    this.reset(canvasWidth, canvasHeight);
+                }
+            }
+
+            /**
+             * Resets the bubble to the bottom of the canvas.
+             * @param {number} canvasWidth - Width of the canvas.
+             * @param {number} canvasHeight - Height of the canvas.
+             */
+            reset(canvasWidth, canvasHeight) {
+                this.x = getRandomArbitrary(0, canvasWidth);
+                this.y = canvasHeight + getRandomArbitrary(0, 50); // Start slightly below
+                this.size = getRandomArbitrary(2, 8);
+                this.speed = getRandomArbitrary(0.5, 2);
+                this.vx = getRandomArbitrary(-0.2, 0.2);
+                this.vy = -this.speed;
+                this.opacity = getRandomArbitrary(0.3, 0.8);
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity * 0.7})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // --- Seaweed Class ---
+        class Seaweed extends GameObject {
+            /**
+             * Represents a single seaweed plant.
+             * @param {number} x - Initial x-position (base).
+             * @param {number} y - Initial y-position (base).
+             * @param {number} height - Height of the seaweed.
+             * @param {number} segments - Number of segments for drawing.
+             * @param {string} color - Color of the seaweed.
+             */
+            constructor(x, y, height, segments, color) {
+                super(x, y, 0, 0); // Not moving
+                this.baseY = y;
+                this.height = height;
+                this.segments = segments;
+                this.color = color;
+                this.swayOffset = getRandomArbitrary(0, Math.PI * 2); // Random phase for sway
+            }
+
+            draw(ctx) {
+                const segmentHeight = this.height / this.segments;
+                const swayMagnitude = 5; // How much it sways
+                const time = Date.now() * 0.001; // Global time for consistent sway
+
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.baseY);
+
+                for (let i = 0; i <= this.segments; i++) {
+                    const currentY = this.baseY - i * segmentHeight;
+                    const swayX = Math.sin(time * 0.5 + this.swayOffset + i * 0.5) * swayMagnitude;
+                    ctx.lineTo(this.x + swayX, currentY);
+                }
+
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+        }
+
+        // --- Crab Class ---
+        class Crab extends GameObject {
+            /**
+             * Represents a crab scuttling on the seabed.
+             * @param {number} x - Initial x-position.
+             * @param {number} y - Initial y-position (on seabed).
+             * @param {number} size - Size factor.
+             */
+            constructor(x, y, size) {
+                super(x, y, size, getRandomArbitrary(0.5, 1.5)); // Speed
+                this.direction = Math.random() < 0.5 ? 1 : -1; // 1 for right, -1 for left
+                this.vx = this.speed * this.direction;
+                this.legPhase = getRandomArbitrary(0, Math.PI * 2); // For leg animation
+                this.bodyColor = `hsl(${getRandomInt(0, 30)}, 70%, 40%)`; // Reddish-brown
+            }
+
+            update(deltaTime, canvasWidth, canvasHeight) {
+                super.update(deltaTime, canvasWidth, canvasHeight);
+                this.legPhase += 0.1 * deltaTime; // Animate legs
+
+                // Reverse direction if hitting canvas edges
+                if (this.x < 0 || this.x > canvasWidth) {
+                    this.direction *= -1;
+                    this.vx = this.speed * this.direction;
+                    this.x = Math.max(0, Math.min(canvasWidth, this.x)); // Keep within bounds
+                }
+            }
+
+            draw(ctx) {
+                const bodyWidth = this.size * 20;
+                const bodyHeight = this.size * 15;
+                const legLength = this.size * 10;
+                const eyeRadius = this.size * 2;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.direction, 1); // Flip horizontally based on direction
+
+                // Legs (simple animation)
+                for (let i = 0; i < 3; i++) {
+                    const angle = Math.sin(this.legPhase + i * 0.5) * 0.3; // Swaying motion
+                    // Left legs
+                    ctx.beginPath();
+                    ctx.moveTo(-bodyWidth / 2, 0);
+                    ctx.lineTo(-bodyWidth / 2 - legLength * Math.cos(angle), legLength * Math.sin(angle));
+                    ctx.strokeStyle = this.bodyColor;
+                    ctx.lineWidth = this.size * 2;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    // Right legs
+                    ctx.beginPath();
+                    ctx.moveTo(bodyWidth / 2, 0);
+                    ctx.lineTo(bodyWidth / 2 + legLength * Math.cos(angle), legLength * Math.sin(angle));
+                    ctx.strokeStyle = this.bodyColor;
+                    ctx.lineWidth = this.size * 2;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+
+                // Body
+                DrawingUtils.drawRoundedRect(ctx, -bodyWidth / 2, -bodyHeight / 2, bodyWidth, bodyHeight, this.size * 5);
+                ctx.fillStyle = this.bodyColor;
+                ctx.fill();
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Eyes
+                ctx.beginPath();
+                ctx.arc(-bodyWidth * 0.2, -bodyHeight * 0.4, eyeRadius, 0, Math.PI * 2);
+                ctx.arc(bodyWidth * 0.2, -bodyHeight * 0.4, eyeRadius, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-bodyWidth * 0.2, -bodyHeight * 0.4, eyeRadius * 0.5, 0, Math.PI * 2);
+                ctx.arc(bodyWidth * 0.2, -bodyHeight * 0.4, eyeRadius * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // --- Coral Class ---
+        class Coral extends GameObject {
+            /**
+             * Represents a static coral formation.
+             * @param {number} x - X-position.
+             * @param {number} y - Y-position (on seabed).
+             * @param {string} type - Type of coral ('brain', 'fan', 'tube').
+             * @param {string} color - Color of the coral.
+             * @param {number} size - Size factor.
+             */
+            constructor(x, y, type, color, size) {
+                super(x, y, size, 0); // Static
+                this.type = type;
+                this.color = color;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 1;
+
+                if (this.type === 'brain') {
+                    const brainRadius = this.size * 20;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, brainRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Add some wavy lines for brain coral texture
+                    ctx.beginPath();
+                    ctx.moveTo(-brainRadius * 0.8, -brainRadius * 0.3);
+                    ctx.bezierCurveTo(-brainRadius * 0.5, -brainRadius * 0.8, brainRadius * 0.5, -brainRadius * 0.8, brainRadius * 0.8, -brainRadius * 0.3);
+                    ctx.moveTo(-brainRadius * 0.7, brainRadius * 0.2);
+                    ctx.bezierCurveTo(-brainRadius * 0.4, brainRadius * 0.7, brainRadius * 0.4, brainRadius * 0.7, brainRadius * 0.7, brainRadius * 0.2);
+                    ctx.strokeStyle = `rgba(0,0,0,0.2)`;
+                    ctx.stroke();
+                } else if (this.type === 'fan') {
+                    const fanWidth = this.size * 25;
+                    const fanHeight = this.size * 35;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(fanWidth * 0.5, -fanHeight * 0.2, fanWidth * 0.5, -fanHeight);
+                    ctx.quadraticCurveTo(0, -fanHeight * 0.8, -fanWidth * 0.5, -fanHeight);
+                    ctx.quadraticCurveTo(-fanWidth * 0.5, -fanHeight * 0.2, 0, 0);
+                    ctx.fill();
+                    // Add ribs
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.quadraticCurveTo(i * fanWidth * 0.1, -fanHeight * 0.5, i * fanWidth * 0.2, -fanHeight);
+                        ctx.strokeStyle = `rgba(0,0,0,0.2)`;
+                        ctx.stroke();
+                    }
+                } else if (this.type === 'tube') {
+                    const tubeCount = getRandomInt(2, 5);
+                    for (let i = 0; i < tubeCount; i++) {
+                        const tubeRadius = this.size * getRandomArbitrary(3, 7);
+                        const tubeHeight = this.size * getRandomArbitrary(20, 40);
+                        const offsetX = getRandomArbitrary(-this.size * 5, this.size * 5);
+                        const offsetY = -tubeHeight / 2 - getRandomArbitrary(0, this.size * 10);
+
+                        ctx.beginPath();
+                        ctx.ellipse(offsetX, offsetY, tubeRadius, tubeHeight / 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(offsetX, offsetY + tubeHeight / 2, tubeRadius, tubeRadius * 0.5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.restore();
+            }
+        }
+
+        // --- Shipwreck Class ---
+        class Shipwreck extends GameObject {
+            /**
+             * Represents a static shipwreck.
+             * @param {number} x - X-position.
+             * @param {number} y - Y-position (on seabed).
+             * @param {string} style - Style of the shipwreck ('default', 'pirate', 'submarine', 'galleon').
+             * @param {number} size - Size factor.
+             */
+            constructor(x, y, style, size) {
+                super(x, y, size, 0); // Static
+                this.style = style;
+                this.color = '#5a4d41'; // Muted brown/grey for sunken look
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = '#3a3028';
+                ctx.lineWidth = 2;
+
+                if (this.style === 'default') {
+                    const width = this.size * 100;
+                    const height = this.size * 40;
+                    DrawingUtils.drawRoundedRect(ctx, -width / 2, -height / 2, width, height, this.size * 5);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Broken mast
+                    ctx.beginPath();
+                    ctx.moveTo(0, -height / 2);
+                    ctx.lineTo(this.size * 10, -height * 1.5);
+                    ctx.lineTo(this.size * 5, -height * 1.6);
+                    ctx.stroke();
+                } else if (this.style === 'pirate') {
+                    const width = this.size * 120;
+                    const height = this.size * 50;
+                    // Hull
+                    ctx.beginPath();
+                    ctx.moveTo(-width / 2, 0);
+                    ctx.bezierCurveTo(-width * 0.4, -height * 0.8, width * 0.4, -height * 0.8, width / 2, 0);
+                    ctx.lineTo(width / 2, height * 0.5);
+                    ctx.lineTo(-width / 2, height * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Masts (broken)
+                    ctx.beginPath();
+                    ctx.moveTo(-width * 0.3, -height * 0.5);
+                    ctx.lineTo(-width * 0.3 + this.size * 5, -height * 1.2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.2, -height * 0.5);
+                    ctx.lineTo(width * 0.2 - this.size * 5, -height * 1.1);
+                    ctx.stroke();
+
+                    // Portholes (broken)
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(-width * 0.2, -height * 0.1, this.size * 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(width * 0.1, -height * 0.1, this.size * 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else if (this.style === 'submarine') {
+                    const length = this.size * 150;
+                    const radius = this.size * 20;
+                    // Main body
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, length / 2, radius, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Conning tower
+                    DrawingUtils.drawRoundedRect(ctx, -length * 0.1, -radius - this.size * 20, length * 0.2, this.size * 25, this.size * 5);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Propeller (simple)
+                    ctx.beginPath();
+                    ctx.moveTo(length / 2, 0);
+                    ctx.lineTo(length / 2 + this.size * 10, -this.size * 10);
+                    ctx.moveTo(length / 2, 0);
+                    ctx.lineTo(length / 2 + this.size * 10, this.size * 10);
+                    ctx.stroke();
+
+                    // Portholes
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.beginPath();
+                        ctx.arc(i * length * 0.15, 0, this.size * 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else if (this.style === 'galleon') {
+                    const width = this.size * 140;
+                    const height = this.size * 60;
+                    // Hull (more complex shape)
+                    ctx.beginPath();
+                    ctx.moveTo(-width / 2, 0);
+                    ctx.lineTo(-width * 0.4, -height * 0.4);
+                    ctx.bezierCurveTo(-width * 0.2, -height * 0.8, width * 0.2, -height * 0.8, width * 0.4, -height * 0.4);
+                    ctx.lineTo(width / 2, 0);
+                    ctx.lineTo(width * 0.4, height * 0.5);
+                    ctx.lineTo(-width * 0.4, height * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Stern castle (simplified)
+                    DrawingUtils.drawRoundedRect(ctx, width * 0.25, -height * 0.5, width * 0.2, height * 0.6, this.size * 5);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Masts (broken)
+                    ctx.beginPath();
+                    ctx.moveTo(-width * 0.2, -height * 0.5);
+                    ctx.lineTo(-width * 0.2 + this.size * 8, -height * 1.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.1, -height * 0.5);
+                    ctx.lineTo(width * 0.1 - this.size * 6, -height * 1.3);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        // --- Fish Class (Independent Fish) ---
+        class Fish extends GameObject {
+            /**
+             * Represents an independent fish.
+             * @param {number} x - Initial x-position.
+             * @param {number} y - Initial y-position.
+             * @param {number} size - Size factor.
+             * @param {number} speed - Movement speed.
+             */
+            constructor(x, y, size, speed) {
+                super(x, y, size, speed);
+                this.direction = Math.random() < 0.5 ? 1 : -1; // 1 for right, -1 for left
+                this.vx = this.speed * this.direction;
+                this.vy = getRandomArbitrary(-0.5, 0.5); // Slight vertical movement
+                this.targetY = y; // For wandering
+                this.wanderTimer = 0;
+                this.wanderInterval = getRandomInt(100, 300); // How often to change wander target
+
+                // Appearance
+                const shapes = ['ellipse', 'tall', 'long', 'diamond'];
+                this.shape = shapes[getRandomInt(0, shapes.length - 1)];
+                this.bodyColor = `hsl(${getRandomInt(0, 360)}, 70%, 50%)`;
+                this.finColor = `hsl(${getRandomInt(0, 360)}, 80%, 60%)`;
+                this.eyeSize = getRandomArbitrary(1, 3) * this.size;
+                this.hasStripes = Math.random() < 0.3;
+                this.hasSpots = Math.random() < 0.2;
+
+                this.tailPhase = 0; // For tail animation
+                this.tailSpeed = getRandomArbitrary(0.1, 0.3); // How fast tail wags
+            }
+
+            update(deltaTime, canvasWidth, canvasHeight) {
+                // Wander movement
+                this.wanderTimer += deltaTime;
+                if (this.wanderTimer >= this.wanderInterval) {
+                    this.targetY = getRandomArbitrary(canvasHeight * 0.1, canvasHeight * 0.8);
+                    this.wanderInterval = getRandomInt(100, 300);
+                    this.wanderTimer = 0;
+                }
+
+                // Steer towards target Y
+                const dy = this.targetY - this.y;
+                this.vy += dy * 0.0005 * deltaTime; // Gentle steering
+                this.vy = Math.max(-this.speed, Math.min(this.speed, this.vy)); // Limit vertical speed
+
+                super.update(deltaTime, canvasWidth, canvasHeight);
+
+                // Tail animation
+                this.tailPhase += this.tailSpeed * deltaTime;
+
+                // Boundary interaction (wrapping or bouncing)
+                if (this.x < -this.size * 50) { // Left edge, wrap to right
+                    this.x = canvasWidth + this.size * 50;
+                } else if (this.x > canvasWidth + this.size * 50) { // Right edge, wrap to left
+                    this.x = -this.size * 50;
+                }
+
+                if (this.y < 0 || this.y > canvasHeight * 0.9) { // Top/bottom edge, bounce
+                    this.vy *= -1;
+                    this.y = Math.max(0, Math.min(canvasHeight * 0.9, this.y));
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.direction, 1); // Flip horizontally based on direction
+
+                // Body
+                ctx.beginPath();
+                if (this.shape === 'ellipse') {
+                    ctx.ellipse(0, 0, this.size * 25, this.size * 15, 0, 0, Math.PI * 2);
+                } else if (this.shape === 'tall') {
+                    ctx.ellipse(0, 0, this.size * 15, this.size * 25, 0, 0, Math.PI * 2);
+                } else if (this.shape === 'long') {
+                    ctx.ellipse(0, 0, this.size * 35, this.size * 10, 0, 0, Math.PI * 2);
+                } else if (this.shape === 'diamond') {
+                    ctx.moveTo(-this.size * 20, 0);
+                    ctx.lineTo(0, -this.size * 15);
+                    ctx.lineTo(this.size * 20, 0);
+                    ctx.lineTo(0, this.size * 15);
+                    ctx.closePath();
+                }
+                ctx.fillStyle = this.bodyColor;
+                ctx.fill();
+                ctx.strokeStyle = `darken(${this.bodyColor}, 10%)`; // Slightly darker border
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Stripes/Spots
+                if (this.hasStripes) {
+                    ctx.fillStyle = `rgba(255,255,255,0.3)`;
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.beginPath();
+                        ctx.ellipse(i * this.size * 8, 0, this.size * 2, this.size * 15, Math.PI / 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                if (this.hasSpots) {
+                    ctx.fillStyle = `rgba(0,0,0,0.3)`;
+                    for (let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.arc(getRandomArbitrary(-this.size * 15, this.size * 15), getRandomArbitrary(-this.size * 10, this.size * 10), this.size * 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Tail (animated)
+                const tailSway = Math.sin(this.tailPhase) * this.size * 5;
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 25, 0);
+                ctx.lineTo(-this.size * 35, -this.size * 10 + tailSway);
+                ctx.lineTo(-this.size * 35, this.size * 10 + tailSway);
+                ctx.closePath();
+                ctx.fillStyle = this.finColor;
+                ctx.fill();
+                ctx.stroke();
+
+                // Fins
+                ctx.beginPath();
+                ctx.moveTo(0, this.size * 10);
+                ctx.lineTo(this.size * 10, this.size * 15);
+                ctx.lineTo(this.size * 5, this.size * 20);
+                ctx.closePath();
+                ctx.fillStyle = this.finColor;
+                ctx.fill();
+                ctx.stroke();
+
+                // Eye
+                ctx.beginPath();
+                ctx.arc(this.size * 10, -this.size * 5, this.eyeSize, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.size * 10 + this.eyeSize * 0.3, -this.size * 5, this.eyeSize * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // --- Shark Class ---
+        class Shark extends Fish {
+            /**
+             * Represents a shark. Inherits from Fish but overrides appearance and movement.
+             * @param {number} x - Initial x-position.
+             * @param {number} y - Initial y-position.
+             * @param {number} size - Size factor.
+             * @param {number} speed - Movement speed.
+             */
+            constructor(x, y, size, speed) {
+                super(x, y, size * 1.5, speed * 1.5); // Larger and faster than regular fish
+                this.bodyColor = '#607d8b'; // Greyish blue
+                this.finColor = '#455a64'; // Darker grey
+                this.eyeSize = getRandomArbitrary(2, 4) * this.size;
+                this.hasStripes = false;
+                this.hasSpots = false;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.direction, 1); // Flip horizontally based on direction
+
+                // Body (more streamlined)
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 40, 0);
+                ctx.quadraticCurveTo(-this.size * 20, -this.size * 20, 0, -this.size * 15);
+                ctx.quadraticCurveTo(this.size * 30, -this.size * 10, this.size * 40, 0);
+                ctx.quadraticCurveTo(this.size * 30, this.size * 10, 0, this.size * 15);
+                ctx.quadraticCurveTo(-this.size * 20, this.size * 20, -this.size * 40, 0);
+                ctx.closePath();
+                ctx.fillStyle = this.bodyColor;
+                ctx.fill();
+                ctx.strokeStyle = this.finColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Dorsal Fin
+                ctx.beginPath();
+                ctx.moveTo(this.size * 5, -this.size * 15);
+                ctx.lineTo(this.size * 15, -this.size * 35);
+                ctx.lineTo(this.size * 25, -this.size * 15);
+                ctx.closePath();
+                ctx.fillStyle = this.finColor;
+                ctx.fill();
+                ctx.stroke();
+
+                // Tail Fin (animated)
+                const tailSway = Math.sin(this.tailPhase) * this.size * 8;
+                ctx.beginPath();
+                ctx.moveTo(-this.size * 40, 0);
+                ctx.lineTo(-this.size * 55, -this.size * 15 + tailSway);
+                ctx.lineTo(-this.size * 55, this.size * 15 + tailSway);
+                ctx.closePath();
+                ctx.fillStyle = this.finColor;
+                ctx.fill();
+                ctx.stroke();
+
+                // Pectoral Fins
+                ctx.beginPath();
+                ctx.moveTo(this.size * 10, this.size * 10);
+                ctx.lineTo(this.size * 25, this.size * 25);
+                ctx.lineTo(this.size * 20, this.size * 10);
+                ctx.closePath();
+                ctx.fillStyle = this.finColor;
+                ctx.fill();
+                ctx.stroke();
+
+                // Eye
+                ctx.beginPath();
+                ctx.arc(this.size * 25, -this.size * 8, this.eyeSize, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.size * 25 + this.eyeSize * 0.3, -this.size * 8, this.eyeSize * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // --- Fish School Class ---
+        class FishSchool {
+            /**
+             * Manages a group of fish that move together.
+             * @param {number} x - Initial x-position of the school center.
+             * @param {number} y - Initial y-position of the school center.
+             * @param {number} numFish - Number of fish in the school.
+             * @param {number} schoolSize - Radius of the school.
+             * @param {number} speed - Speed of the school's movement.
+             */
+            constructor(x, y, numFish, schoolSize, speed) {
+                this.x = x;
+                this.y = y;
+                this.schoolSize = schoolSize;
+                this.speed = speed;
+                this.vx = getRandomArbitrary(-speed, speed);
+                this.vy = getRandomArbitrary(-speed, speed);
+                this.fish = [];
+
+                for (let i = 0; i < numFish; i++) {
+                    const fishX = x + getRandomArbitrary(-schoolSize, schoolSize);
+                    const fishY = y + getRandomArbitrary(-schoolSize, schoolSize);
+                    // Fish in school are smaller and have less individual speed
+                    this.fish.push(new Fish(fishX, fishY, getRandomArbitrary(0.5, 1), getRandomArbitrary(0.5, 1)));
+                }
+
+                this.wanderTimer = 0;
+                this.wanderInterval = getRandomInt(200, 500);
+            }
+
+            update(deltaTime, canvasWidth, canvasHeight) {
+                // School wandering movement
+                this.wanderTimer += deltaTime;
+                if (this.wanderTimer >= this.wanderInterval) {
+                    this.vx = getRandomArbitrary(-this.speed, this.speed);
+                    this.vy = getRandomArbitrary(-this.speed, this.speed);
+                    this.wanderInterval = getRandomInt(200, 500);
+                    this.wanderTimer = 0;
+                }
+
+                this.x += this.vx * deltaTime;
+                this.y += this.vy * deltaTime;
+
+                // Keep school within bounds, reverse direction if hitting edges
+                if (this.x < 0 || this.x > canvasWidth) {
+                    this.vx *= -1;
+                    this.x = Math.max(0, Math.min(canvasWidth, this.x));
+                }
+                if (this.y < 0 || this.y > canvasHeight * 0.9) {
+                    this.vy *= -1;
+                    this.y = Math.max(0, Math.min(canvasHeight * 0.9, this.y));
+                }
+
+                // Update individual fish relative to school center
+                for (const fish of this.fish) {
+                    // Calculate target position relative to school center
+                    const targetX = this.x + (fish.x - fish.x) * 0.05; // Keep them somewhat close
+                    const targetY = this.y + (fish.y - fish.y) * 0.05;
+
+                    // Simple steering towards target
+                    fish.vx += (targetX - fish.x) * 0.0001 * deltaTime;
+                    fish.vy += (targetY - fish.y) * 0.0001 * deltaTime;
+
+                    // Limit individual fish speed relative to school
+                    fish.vx = Math.max(-fish.speed, Math.min(fish.speed, fish.vx));
+                    fish.vy = Math.max(-fish.speed, Math.min(fish.speed, fish.vy));
+
+                    fish.update(deltaTime, canvasWidth, canvasHeight);
+                }
+            }
+
+            draw(ctx) {
+                for (const fish of this.fish) {
+                    fish.draw(ctx);
+                }
+            }
+        }
+
+        // --- Sound Manager Class ---
+        class SoundManager {
+            constructor() {
+                this.synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "sine" },
+                    envelope: {
+                        attack: 0.01,
+                        decay: 0.2,
+                        sustain: 0.1,
+                        release: 0.5,
+                    },
+                }).toDestination();
+                this.lastSoundTime = 0;
+                this.cooldown = 100; // ms between sounds
+                this.enabled = true;
+            }
+
+            /**
+             * Plays a bubble collision sound.
+             * @param {string} type - 'fish' or 'shark' to determine note.
+             */
+            playBubbleSound(type) {
+                if (!this.enabled) return;
+
+                const currentTime = Date.now();
+                if (currentTime - this.lastSoundTime < this.cooldown) {
+                    return; // On cooldown
+                }
+
+                let note;
+                if (type === 'fish') {
+                    note = 'C4'; // Higher note for fish
+                } else if (type === 'shark') {
+                    note = 'G3'; // Lower note for shark
+                } else {
+                    note = 'D4'; // Default
+                }
+
+                this.synth.triggerAttackRelease(note, '8n');
+                this.lastSoundTime = currentTime;
+            }
+
+            /**
+             * Sets whether sounds are enabled.
+             * @param {boolean} enabled - True to enable, false to disable.
+             */
+            setEnabled(enabled) {
+                this.enabled = enabled;
+            }
+        }
+
+        // --- Main Aquarium Application Class ---
+        class AquariumApp {
+            constructor(canvasId) {
+                canvas = document.getElementById(canvasId);
+                ctx = canvas.getContext('2d');
+                this.soundManager = new SoundManager();
+
+                this.bubbles = [];
+                this.seaweed = [];
+                this.crabs = [];
+                this.corals = [];
+                this.independentFish = [];
+                this.fishSchools = [];
+                this.sharks = [];
+                this.shipwreck = null;
+
+                this.lastFrameTime = 0;
+                this.animationFrameId = null;
+
+                // Default settings
+                this.settings = {
+                    bubbleAmount: 50,
+                    seaweedAmount: 20,
+                    fishSchoolCount: 2,
+                    independentFishCount: 20,
+                    sharkCount: 2,
+                    shipwreckStyle: 'default',
+                    sandEffect: 'default',
+                    timeOfDay: 'day', // New setting: default to 'day'
+                    timeOfDayDuration: 30, // New setting: default to 30 minutes
+                    bubbleSoundEnabled: true
+                };
+
+                this.currentTimeOfDayPhase = 0.25; // Start at day phase (0.25 is start of day)
+                this.dayCycleStartTime = Date.now(); // Initialize day cycle start time
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                this.initObjects();
+                this.animate();
+            }
+
+            /**
+             * Resizes the canvas to fill the available space and re-initializes objects.
+             */
+            resizeCanvas() {
+                canvas.width = window.innerWidth * 0.9; // 90% of window width
+                canvas.height = window.innerHeight * 0.8; // 80% of window height
+                this.initObjects(); // Re-initialize objects to fit new canvas size
+            }
+
+            /**
+             * Initializes all aquarium objects based on current settings.
+             * This is called on app start and when settings are applied or canvas resized.
+             */
+            initObjects() {
+                this.bubbles = [];
+                this.seaweed = [];
+                this.crabs = [];
+                this.corals = [];
+                this.independentFish = [];
+                this.fishSchools = [];
+                this.sharks = [];
+                this.shipwreck = null;
+
+                // Add Bubbles
+                for (let i = 0; i < this.settings.bubbleAmount; i++) {
+                    this.bubbles.push(new Bubble(
+                        getRandomArbitrary(0, canvas.width),
+                        getRandomArbitrary(0, canvas.height), // Start at random height
+                        getRandomArbitrary(2, 8)
+                    ));
+                }
+
+                // Add Seaweed
+                const sandHeight = canvas.height * 0.2;
+                const seabedY = canvas.height - sandHeight;
+                for (let i = 0; i < this.settings.seaweedAmount; i++) {
+                    this.seaweed.push(new Seaweed(
+                        getRandomArbitrary(0, canvas.width),
+                        seabedY + getRandomArbitrary(0, sandHeight * 0.5), // Anchor on sand
+                        getRandomArbitrary(30, 80), // Height
+                        getRandomInt(5, 10), // Segments
+                        `hsl(${getRandomInt(80, 150)}, 60%, 30%)` // Greenish color
+                    ));
+                }
+
+                // Add Crabs (fixed number, not configurable by slider)
+                for (let i = 0; i < 3; i++) {
+                    this.crabs.push(new Crab(
+                        getRandomArbitrary(0, canvas.width),
+                        seabedY + getRandomArbitrary(0, sandHeight * 0.5),
+                        getRandomArbitrary(0.8, 1.2) // Size
+                    ));
+                }
+
+                // Add Corals (fixed number, diverse placement)
+                const coralTypes = ['brain', 'fan', 'tube'];
+                const coralColors = ['#ff6f61', '#6b5b95', '#88b04b', '#f7cac9', '#92a8d1'];
+                for (let i = 0; i < 10; i++) {
+                    this.corals.push(new Coral(
+                        getRandomArbitrary(canvas.width * 0.1, canvas.width * 0.9),
+                        seabedY + getRandomArbitrary(0, sandHeight * 0.5),
+                        coralTypes[getRandomInt(0, coralTypes.length - 1)],
+                        coralColors[getRandomInt(0, coralColors.length - 1)],
+                        getRandomArbitrary(0.8, 1.5)
+                    ));
+                }
+
+                // Add Independent Fish
+                for (let i = 0; i < this.settings.independentFishCount; i++) {
+                    this.independentFish.push(new Fish(
+                        getRandomArbitrary(0, canvas.width),
+                        getRandomArbitrary(canvas.height * 0.1, canvas.height * 0.8),
+                        getRandomArbitrary(0.8, 1.2), // Size
+                        getRandomArbitrary(0.5, 1.5) // Speed
+                    ));
+                }
+
+                // Add Fish Schools
+                for (let i = 0; i < this.settings.fishSchoolCount; i++) {
+                    this.fishSchools.push(new FishSchool(
+                        getRandomArbitrary(0, canvas.width),
+                        getRandomArbitrary(canvas.height * 0.1, canvas.height * 0.8),
+                        getRandomInt(10, 25), // Number of fish in school
+                        50, // School radius
+                        getRandomArbitrary(0.8, 1.8) // School speed
+                    ));
+                }
+
+                // Add Sharks
+                for (let i = 0; i < this.settings.sharkCount; i++) {
+                    this.sharks.push(new Shark(
+                        getRandomArbitrary(0, canvas.width),
+                        getRandomArbitrary(canvas.height * 0.2, canvas.height * 0.7),
+                        getRandomArbitrary(1, 1.5), // Size
+                        getRandomArbitrary(1.5, 2.5) // Speed
+                    ));
+                }
+
+                // Add Shipwreck (always one)
+                this.shipwreck = new Shipwreck(
+                    canvas.width / 2,
+                    seabedY + getRandomArbitrary(0, sandHeight * 0.2),
+                    this.settings.shipwreckStyle,
+                    1 // Fixed size for shipwreck
+                );
+            }
+
+            /**
+             * The main animation loop.
+             * @param {DOMHighResTimeStamp} currentTime - The current time provided by requestAnimationFrame.
+             */
+            animate = (currentTime) => {
+                if (!this.lastFrameTime) this.lastFrameTime = currentTime;
+                const deltaTime = (currentTime - this.lastFrameTime) / 16.66; // Normalize to ~60fps
+
+                this.update(deltaTime, currentTime);
+                this.draw();
+
+                this.lastFrameTime = currentTime;
+                this.animationFrameId = requestAnimationFrame(this.animate);
+            }
+
+            /**
+             * Updates the state of all objects in the aquarium.
+             * @param {number} deltaTime - Time elapsed since last frame.
+             * @param {DOMHighResTimeStamp} currentTime - The current time provided by requestAnimationFrame.
+             */
+            update(deltaTime, currentTime) {
+                // Update time of day phase
+                if (this.settings.timeOfDayDuration > 0) {
+                    const totalDurationMs = this.settings.timeOfDayDuration * 60 * 1000;
+                    this.currentTimeOfDayPhase = ((currentTime - this.dayCycleStartTime) / totalDurationMs) % 1;
+                } else {
+                    // Fixed time of day
+                    switch (this.settings.timeOfDay) {
+                        case 'dawn':
+                            this.currentTimeOfDayPhase = 0.125; // Mid-dawn
+                            break;
+                        case 'day':
+                            this.currentTimeOfDayPhase = 0.375; // Mid-day
+                            break;
+                        case 'dusk':
+                            this.currentTimeOfDayPhase = 0.625; // Mid-dusk
+                            break;
+                        case 'night':
+                            this.currentTimeOfDayPhase = 0.875; // Mid-night
+                            break;
+                    }
+                    // No need to adjust dayCycleStartTime here as the phase is fixed
+                }
+
+
+                this.bubbles.forEach(b => b.update(deltaTime, canvas.width, canvas.height));
+                this.seaweed.forEach(s => s.draw(ctx)); // Seaweed doesn't update position but sways based on time
+                this.crabs.forEach(c => c.update(deltaTime, canvas.width, canvas.height));
+                this.independentFish.forEach(f => f.update(deltaTime, canvas.width, canvas.height));
+                this.fishSchools.forEach(s => s.update(deltaTime, canvas.width, canvas.height));
+                this.sharks.forEach(s => s.update(deltaTime, canvas.width, canvas.height));
+
+                // Bubble collision sound logic
+                if (this.settings.bubbleSoundEnabled) {
+                    this.bubbles.forEach(bubble => {
+                        // Check collision with independent fish
+                        this.independentFish.forEach(fish => {
+                            const dist = Math.sqrt(Math.pow(bubble.x - fish.x, 2) + Math.pow(bubble.y - fish.y, 2));
+                            if (dist < bubble.size + fish.size * 10) { // Simple collision check
+                                this.soundManager.playBubbleSound('fish');
+                            }
+                        });
+                        // Check collision with sharks
+                        this.sharks.forEach(shark => {
+                            const dist = Math.sqrt(Math.pow(bubble.x - shark.x, 2) + Math.pow(bubble.y - shark.y, 2));
+                            if (dist < bubble.size + shark.size * 15) { // Simple collision check
+                                this.soundManager.playBubbleSound('shark');
+                            }
+                        });
+                    });
+                }
+            }
+
+            /**
+             * Draws all objects on the canvas.
+             */
+            draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw background with time of day effect
+                DrawingUtils.drawWater(ctx, canvas.width, canvas.height, this.currentTimeOfDayPhase);
+                DrawingUtils.drawSand(ctx, canvas.width, canvas.height, this.settings.sandEffect);
+
+                // Draw static elements
+                this.shipwreck.draw(ctx);
+                this.corals.forEach(c => c.draw(ctx));
+
+                // Draw animated elements
+                this.seaweed.forEach(s => s.draw(ctx)); // Seaweed is drawn here as its animation is time-based
+                this.crabs.forEach(c => c.draw(ctx));
+                this.fishSchools.forEach(s => s.draw(ctx));
+                this.independentFish.forEach(f => f.draw(ctx));
+                this.sharks.forEach(s => s.draw(ctx));
+                this.bubbles.forEach(b => b.draw(ctx));
+            }
+
+            /**
+             * Applies settings from the UI and re-initializes the aquarium.
+             */
+            applySettings(newSettings) {
+                // Check if timeOfDay or timeOfDayDuration changed to reset dayCycleStartTime
+                if (this.settings.timeOfDay !== newSettings.timeOfDay || this.settings.timeOfDayDuration !== newSettings.timeOfDayDuration) {
+                    this.dayCycleStartTime = Date.now(); // Reset cycle start time
+                }
+                this.settings = { ...this.settings, ...newSettings };
+                this.soundManager.setEnabled(this.settings.bubbleSoundEnabled);
+                this.initObjects(); // Re-initialize all objects with new settings (except for time of day phase)
+            }
+        }
+
+        // --- DOM Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            aquariumApp = new AquariumApp('aquariumCanvas');
+
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsButton = document.getElementById('settingsButton');
+            const applySettingsButton = document.getElementById('applySettingsButton');
+            const cancelSettingsButton = document.getElementById('cancelSettingsButton');
+
+            // Get UI elements for settings
+            const bubbleAmountInput = document.getElementById('bubbleAmount');
+            const seaweedAmountInput = document.getElementById('seaweedAmount');
+            const fishSchoolCountInput = document.getElementById('fishSchoolCount');
+            const independentFishCountInput = document.getElementById('independentFishCount');
+            const sharkCountInput = document.getElementById('sharkCount');
+            const shipwreckStyleSelect = document.getElementById('shipwreckStyle');
+            const sandEffectSelect = document.getElementById('sandEffect');
+            const timeOfDaySelect = document.getElementById('timeOfDay'); // New UI element
+            const timeOfDayDurationInput = document.getElementById('timeOfDayDuration'); // New UI element
+            const bubbleSoundEnabledCheckbox = document.getElementById('bubbleSoundEnabled');
+
+            // Initialize UI elements with current settings
+            bubbleAmountInput.value = aquariumApp.settings.bubbleAmount;
+            seaweedAmountInput.value = aquariumApp.settings.seaweedAmount;
+            fishSchoolCountInput.value = aquariumApp.settings.fishSchoolCount;
+            independentFishCountInput.value = aquariumApp.settings.independentFishCount;
+            sharkCountInput.value = aquariumApp.settings.sharkCount;
+            shipwreckStyleSelect.value = aquariumApp.settings.shipwreckStyle;
+            sandEffectSelect.value = aquariumApp.settings.sandEffect;
+            timeOfDaySelect.value = aquariumApp.settings.timeOfDay; // Set initial value
+            timeOfDayDurationInput.value = aquariumApp.settings.timeOfDayDuration; // Set initial value
+            bubbleSoundEnabledCheckbox.checked = aquariumApp.settings.bubbleSoundEnabled;
+
+            // Show settings panel
+            settingsButton.addEventListener('click', () => {
+                settingsPanel.style.display = 'block';
+            });
+
+            // Apply settings and hide panel
+            applySettingsButton.addEventListener('click', () => {
+                const newSettings = {
+                    bubbleAmount: parseInt(bubbleAmountInput.value),
+                    seaweedAmount: parseInt(seaweedAmountInput.value),
+                    fishSchoolCount: parseInt(fishSchoolCountInput.value),
+                    independentFishCount: parseInt(independentFishCountInput.value),
+                    sharkCount: parseInt(sharkCountInput.value),
+                    shipwreckStyle: shipwreckStyleSelect.value,
+                    sandEffect: sandEffectSelect.value,
+                    timeOfDay: timeOfDaySelect.value, // Get new value
+                    timeOfDayDuration: parseInt(timeOfDayDurationInput.value), // Get new value
+                    bubbleSoundEnabled: bubbleSoundEnabledCheckbox.checked
+                };
+                aquariumApp.applySettings(newSettings);
+                settingsPanel.style.display = 'none';
+            });
+
+            // Cancel and hide panel (revert to previous settings implicitly by not applying)
+            cancelSettingsButton.addEventListener('click', () => {
+                // Reset UI elements to the currently active settings if user cancels
+                bubbleAmountInput.value = aquariumApp.settings.bubbleAmount;
+                seaweedAmountInput.value = aquariumApp.settings.seaweedAmount;
+                fishSchoolCountInput.value = aquariumApp.settings.fishSchoolCount;
+                independentFishCountInput.value = aquariumApp.settings.independentFishCount;
+                sharkCountInput.value = aquariumApp.settings.sharkCount;
+                shipwreckStyleSelect.value = aquariumApp.settings.shipwreckStyle;
+                sandEffectSelect.value = aquariumApp.settings.sandEffect;
+                timeOfDaySelect.value = aquariumApp.settings.timeOfDay; // Reset to active setting
+                timeOfDayDurationInput.value = aquariumApp.settings.timeOfDayDuration; // Reset to active setting
+                bubbleSoundEnabledCheckbox.checked = aquariumApp.settings.bubbleSoundEnabled;
+                settingsPanel.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
