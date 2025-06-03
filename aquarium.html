@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Aquarium Application (Phytoplankton & UFO)</title>
+    <title>Interactive Aquarium (Food, Time of Day, Phytoplankton Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
@@ -22,9 +22,8 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        #settingsButton {
+        .control-button { /* Common style for top-right buttons */
             position: absolute;
-            top: 20px;
             right: 20px;
             padding: 10px 15px;
             background-color: rgba(0, 50, 100, 0.7);
@@ -35,17 +34,29 @@
             font-size: 14px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 1001;
+            width: 150px; /* Ensure buttons have same width */
+            text-align: center;
         }
-        #settingsButton:hover {
+        .control-button:hover {
             background-color: rgba(0, 70, 120, 0.9);
         }
+        #settingsButton {
+            top: 20px;
+        }
+        #feedingButton {
+            top: 70px; /* Position below settings */
+        }
+        #timeOfDayButton {
+            top: 120px; /* Position below feeding */
+        }
+
         #settingsPanel {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: 90%;
-            max-width: 480px; /* Slightly wider for new option */
+            max-width: 480px; 
             max-height: 85vh; 
             overflow-y: auto; 
             background-color: rgba(240, 245, 250, 0.95);
@@ -69,7 +80,10 @@
     </style>
 </head>
 <body>
-    <button id="settingsButton">Settings</button>
+    <button id="settingsButton" class="control-button">Settings</button>
+    <button id="feedingButton" class="control-button">Drop Food</button>
+    <button id="timeOfDayButton" class.control-button">Toggle Time of Day</button>
+
     <div id="settingsPanel">
         <h2>Aquarium Settings</h2>
         <div class="setting-group">
@@ -120,6 +134,11 @@
                 <option value="mixed_color_grains">Mixed Color Grains</option>
             </select>
         </div>
+         <div class="setting-group">
+            <label for="timeOfDayDuration">Time of Day Duration (s):</label>
+            <input type="range" id="timeOfDayDuration" min="0" max="120" value="60">
+            <span class="value-display" id="timeOfDayDurationValue">60</span>
+        </div>
         <div class="setting-group">
             <label for="bubbleSound">Bubble Touch Sound:</label>
             <input type="checkbox" id="bubbleSound"> On
@@ -145,36 +164,45 @@
         }
         
         const settingsButton = document.getElementById('settingsButton');
+        const feedingButton = document.getElementById('feedingButton'); // New button
+        const timeOfDayButton = document.getElementById('timeOfDayButton'); // New button
         const settingsPanel = document.getElementById('settingsPanel');
         const applySettingsButton = document.getElementById('applySettingsButton');
         const bubblesAmountSlider = document.getElementById('bubblesAmount');
         const seaweedAmountSlider = document.getElementById('seaweedAmount');
-        const phytoplanktonAmountSlider = document.getElementById('phytoplanktonAmount'); // New slider
+        const phytoplanktonAmountSlider = document.getElementById('phytoplanktonAmount'); 
         const fishSchoolsSlider = document.getElementById('fishSchools');
         const independentFishSlider = document.getElementById('independentFish');
         const sharksAmountSlider = document.getElementById('sharksAmount');
         const shipStyleSelect = document.getElementById('shipStyle');
         const sandColorSelect = document.getElementById('sandColor');
+        const timeOfDayDurationSlider = document.getElementById('timeOfDayDuration'); // New slider
         const bubbleSoundCheckbox = document.getElementById('bubbleSound');
         const bubblesAmountValueDisplay = document.getElementById('bubblesAmountValue');
         const seaweedAmountValueDisplay = document.getElementById('seaweedAmountValue');
-        const phytoplanktonAmountValueDisplay = document.getElementById('phytoplanktonAmountValue'); // New display
+        const phytoplanktonAmountValueDisplay = document.getElementById('phytoplanktonAmountValue'); 
         const fishSchoolsValueDisplay = document.getElementById('fishSchoolsValue');
         const independentFishValueDisplay = document.getElementById('independentFishValue');
         const sharksAmountValueDisplay = document.getElementById('sharksAmountValue');
+        const timeOfDayDurationValueDisplay = document.getElementById('timeOfDayDurationValue'); // New display
 
         let aquariumSettings = {
-            numBubbles: 50, numSeaweed: 20, numPhytoplankton: 20, // Added phytoplankton
+            numBubbles: 50, numSeaweed: 20, numPhytoplankton: 20, 
             numFishSchools: 2, numIndependentFish: 10,
-            numSharks: 1, shipStyle: 'default', sandColor: 'default', playBubbleTouchSound: false
+            numSharks: 1, shipStyle: 'default', sandColor: 'default', 
+            timeOfDayDuration: 60, // seconds
+            currentTimeOfDay: 'day', // 'day', 'dusk', 'night', 'dawn'
+            playBubbleTouchSound: false
         };
 
         let fishArray = [], seaweedArray = [], coralArray = [], bubbleArray = [],
-            crabArray = [], fishSchoolArray = [], sharkArray = [], phytoplanktonArray = [], // Added phytoplankton array
+            crabArray = [], fishSchoolArray = [], sharkArray = [], phytoplanktonArray = [],
+            foodParticlesArray = [], // For food
             shipwreck;
         let animationFrameId; 
         const SEABED_OFFSET_FACTOR = 0.15;
         let time = 0; 
+        let timeOfDayTimer = 0; // Timer for automatic time of day change
 
         let soundSynth;
         let lastSoundTime = 0;
@@ -184,9 +212,20 @@
         function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
         function drawBackground() {
+            let gradColors = {
+                day: ['#3A9FBF', '#0E5A8A', '#053C5E'],
+                dusk: ['#FF8C42', '#E85A4F', '#3E2F5B'], // Orange/Red to Dark Purple
+                night: ['#0B132B', '#1C2541', '#03071E'], // Very Dark Blues
+                dawn: ['#FFCB77', '#F8B195', '#6D597A']  // Soft Yellow/Pink to Purple
+            };
+            let currentColors = gradColors[aquariumSettings.currentTimeOfDay] || gradColors.day;
+
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#3A9FBF'); gradient.addColorStop(0.7, '#0E5A8A'); gradient.addColorStop(1, '#053C5E'); 
+            gradient.addColorStop(0, currentColors[0]); 
+            gradient.addColorStop(0.7, currentColors[1]); 
+            gradient.addColorStop(1, currentColors[2]); 
             ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             const sandHeight = canvas.height * SEABED_OFFSET_FACTOR;
             ctx.fillStyle = '#D2B48C'; ctx.beginPath();
             ctx.moveTo(0, canvas.height); ctx.lineTo(canvas.width, canvas.height);
@@ -238,7 +277,7 @@
                 this.x=canvas.width/2-this.baseWidth/2.2; 
                 this.y=canvas.height-(canvas.height*SEABED_OFFSET_FACTOR)-this.baseHeight*(this.style==='submarine'?0.5:(this.style==='ufo'?0.6:0.8));
                 this.color='#5A4D3C'; this.detailColor='#40382D'; this.metalColor='#707070'; this.darkMetalColor='#404040';
-                this.ufoLightColor = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00']; // Red, Green, Blue, Yellow for UFO lights
+                this.ufoLightColor = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00']; 
                 this.ufoLightState = 0;
                 this.ufoLightTimer = 0;
             }
@@ -248,118 +287,53 @@
             drawSubmarine(){ctx.fillStyle=this.metalColor;ctx.beginPath();ctx.ellipse(this.baseWidth/2,this.baseHeight/2,this.baseWidth/2,this.baseHeight/2,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=this.darkMetalColor;ctx.fillRect(this.baseWidth*0.4,0,this.baseWidth*0.2,this.baseHeight*0.5);ctx.beginPath();ctx.moveTo(this.baseWidth*0.95,this.baseHeight/2);ctx.lineTo(this.baseWidth*1.05,this.baseHeight*0.4);ctx.lineTo(this.baseWidth*1.05,this.baseHeight*0.6);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(0,0,0,0.3)';for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(this.baseWidth*0.1+i*this.baseWidth*0.18,this.baseHeight*0.5,3*(this.baseHeight/200),0,Math.PI*2);ctx.fill();}}
             drawSpanishGalleon(){ctx.fillStyle=this.color;ctx.beginPath();ctx.moveTo(0,this.baseHeight*0.5);ctx.quadraticCurveTo(this.baseWidth*0.2,this.baseHeight*0.3,this.baseWidth*0.4,this.baseHeight*0.4);ctx.lineTo(this.baseWidth*0.7,this.baseHeight*0.2);ctx.lineTo(this.baseWidth*0.9,this.baseHeight*0.3);ctx.lineTo(this.baseWidth*0.85,this.baseHeight*0.8);ctx.lineTo(this.baseWidth*0.1,this.baseHeight);ctx.closePath();ctx.fill();ctx.fillStyle=this.detailColor;ctx.fillRect(this.baseWidth*0.75,this.baseHeight*0.35,this.baseWidth*0.1,this.baseHeight*0.1);ctx.fillRect(this.baseWidth*0.75,this.baseHeight*0.5,this.baseWidth*0.1,this.baseHeight*0.1);ctx.fillRect(this.baseWidth*0.25,this.baseHeight*0.2,this.baseWidth*0.07,-this.baseHeight*0.3);ctx.fillRect(this.baseWidth*0.5,this.baseHeight*0.1,this.baseWidth*0.08,-this.baseHeight*0.4);}
             drawUFO() {
-                // Main saucer body (two ellipses for 3D effect)
-                ctx.fillStyle = this.metalColor; // Grey saucer
-                ctx.beginPath();
-                ctx.ellipse(this.baseWidth / 2, this.baseHeight * 0.6, this.baseWidth / 2, this.baseHeight / 3, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = this.darkMetalColor; // Bottom part of saucer
-                ctx.beginPath();
-                ctx.ellipse(this.baseWidth / 2, this.baseHeight * 0.65, this.baseWidth / 2, this.baseHeight / 3.5, 0, 0, Math.PI); // Lower half
-                ctx.fill();
-
-                // Cockpit dome
-                ctx.fillStyle = '#A0D2DB'; // Light blueish glass
-                ctx.beginPath();
-                ctx.arc(this.baseWidth / 2, this.baseHeight * 0.35, this.baseWidth / 4, Math.PI, 0); // Semi-circle
-                ctx.closePath();
-                ctx.fill();
-                ctx.strokeStyle = this.darkMetalColor;
-                ctx.lineWidth = 2 * (this.baseWidth/300);
-                ctx.stroke();
-
-
-                // Flashing lights around the rim
+                ctx.fillStyle = this.metalColor; 
+                ctx.beginPath(); ctx.ellipse(this.baseWidth/2,this.baseHeight*0.6,this.baseWidth/2,this.baseHeight/3,0,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = this.darkMetalColor; 
+                ctx.beginPath(); ctx.ellipse(this.baseWidth/2,this.baseHeight*0.65,this.baseWidth/2,this.baseHeight/3.5,0,0,Math.PI); ctx.fill();
+                ctx.fillStyle = '#A0D2DB'; 
+                ctx.beginPath(); ctx.arc(this.baseWidth/2,this.baseHeight*0.35,this.baseWidth/4,Math.PI,0); ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = this.darkMetalColor; ctx.lineWidth = 2*(this.baseWidth/300); ctx.stroke();
                 this.ufoLightTimer++;
-                if (this.ufoLightTimer > 20) { // Change light color every 20 frames
-                    this.ufoLightTimer = 0;
-                    this.ufoLightState = (this.ufoLightState + 1) % this.ufoLightColor.length;
-                }
-                const numLights = 8;
-                for (let i = 0; i < numLights; i++) {
-                    const angle = (Math.PI * 2 / numLights) * i;
-                    const lightX = this.baseWidth / 2 + Math.cos(angle) * (this.baseWidth / 2.2);
-                    const lightY = this.baseHeight * 0.6 + Math.sin(angle) * (this.baseHeight / 3.3);
-                    
-                    ctx.beginPath();
-                    ctx.arc(lightX, lightY, this.baseWidth / 30, 0, Math.PI * 2);
-                    if (i === this.ufoLightState || (i+numLights/2)%numLights === this.ufoLightState ) { // Make opposite lights flash
-                         ctx.fillStyle = this.ufoLightColor[this.ufoLightState % this.ufoLightColor.length];
-                         ctx.shadowBlur = 5;
-                         ctx.shadowColor = this.ufoLightColor[this.ufoLightState % this.ufoLightColor.length];
-                    } else {
-                        ctx.fillStyle = this.darkMetalColor; // Off light
-                         ctx.shadowBlur = 0;
-                    }
-                    ctx.fill();
-                    ctx.shadowBlur = 0; // Reset shadow
+                if (this.ufoLightTimer > 20) { this.ufoLightTimer=0; this.ufoLightState=(this.ufoLightState+1)%this.ufoLightColor.length; }
+                const numLights=8; for(let i=0;i<numLights;i++){
+                    const angle=(Math.PI*2/numLights)*i; const lightX=this.baseWidth/2+Math.cos(angle)*(this.baseWidth/2.2); const lightY=this.baseHeight*0.6+Math.sin(angle)*(this.baseHeight/3.3);
+                    ctx.beginPath(); ctx.arc(lightX,lightY,this.baseWidth/30,0,Math.PI*2);
+                    if(i===this.ufoLightState||(i+numLights/2)%numLights===this.ufoLightState){ctx.fillStyle=this.ufoLightColor[this.ufoLightState%this.ufoLightColor.length];ctx.shadowBlur=5;ctx.shadowColor=this.ufoLightColor[this.ufoLightState%this.ufoLightColor.length];}
+                    else{ctx.fillStyle=this.darkMetalColor;ctx.shadowBlur=0;}
+                    ctx.fill(); ctx.shadowBlur=0;
                 }
             }
         }
         class Coral { 
-            constructor(x, y, type) {
-                this.x = x; this.y = y; this.type = type; 
-                this.baseSizeRef = random(canvas.height * 0.03, canvas.height * 0.08);
-                this.colors = {
-                    brain: ['#FF7F50', '#FF6347', '#F08080'], fan: ['#DA70D6', '#DB7093', '#BA55D3'], tube: ['#ADFF2F', '#7FFF00', '#32CD32']   
-                };
-                this.color = this.colors[type][randomInt(0, this.colors[type].length - 1)];
-            }
-            get size() { return this.baseSizeRef * (Math.min(canvas.width, canvas.height) / 800); }
-            draw() {
-                ctx.fillStyle = this.color; ctx.beginPath(); const cs = this.size;
-                switch (this.type) {
-                    case 'brain': ctx.arc(this.x,this.y,cs,0,Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(0,0,0,0.1)'; for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(this.x+random(-cs/2,cs/2),this.y+random(-cs/2,cs/2),cs/5,0,Math.PI*2);ctx.fill();} break;
-                    case 'fan': ctx.moveTo(this.x,this.y); ctx.ellipse(this.x,this.y-cs,cs*1.2,cs,Math.PI/random(3,5),Math.PI,Math.PI*2); ctx.closePath(); ctx.fill(); break;
-                    case 'tube': for(let i=0;i<3;i++){ctx.beginPath();const tH=cs*random(0.8,1.5);const tW=cs*0.3;ctx.ellipse(this.x+(i-1)*tW*1.2,this.y-tH/2,tW/2,tH/2,0,0,Math.PI*2);ctx.fill();} break;
-                }
-            }
+            constructor(x,y,type){this.x=x;this.y=y;this.type=type;this.baseSizeRef=random(canvas.height*0.03,canvas.height*0.08);this.colors={brain:['#FF7F50','#FF6347','#F08080'],fan:['#DA70D6','#DB7093','#BA55D3'],tube:['#ADFF2F','#7FFF00','#32CD32']};this.color=this.colors[type][randomInt(0,this.colors[type].length-1)];}
+            get size(){return this.baseSizeRef*(Math.min(canvas.width,canvas.height)/800);}
+            draw(){ctx.fillStyle=this.color;ctx.beginPath();const cs=this.size;switch(this.type){case 'brain':ctx.arc(this.x,this.y,cs,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(0,0,0,0.1)';for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(this.x+random(-cs/2,cs/2),this.y+random(-cs/2,cs/2),cs/5,0,Math.PI*2);ctx.fill();}break;case 'fan':ctx.moveTo(this.x,this.y);ctx.ellipse(this.x,this.y-cs,cs*1.2,cs,Math.PI/random(3,5),Math.PI,Math.PI*2);ctx.closePath();ctx.fill();break;case 'tube':for(let i=0;i<3;i++){ctx.beginPath();const tH=cs*random(0.8,1.5);const tW=cs*0.3;ctx.ellipse(this.x+(i-1)*tW*1.2,this.y-tH/2,tW/2,tH/2,0,0,Math.PI*2);ctx.fill();}break;}}
         }
-        class Phytoplankton { // New Phytoplankton class
-            constructor() {
-                this.x = random(0, canvas.width);
-                this.y = random(0, canvas.height * (1 - SEABED_OFFSET_FACTOR - 0.05)); // Keep above seabed
-                this.baseSize = random(0.5, 1.5);
-                this.flashColors = ['#FF4444', '#44AAFF', '#44FF44']; // Red, Blue, Green
-                this.currentColor = 'rgba(200, 220, 255, 0.1)'; // Default faint color
-                this.isFlashing = false;
-                this.flashDuration = 0;
-                this.flashCooldown = random(100, 500); // Frames until next potential flash
-                this.driftX = random(-0.1, 0.1);
-                this.driftY = random(-0.1, 0.1);
+        class Phytoplankton { 
+            constructor(){this.x=random(0,canvas.width);this.y=random(0,canvas.height*(1-SEABED_OFFSET_FACTOR-0.05));this.baseSize=random(0.5,1.5);this.flashColors=['#FF4444','#44AAFF','#44FF44'];this.defaultColor='rgba(200,220,255,0.1)';this.currentColor=this.defaultColor;this.isFlashing=false;this.flashDuration=0;this.flashCooldown=random(50,250);this.driftX=random(-0.1,0.1);this.driftY=random(-0.1,0.1);}
+            get size(){return this.baseSize*(Math.min(canvas.width,canvas.height)/800);}
+            update(){this.x+=this.driftX*(canvas.width/1000);this.y+=this.driftY*(canvas.height/800);if(this.x<0)this.x=canvas.width;if(this.x>canvas.width)this.x=0;if(this.y<0)this.y=canvas.height*(1-SEABED_OFFSET_FACTOR-0.05);if(this.y>canvas.height*(1-SEABED_OFFSET_FACTOR-0.05))this.y=0;if(this.isFlashing){this.flashDuration--;if(this.flashDuration<=0){this.isFlashing=false;this.currentColor=this.defaultColor;this.flashCooldown=random(100,600);}}else{this.flashCooldown--;if(this.flashCooldown<=0){if(Math.random()<0.02){this.isFlashing=true;this.flashDuration=random(15,40);this.currentColor=this.flashColors[randomInt(0,this.flashColors.length-1)];}else{this.flashCooldown=random(10,50);}}}}
+            draw(){ctx.fillStyle=this.currentColor;if(this.isFlashing){ctx.shadowColor=this.currentColor;ctx.shadowBlur=5+this.size*2;}else{ctx.shadowBlur=0;}ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;}
+        }
+        class FoodParticle { // New FoodParticle class
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = random(2, 4) * (Math.min(canvas.width, canvas.height) / 800);
+                this.speedY = random(0.2, 0.5) * (canvas.height / 800);
+                this.speedX = random(-0.1, 0.1) * (canvas.width / 1000);
+                this.color = 'rgba(180, 140, 100, 0.8)'; // Brownish food color
+                this.opacity = 1;
             }
-            get size() { return this.baseSize * (Math.min(canvas.width, canvas.height) / 800); }
             update() {
-                this.x += this.driftX * (canvas.width / 1000);
-                this.y += this.driftY * (canvas.height / 800);
-
-                if (this.x < 0) this.x = canvas.width;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.y < 0) this.y = canvas.height * (1 - SEABED_OFFSET_FACTOR - 0.05);
-                if (this.y > canvas.height * (1 - SEABED_OFFSET_FACTOR - 0.05)) this.y = 0;
-
-                if (this.isFlashing) {
-                    this.flashDuration--;
-                    if (this.flashDuration <= 0) {
-                        this.isFlashing = false;
-                        this.currentColor = 'rgba(200, 220, 255, 0.1)';
-                        this.flashCooldown = random(200, 800);
-                    }
-                } else {
-                    this.flashCooldown--;
-                    if (this.flashCooldown <= 0) {
-                        if (Math.random() < 0.01) { // Small chance to flash each frame after cooldown
-                            this.isFlashing = true;
-                            this.flashDuration = random(10, 30); // Flash for 10-30 frames
-                            this.currentColor = this.flashColors[randomInt(0, this.flashColors.length - 1)];
-                        } else {
-                             this.flashCooldown = 1; // Check again soon
-                        }
-                    }
-                }
+                this.y += this.speedY;
+                this.x += this.speedX;
+                this.opacity -= 0.005; // Slowly fade out
             }
             draw() {
-                ctx.fillStyle = this.currentColor;
+                if (this.opacity <= 0) return;
+                ctx.fillStyle = `rgba(180, 140, 100, ${this.opacity})`;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -394,29 +368,54 @@
         function createBubbles(){bubbleArray=[];for(let i=0;i<aquariumSettings.numBubbles;i++)bubbleArray.push(new Bubble());}
         function createCrabs(){crabArray=[];const nCr=Math.floor(canvas.width/250)+1;for(let i=0;i<nCr;i++)crabArray.push(new Crab());}
         function createFishSchools(){fishSchoolArray=[];for(let i=0;i<aquariumSettings.numFishSchools;i++)fishSchoolArray.push(new FishSchool());}
+        function createFoodParticles(x, y, count = 10) {
+            for (let i = 0; i < count; i++) {
+                foodParticlesArray.push(new FoodParticle(x + random(-10,10), y + random(-5,5)));
+            }
+        }
 
         function initAquarium() {
             console.log("Initializing aquarium elements...");
-            fishArray=[];seaweedArray=[];coralArray=[];bubbleArray=[];crabArray=[];fishSchoolArray=[];sharkArray=[]; phytoplanktonArray=[];
+            fishArray=[];seaweedArray=[];coralArray=[];bubbleArray=[];crabArray=[];fishSchoolArray=[];sharkArray=[]; phytoplanktonArray=[]; foodParticlesArray=[];
             createShipwreck();createCorals();createSeaweed();createPhytoplankton();createIndependentFish();createSharks();createBubbles();createCrabs();createFishSchools();
             if(!soundSynth && typeof Tone!=='undefined'){try{soundSynth=new Tone.Synth({oscillator:{type:'sine'},envelope:{attack:0.005,decay:0.1,sustain:0.05,release:0.1}}).toDestination();}catch(e){console.warn("Failed to init Tone.Synth:",e);soundSynth=null;}}
             console.log("Aquarium initialized with:", aquariumSettings);
+            timeOfDayTimer = aquariumSettings.timeOfDayDuration * 60; // Convert seconds to frames (assuming 60fps target)
         }
         
         function playBubbleSound(note="C5"){if(aquariumSettings.playBubbleTouchSound&&soundSynth&&Date.now()-lastSoundTime>SOUND_COOLDOWN){try{soundSynth.triggerAttackRelease(note,"8n",Tone.now());lastSoundTime=Date.now();return true;}catch(e){console.warn("Tone.js sound error:",e);return false;}}return false;}
         function handleBubbleCollisions(){if(!aquariumSettings.playBubbleTouchSound||!soundSynth)return;bubbleArray.forEach(b=>{let sPFTB=false;for(const f of fishArray){if(checkCollision(b,f)){if(playBubbleSound("C5")){sPFTB=true;break;}}}if(!sPFTB){for(const s of sharkArray){if(checkCollision(b,s)){if(playBubbleSound("A4"))break;}}}});}
         function checkCollision(o1,o2){if(!o2.scaledSize||typeof o1.radius==='undefined')return false;const dist=Math.hypot(o1.x-o2.x,o1.y-o2.y);const cT=o1.radius+Math.max(o2.scaledSize.width,o2.scaledSize.height)/3;return dist<cT;}
 
+        function cycleTimeOfDay() {
+            const times = ['day', 'dusk', 'night', 'dawn'];
+            let currentIndex = times.indexOf(aquariumSettings.currentTimeOfDay);
+            currentIndex = (currentIndex + 1) % times.length;
+            aquariumSettings.currentTimeOfDay = times[currentIndex];
+            timeOfDayButton.textContent = `To ${times[(currentIndex + 1) % times.length].replace(/^\w/, c => c.toUpperCase())}`; // Update button text
+            timeOfDayTimer = aquariumSettings.timeOfDayDuration * 60; // Reset timer
+            console.log("Time of day changed to:", aquariumSettings.currentTimeOfDay);
+        }
+
         function animate() {
             time += 0.1; 
+            timeOfDayTimer--;
+            if (aquariumSettings.timeOfDayDuration > 0 && timeOfDayTimer <= 0) {
+                cycleTimeOfDay();
+            }
+
             ctx.clearRect(0,0,canvas.width, canvas.height);
             
             drawBackground();
-            phytoplanktonArray.forEach(p => { p.update(); p.draw(); }); // Draw phytoplankton early (backgroundish)
+            phytoplanktonArray.forEach(p => { p.update(); p.draw(); }); 
             if (shipwreck) shipwreck.draw();
             crabArray.forEach(c => { c.update(time); c.draw(); });
             coralArray.forEach(c => c.draw()); 
             seaweedArray.forEach(s => { s.update(time); s.draw(); });
+            
+            foodParticlesArray = foodParticlesArray.filter(fp => fp.opacity > 0); // Remove faded food
+            foodParticlesArray.forEach(fp => { fp.update(); fp.draw(); });
+
             bubbleArray.forEach(b => { b.update(); b.draw(); });
             handleBubbleCollisions(); 
             fishArray.forEach(f => { f.update(time); f.draw(); });
@@ -429,41 +428,50 @@
         function updateSettingsFromUI(){
             aquariumSettings.numBubbles=parseInt(bubblesAmountSlider.value);
             aquariumSettings.numSeaweed=parseInt(seaweedAmountSlider.value);
-            aquariumSettings.numPhytoplankton=parseInt(phytoplanktonAmountSlider.value); // New
+            aquariumSettings.numPhytoplankton=parseInt(phytoplanktonAmountSlider.value); 
             aquariumSettings.numFishSchools=parseInt(fishSchoolsSlider.value);
             aquariumSettings.numIndependentFish=parseInt(independentFishSlider.value);
             aquariumSettings.numSharks=parseInt(sharksAmountSlider.value);
             aquariumSettings.shipStyle=shipStyleSelect.value;
             aquariumSettings.sandColor=sandColorSelect.value;
+            aquariumSettings.timeOfDayDuration = parseInt(timeOfDayDurationSlider.value);
             aquariumSettings.playBubbleTouchSound=bubbleSoundCheckbox.checked;
         }
         function updateUIFromSettings(){
             bubblesAmountSlider.value=aquariumSettings.numBubbles;
             seaweedAmountSlider.value=aquariumSettings.numSeaweed;
-            phytoplanktonAmountSlider.value=aquariumSettings.numPhytoplankton; // New
+            phytoplanktonAmountSlider.value=aquariumSettings.numPhytoplankton; 
             fishSchoolsSlider.value=aquariumSettings.numFishSchools;
             independentFishSlider.value=aquariumSettings.numIndependentFish;
             sharksAmountSlider.value=aquariumSettings.numSharks;
             shipStyleSelect.value=aquariumSettings.shipStyle;
             sandColorSelect.value=aquariumSettings.sandColor;
+            timeOfDayDurationSlider.value = aquariumSettings.timeOfDayDuration;
             bubbleSoundCheckbox.checked=aquariumSettings.playBubbleTouchSound;
 
             bubblesAmountValueDisplay.textContent=aquariumSettings.numBubbles;
             seaweedAmountValueDisplay.textContent=aquariumSettings.numSeaweed;
-            phytoplanktonAmountValueDisplay.textContent=aquariumSettings.numPhytoplankton; // New
+            phytoplanktonAmountValueDisplay.textContent=aquariumSettings.numPhytoplankton; 
             fishSchoolsValueDisplay.textContent=aquariumSettings.numFishSchools;
             independentFishValueDisplay.textContent=aquariumSettings.numIndependentFish;
             sharksAmountValueDisplay.textContent=aquariumSettings.numSharks;
+            timeOfDayDurationValueDisplay.textContent = aquariumSettings.timeOfDayDuration;
+            timeOfDayButton.textContent = `To ${aquariumSettings.currentTimeOfDay === 'day' ? 'Dusk' : aquariumSettings.currentTimeOfDay === 'dusk' ? 'Night' : aquariumSettings.currentTimeOfDay === 'night' ? 'Dawn' : 'Day'}`;
         }
         
         function setupSettingsPanelListeners(){
-            [bubblesAmountSlider,seaweedAmountSlider,phytoplanktonAmountSlider,fishSchoolsSlider,independentFishSlider,sharksAmountSlider].forEach(slider=>{ // Added phytoplankton slider
+            [bubblesAmountSlider,seaweedAmountSlider,phytoplanktonAmountSlider,fishSchoolsSlider,independentFishSlider,sharksAmountSlider, timeOfDayDurationSlider].forEach(slider=>{ 
                 slider.addEventListener('input',(e)=>{
                     document.getElementById(e.target.id+'Value').textContent=e.target.value;
                 });
             });
             settingsButton.addEventListener('click',()=>{if(typeof Tone!=='undefined'&&Tone.context.state!=='running'){Tone.start().catch(e=>console.warn("Tone.start() failed:",e));}updateUIFromSettings();settingsPanel.style.display='block';});
             applySettingsButton.addEventListener('click',()=>{updateSettingsFromUI();settingsPanel.style.display='none';if(animationFrameId)cancelAnimationFrame(animationFrameId);setupCanvasAndStart();});
+            
+            feedingButton.addEventListener('click', () => {
+                createFoodParticles(random(canvas.width * 0.2, canvas.width * 0.8), canvas.height * 0.1, randomInt(15,25));
+            });
+            timeOfDayButton.addEventListener('click', cycleTimeOfDay);
         }
 
         function setupCanvasAndStart() {
