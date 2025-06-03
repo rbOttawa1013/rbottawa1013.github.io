@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDP-11 BASIC Interpreter (RND Fix)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .console-output {
+            white-space: pre-wrap; /* Preserve whitespace and newlines */
+            word-wrap: break-word; /* Break long words */
+            max-height: 400px; /* Or any height you prefer */
+            overflow-y: auto; /* Add scroll for overflow */
+        }
+        /* Custom scrollbar for output (optional) */
+        .console-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        .console-output::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+            border-radius: 10px;
+        }
+        .console-output::-webkit-scrollbar-thumb {
+            background: #718096; /* gray-500 */
+            border-radius: 10px;
+        }
+        .console-output::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0; /* gray-400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-5xl bg-gray-800 shadow-2xl rounded-lg p-6">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-teal-400">Extended BASIC Interpreter</h1>
+            <p class="text-sm text-gray-400"> (PDP-11)</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label for="programInputEl" class="block text-lg font-semibold mb-2 text-gray-300">Program Code:</label>
+                <textarea id="programInputEl"
+                    class="w-full h-[500px] p-3 bg-gray-700 border border-gray-600 rounded-md text-sm font-mono text-gray-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-y"
+                    placeholder="10 REM Example Program&#10;20 PRINT &quot;--- FOR/NEXT Loop ---&quot;&#10;30 FOR I = 1 TO 3&#10;40 PRINT &quot;Outer I=&quot;; I&#10;45 FOR J = 10 TO 11&#10;46 PRINT &quot;  Inner J=&quot;; J&#10;47 NEXT J&#10;50 NEXT I&#10;60 GOSUB 200&#10;70 PRINT &quot;--- READ/DATA ---&quot;&#10;80 READ A, B$, C&#10;90 PRINT A; &quot; &quot;; B$; &quot; &quot;; C&#10;95 READ D$, E&#10;96 PRINT &quot;D$=&quot;;D$, &quot;E=&quot;;E&#10;100 RESTORE&#10;110 READ X&#10;120 PRINT &quot;First data again: &quot;; X&#10;130 PRINT &quot;--- String Functions ---&quot;&#10;140 LET M$ = &quot;HELLO, WORLD!&quot;&#10;150 PRINT &quot;LEN(\&quot;&quot; + M$ + &quot;\&quot;) = &quot;; LEN(M$)&#10;160 PRINT &quot;LEFT$(\&quot;&quot; + M$ + &quot;\&quot;, 5) = &quot;; LEFT$(M$,5)&#10;170 PRINT &quot;MID$(\&quot;&quot; + M$ + &quot;\&quot;, 8, 5) = &quot;; MID$(M$,8,5)&#10;180 PRINT &quot;--- Math Functions ---&quot;&#10;190 PRINT &quot;RND: &quot;; RND, &quot;INT(3.14): &quot;; INT(3.14), &quot;ABS(-5): &quot;; ABS(-5), &quot;SQR(16): &quot;; SQR(16)&#10;195 PRINT &quot;VAL(\&quot;123.45\&quot;) = &quot;; VAL(&quot;123.45&quot;)&#10;196 PRINT &quot;STR$(678) = \&quot;&quot;; STR$(678); &quot;\&quot;&quot;&#10;197 STOP&#10;200 REM Subroutine&#10;210 PRINT &quot;Inside GOSUB&quot;&#10;220 RETURN&#10;1000 DATA 100, &quot;Test, with comma&quot;, 3.14, &quot;More Data&quot;, 999"
+                ></textarea>
+            </div>
+
+            <div>
+                <label for="outputWindowEl" class="block text-lg font-semibold mb-2 text-gray-300">Output / Console:</label>
+                <div id="outputWindowEl"
+                    class="w-full h-[500px] p-3 bg-gray-900 border border-gray-700 rounded-md text-sm font-mono text-green-400 console-output"
+                ></div>
+            </div>
+        </div>
+
+        <div class="flex justify-center space-x-4">
+            <button id="runButtonEl"
+                class="px-8 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-gray-800">
+                Run Program
+            </button>
+            <button id="resetButtonEl"
+                class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800">
+                Reset
+            </button>
+        </div>
+         <div id="inputPromptContainerEl" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+                <p id="inputPromptMessageEl" class="mb-4 text-gray-200"></p>
+                <input type="text" id="userInputEl" class="w-full p-2 mb-4 bg-gray-700 border border-gray-600 rounded-md text-gray-50 focus:ring-teal-500">
+                <button id="submitInputButtonEl" class="w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const programInputEl = document.getElementById('programInputEl');
+        const outputWindowEl = document.getElementById('outputWindowEl');
+        const runButtonEl = document.getElementById('runButtonEl');
+        const resetButtonEl = document.getElementById('resetButtonEl');
+        const inputPromptContainerEl = document.getElementById('inputPromptContainerEl');
+        const inputPromptMessageEl = document.getElementById('inputPromptMessageEl');
+        const userInputEl = document.getElementById('userInputEl');
+        const submitInputButtonEl = document.getElementById('submitInputButtonEl');
+
+        // Interpreter State
+        let variables = {};
+        let programLines = {}; 
+        let sortedLineNumbers = [];
+        let currentLineIndex = 0;
+        let isRunning = false;
+        let outputBuffer = [];
+        let printNoNewlineFlag = false;
+
+        let inputPromiseResolve = null;
+
+        let forLoopStack = []; 
+        let gosubReturnStack = []; 
+
+        let dataItems = []; 
+        let dataReadPointer = 0;
+
+        // --- Event Listeners ---
+        runButtonEl.addEventListener('click', runProgram);
+        resetButtonEl.addEventListener('click', resetInterpreter);
+        submitInputButtonEl.addEventListener('click', handleSubmitInput);
+        userInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSubmitInput();
+        });
+
+        // --- Core UI & State Functions ---
+        function resetInterpreter() {
+            variables = {};
+            programLines = {};
+            sortedLineNumbers = [];
+            currentLineIndex = 0;
+            isRunning = false;
+            outputBuffer = [];
+            printNoNewlineFlag = false;
+            forLoopStack = [];
+            gosubReturnStack = [];
+            dataItems = [];
+            dataReadPointer = 0;
+            programInputEl.value = programInputEl.placeholder; // Reset to placeholder
+            updateOutputDisplay();
+            hideInputPrompt();
+            if (inputPromiseResolve) {
+                inputPromiseResolve(null); 
+                inputPromiseResolve = null;
+            }
+            console.log("Interpreter reset.");
+        }
+
+        function updateOutputDisplay() {
+            outputWindowEl.innerHTML = outputBuffer.join('');
+            outputWindowEl.scrollTop = outputWindowEl.scrollHeight;
+        }
+
+        function logToOutput(message, isError = false, isRawHtml = false) {
+            let styledMessage = message;
+            if (!isRawHtml) {
+                 styledMessage = isError ? `<span class="text-red-400">ERROR: ${message}</span>` : message;
+            }
+
+            if (printNoNewlineFlag) {
+                if (outputBuffer.length > 0) {
+                    outputBuffer[outputBuffer.length - 1] += styledMessage;
+                } else {
+                    outputBuffer.push(styledMessage);
+                }
+                printNoNewlineFlag = false;
+            } else {
+                 outputBuffer.push(styledMessage + (isRawHtml ? '' : '\n'));
+            }
+            updateOutputDisplay();
+            if (isError && !isRawHtml) console.error("BASIC Error:", message);
+        }
+        
+        function showInputPrompt(variableName) {
+            return new Promise((resolve) => {
+                inputPromptMessageEl.textContent = `Enter value for ${variableName.toUpperCase()}:`;
+                inputPromptContainerEl.classList.remove('hidden');
+                userInputEl.value = '';
+                userInputEl.focus();
+                inputPromiseResolve = resolve;
+            });
+        }
+
+        function hideInputPrompt() {
+            inputPromptContainerEl.classList.add('hidden');
+        }
+
+        function handleSubmitInput() {
+            if (inputPromiseResolve) {
+                const value = userInputEl.value;
+                inputPromiseResolve(value);
+                inputPromiseResolve = null;
+                hideInputPrompt();
+            }
+        }
+
+        // --- Parsing ---
+        function isValidVariableName(name) {
+            // Variable names are single uppercase letters, optionally followed by $
+            return /^[A-Z]\$?$/i.test(name); 
+        }
+
+        /**
+         * Parses a string of comma-separated values, respecting quotes.
+         * Used for DATA statements and function arguments.
+         * @param {string} inputString The string to parse.
+         * @param {boolean} evaluateSubExpressions If true, recursively calls evaluateExpression on each part.
+         * @param {number} lineNumber For error reporting if evaluateSubExpressions is true.
+         * @returns {Array<any>} Array of parsed values.
+         */
+        function parseCommaSeparatedList(inputString, evaluateSubExpressions = false, lineNumber = 0) {
+            const values = [];
+            if (inputString.trim() === "") return values;
+
+            let currentValue = "";
+            let inString = false;
+            let parenBalance = 0; // For handling function calls within expressions: FOO(A,B)
+
+            for (let i = 0; i < inputString.length; i++) {
+                const char = inputString[i];
+                if (char === '"') {
+                    inString = !inString;
+                } else if (char === '(' && !inString) {
+                    parenBalance++;
+                } else if (char === ')' && !inString) {
+                    parenBalance--;
+                }
+                
+                if (char === ',' && !inString && parenBalance === 0) {
+                    values.push(currentValue.trim());
+                    currentValue = "";
+                } else {
+                    currentValue += char;
+                }
+            }
+            values.push(currentValue.trim()); // Add the last value
+
+            return values.map(valStr => {
+                if (evaluateSubExpressions) {
+                    return evaluateExpression(valStr, lineNumber, true);
+                }
+                // For DATA statements, keep as string or try to parse to number
+                if (valStr.startsWith('"') && valStr.endsWith('"')) {
+                    return valStr.substring(1, valStr.length - 1); // String literal
+                }
+                if (!isNaN(parseFloat(valStr)) && isFinite(valStr)) {
+                    return parseFloat(valStr); // Number
+                }
+                return valStr; // Default to string
+            });
+        }
+
+
+        function parseProgramSource(sourceCode) {
+            programLines = {};
+            sortedLineNumbers = [];
+            dataItems = []; 
+            dataReadPointer = 0;
+
+            const lines = sourceCode.split('\n');
+            const lineRegex = /^(\d+)\s*(.*)$/; 
+
+            // First pass: Collect all DATA statements
+            for (let i = 0; i < lines.length; i++) {
+                const rawLine = lines[i].trim();
+                if (rawLine === "") continue;
+                const match = rawLine.match(lineRegex);
+                if (match) {
+                    const statementText = match[2].trim().toUpperCase();
+                    if (statementText.startsWith("DATA")) {
+                        const dataValuesString = match[2].trim().substring(4).trim(); // Use original case for data string
+                        if (dataValuesString) {
+                            const parsedData = parseCommaSeparatedList(dataValuesString, false);
+                            dataItems.push(...parsedData);
+                        }
+                    }
+                }
+            }
+
+            // Second pass: Parse all statements
+            for (let i = 0; i < lines.length; i++) {
+                const rawLine = lines[i].trim();
+                if (rawLine === "") continue;
+
+                const match = rawLine.match(lineRegex);
+                if (!match) {
+                    logToOutput(`Syntax Error: Invalid line format on physical line ${i + 1}: "${rawLine}"`, true);
+                    return false;
+                }
+
+                const lineNumber = parseInt(match[1]);
+                const statementSource = match[2].trim(); 
+
+                if (programLines[lineNumber]) {
+                    logToOutput(`Syntax Error: Duplicate line number ${lineNumber}`, true);
+                    return false;
+                }
+                
+                const parsedStatement = parseSingleStatement(statementSource, lineNumber);
+                if (!parsedStatement) { 
+                    return false;
+                }
+                programLines[lineNumber] = parsedStatement;
+            }
+
+            sortedLineNumbers = Object.keys(programLines).map(Number).sort((a, b) => a - b);
+            return true;
+        }
+
+        function parseSingleStatement(statementSource, lineNumber) {
+            const upperStatement = statementSource.toUpperCase();
+            let varName, targetLine; // Declared here for common use
+
+            if (upperStatement.startsWith("REM")) {
+                return { type: "REM", original: statementSource };
+            } else if (upperStatement.startsWith("PRINT")) {
+                let content = statementSource.substring(5).trim();
+                let suppressNewline = false;
+                if (content.endsWith(';') || content.endsWith(',')) {
+                    suppressNewline = true;
+                }
+
+                const printArgs = [];
+                if (content.length > 0) {
+                    let currentArg = "";
+                    let inString = false;
+                    let parenBalance = 0;
+                    for (let i = 0; i < content.length; i++) {
+                        const char = content[i];
+                        if (char === '"') inString = !inString;
+                        else if (char === '(' && !inString) parenBalance++;
+                        else if (char === ')' && !inString) parenBalance--;
+                        
+                        if ((char === ',' || char === ';') && !inString && parenBalance === 0) {
+                            printArgs.push(currentArg.trim());
+                            printArgs.push(char); 
+                            currentArg = "";
+                        } else {
+                            currentArg += char;
+                        }
+                    }
+                    printArgs.push(currentArg.trim()); 
+                }
+                return { type: "PRINT", args: printArgs.filter(arg => arg !== ''), suppressNewline: suppressNewline, original: statementSource };
+            } else if (upperStatement.startsWith("LET")) {
+                const letMatch = statementSource.match(/^LET\s+([A-Z]\$?)\s*=\s*(.+)$/i);
+                if (!letMatch) {
+                    logToOutput(`Syntax Error in LET (line ${lineNumber}): Expected 'LET variable = expression'`, true); return null;
+                }
+                varName = letMatch[1].toUpperCase(); // Standardize variable name to uppercase
+                // isValidVariableName is implicitly checked by regex, but good for clarity if used elsewhere
+                return { type: "LET", varName: varName, expression: letMatch[2].trim(), original: statementSource };
+            } else if (upperStatement.startsWith("INPUT")) {
+                varName = statementSource.substring(5).trim().toUpperCase();
+                 if (!isValidVariableName(varName)) { // Check validity
+                     logToOutput(`Syntax Error in INPUT (line ${lineNumber}): Invalid variable name '${varName}'`, true); return null;
+                }
+                return { type: "INPUT", varName: varName, original: statementSource };
+            } else if (upperStatement.startsWith("GOTO")) {
+                targetLine = parseInt(statementSource.substring(4).trim());
+                if (isNaN(targetLine)) {
+                    logToOutput(`Syntax Error in GOTO (line ${lineNumber}): Invalid line number`, true); return null;
+                }
+                return { type: "GOTO", targetLine: targetLine, original: statementSource };
+            } else if (upperStatement.startsWith("IF")) {
+                const ifMatch = statementSource.match(/^IF\s+(.+?)\s+THEN\s+(\d+)$/i);
+                if (!ifMatch) {
+                    logToOutput(`Syntax Error in IF (line ${lineNumber}): Expected 'IF condition THEN linenumber'`, true); return null;
+                }
+                const condition = ifMatch[1].trim();
+                targetLine = parseInt(ifMatch[2].trim());
+                return { type: "IF", condition: condition, targetLine: targetLine, original: statementSource };
+            } else if (upperStatement.startsWith("FOR")) {
+                const forMatch = statementSource.match(/^FOR\s+([A-Z])\s*=\s*(.+?)\s+TO\s+(.+?)(?:\s+STEP\s+(.+))?$/i);
+                if (!forMatch) {
+                    logToOutput(`Syntax Error in FOR (line ${lineNumber}): Invalid format. Expected 'FOR V = start TO end [STEP val]'`, true); return null;
+                }
+                varName = forMatch[1].toUpperCase(); 
+                const startExpr = forMatch[2].trim();
+                const endExpr = forMatch[3].trim();
+                const stepExpr = forMatch[4] ? forMatch[4].trim() : "1";
+                return { type: "FOR", varName, startExpr, endExpr, stepExpr, original: statementSource };
+            } else if (upperStatement.startsWith("NEXT")) {
+                varName = statementSource.substring(4).trim().toUpperCase();
+                if (!/^[A-Z]$/.test(varName)) { 
+                    logToOutput(`Syntax Error in NEXT (line ${lineNumber}): Invalid variable name '${varName}'. Must be single letter.`, true); return null;
+                }
+                return { type: "NEXT", varName: varName, original: statementSource };
+            } else if (upperStatement.startsWith("GOSUB")) {
+                targetLine = parseInt(statementSource.substring(5).trim());
+                if (isNaN(targetLine)) {
+                    logToOutput(`Syntax Error in GOSUB (line ${lineNumber}): Invalid line number`, true); return null;
+                }
+                return { type: "GOSUB", targetLine: targetLine, original: statementSource };
+            } else if (upperStatement === "RETURN") {
+                return { type: "RETURN", original: statementSource };
+            } else if (upperStatement.startsWith("READ")) {
+                const varListStr = statementSource.substring(4).trim();
+                if (!varListStr) {
+                     logToOutput(`Syntax Error in READ (line ${lineNumber}): Missing variable list.`, true); return null;
+                }
+                const varList = varListStr.split(',')
+                    .map(v => v.trim().toUpperCase()) // Standardize variable names
+                    .filter(v => v !== '');
+                for (const v of varList) {
+                    if (!isValidVariableName(v)) {
+                        logToOutput(`Syntax Error in READ (line ${lineNumber}): Invalid variable name '${v}'`, true); return null;
+                    }
+                }
+                return { type: "READ", varList: varList, original: statementSource };
+            } else if (upperStatement.startsWith("DATA")) {
+                return { type: "DATA_NOP", original: statementSource }; 
+            } else if (upperStatement === "RESTORE") {
+                return { type: "RESTORE", original: statementSource };
+            } else if (upperStatement === "STOP") {
+                return { type: "STOP", original: statementSource };
+            } else if (upperStatement === "END") {
+                return { type: "END", original: statementSource };
+            }
+
+            logToOutput(`Syntax Error: Unknown command on line ${lineNumber}: "${statementSource.split(' ')[0]}"`, true);
+            return null;
+        }
+
+        // --- Execution ---
+        async function runProgram() {
+            if (isRunning) {
+                logToOutput("Program is already running.", true); return;
+            }
+
+            outputBuffer = []; updateOutputDisplay(); variables = {}; 
+            forLoopStack = []; gosubReturnStack = [];
+
+            if (!parseProgramSource(programInputEl.value)) {
+                logToOutput("Execution halted due to parsing errors.", true); return;
+            }
+            if (sortedLineNumbers.length === 0) {
+                logToOutput("No program to run.", false); return;
+            }
+
+            isRunning = true; currentLineIndex = 0;
+            logToOutput("Program started.", false, true); 
+
+            while (isRunning && currentLineIndex < sortedLineNumbers.length) {
+                const currentBasicLineNumber = sortedLineNumbers[currentLineIndex];
+                const statement = programLines[currentBasicLineNumber];
+                let nextLineJumpTarget = null; 
+
+                try {
+                    switch (statement.type) {
+                        case "REM": break;
+                        case "DATA_NOP": break;
+                        case "PRINT":
+                            let lineOutput = "";
+                            for (let i = 0; i < statement.args.length; i++) {
+                                const arg = statement.args[i];
+                                if (arg === ';') { /* Minimal spacing */ }
+                                else if (arg === ',') { lineOutput += "\t"; } 
+                                else { lineOutput += String(evaluateExpression(arg, currentBasicLineNumber)); }
+                            }
+                            if (statement.suppressNewline) {
+                                printNoNewlineFlag = true; 
+                                logToOutput(lineOutput, false, true); 
+                            } else {
+                                logToOutput(lineOutput); 
+                            }
+                            break;
+                        case "LET":
+                            variables[statement.varName] = evaluateExpression(statement.expression, currentBasicLineNumber);
+                            break;
+                        case "INPUT":
+                            const inputValue = await showInputPrompt(statement.varName);
+                            if (inputValue === null && !isRunning) { 
+                                logToOutput(`Input for ${statement.varName} cancelled.`, true); isRunning = false; break;
+                            }
+                            if (statement.varName.endsWith("$")) {
+                                variables[statement.varName] = String(inputValue);
+                            } else {
+                                const numValue = parseFloat(inputValue);
+                                if (isNaN(numValue)) {
+                                    logToOutput(`Runtime Error (line ${currentBasicLineNumber}): Invalid numeric input for ${statement.varName}. Got "${inputValue}". Assigning 0.`, true);
+                                    variables[statement.varName] = 0;
+                                } else {
+                                    variables[statement.varName] = numValue;
+                                }
+                            }
+                            break;
+                        case "GOTO":
+                            nextLineJumpTarget = statement.targetLine;
+                            break;
+                        case "IF":
+                            if (evaluateCondition(statement.condition, currentBasicLineNumber)) {
+                                nextLineJumpTarget = statement.targetLine;
+                            }
+                            break;
+                        case "FOR":
+                            const startVal = evaluateExpression(statement.startExpr, currentBasicLineNumber);
+                            const endVal = evaluateExpression(statement.endExpr, currentBasicLineNumber);
+                            const stepVal = evaluateExpression(statement.stepExpr, currentBasicLineNumber);
+                            if (typeof startVal !== 'number' || typeof endVal !== 'number' || typeof stepVal !== 'number') {
+                                throw new Error(`FOR loop parameters must be numeric at line ${currentBasicLineNumber}.`);
+                            }
+                            variables[statement.varName] = startVal;
+                            forLoopStack.push({
+                                varName: statement.varName, endVal: endVal, stepVal: stepVal,
+                                loopStartIndex: currentLineIndex, 
+                                nextLineIndexAfterFor: currentLineIndex + 1 
+                            });
+                            if ((stepVal > 0 && startVal > endVal) || (stepVal < 0 && startVal < endVal) || stepVal === 0) {
+                                let nestLevel = 0; let foundNext = false;
+                                for (let i = currentLineIndex + 1; i < sortedLineNumbers.length; i++) {
+                                    const nextStmt = programLines[sortedLineNumbers[i]];
+                                    if (nextStmt.type === "FOR" && nextStmt.varName === statement.varName) nestLevel++;
+                                    if (nextStmt.type === "NEXT" && nextStmt.varName === statement.varName) {
+                                        if (nestLevel === 0) { currentLineIndex = i; foundNext = true; break; }
+                                        else { nestLevel--; }
+                                    }
+                                }
+                                if (foundNext) forLoopStack.pop(); 
+                                else throw new Error(`Mismatched FOR without NEXT for ${statement.varName} when skipping loop at line ${currentBasicLineNumber}.`);
+                                if (stepVal === 0 && foundNext) { // If loop was skipped due to step 0, it's effectively done
+                                     logToOutput(`Warning (line ${currentBasicLineNumber}): FOR loop with STEP 0 for ${statement.varName} will not iterate.`, false);
+                                }
+                            }
+                            break;
+                        case "NEXT":
+                            if (forLoopStack.length === 0) throw new Error(`NEXT without FOR at line ${currentBasicLineNumber}.`);
+                            
+                            let currentLoop = forLoopStack[forLoopStack.length - 1];
+                            if (currentLoop.varName !== statement.varName) {
+                                let foundMatchingFor = false;
+                                for (let i = forLoopStack.length - 1; i >=0; i--) {
+                                    if (forLoopStack[i].varName === statement.varName) {
+                                        currentLoop = forLoopStack[i];
+                                        while(forLoopStack.length -1 > i) forLoopStack.pop();
+                                        foundMatchingFor = true; break;
+                                    }
+                                }
+                                if (!foundMatchingFor) {
+                                   throw new Error(`NEXT variable ${statement.varName} does not match current FOR ${forLoopStack[forLoopStack.length - 1].varName} at line ${currentBasicLineNumber}.`);
+                                }
+                            }
+
+                            variables[currentLoop.varName] += currentLoop.stepVal;
+                            const loopVarVal = variables[currentLoop.varName];
+
+                            let loopIsFinished = false;
+                            if (currentLoop.stepVal > 0) {
+                                if (loopVarVal > currentLoop.endVal) loopIsFinished = true;
+                            } else if (currentLoop.stepVal < 0) {
+                                if (loopVarVal < currentLoop.endVal) loopIsFinished = true;
+                            } else { 
+                                loopIsFinished = true; 
+                                logToOutput(`Warning (line ${currentBasicLineNumber}): FOR loop with STEP 0 for ${currentLoop.varName} executed once.`, false);
+                            }
+
+                            if (loopIsFinished) {
+                                forLoopStack.pop(); 
+                            } else {
+                                currentLineIndex = currentLoop.nextLineIndexAfterFor -1; 
+                            }
+                            break;
+                        case "GOSUB":
+                            gosubReturnStack.push(currentLineIndex + 1); 
+                            nextLineJumpTarget = statement.targetLine;
+                            break;
+                        case "RETURN":
+                            if (gosubReturnStack.length === 0) throw new Error(`RETURN without GOSUB at line ${currentBasicLineNumber}.`);
+                            currentLineIndex = gosubReturnStack.pop() -1; 
+                            break;
+                        case "READ":
+                            for (const varToRead of statement.varList) {
+                                if (dataReadPointer >= dataItems.length) throw new Error(`Out of DATA at line ${currentBasicLineNumber} for variable ${varToRead}.`);
+                                const dataValue = dataItems[dataReadPointer++];
+                                if (varToRead.endsWith("$")) { 
+                                    variables[varToRead] = String(dataValue);
+                                } else { 
+                                    const numVal = parseFloat(dataValue);
+                                    if (isNaN(numVal) && typeof dataValue === 'string' && dataValue.trim() !== "") { 
+                                        throw new Error(`Type mismatch at line ${currentBasicLineNumber}: Cannot assign string DATA item "${dataValue}" to numeric variable ${varToRead}.`);
+                                    }
+                                    variables[varToRead] = isNaN(numVal) ? 0 : numVal; 
+                                }
+                            }
+                            break;
+                        case "RESTORE":
+                            dataReadPointer = 0;
+                            break;
+                        case "STOP":
+                            isRunning = false;
+                            logToOutput(`Program stopped at line ${currentBasicLineNumber}.`, false, true);
+                            break;
+                        case "END":
+                            isRunning = false;
+                            logToOutput("Program ended.", false, true);
+                            break;
+                        default:
+                            throw new Error(`Runtime Error: Unknown statement type "${statement.type}" at line ${currentBasicLineNumber}.`);
+                    }
+                } catch (e) {
+                    logToOutput(`Runtime Error (line ${currentBasicLineNumber}): ${e.message}`, true);
+                    isRunning = false;
+                }
+
+                if (!isRunning) break; 
+
+                if (nextLineJumpTarget !== null) {
+                    const jumpToIndex = sortedLineNumbers.indexOf(nextLineJumpTarget);
+                    if (jumpToIndex === -1) {
+                        logToOutput(`Runtime Error (line ${currentBasicLineNumber}): Target line ${nextLineJumpTarget} not found.`, true);
+                        isRunning = false;
+                    } else {
+                        currentLineIndex = jumpToIndex; 
+                    }
+                } else {
+                    currentLineIndex++; 
+                }
+                await new Promise(resolve => setTimeout(resolve, 1)); 
+            }
+
+            if (isRunning && currentLineIndex >= sortedLineNumbers.length) { 
+                 logToOutput("Program finished (reached end of code).", false, true);
+            }
+            isRunning = false; 
+        }
+        
+        // --- Expression and Condition Evaluation ---
+
+        function evaluateFunctionCall(funcName, argValues, lineNumber) {
+            // funcName is already uppercased
+            switch (funcName) {
+                case "LEN":
+                    if (argValues.length !== 1) throw new Error(`LEN expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    return String(argValues[0]).length;
+                case "LEFT$":
+                    if (argValues.length !== 2) throw new Error(`LEFT$ expects 2 arguments, got ${argValues.length} at line ${lineNumber}`);
+                    return String(argValues[0]).substring(0, Math.max(0, parseInt(argValues[1])));
+                case "RIGHT$":
+                    if (argValues.length !== 2) throw new Error(`RIGHT$ expects 2 arguments, got ${argValues.length} at line ${lineNumber}`);
+                    const strRight = String(argValues[0]);
+                    const countRight = Math.max(0, parseInt(argValues[1]));
+                    return strRight.substring(strRight.length - countRight);
+                case "MID$":
+                    if (argValues.length < 2 || argValues.length > 3) throw new Error(`MID$ expects 2 or 3 arguments, got ${argValues.length} at line ${lineNumber}`);
+                    const strMid = String(argValues[0]);
+                    const startMid = parseInt(argValues[1]) - 1; 
+                    if (startMid < 0) throw new Error(`MID$ start position must be >= 1 at line ${lineNumber}. Got ${argValues[1]}.`);
+                    const lenMid = argValues.length === 3 ? parseInt(argValues[2]) : strMid.length - startMid;
+                    if (lenMid < 0) return ""; 
+                    return strMid.substring(startMid, startMid + lenMid);
+                case "STR$":
+                    if (argValues.length !== 1) throw new Error(`STR$ expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    return String(argValues[0]); 
+                case "VAL":
+                    if (argValues.length !== 1) throw new Error(`VAL expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    const valNum = parseFloat(String(argValues[0]).trim()); 
+                    return isNaN(valNum) ? 0 : valNum;
+                case "RND": 
+                    // RND in this dialect is parameterless. If args are passed (e.g. RND(X)), they are ignored.
+                    if (argValues.length > 0 && argValues.some(arg => arg !== undefined)) { // Check if any actual arguments were passed
+                         logToOutput(`Warning (line ${lineNumber}): RND function argument(s) ignored in this version.`, false);
+                    }
+                    return Math.random();
+                case "INT":
+                    if (argValues.length !== 1) throw new Error(`INT expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    return Math.floor(parseFloat(argValues[0]));
+                case "ABS":
+                    if (argValues.length !== 1) throw new Error(`ABS expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    return Math.abs(parseFloat(argValues[0]));
+                case "SQR":
+                    if (argValues.length !== 1) throw new Error(`SQR expects 1 argument, got ${argValues.length} at line ${lineNumber}`);
+                    const numSqr = parseFloat(argValues[0]);
+                    if (numSqr < 0) throw new Error(`SQR argument cannot be negative at line ${lineNumber}. Got ${numSqr}.`);
+                    return Math.sqrt(numSqr);
+                default:
+                    throw new Error(`Unknown function ${funcName} at line ${lineNumber}`);
+            }
+        }
+        
+        function evaluateExpression(expression, lineNumber, allowFunctions = true) {
+            expression = String(expression).trim();
+            if (expression === "") throw new Error(`Empty expression at line ${lineNumber}`);
+
+            // 1. String literals
+            if (expression.startsWith('"') && expression.endsWith('"')) {
+                return expression.substring(1, expression.length - 1);
+            }
+            
+            const upperExprForChecks = expression.toUpperCase();
+
+            // 2. Handle specific parameterless built-in functions (like RND)
+            //    This check comes BEFORE the general FUNC(...) check.
+            if (allowFunctions && upperExprForChecks === "RND") {
+                return evaluateFunctionCall("RND", [], lineNumber);
+            }
+            // Add other parameterless functions here if needed, e.g., if (upperExprForChecks === "INKEY$") ...
+
+            // 3. Function calls with parentheses (FUNC(...))
+            if (allowFunctions) {
+                const funcMatch = expression.match(/^([A-Z][A-Z0-9]*\$?)\s*\((.*)\)$/i); 
+                if (funcMatch) {
+                    const funcName = funcMatch[1].toUpperCase();
+                    const argString = funcMatch[2];
+                    const evaluatedArgs = parseCommaSeparatedList(argString, true, lineNumber);
+                    return evaluateFunctionCall(funcName, evaluatedArgs, lineNumber);
+                }
+            }
+            
+            // 4. Variables (use upperExprForChecks for case-insensitivity)
+            if (variables.hasOwnProperty(upperExprForChecks)) {
+                return variables[upperExprForChecks];
+            }
+
+            // 5. Numeric literals
+            if (!isNaN(parseFloat(expression)) && isFinite(expression)) {
+                return parseFloat(expression);
+            }
+
+            // 6. Basic arithmetic (left-to-right, no precedence, no parentheses for grouping)
+            // This section is a major simplification. Use LET for complex math.
+            let opIndex;
+            opIndex = expression.indexOf('+');
+            if (opIndex > 0) { 
+                const left = evaluateExpression(expression.substring(0, opIndex).trim(), lineNumber, false);
+                const right = evaluateExpression(expression.substring(opIndex + 1).trim(), lineNumber, false);
+                if (typeof left === 'string' || typeof right === 'string') return String(left) + String(right);
+                return Number(left) + Number(right);
+            }
+            opIndex = expression.lastIndexOf('-'); 
+            if (opIndex > 0) { 
+                const charBefore = expression[opIndex-1];
+                if (!['E','e','*','/','+','-'].includes(charBefore?.toUpperCase())) { 
+                    const left = evaluateExpression(expression.substring(0, opIndex).trim(), lineNumber, false);
+                    const right = evaluateExpression(expression.substring(opIndex + 1).trim(), lineNumber, false);
+                    return Number(left) - Number(right);
+                }
+            }
+            opIndex = expression.indexOf('*');
+            if (opIndex > 0) {
+                const left = evaluateExpression(expression.substring(0, opIndex).trim(), lineNumber, false);
+                const right = evaluateExpression(expression.substring(opIndex + 1).trim(), lineNumber, false);
+                return Number(left) * Number(right);
+            }
+            opIndex = expression.indexOf('/');
+            if (opIndex > 0) {
+                const left = evaluateExpression(expression.substring(0, opIndex).trim(), lineNumber, false);
+                const right = evaluateExpression(expression.substring(opIndex + 1).trim(), lineNumber, false);
+                if (Number(right) === 0) throw new Error(`Division by zero at line ${lineNumber}`);
+                return Number(left) / Number(right);
+            }
+
+            // 7. Undefined variable or invalid expression
+            if (expression.endsWith("$")) { 
+                 logToOutput(`Warning (line ${lineNumber}): String variable ${upperExprForChecks} not defined or invalid expression, using empty string.`, false);
+                 return "";
+            } else if (isValidVariableName(upperExprForChecks)) { 
+                 logToOutput(`Warning (line ${lineNumber}): Numeric variable ${upperExprForChecks} not defined or invalid expression, using 0.`, false);
+                 return 0;
+            }
+            
+            throw new Error(`Cannot evaluate expression, or undefined variable: "${expression}" at line ${lineNumber}`);
+        }
+
+        function evaluateCondition(conditionStr, lineNumber) {
+            let operator = null;
+            let parts = [];
+            const operators = ["<>", ">=", "<=", "=", ">", "<"]; 
+            for (const op of operators) {
+                const opIndex = conditionStr.indexOf(op);
+                if (opIndex !== -1) {
+                    let inString = false;
+                    let parenBalance = 0;
+                    for(let i=0; i < opIndex; i++) { 
+                        if(conditionStr[i] === '"') inString = !inString;
+                        else if (conditionStr[i] === '(' && !inString) parenBalance++;
+                        else if (conditionStr[i] === ')' && !inString) parenBalance--;
+                    }
+                    if (!inString && parenBalance === 0) { 
+                        operator = op;
+                        parts = [conditionStr.substring(0, opIndex).trim(), conditionStr.substring(opIndex + op.length).trim()];
+                        break;
+                    }
+                }
+            }
+
+            if (!operator || parts.length !== 2 || parts[0] === "" || parts[1] === "") {
+                throw new Error(`Invalid condition format in IF (line ${lineNumber}): "${conditionStr}". Expected 'expr1 operator expr2'.`);
+            }
+
+            const val1 = evaluateExpression(parts[0], lineNumber);
+            const val2 = evaluateExpression(parts[1], lineNumber);
+            
+            let num1 = (typeof val1 === 'number') ? val1 : parseFloat(val1); 
+            let num2 = (typeof val2 === 'number') ? val2 : parseFloat(val2);
+
+            if (typeof val1 === 'string' || typeof val2 === 'string') {
+                 switch (operator) {
+                    case "=":  return String(val1) == String(val2); 
+                    case "<>": return String(val1) != String(val2);
+                    case ">":  return (!isNaN(num1) && !isNaN(num2)) ? num1 > num2 : String(val1) > String(val2);
+                    case "<":  return (!isNaN(num1) && !isNaN(num2)) ? num1 < num2 : String(val1) < String(val2);
+                    case ">=": return (!isNaN(num1) && !isNaN(num2)) ? num1 >= num2 : String(val1) >= String(val2);
+                    case "<=": return (!isNaN(num1) && !isNaN(num2)) ? num1 <= num2 : String(val1) <= String(val2);
+                }
+            } else { 
+                 switch (operator) {
+                    case "=":  return val1 == val2; 
+                    case "<>": return val1 != val2;
+                    case ">":  return val1 > val2;
+                    case "<":  return val1 < val2;
+                    case ">=": return val1 >= val2;
+                    case "<=": return val1 <= val2;
+                }
+            }
+            throw new Error(`Unknown operator in IF condition: ${operator} at line ${lineNumber}`);
+        }
+
+        // --- Initial Setup ---
+        resetInterpreter(); 
+    </script>
+</body>
+</html>
