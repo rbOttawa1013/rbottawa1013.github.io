@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- Lang attribute will be updated by JavaScript -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Title will be set by JavaScript -->
+    <title>AI-Powered Statistical Lifecycle Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .step-indicator-btn { /* Renamed for clarity as it's now a button */
+            transition: all 0.3s ease-in-out;
+            flex: 1 1 0%; /* Ensure buttons take up equal space */
+            text-align: center;
+            padding: 0.5rem; /* Adjusted padding for smaller buttons */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1rem; /* leading-tight */
+            font-weight: 500; /* medium */
+            cursor: pointer;
+            border: 1px solid #d1d5db; /* gray-300 */
+            background-color: white;
+            color: #374151; /* gray-700 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-ellipsis: ellipsis;
+            min-width: 60px; /* Minimum width for small screens */
+        }
+        @media (min-width: 640px) { /* sm breakpoint */
+            .step-indicator-btn {
+                font-size: 0.875rem; /* text-sm */
+                padding: 0.75rem 0.5rem; /* More padding on larger screens */
+            }
+        }
+
+        .step-indicator-btn.active {
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            transform: scale(1.05); /* Slightly smaller scale for active button */
+            border-color: #3b82f6;
+        }
+        .step-indicator-btn.completed {
+            background-color: #10b981; /* Tailwind emerald-500 */
+            color: white;
+            border-color: #10b981;
+        }
+        .step-indicator-btn:focus-visible { /* Explicit focus styling */
+            outline: 2px solid #2563eb; /* blue-600 */
+            outline-offset: 2px;
+        }
+
+        .content-card {
+            min-height: 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .primitive-tag {
+            background-color: #e0e7ff;
+            color: #4338ca;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            margin: 2px;
+            display: inline-block;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: #2563eb; }
+        .btn-secondary { background-color: #6b7280; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover:not(:disabled) { background-color: #dc2626; }
+        .btn-success { background-color: #10b981; color: white; }
+        .btn-success:hover:not(:disabled) { background-color: #059669; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .lang-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .lang-btn.active, .lang-btn[aria-pressed="true"] { /* Style for active and aria-pressed */
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body> <!-- HTML lang attribute will be set by JS -->
+
+    <div class="w-full max-w-5xl mx-auto">
+        <div class="flex justify-end mb-4 space-x-2">
+            <button id="langEnBtn" class="btn btn-secondary lang-btn" aria-pressed="true">English</button>
+            <button id="langFrBtn" class="btn btn-secondary lang-btn" aria-pressed="false">Français</button>
+        </div>
+
+        <h1 id="mainTitle" class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-8">
+            <!-- Title will be set by JavaScript -->
+        </h1>
+
+        <div id="progressIndicator" class="flex justify-around mb-8 space-x-1 sm:space-x-1" role="tablist" aria-label="Lifecycle Steps">
+            <!-- Step indicator buttons will be injected here by JavaScript -->
+        </div>
+
+        <div id="contentDisplay" class="bg-white p-6 sm:p-8 rounded-xl shadow-xl content-card" aria-live="polite">
+            <!-- Step content will be injected here by JavaScript -->
+        </div>
+
+        <div class="mt-8 flex flex-wrap justify-center gap-2 sm:gap-4">
+            <button id="runDemoBtn" class="btn btn-success"></button>
+            <button id="stopDemoBtn" class="btn btn-danger" disabled></button>
+            <button id="prevStepBtn" class="btn btn-secondary" disabled></button>
+            <button id="nextStepBtn" class="btn btn-primary"></button>
+            <button id="resetDemoBtn" class="btn btn-secondary"></button>
+        </div>
+        <p id="statusDisplay" class="text-center mt-4 text-sm text-gray-600" aria-live="polite"></p>
+    </div>
+
+    <script>
+        let currentLanguage = 'en';
+        const uiStrings = {
+            en: {
+                mainTitle: "AI-Powered Statistical Lifecycle Demo (GSBPM & UN Standards)",
+                docTitle: "AI Statistical Lifecycle Demo (GSBPM & UN Standards)",
+                runDemo: "Run Demo",
+                stopDemo: "Stop Demo",
+                prevStep: "Previous Step",
+                nextStep: "Next Step",
+                resetDemo: "Reset Demo",
+                statusIdle: "Status: Idle. Press 'Run Demo' or 'Next Step'.",
+                statusRunning: "Status: Demo Running...",
+                statusCompleted: "Status: Demo completed!",
+                statusStopped: "Status: Demo Stopped.",
+                statusReset: "Status: Demo Reset. Press 'Run Demo' or 'Next Step'.",
+                stepIndicatorPrefix: "Step",
+                keyPrimitives: "Key AI Primitives:",
+                stepLabelPrefix: "Go to step"
+            },
+            fr: {
+                mainTitle: "Démo du cycle de vie statistique assisté par IA (GSBPM et normes de l'ONU)",
+                docTitle: "Démo du cycle de vie statistique IA (GSBPM et normes ONU)",
+                runDemo: "Lancer la démo",
+                stopDemo: "Arrêter la démo",
+                prevStep: "Étape précédente",
+                nextStep: "Étape suivante",
+                resetDemo: "Réinitialiser",
+                statusIdle: "Statut : Inactif. Appuyez sur 'Lancer la démo' ou 'Étape suivante'.",
+                statusRunning: "Statut : Démo en cours...",
+                statusCompleted: "Statut : Démo terminée !",
+                statusStopped: "Statut : Démo arrêtée.",
+                statusReset: "Statut : Démo réinitialisée. Appuyez sur 'Lancer la démo' ou 'Étape suivante'.",
+                stepIndicatorPrefix: "Étape",
+                keyPrimitives: "Primitives d'IA clés :",
+                stepLabelPrefix: "Aller à l'étape"
+            }
+        };
+
+        const steps = [
+            {
+                id: 1,
+                title: { en: "1. Specify Needs 🎯", fr: "1. Préciser les besoins 🎯" },
+                description: { en: "AI assists in defining statistical objectives by analyzing user requests, policy documents, and existing literature. This aligns with UN Fundamental Principles of Official Statistics (UNFPOS) like Principle 1 (Relevance, Impartiality, Equal Access), ensuring outputs meet societal needs and inform public discourse, potentially linking to SDGs. AI tools can perform gap analyses against national strategies.", fr: "L'IA aide à définir les objectifs statistiques en analysant les demandes des utilisateurs, les documents de politique et la littérature existante. Ceci s'aligne sur les Principes fondamentaux des statistiques officielles des Nations Unies (PFSO NU) tels que le Principe 1 (Pertinence, impartialité et égalité d'accès), garantissant que les extrants répondent aux besoins sociétaux et éclairent le discours public, potentiellement en lien avec les ODD. Les outils d'IA peuvent effectuer des analyses d'écarts par rapport aux stratégies nationales." },
+                primitives: [
+                    { en: "Agent (Requirements Analyst, Policy Scanner)", fr: "Agent (Analyste des besoins, Analyseur de politiques)" },
+                    { en: "Tools (NLU for Document Analysis, Knowledge Graph Search, SDG Mapping)", fr: "Outils (TALN pour analyse de documents, Recherche graphe de connaissances, Cartographie ODD)" },
+                    { en: "Context (Existing Reports, User Requests, UNFPOS Guidelines)", fr: "Contexte (Rapports existants, Demandes utilisateurs, Directives PFSO NU)" },
+                    { en: "Output Types (Requirement Specifications, Feasibility Studies, Gap Analysis Reports)", fr: "Types d'extrants (Spécifications des besoins, Études de faisabilité, Rapports d'analyse des écarts)" },
+                    { en: "Tracing (Information Sources, Decision Rationale, Stakeholder Inputs)", fr: "Traçabilité (Sources d'information, Justification décisions, Contributions parties prenantes)" },
+                    { en: "Guardrails (Bias Detection in Source Material, Alignment with National Statistical Plans)", fr: "Garde-fous (Détection biais sources, Alignement plans statistiques nationaux)" }
+                ],
+                visualEmoji: "🎯🔍🇺🇳"
+            },
+            {
+                id: 2,
+                title: { en: "2. Design ✍️", fr: "2. Conception ✍️" },
+                description: { en: "AI supports designing methodologies, collection instruments, sampling frames, and processing workflows. This adheres to UNFPOS Principle 2 (Professional Standards & Ethics) and Principle 5 (Cost-Effectiveness) by optimizing question wording for clarity and neutrality, ensuring statistical validity, and considering international comparability (e.g., using UN-endorsed classifications like ISIC). AI can simulate sampling strategies and model data structures for efficiency and privacy by design.", fr: "L'IA appuie la conception des méthodologies, des instruments de collecte, des bases de sondage et des flux de travail de traitement. Ceci respecte le Principe 2 (Normes professionnelles et éthique) et le Principe 5 (Rapport coût-efficacité) des PFSO NU en optimisant la formulation des questions pour la clarté et la neutralité, en assurant la validité statistique et en tenant compte de la comparabilité internationale (p. ex., en utilisant des classifications approuvées par l'ONU comme la CITI). L'IA peut simuler des stratégies d'échantillonnage et modéliser des structures de données pour l'efficacité et la protection de la vie privée dès la conception." },
+                primitives: [
+                    { en: "Agent (Methodology Designer, Survey Architect, Ethics Advisor)", fr: "Agent (Concepteur méthodologique, Architecte d'enquête, Conseiller en éthique)" },
+                    { en: "Tools (Questionnaire Optimization, Sampling Simulators, Workflow Design Tools, Data Modeling Aids, Privacy Impact Assessment Tools)", fr: "Outils (Optimisation questionnaires, Simulateurs d'échantillonnage, Outils conception flux, Aides modélisation données, Évaluations d'impact vie privée)" },
+                    { en: "Context (Specified Needs, UN Methodological Handbooks, Classification Standards)", fr: "Contexte (Besoins spécifiés, Manuels méthodologiques ONU, Normes de classification)" },
+                    { en: "Output Types (Survey Design Specifications, Sample Plans, Process Blueprints, Data Quality Assurance Frameworks)", fr: "Types d'extrants (Spécifications conception enquête, Plans d'échantillonnage, Schémas directeurs processus, Cadres assurance qualité données)" },
+                    { en: "Tracing (Design Decisions, Version Control, Ethical Reviews)", fr: "Traçabilité (Décisions conception, Gestion versions, Examens éthiques)" },
+                    { en: "Guardrails (Ethical Design, Respondent Burden Minimization, Statistical Soundness, Data Security Protocols)", fr: "Garde-fous (Conception éthique, Minimisation fardeau répondant, Validité statistique, Protocoles sécurité données)" }
+                ],
+                visualEmoji: "✍️📊🛡️"
+            },
+            {
+                id: 3,
+                title: { en: "3. Build 🛠️", fr: "3. Construction 🛠️" },
+                description: { en: "AI aids in constructing and configuring data collection tools (e.g., CAPI/CAWI systems), data ingestion pipelines, and analytical environments. This phase emphasizes UNFPOS Principle 5 (Cost-Effectiveness) through automation and use of common platforms. AI-driven automated testing and validation ensure systems are robust and align with design specifications and UN quality guidelines for IT infrastructure.", fr: "L'IA aide à construire et à configurer les outils de collecte de données (p. ex., systèmes ITAO/ITAWEB), les pipelines d'ingestion de données et les environnements analytiques. Cette phase met l'accent sur le Principe 5 (Rapport coût-efficacité) des PFSO NU par l'automatisation et l'utilisation de plateformes communes. Les tests et la validation automatisés par l'IA garantissent la robustesse des systèmes et leur alignement sur les spécifications de conception et les directives de qualité de l'ONU pour l'infrastructure TI." },
+                primitives: [
+                    { en: "Agent (System Builder, Automation Engineer, QA Specialist)", fr: "Agent (Constructeur de systèmes, Ingénieur automatisation, Spécialiste AQ)" },
+                    { en: "Tools (Code Generation for Instruments, Platform Configuration APIs, Test Data Generators, CI/CD Integration, Security Scanners)", fr: "Outils (Génération code instruments, API configuration plateforme, Générateurs données test, Intégration CI/CD, Scanneurs sécurité)" },
+                    { en: "Context (Design Specifications, Technical Stack, UN IT Security Guidelines)", fr: "Contexte (Spécifications conception, Pile technologique, Directives sécurité TI ONU)" },
+                    { en: "Output Types (Working Collection Instrument, Validated Processing Pipeline, Test Suites, System Documentation)", fr: "Types d'extrants (Instrument collecte fonctionnel, Pipeline traitement validé, Suites de tests, Documentation système)" },
+                    { en: "Tracing (Build Logs, Test Results, Deployment Records, Security Audits)", fr: "Traçabilité (Journaux construction, Résultats tests, Enregistrements déploiement, Audits sécurité)" },
+                    { en: "Guardrails (Security Standards Compliance, Usability Testing, Performance Benchmarks, Interoperability Standards)", fr: "Garde-fous (Conformité normes sécurité, Tests utilisabilité, Analyses comparatives performance, Normes interopérabilité)" }
+                ],
+                visualEmoji: "⚙️💻✅"
+            },
+            {
+                id: 4,
+                title: { en: "4. Collect 📥", fr: "4. Collecte 📥" },
+                description: { en: "AI agents manage data collection, potentially using adaptive questioning to reduce burden (UNFPOS Principle 5) and ensuring confidentiality (UNFPOS Principle 6). Real-time validation improves data quality at source. AI can monitor collection progress and manage respondent interactions ethically, adhering to informed consent and data protection principles as outlined in UN guidelines.", fr: "Les agents d'IA gèrent la collecte de données, utilisant potentiellement des questionnaires adaptatifs pour réduire le fardeau (Principe 5 des PFSO NU) et assurer la confidentialité (Principe 6 des PFSO NU). La validation en temps réel améliore la qualité des données à la source. L'IA peut surveiller les progrès de la collecte et gérer les interactions avec les répondants de manière éthique, en respectant le consentement éclairé et les principes de protection des données décrits dans les directives de l'ONU." },
+                primitives: [
+                    { en: "Agent (Collection Administrator, Data Capture Specialist, Ethics Monitor)", fr: "Agent (Administrateur collecte, Spécialiste saisie données, Moniteur éthique)" },
+                    { en: "Tools (Survey APIs, Real-time Validation Rules, NLU for Voice/Text Input, Adaptive Questioning Engines, Consent Management Systems)", fr: "Outils (API d'enquête, Règles validation temps réel, TALN pour saisie vocale/texte, Moteurs questionnement adaptatif, Systèmes gestion consentement)" },
+                    { en: "Context (Respondent Session Data, Built Instrument, Sampling Targets, UN Data Collection Ethics)", fr: "Contexte (Données session répondant, Instrument construit, Cibles d'échantillonnage, Éthique collecte données ONU)" },
+                    { en: "Output Types (Raw Structured Data, Collection Metadata, Consent Logs)", fr: "Types d'extrants (Données brutes structurées, Métadonnées collecte, Journaux consentement)" },
+                    { en: "Streaming (Live Data Feeds, Monitoring Dashboards)", fr: "Diffusion en continu (Flux données direct, Tableaux bord suivi)" },
+                    { en: "Tracing (Collection Events, Timestamps, Source Information, Consent Records)", fr: "Traçabilité (Événements collecte, Horodatages, Information source, Enregistrements consentement)" },
+                    { en: "Guardrails (Input Data Validity, Consent Verification, Respondent Burden Limits, Data Transmission Security)", fr: "Garde-fous (Validité données entrée, Vérification consentement, Limites fardeau répondant, Sécurité transmission données)" }
+                ],
+                visualEmoji: "📊➡️📥🔒"
+            },
+            {
+                id: 5,
+                title: { en: "5. Process ⚙️", fr: "5. Traitement ⚙️" },
+                description: { en: "AI agents clean data, classify/code variables (using NLU for open-ends, aligning with UN standard classifications like ISCO or COICOP), integrate sources, validate against rules, detect outliers, and impute missing data. This aligns with UNFPOS Principle 2 (Professional Standards) and Principle 4 (Prevention of Misuse). AI ensures processing steps are documented and auditable, supporting metadata management (e.g., SDMX).", fr: "Les agents d'IA nettoient les données, classifient/codent les variables (utilisant l'analyse du langage naturel pour les questions ouvertes, en s'alignant sur les classifications normalisées de l'ONU comme la CITP ou la COICOP), intègrent les sources, valident par rapport aux règles, détectent les valeurs aberrantes et imputent les données manquantes. Ceci s'aligne sur le Principe 2 (Normes professionnelles) et le Principe 4 (Prévention des abus) des PFSO NU. L'IA garantit que les étapes de traitement sont documentées et vérifiables, soutenant la gestion des métadonnées (p. ex., SDMX)." },
+                primitives: [
+                    { en: "Agent (Data Processor, Coder, Validator, Imputation Specialist, Metadata Manager)", fr: "Agent (Processeur données, Codeur, Valideur, Spécialiste imputation, Gestionnaire métadonnées)" },
+                    { en: "Tools (NLU for Coding, Classification Models, Rule Engines, Outlier Detection, Imputation Algorithms, SDMX Tools, Data Transformation Libraries)", fr: "Outils (TALN pour codage, Modèles classification, Moteurs règles, Détection valeurs aberrantes, Algorithmes imputation, Outils SDMX, Bibliothèques transformation données)" },
+                    { en: "Context (Codeframes, UN Classifications, Validation Rules, Dataset Schemas)", fr: "Contexte (Cadres codage, Classifications ONU, Règles validation, Schémas jeux données)" },
+                    { en: "Output Types (Cleaned, Coded, Integrated, Imputed Dataset with Rich Metadata)", fr: "Types d'extrants (Jeu données nettoyé, codé, intégré, imputé avec métadonnées riches)" },
+                    { en: "Handoffs (Human Review for Complex Cases, Anomaly Resolution)", fr: "Transferts (Examen humain cas complexes, Résolution anomalies)" },
+                    { en: "Tracing (All Processing Steps, Versioning of Datasets, Quality Indicators)", fr: "Traçabilité (Toutes étapes traitement, Gestion versions jeux données, Indicateurs qualité)" },
+                    { en: "Guardrails (Data Integrity, Imputation Bias Minimization, Adherence to Standard Codes, Audit Trails)", fr: "Garde-fous (Intégrité données, Minimisation biais imputation, Respect codes normalisés, Pistes vérification)" }
+                ],
+                visualEmoji: "🧹🧩🏷️Ⓜ️"
+            },
+            {
+                id: 6,
+                title: { en: "6. Analyse 📈", fr: "6. Analyse 📈" },
+                description: { en: "AI performs statistical analysis, generates descriptive/inferential statistics, and applies ML for insights, adhering to UNFPOS Principle 2 (Professional Standards) and Principle 4 (Prevention of Misuse). AI assists in objective interpretation and hypothesis generation, ensuring methods are transparent. Statistical Disclosure Control (SDC) techniques, guided by UN principles, can be applied by AI to protect confidentiality in analytical outputs.", fr: "L'IA effectue des analyses statistiques, génère des statistiques descriptives/inférentielles et applique l'apprentissage machine pour obtenir des informations, en respectant le Principe 2 (Normes professionnelles) et le Principe 4 (Prévention des abus) des PFSO NU. L'IA aide à l'interprétation objective et à la génération d'hypothèses, assurant la transparence des méthodes. Les techniques de contrôle de la divulgation statistique (CDS), guidées par les principes de l'ONU, peuvent être appliquées par l'IA pour protéger la confidentialité des résultats analytiques." },
+                primitives: [
+                    { en: "Agent (Statistical Analyst, Insight Generator, SDC Specialist)", fr: "Agent (Analyste statistique, Générateur d'aperçus, Spécialiste CDS)" },
+                    { en: "Tools (Statistical Libraries, ML Algorithms, Visualization Tools, NLG for Summaries, SDC Software)", fr: "Outils (Bibliothèques statistiques, Algorithmes AM, Outils visualisation, GLN pour résumés, Logiciels CDS)" },
+                    { en: "Context (Processed Dataset, Research Questions, UN Analytical Handbooks)", fr: "Contexte (Jeu données traité, Questions recherche, Manuels analytiques ONU)" },
+                    { en: "Output Types (Statistical Summaries, Predictive Models, Visualizations, Anonymized Microdata Insights)", fr: "Types d'extrants (Résumés statistiques, Modèles prédictifs, Visualisations, Aperçus microdonnées anonymisées)" },
+                    { en: "Handoffs (Human Analyst for Final Interpretation, Contextualization, Policy Relevance)", fr: "Transferts (Analyste humain pour interprétation finale, contextualisation, pertinence politique)" },
+                    { en: "Tracing (Analytical Workflow, Model Parameters, Code, SDC Parameters Applied)", fr: "Traçabilité (Flux travail analytique, Paramètres modèle, Code, Paramètres CDS appliqués)" },
+                    { en: "Guardrails (Statistical Validity, Avoidance of Over-Interpretation, Confidentiality Protection, Ethical Use of AI in Analysis)", fr: "Garde-fous (Validité statistique, Évitement surinterprétation, Protection confidentialité, Utilisation éthique IA en analyse)" }
+                ],
+                visualEmoji: "🧩➡️💡🛡️"
+            },
+            {
+                id: 7,
+                title: { en: "7. Disseminate 📄", fr: "7. Diffusion 📄" },
+                description: { en: "AI assists in creating accessible and understandable data tables, charts, and reports tailored to diverse audiences, upholding UNFPOS Principle 1 (Equal Access) and Principle 3 (Accountability & Transparency). NLG can draft summaries. AI helps ensure outputs meet UN data dissemination standards, including comprehensive metadata (e.g., using SDMX), clear caveats, and adherence to release calendars. Anonymization for public use files is critical.", fr: "L'IA aide à créer des tableaux de données, des graphiques et des rapports accessibles et compréhensibles, adaptés à divers publics, respectant le Principe 1 (Égalité d'accès) et le Principe 3 (Responsabilité et transparence) des PFSO NU. La génération de langage naturel (GLN) peut rédiger des résumés. L'IA aide à garantir que les extrants respectent les normes de diffusion des données de l'ONU, y compris des métadonnées complètes (p. ex., utilisant SDMX), des mises en garde claires et le respect des calendriers de publication. L'anonymisation des fichiers à grande diffusion est essentielle." },
+                primitives: [
+                    { en: "Agent (Report Generator, Dissemination Specialist, Accessibility Checker)", fr: "Agent (Générateur rapports, Spécialiste diffusion, Vérificateur accessibilité)" },
+                    { en: "Tools (Templating Engines, Document/Web Formatters, NLG Models, Visualization APIs, SDMX for Dissemination, Anonymization Tools)", fr: "Outils (Moteurs modèles, Formateurs documents/web, Modèles GLN, API visualisation, SDMX pour diffusion, Outils anonymisation)" },
+                    { en: "Context (Analysis Results, Audience Profiles, UN Style Guides, Dissemination Policies)", fr: "Contexte (Résultats analyse, Profils public, Guides style ONU, Politiques diffusion)" },
+                    { en: "Output Types (Formatted Reports, Interactive Dashboards, API Endpoints, Public Use Microdata Files, Press Releases)", fr: "Types d'extrants (Rapports formatés, Tableaux bord interactifs, Points terminaison API, Fichiers microdonnées grande diffusion, Communiqués presse)" },
+                    { en: "Tracing (Dissemination Logs, Version Control, Access Statistics, User Feedback Channels)", fr: "Traçabilité (Journaux diffusion, Gestion versions, Statistiques accès, Canaux rétroaction utilisateurs)" },
+                    { en: "Guardrails (Disclosure Control, Accessibility Standards (WCAG), Clarity, Accuracy, Timeliness, Impartiality in Presentation)", fr: "Garde-fous (Contrôle divulgation, Normes accessibilité (WCAG), Clarté, Exactitude, Actualité, Impartialité présentation)" }
+                ],
+                visualEmoji: "💡➡️📖🌐"
+            },
+            {
+                id: 8,
+                title: { en: "8. Evaluate 🤔", fr: "8. Évaluation 🤔" },
+                description: { en: "AI helps evaluate the quality of statistical outputs against UN quality assurance frameworks (e.g., UN NQAF), the efficiency of the GSBPM process, and gathers user feedback for continuous improvement (UNFPOS Principle 2 & 3). AI can analyze process logs, performance metrics, and textual feedback to identify bottlenecks and suggest optimizations, ensuring accountability and learning.", fr: "L'IA aide à évaluer la qualité des extrants statistiques par rapport aux cadres d'assurance qualité de l'ONU (p. ex., CNQA NU), l'efficacité du processus GSBPM, et recueille les commentaires des utilisateurs pour une amélioration continue (Principes 2 et 3 des PFSO NU). L'IA peut analyser les journaux de processus, les mesures de performance et les commentaires textuels pour identifier les goulots d'étranglement et suggérer des optimisations, assurant la responsabilité et l'apprentissage." },
+                primitives: [
+                    { en: "Agent (Process Evaluator, Quality Assurance Analyst, Feedback Analyst)", fr: "Agent (Évaluateur processus, Analyste assurance qualité, Analyste rétroaction)" },
+                    { en: "Tools (Performance Monitoring Dashboards, NLU for Feedback Analysis, Anomaly Detection in Logs, Benchmarking Tools, UN NQAF Checklists)", fr: "Outils (Tableaux bord suivi performance, TALN pour analyse rétroaction, Détection anomalies journaux, Outils analyse comparative, Listes contrôle CNQA NU)" },
+                    { en: "Context (Process Logs, Output Quality Metrics, User Feedback, Cost Information, UN Evaluation Guidelines)", fr: "Contexte (Journaux processus, Mesures qualité extrants, Rétroaction utilisateurs, Informations coûts, Directives évaluation ONU)" },
+                    { en: "Output Types (Evaluation Reports, KPIs, Improvement Recommendations, Lessons Learned Documentation, Updated Quality Frameworks)", fr: "Types d'extrants (Rapports évaluation, IPC, Recommandations amélioration, Documentation leçons apprises, Cadres qualité mis à jour)" },
+                    { en: "Tracing (Evaluation Data, Feedback Sources, Metric Calculations, Implemented Changes)", fr: "Traçabilité (Données évaluation, Sources rétroaction, Calculs mesures, Changements mis œuvre)" },
+                    { en: "Guardrails (Objectivity in Evaluation, Constructive Feedback, Actionable Recommendations, Transparency of Evaluation Process)", fr: "Garde-fous (Objectivité évaluation, Rétroaction constructive, Recommandations concrètes, Transparence processus évaluation)" }
+                ],
+                visualEmoji: "🤔🔄🌟"
+            }
+        ];
+
+        let currentStepIndex = 0;
+        let demoInterval = null;
+
+        const mainTitleEl = document.getElementById('mainTitle');
+        const progressIndicatorEl = document.getElementById('progressIndicator');
+        const contentDisplayEl = document.getElementById('contentDisplay');
+        const runDemoBtn = document.getElementById('runDemoBtn');
+        const stopDemoBtn = document.getElementById('stopDemoBtn');
+        const prevStepBtn = document.getElementById('prevStepBtn');
+        const nextStepBtn = document.getElementById('nextStepBtn');
+        const resetDemoBtn = document.getElementById('resetDemoBtn');
+        const statusDisplayEl = document.getElementById('statusDisplay');
+        const langEnBtn = document.getElementById('langEnBtn');
+        const langFrBtn = document.getElementById('langFrBtn');
+
+        function updateUIText() {
+            document.documentElement.lang = currentLanguage; 
+            document.title = uiStrings[currentLanguage].docTitle;
+            mainTitleEl.textContent = uiStrings[currentLanguage].mainTitle;
+            runDemoBtn.textContent = uiStrings[currentLanguage].runDemo;
+            stopDemoBtn.textContent = uiStrings[currentLanguage].stopDemo;
+            prevStepBtn.textContent = uiStrings[currentLanguage].prevStep;
+            nextStepBtn.textContent = uiStrings[currentLanguage].nextStep;
+            resetDemoBtn.textContent = uiStrings[currentLanguage].resetDemo;
+            
+            if (demoInterval) {
+                statusDisplayEl.textContent = uiStrings[currentLanguage].statusRunning;
+            } else if (currentStepIndex === steps.length - 1 && !runDemoBtn.disabled) {
+                 statusDisplayEl.textContent = uiStrings[currentLanguage].statusCompleted;
+            } else {
+                const otherLang = currentLanguage === 'en' ? 'fr' : 'en';
+                if (statusDisplayEl.textContent.includes(uiStrings[otherLang].statusReset.split(':')[1].trim()) ||
+                    statusDisplayEl.textContent.includes(uiStrings[otherLang].statusIdle.split(':')[1].trim()) ||
+                    (currentStepIndex === 0 && !demoInterval)) {
+                     statusDisplayEl.textContent = uiStrings[currentLanguage].statusIdle;
+                } else if (statusDisplayEl.textContent.includes(uiStrings[otherLang].statusStopped.split(':')[1].trim())) {
+                    statusDisplayEl.textContent = uiStrings[currentLanguage].statusStopped;
+                } else if (statusDisplayEl.textContent.includes(uiStrings[otherLang].statusCompleted.split(':')[1].trim())) {
+                    statusDisplayEl.textContent = uiStrings[currentLanguage].statusCompleted;
+                } else {
+                    statusDisplayEl.textContent = uiStrings[currentLanguage].statusIdle;
+                }
+            }
+
+            langEnBtn.setAttribute('aria-pressed', currentLanguage === 'en');
+            langFrBtn.setAttribute('aria-pressed', currentLanguage === 'fr');
+            langEnBtn.classList.toggle('active', currentLanguage === 'en');
+            langFrBtn.classList.toggle('active', currentLanguage === 'fr');
+
+            initializeProgressIndicator();
+            displayStepContent(currentStepIndex);
+        }
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            updateUIText();
+        }
+
+        function initializeProgressIndicator() {
+            progressIndicatorEl.innerHTML = '';
+            steps.forEach((step, index) => {
+                const stepButton = document.createElement('button');
+                stepButton.classList.add('step-indicator-btn');
+                const indicatorTitleText = step.title[currentLanguage].split(" ")[1] || `${uiStrings[currentLanguage].stepIndicatorPrefix} ${step.id}`;
+                stepButton.textContent = indicatorTitleText;
+                stepButton.setAttribute('aria-label', `${uiStrings[currentLanguage].stepLabelPrefix} ${step.id}: ${step.title[currentLanguage]}`);
+                stepButton.setAttribute('role', 'tab');
+                stepButton.setAttribute('aria-selected', 'false');
+                stepButton.dataset.index = index;
+                stepButton.onclick = () => {
+                    if (demoInterval) stopDemo(false);
+                    goToStep(index);
+                    if (!demoInterval) statusDisplayEl.textContent = uiStrings[currentLanguage].statusIdle;
+                };
+                progressIndicatorEl.appendChild(stepButton);
+            });
+            updateProgressIndicator();
+        }
+
+        function updateProgressIndicator() {
+            const indicators = progressIndicatorEl.querySelectorAll('.step-indicator-btn');
+            indicators.forEach((indicator, index) => {
+                indicator.classList.remove('active', 'completed');
+                indicator.setAttribute('aria-selected', 'false');
+                indicator.removeAttribute('aria-current'); 
+                if (index < currentStepIndex) {
+                    indicator.classList.add('completed');
+                } else if (index === currentStepIndex) {
+                    indicator.classList.add('active');
+                    indicator.setAttribute('aria-selected', 'true');
+                    indicator.setAttribute('aria-current', 'step');
+                }
+            });
+        }
+        
+        function displayStepContent(stepIndex) {
+            const step = steps[stepIndex];
+            contentDisplayEl.innerHTML = `
+                <div class="fade-in" role="tabpanel" id="step-panel-${step.id}" aria-labelledby="step-btn-${step.id}">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">${step.title[currentLanguage]}</h2>
+                    <p class="text-6xl sm:text-7xl text-center my-4 sm:my-6" aria-hidden="true">${step.visualEmoji || '🔄'}</p>
+                    <p class="text-gray-700 mb-4 text-sm sm:text-base leading-relaxed">${step.description[currentLanguage]}</p>
+                    <div>
+                        <h3 class="text-sm sm:text-md font-semibold text-gray-700 mb-2 mt-4">${uiStrings[currentLanguage].keyPrimitives}</h3>
+                        <div class="flex flex-wrap gap-1">
+                            ${step.primitives.map(p => `<span class="primitive-tag">${p[currentLanguage]}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            const currentIndicatorButton = progressIndicatorEl.querySelector(`.step-indicator-btn[data-index="${stepIndex}"]`);
+            if(currentIndicatorButton) {
+                currentIndicatorButton.id = `step-btn-${step.id}`;
+            }
+
+            updateButtonStates();
+            updateProgressIndicator();
+        }
+
+        function updateButtonStates() {
+            prevStepBtn.disabled = currentStepIndex === 0;
+            nextStepBtn.disabled = currentStepIndex === steps.length - 1;
+            runDemoBtn.disabled = demoInterval !== null || currentStepIndex === steps.length - 1;
+            stopDemoBtn.disabled = demoInterval === null;
+        }
+
+        function goToStep(stepIndex) {
+            currentStepIndex = stepIndex;
+            displayStepContent(currentStepIndex);
+        }
+
+        function nextStep(isDemoRun = false) {
+            if (currentStepIndex < steps.length - 1) {
+                currentStepIndex++;
+                displayStepContent(currentStepIndex);
+            } else if (demoInterval) {
+                stopDemo();
+                statusDisplayEl.textContent = uiStrings[currentLanguage].statusCompleted;
+            }
+            if (!isDemoRun && demoInterval) {
+                stopDemo();
+            }
+        }
+
+        function prevStep() {
+            if (demoInterval) {
+                stopDemo();
+            }
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                displayStepContent(currentStepIndex);
+            }
+        }
+
+        function runDemo() {
+            if (demoInterval) return; 
+            
+            if (currentStepIndex === steps.length - 1) {
+                resetDemo(false);
+            }
+
+            statusDisplayEl.textContent = uiStrings[currentLanguage].statusRunning;
+            demoInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    nextStep(true);
+                } else {
+                    stopDemo();
+                    statusDisplayEl.textContent = uiStrings[currentLanguage].statusCompleted;
+                }
+            }, 4000);
+            updateButtonStates();
+        }
+
+        function stopDemo(updateStatus = true) {
+            clearInterval(demoInterval);
+            demoInterval = null;
+            if (updateStatus) {
+                statusDisplayEl.textContent = uiStrings[currentLanguage].statusStopped;
+            }
+            updateButtonStates();
+        }
+
+        function resetDemo(updateStatus = true) {
+            stopDemo(false);
+            currentStepIndex = 0;
+            displayStepContent(currentStepIndex);
+            if (updateStatus) {
+                statusDisplayEl.textContent = uiStrings[currentLanguage].statusReset;
+            }
+            updateButtonStates();
+        }
+
+        // Event Listeners
+        langEnBtn.addEventListener('click', () => setLanguage('en'));
+        langFrBtn.addEventListener('click', () => setLanguage('fr'));
+        runDemoBtn.addEventListener('click', runDemo);
+        stopDemoBtn.addEventListener('click', stopDemo);
+        prevStepBtn.addEventListener('click', prevStep);
+        nextStepBtn.addEventListener('click', () => nextStep(false));
+        resetDemoBtn.addEventListener('click', resetDemo);
+
+        // Initial Setup
+        setLanguage(currentLanguage);
+    </script>
+
+</body>
+</html>
