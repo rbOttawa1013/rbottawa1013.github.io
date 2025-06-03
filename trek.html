@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Trek: The Text Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        /* Custom styles to override or extend Tailwind */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter as specified */
+            background-color: #0d1117; /* Dark background for a space theme */
+            color: #c9d1d9; /* Light text for contrast */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            background-color: #161b22; /* Slightly lighter dark background for the container */
+            border: 2px solid #30363d;
+            border-radius: 0.75rem; /* Rounded corners */
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 800px; /* Max width for desktop */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .game-output {
+            background-color: #010409; /* Even darker for the console output */
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            height: 400px; /* Fixed height for output, with scroll */
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace; /* Monospace font for console feel */
+            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+            line-height: 1.2;
+            font-size: 0.9rem;
+            color: #39ff14; /* Default neon green text */
+        }
+
+        /* Color-coded message types */
+        .game-output .info { color: #39ff14; } /* Neon green */
+        .game-output .warning { color: #ffcc00; } /* Yellow/Orange */
+        .game-output .error { color: #ff3333; } /* Red */
+        .game-output .critical { color: #ff0000; font-weight: bold; } /* Brighter Red, bold */
+        .game-output .status-msg { color: #00bfff; } /* Light blue */
+        .game-output .hint-msg { color: #9933ff; } /* Purple */
+
+        .game-status {
+            background-color: #010409;
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+            color: #00bfff; /* Light blue for status */
+            font-size: 0.85rem;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .command-input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            background-color: #21262d; /* Dark input background */
+            color: #c9d1d9;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .command-input:focus {
+            border-color: #58a6ff; /* Blue border on focus */
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+        }
+
+        .game-button {
+            padding: 0.75rem 1.25rem;
+            background-color: #238636; /* Green for action buttons */
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-button:hover:not(:disabled) {
+            background-color: #2ea043;
+            transform: translateY(-1px);
+        }
+
+        .game-button:active:not(:disabled) {
+            background-color: #1f6f2f;
+            transform: translateY(0);
+        }
+
+        .game-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .new-game-button {
+            background-color: #a30000; /* Red for new game/danger */
+        }
+
+        .new-game-button:hover:not(:disabled) {
+            background-color: #cc0000;
+        }
+
+        .new-game-button:active:not(:disabled) {
+            background-color: #820000;
+        }
+
+        .hint-button {
+            background-color: #007bff; /* Blue for hint button */
+        }
+
+        .hint-button:hover:not(:disabled) {
+            background-color: #0069d9;
+        }
+
+        .hint-button:active:not(:disabled) {
+            background-color: #005cbf;
+        }
+
+        .sound-toggle-button {
+            background-color: #6a0dad; /* Purple for sound toggle */
+        }
+
+        .sound-toggle-button:hover:not(:disabled) {
+            background-color: #5a0a9d;
+        }
+
+        .sound-toggle-button:active:not(:disabled) {
+            background-color: #4a088d;
+        }
+
+        /* M5 Automation Indicator */
+        #m5Status {
+            color: #ffcc00; /* Yellow/Orange for automation status */
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 0.5rem;
+            display: none; /* Hidden by default */
+        }
+
+        /* Custom Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+        }
+
+        .modal-content {
+            background-color: #161b22;
+            border: 2px solid #30363d;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            color: #c9d1d9;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1rem;
+                border-radius: 0.5rem;
+            }
+            .game-output {
+                height: 300px; /* Shorter on small screens */
+                font-size: 0.8rem;
+            }
+            .game-status {
+                font-size: 0.75rem;
+            }
+            .input-area {
+                flex-direction: column;
+            }
+            .game-button {
+                width: 100%;
+            }
+            .flex-col-sm-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-2xl font-bold text-center text-white mb-4">STAR TREK</h1>
+        <div id="gameOutput" class="game-output"></div>
+        <div id="gameStatus" class="game-status"></div>
+        <div class="input-area">
+            <input type="text" id="commandInput" class="command-input" placeholder="Enter command (e.g., NAV 5 3)">
+            <button id="submitCommand" class="game-button">Submit</button>
+        </div>
+        <div id="m5Status" style="display: none;"></div> <div class="flex flex-col sm:flex-row gap-2 flex-col-sm-row">
+            <button id="hintButton" class="game-button hint-button w-full sm:w-1/3">Get Hint</button>
+            <button id="soundToggleButton" class="game-button sound-toggle-button w-full sm:w-1/3">Toggle Sound: ON</button>
+            <button id="newGameButton" class="game-button new-game-button w-full sm:w-1/3">New Game</button>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="modal-overlay">
+        <div class="modal-content">
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button id="modalConfirmBtn" class="game-button">Yes</button>
+                <button id="modalCancelBtn" class="game-button new-game-button">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Constants for game configuration
+        const GALAXY_SIZE = 8; // 8x8 quadrants
+        const QUADRANT_SIZE = 8; // 8x8 sectors per quadrant
+        const INITIAL_KLINGONS = 15;
+        const INITIAL_STARBASES = 3;
+        const INITIAL_ENERGY = 3000;
+        const INITIAL_TORPEDOES = 10;
+        const INITIAL_SHIELDS = 1000;
+        const MAX_TURNS = 30;
+
+        // Game state variables
+        let galaxy = []; // 2D array of quadrants
+        let enterprise = {}; // Player ship object
+        let gameTurn = 0;
+        let klingonsRemaining = 0;
+        let starbasesRemaining = 0;
+        let gameOver = false;
+        let soundEnabled = true; // Global sound toggle
+
+        // Command history variables
+        let commandHistory = [];
+        let historyIndex = -1; // -1 means no history item selected
+
+        // Tone.js Synths for sound effects
+        let torpedoSynth;
+        let klingonAttackSynth;
+        let navSynth;
+        let dockSynth;
+
+        // DOM elements
+        const gameOutput = document.getElementById('gameOutput');
+        const gameStatus = document.getElementById('gameStatus');
+        const commandInput = document.getElementById('commandInput');
+        const submitCommand = document.getElementById('submitCommand');
+        const newGameButton = document.getElementById('newGameButton');
+        const hintButton = document.getElementById('hintButton');
+        const soundToggleButton = document.getElementById('soundToggleButton');
+        const m5Status = document.getElementById('m5Status'); // M5 automation status indicator
+
+        // Modal elements
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+        /**
+         * Appends text to the game output area and scrolls to the bottom.
+         * @param {string} text - The text to display.
+         * @param {string} type - The type of message ('info', 'warning', 'error', 'critical', 'status-msg', 'hint-msg').
+         */
+        function displayText(text, type = 'info') {
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = text;
+            gameOutput.appendChild(span);
+            gameOutput.innerHTML += '\n'; // Add newline after the span
+            gameOutput.scrollTop = gameOutput.scrollHeight; // Scroll to bottom
+        }
+
+        /**
+         * Updates the game status display.
+         */
+        function updateStatus() {
+            const energyPercent = ((enterprise.energy / INITIAL_ENERGY) * 100).toFixed(0);
+            const torpedoesPercent = ((enterprise.torpedoes / INITIAL_TORPEDOES) * 100).toFixed(0);
+            const shieldsPercent = ((enterprise.shields / (INITIAL_SHIELDS * 2)) * 100).toFixed(0); // Max shields can be double initial
+
+            let damagedSystemsText = "All systems nominal.";
+            if (enterprise.damagedSystems.length > 0) {
+                damagedSystemsText = `Damaged: ${enterprise.damagedSystems.map(s => s.toUpperCase()).join(', ')}`;
+            }
+
+            gameStatus.innerHTML = `
+                TURN: ${gameTurn} / ${MAX_TURNS}<br>
+                ENERGY: ${enterprise.energy} / ${INITIAL_ENERGY} (${energyPercent}%)<br>
+                TORPEDOES: ${enterprise.torpedoes} / ${INITIAL_TORPEDOES} (${torpedoesPercent}%)<br>
+                SHIELDS: ${enterprise.shields} / ${INITIAL_SHIELDS * 2} (${shieldsPercent}%)<br>
+                KLINGONS: ${klingonsRemaining}<br>
+                STARBASES: ${starbasesRemaining}<br>
+                POSITION: Q(${enterprise.quadrantX},${enterprise.quadrantY}) S(${enterprise.sectorX},${enterprise.sectorY})<br>
+                SYSTEMS: ${damagedSystemsText}
+            `;
+        }
+
+        /**
+         * Generates a random integer between min (inclusive) and max (exclusive).
+         * @param {number} min - The minimum value.
+         * @param {number} max - The maximum value.
+         * @returns {number} A random integer.
+         */
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min)) + min;
+        }
+
+        /**
+         * Calculates the Euclidean distance between two points.
+         * @param {number} x1 - X coordinate of point 1.
+         * @param {number} y1 - Y coordinate of point 1.
+         * @param {number} x2 - X coordinate of point 2.
+         * @param {number} y2 - Y coordinate of point 2.
+         * @returns {number} The distance.
+         */
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        /**
+         * Initializes Tone.js synths for sound effects.
+         */
+        function initSound() {
+            // Torpedo sound: short, sharp tone
+            torpedoSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 0.0,
+                    release: 0.1
+                }
+            }).toDestination();
+
+            // Klingon attack sound: harsh, low tone
+            klingonAttackSynth = new Tone.Synth({
+                oscillator: { type: "sawtooth" },
+                envelope: {
+                    attack: 0.05,
+                    decay: 0.3,
+                    sustain: 0.1,
+                    release: 0.5
+                }
+            }).toDestination();
+
+            // Navigation sound: short, rising tone
+            navSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: {
+                    attack: 0.02,
+                    decay: 0.2,
+                    sustain: 0.0,
+                    release: 0.2
+                }
+            }).toDestination();
+
+            // Docking sound: gentle, sustained tone
+            dockSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 0.1,
+                    decay: 0.5,
+                    sustain: 0.2,
+                    release: 0.8
+                }
+            }).toDestination();
+        }
+
+        /**
+         * Plays a sound effect if sound is enabled.
+         * @param {Tone.Synth} synth - The Tone.js synth to play.
+         * @param {string} note - The musical note (e.g., "C4").
+         * @param {string} duration - The duration (e.g., "8n" for eighth note).
+         */
+        function playSound(synth, note, duration) {
+            if (soundEnabled) {
+                // Ensure Tone.js context is running (required for first interaction)
+                Tone.start();
+                synth.triggerAttackRelease(note, duration);
+            }
+        }
+
+        /**
+         * Toggles sound effects on/off.
+         */
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggleButton.textContent = `Toggle Sound: ${soundEnabled ? 'ON' : 'OFF'}`;
+            displayText(`Sound effects are now ${soundEnabled ? 'ON' : 'OFF'}.`, 'status-msg');
+        }
+
+        /**
+         * Displays a custom confirmation modal.
+         * @param {string} message - The message to display in the modal.
+         * @param {function} onConfirm - Callback function if user confirms.
+         * @param {function} onCancel - Callback function if user cancels.
+         */
+        function showConfirmationModal(message, onConfirm, onCancel) {
+            modalMessage.textContent = message;
+            confirmationModal.style.display = 'flex';
+
+            const confirmHandler = () => {
+                hideConfirmationModal();
+                onConfirm();
+            };
+            const cancelHandler = () => {
+                hideConfirmationModal();
+                onCancel();
+            };
+
+            modalConfirmBtn.addEventListener('click', confirmHandler, { once: true });
+            modalCancelBtn.addEventListener('click', cancelHandler, { once: true });
+        }
+
+        /**
+         * Hides the custom confirmation modal.
+         */
+        function hideConfirmationModal() {
+            confirmationModal.style.display = 'none';
+        }
+
+        /**
+         * Initializes a new game.
+         */
+        function newGame() {
+            // Reset game state
+            galaxy = [];
+            gameTurn = 1;
+            klingonsRemaining = INITIAL_KLINGONS;
+            starbasesRemaining = INITIAL_STARBASES;
+            gameOver = false;
+            gameOutput.innerHTML = ''; // Clear previous output
+            commandHistory = []; // Clear command history for new game
+            historyIndex = -1;
+
+            // Enable inputs and buttons
+            commandInput.disabled = false;
+            submitCommand.disabled = false;
+            hintButton.disabled = false;
+            soundToggleButton.disabled = false;
+            newGameButton.disabled = false; // Ensure it's enabled after a new game starts
+
+            // Initialize galaxy quadrants
+            for (let qx = 0; qx < GALAXY_SIZE; qx++) {
+                galaxy[qx] = [];
+                for (let qy = 0; qy < GALAXY_SIZE; qy++) {
+                    galaxy[qx][qy] = {
+                        klingons: 0,
+                        starbase: false,
+                        stars: getRandomInt(1, 6) // 1 to 5 stars per quadrant
+                    };
+                }
+            }
+
+            // Place Klingons
+            let placedKlingons = 0;
+            while (placedKlingons < INITIAL_KLINGONS) {
+                const qx = getRandomInt(0, GALAXY_SIZE);
+                const qy = getRandomInt(0, GALAXY_SIZE);
+                if (galaxy[qx][qy].klingons < 3) { // Max 3 Klingons per quadrant
+                    galaxy[qx][qy].klingons++;
+                    placedKlingons++;
+                }
+            }
+
+            // Place Starbases
+            let placedStarbases = 0;
+            while (placedStarbases < INITIAL_STARBASES) {
+                const qx = getRandomInt(0, GALAXY_SIZE);
+                const qy = getRandomInt(0, GALAXY_SIZE);
+                if (!galaxy[qx][qy].starbase) {
+                    galaxy[qx][qy].starbase = true;
+                    placedStarbases++;
+                }
+            }
+
+            // Place Enterprise
+            enterprise = {
+                quadrantX: getRandomInt(0, GALAXY_SIZE),
+                quadrantY: getRandomInt(0, GALAXY_SIZE),
+                sectorX: getRandomInt(0, QUADRANT_SIZE),
+                sectorY: getRandomInt(0, QUADRANT_SIZE),
+                energy: INITIAL_ENERGY,
+                torpedoes: INITIAL_TORPEDOES,
+                shields: INITIAL_SHIELDS,
+                damagedSystems: [] // e.g., ['shields', 'weapons']
+            };
+
+            displayText("--- STAR TREK: THE TEXT GAME ---", 'info');
+            displayText("Welcome, Captain! Your mission: seek out and destroy all Klingon vessels.", 'info');
+            displayText(`You have ${MAX_TURNS} turns to eliminate ${INITIAL_KLINGONS} Klingons.`, 'info');
+            displayText("Type 'HELP' for a list of commands.", 'info');
+            displayText("Good luck, Captain!", 'info');
+            displayText("");
+
+            updateStatus();
+            shortRangeScan(); // Initial scan
+            commandInput.focus(); // Focus input for quick start
+        }
+
+        /**
+         * Displays the current quadrant grid (short-range scan).
+         */
+        function shortRangeScan() {
+            const currentQuadrant = galaxy[enterprise.quadrantX][enterprise.quadrantY];
+            displayText(`--- SHORT RANGE SCAN (Quadrant ${enterprise.quadrantX},${enterprise.quadrantY}) ---`, 'status-msg');
+
+            let sectorGrid = Array(QUADRANT_SIZE).fill(null).map(() => Array(QUADRANT_SIZE).fill('.'));
+
+            // Place Enterprise
+            sectorGrid[enterprise.sectorY][enterprise.sectorX] = 'E';
+
+            // Place Klingons in current quadrant
+            let klingonsInQuadrant = [];
+            if (currentQuadrant.klingons > 0) {
+                let placed = 0;
+                while (placed < currentQuadrant.klingons) {
+                    const sx = getRandomInt(0, QUADRANT_SIZE);
+                    const sy = getRandomInt(0, QUADRANT_SIZE);
+                    if (sectorGrid[sy][sx] === '.') { // Only place if empty
+                        sectorGrid[sy][sx] = 'K';
+                        klingonsInQuadrant.push({ x: sx, y: sy }); // Store Klingon positions
+                        placed++;
+                    }
+                }
+            }
+            // Temporarily store Klingon positions for current quadrant for FIRE command
+            enterprise.klingonPositions = klingonsInQuadrant;
+
+            // Place Starbase
+            if (currentQuadrant.starbase) {
+                let placed = false;
+                while (!placed) {
+                    const sx = getRandomInt(0, QUADRANT_SIZE);
+                    const sy = getRandomInt(0, QUADRANT_SIZE);
+                    if (sectorGrid[sy][sx] === '.') {
+                        sectorGrid[sy][sx] = 'B';
+                        placed = true;
+                    }
+                }
+            }
+
+            // Place Stars
+            let placedStars = 0;
+            while (placedStars < currentQuadrant.stars) {
+                const sx = getRandomInt(0, QUADRANT_SIZE);
+                const sy = getRandomInt(0, QUADRANT_SIZE);
+                if (sectorGrid[sy][sx] === '.') {
+                    sectorGrid[sy][sx] = '*';
+                    placedStars++;
+                }
+            }
+
+            // Print column headers (SX coordinates)
+            let header = "SY\\SX "; // Space for Y-axis numbers and label
+            for (let x = 0; x < QUADRANT_SIZE; x++) {
+                header += `${x} `;
+            }
+            displayText(header, 'status-msg');
+
+            // Print the grid with row headers (SY coordinates)
+            for (let y = 0; y < QUADRANT_SIZE; y++) {
+                displayText(`${y}    ${sectorGrid[y].join(' ')}`, 'status-msg');
+            }
+            displayText(`Klingons in quadrant: ${currentQuadrant.klingons}`, 'status-msg');
+            displayText(`Starbase in quadrant: ${currentQuadrant.starbase ? 'YES' : 'NO'}`, 'status-msg');
+            displayText("");
+        }
+
+        /**
+         * Displays information about surrounding quadrants (long-range scan).
+         */
+        function longRangeScan() {
+            displayText("--- LONG RANGE SCAN ---", 'status-msg');
+            displayText("Quadrant (Klingons, Starbases, Stars)", 'status-msg');
+            for (let qy = enterprise.quadrantY - 1; qy <= enterprise.quadrantY + 1; qy++) {
+                let row = "";
+                for (let qx = enterprise.quadrantX - 1; qx <= enterprise.quadrantX + 1; qx++) {
+                    if (qx >= 0 && qx < GALAXY_SIZE && qy >= 0 && qy < GALAXY_SIZE) {
+                        const q = galaxy[qx][qy];
+                        row += `[${qx},${qy}: ${q.klingons}${q.starbase ? 'B' : ''}${q.stars}] `;
+                    } else {
+                        row += "[     VOID     ] ";
+                    }
+                }
+                displayText(row, 'status-msg');
+            }
+            displayText("");
+        }
+
+        /**
+         * Handles Enterprise movement.
+         * @param {number} targetQx - Target quadrant X.
+         * @param {number} targetQy - Target quadrant Y.
+         * @param {number} targetSx - Target sector X.
+         * @param {number} targetSy - Target sector Y.
+         */
+        function navigate(targetQx, targetQy, targetSx, targetSy) {
+            if (gameOver) return;
+
+            // Validate coordinates
+            if (targetQx < 0 || targetQx >= GALAXY_SIZE ||
+                targetQy < 0 || targetQy >= GALAXY_SIZE ||
+                targetSx < 0 || targetSx >= QUADRANT_SIZE ||
+                targetSy < 0 || targetSy >= QUADRANT_SIZE) {
+                displayText("Invalid navigation coordinates.", 'error');
+                return;
+            }
+
+            const oldQx = enterprise.quadrantX;
+            const oldQy = enterprise.quadrantY;
+
+            // Calculate energy cost for quadrant jump
+            let energyCost = 0;
+            if (targetQx !== oldQx || targetQy !== oldQy) {
+                energyCost = Math.ceil(distance(oldQx, oldQy, targetQx, targetQy) * 100); // Cost per quadrant jump
+            }
+            // Add cost for sector movement
+            energyCost += Math.ceil(distance(enterprise.sectorX, enterprise.sectorY, targetSx, targetSy) * 10); // Cost per sector move
+
+            if (enterprise.energy < energyCost) {
+                displayText(`Insufficient energy for navigation. Need ${energyCost}, have ${enterprise.energy}.`, 'warning');
+                return;
+            }
+
+            enterprise.energy -= energyCost;
+            enterprise.quadrantX = targetQx;
+            enterprise.quadrantY = targetQy;
+            enterprise.sectorX = targetSx;
+            enterprise.sectorY = targetSy;
+
+            displayText(`Navigating to Q(${targetQx},${targetQy}) S(${targetSx},${targetSy}). Energy consumed: ${energyCost}.`, 'info');
+            playSound(navSynth, "C4", "8n"); // Play navigation sound
+            shortRangeScan();
+            klingonTurn();
+            endTurn();
+        }
+
+        /**
+         * Fires a photon torpedo.
+         * @param {number} targetSx - Target sector X.
+         * @param {number} targetSy - Target sector Y.
+         */
+        function fireTorpedoes(targetSx, targetSy) {
+            if (gameOver) return;
+
+            if (enterprise.torpedoes <= 0) {
+                displayText("No photon torpedoes remaining!", 'warning');
+                return;
+            }
+            if (enterprise.damagedSystems.includes('weapons')) {
+                displayText("Weapons systems are damaged! Cannot fire torpedoes.", 'error');
+                return;
+            }
+
+            enterprise.torpedoes--;
+            displayText(`Firing photon torpedo at S(${targetSx},${targetSy}).`, 'info');
+            playSound(torpedoSynth, "E4", "16n"); // Play torpedo sound
+
+            const currentQuadrant = galaxy[enterprise.quadrantX][enterprise.quadrantY];
+            let hitKlingon = false;
+
+            // Check if a Klingon is at the target sector
+            // This is a simplified check. In a real game, Klingon positions would be persistent.
+            // For this text game, we'll check against the positions generated for the current SRS.
+            if (enterprise.klingonPositions) {
+                for (let i = 0; i < enterprise.klingonPositions.length; i++) {
+                    const klingon = enterprise.klingonPositions[i];
+                    if (klingon.x === targetSx && klingon.y === targetSy) {
+                        displayText("Direct hit on a Klingon vessel!", 'info');
+                        currentQuadrant.klingons--;
+                        klingonsRemaining--;
+                        hitKlingon = true;
+                        displayText("Klingon vessel destroyed!", 'success');
+                        break;
+                    }
+                }
+            }
+
+            if (!hitKlingon) {
+                displayText("Torpedo missed its target.", 'warning');
+            }
+
+            klingonTurn();
+            endTurn();
+        }
+
+        /**
+         * Adjusts shield energy.
+         * @param {number} amount - Amount to transfer to shields from energy.
+         */
+        function adjustShields(amount) {
+            if (gameOver) return;
+
+            if (amount < 0) {
+                displayText("Cannot transfer negative energy to shields.", 'error');
+                return;
+            }
+            if (enterprise.energy < amount) {
+                displayText(`Insufficient energy to transfer ${amount} to shields. Have ${enterprise.energy}.`, 'warning');
+                return;
+            }
+            if (enterprise.shields + amount > INITIAL_SHIELDS * 2) { // Max shields can be double initial
+                displayText("Shields cannot hold that much energy.", 'warning');
+                return;
+            }
+            if (enterprise.damagedSystems.includes('shields')) {
+                displayText("Shield systems are damaged! Cannot adjust shields.", 'error');
+                return;
+            }
+
+            enterprise.energy -= amount;
+            enterprise.shields += amount;
+            displayText(`Transferred ${amount} energy to shields. Shields now at ${enterprise.shields}.`, 'info');
+            endTurn(); // Adjusting shields is an action, ends turn
+        }
+
+        /**
+         * Docks at a starbase if one is present in the current quadrant.
+         */
+        function dockAtStarbase() {
+            if (gameOver) return;
+
+            const currentQuadrant = galaxy[enterprise.quadrantX][enterprise.quadrantY];
+            if (!currentQuadrant.starbase) {
+                displayText("No starbase in this quadrant to dock with.", 'warning');
+                return;
+            }
+
+            // Check if Enterprise is in the same sector as the starbase (simplified for this game)
+            // For this simple version, just being in the quadrant is enough to dock.
+            // In a more complex game, you'd need to navigate to the starbase's sector.
+            displayText("Docking at starbase...", 'info');
+            playSound(dockSynth, "G4", "2n"); // Play docking sound
+            enterprise.energy = INITIAL_ENERGY;
+            enterprise.torpedoes = INITIAL_TORPEDOES;
+            enterprise.shields = INITIAL_SHIELDS;
+            enterprise.damagedSystems = []; // Repair all systems
+            displayText("Repairs complete, energy and torpedoes replenished!", 'success');
+            endTurn(); // Docking ends turn
+        }
+
+        /**
+         * Simulates Klingon movement and attack.
+         */
+        function klingonTurn() {
+            if (gameOver) return;
+
+            const currentQuadrant = galaxy[enterprise.quadrantX][enterprise.quadrantY];
+            if (currentQuadrant.klingons > 0) {
+                displayText("Klingons attacking!", 'critical');
+                playSound(klingonAttackSynth, "C3", "4n"); // Play Klingon attack sound
+                // Simplified Klingon attack: each Klingon deals random damage
+                const damagePerKlingon = getRandomInt(50, 150);
+                const totalDamage = currentQuadrant.klingons * damagePerKlingon;
+
+                if (enterprise.shields >= totalDamage) {
+                    enterprise.shields -= totalDamage;
+                    displayText(`Shields absorb ${totalDamage} damage. Shields remaining: ${enterprise.shields}.`, 'warning');
+                } else {
+                    let remainingDamage = totalDamage - enterprise.shields;
+                    enterprise.shields = 0;
+                    displayText(`Shields collapsed! ${remainingDamage} damage taken to hull.`, 'critical');
+                    enterprise.energy -= remainingDamage; // Hull damage reduces energy
+
+                    // Randomly damage a system
+                    const systems = ['shields', 'weapons', 'navigation'];
+                    const damagedSystem = systems[getRandomInt(0, systems.length)];
+                    if (!enterprise.damagedSystems.includes(damagedSystem)) {
+                        enterprise.damagedSystems.push(damagedSystem);
+                        displayText(`WARNING: ${damagedSystem.toUpperCase()} system DAMAGED!`, 'critical');
+                    }
+                }
+
+                if (enterprise.energy <= 0) {
+                    displayText("Enterprise destroyed! Game Over.", 'critical');
+                    gameOver = true;
+                }
+            }
+        }
+
+        /**
+         * Ends the current turn, checks for game over conditions.
+         */
+        function endTurn() {
+            if (gameOver) {
+                commandInput.disabled = true;
+                submitCommand.disabled = true;
+                hintButton.disabled = true;
+                soundToggleButton.disabled = true;
+                newGameButton.disabled = false;
+                displayText("GAME OVER. Press 'New Game' to play again.", 'critical');
+                return;
+            }
+
+            gameTurn++;
+            updateStatus();
+
+            if (klingonsRemaining <= 0) {
+                displayText("Congratulations, Captain! All Klingon vessels destroyed!", 'success');
+                displayText("You have saved the Federation!", 'success');
+                gameOver = true;
+            } else if (gameTurn > MAX_TURNS) {
+                displayText("Time has run out! The Klingons have overwhelmed the Federation.", 'critical');
+                displayText("Game Over.", 'critical');
+                gameOver = true;
+            }
+
+            if (gameOver) {
+                commandInput.disabled = true;
+                submitCommand.disabled = true;
+                hintButton.disabled = true; // Disable hint button on game over
+                soundToggleButton.disabled = true; // Disable sound toggle on game over
+                newGameButton.disabled = false; // Enable new game button
+                displayText("GAME OVER. Press 'New Game' to play again.", 'critical');
+            } else {
+                displayText("--- END OF TURN ---", 'status-msg');
+            }
+        }
+
+        /**
+         * Helper to calculate the value of a quadrant for strategic navigation.
+         * This function attempts to simulate a 'look-ahead' by scoring potential destinations.
+         * @param {number} qx - Quadrant X coordinate.
+         * @param {number} qy - Quadrant Y coordinate.
+         * @param {number} currentEnergy - Current energy of the Enterprise.
+         * @param {number} currentShields - Current shields of the Enterprise.
+         * @param {number} currentTorpedoes - Current torpedoes of the Enterprise.
+         * @param {Array<string>} damagedSystems - Array of damaged systems.
+         * @returns {number} A score representing the desirability of the quadrant.
+         */
+        function calculateQuadrantValue(qx, qy, currentEnergy, currentShields, currentTorpedoes, damagedSystems) {
+            const q = galaxy[qx][qy];
+            let score = 0;
+
+            // Base value for Klingons (higher value for more Klingons)
+            score += q.klingons * 200; // Value for each Klingon
+
+            // Value for a Starbase (higher if ship needs repair)
+            if (q.starbase) {
+                let repairNeed = 0;
+                // Calculate how much repair is needed
+                if (currentEnergy < INITIAL_ENERGY) repairNeed += (INITIAL_ENERGY - currentEnergy) / 10;
+                if (currentTorpedoes < INITIAL_TORPEDOES) repairNeed += (INITIAL_TORPEDOES - currentTorpedoes) * 50;
+                if (currentShields < INITIAL_SHIELDS) repairNeed += (INITIAL_SHIELDS - currentShields) / 5;
+                repairNeed += damagedSystems.length * 300; // High value for repairing damaged systems
+
+                score += repairNeed > 0 ? 500 + repairNeed : 100; // Base value for starbase, much higher if needed
+            }
+
+            // Penalize for distance (energy cost)
+            const travelEnergyCost = Math.ceil(distance(enterprise.quadrantX, enterprise.quadrantY, qx, qy) * 100);
+            score -= travelEnergyCost; // Subtract energy cost from score
+
+            // Heavily penalize if travel energy cost is too high for current energy
+            if (currentEnergy < travelEnergyCost) {
+                score -= 10000; // Make unaffordable moves very undesirable
+            }
+
+            return score;
+        }
+
+        /**
+         * Determines and returns a hint for the best next command.
+         * This function implements a more sophisticated "look-ahead" heuristic.
+         * @returns {string} The suggested command or an empty string if no specific hint.
+         */
+        function getHint() {
+            if (gameOver) {
+                return ""; // No hint if game is over
+            }
+
+            const currentQuadrant = galaxy[enterprise.quadrantX][enterprise.quadrantY];
+            const currentEnergy = enterprise.energy;
+            const currentShields = enterprise.shields;
+            const currentTorpedoes = enterprise.torpedoes;
+            const damagedSystems = enterprise.damagedSystems;
+
+            // --- IMMEDIATE THREATS / NEEDS IN CURRENT QUADRANT ---
+
+            // 1. Prioritize raising shields if critically low and Klingons are present
+            if (currentQuadrant.klingons > 0 && currentShields < INITIAL_SHIELDS * 0.3 && currentEnergy > 200 && !damagedSystems.includes('shields')) {
+                const amountToTransfer = Math.min(INITIAL_SHIELDS - currentShields, currentEnergy);
+                if (amountToTransfer > 0) {
+                    displayText("HINT: Shields are critically low and Klingons are attacking! Raise shields.", 'hint-msg');
+                    return `SHIELDS ${amountToTransfer}`;
+                }
+            }
+
+            // 2. Prioritize attacking Klingons in current quadrant
+            if (currentQuadrant.klingons > 0 && currentTorpedoes > 0 && !damagedSystems.includes('weapons')) {
+                if (enterprise.klingonPositions && enterprise.klingonPositions.length > 0) {
+                    const klingon = enterprise.klingonPositions[0]; // Target first detected Klingon
+                    displayText("HINT: Klingons detected! Fire a torpedo.", 'hint-msg');
+                    return `FIRE ${klingon.x} ${klingon.y}`;
+                }
+            }
+
+            // 3. Prioritize docking at Starbase if needed and available in current quadrant
+            const needsRepair = currentEnergy < INITIAL_ENERGY * 0.75 || // Below 75% energy
+                                currentTorpedoes < INITIAL_TORPEDOES ||
+                                currentShields < INITIAL_SHIELDS * 0.75 || // Below 75% shields
+                                damagedSystems.length > 0;
+            if (currentQuadrant.starbase && needsRepair) {
+                displayText("HINT: Starbase detected and repairs/resupply needed. Docking recommended.", 'hint-msg');
+                return "DOCK";
+            }
+
+            // --- STRATEGIC MOVEMENT (Simulated 4-move look-ahead via quadrant scoring) ---
+            // Find the best quadrant to move to based on a comprehensive scoring system
+
+            let bestTargetQx = -1;
+            let bestTargetQy = -1;
+            let maxQuadrantScore = -Infinity;
+
+            for (let qx = 0; qx < GALAXY_SIZE; qx++) {
+                for (let qy = 0; qy < GALAXY_SIZE; qy++) {
+                    // Don't re-evaluate current quadrant if no immediate action was taken
+                    if (qx === enterprise.quadrantX && qy === enterprise.quadrantY) {
+                        continue;
+                    }
+
+                    const currentQuadrantScore = calculateQuadrantValue(qx, qy, currentEnergy, currentShields, currentTorpedoes, damagedSystems);
+
+                    if (currentQuadrantScore > maxQuadrantScore) {
+                        maxQuadrantScore = currentQuadrantScore;
+                        bestTargetQx = qx;
+                        bestTargetQy = qy;
+                    }
+                }
+            }
+
+            // If a valid and desirable target quadrant was found
+            if (bestTargetQx !== -1 && maxQuadrantScore > -5000) { // Threshold to avoid moving to highly penalized (unaffordable) quadrants
+                const targetQuadrant = galaxy[bestTargetQx][bestTargetQy];
+                const travelEnergyCost = Math.ceil(distance(enterprise.quadrantX, enterprise.quadrantY, bestTargetQx, bestTargetQy) * 100);
+
+                if (currentEnergy >= travelEnergyCost) {
+                    if (targetQuadrant.klingons > 0) {
+                        displayText(`HINT: Navigating to Q(${bestTargetQx},${bestTargetQy}) to engage Klingons.`, 'hint-msg');
+                    } else if (targetQuadrant.starbase) {
+                        displayText(`HINT: Navigating to Q(${bestTargetQx},${bestTargetQy}) for repairs and resupply.`, 'hint-msg');
+                    } else {
+                        displayText(`HINT: Exploring to Q(${bestTargetQx},${bestTargetQy}).`, 'hint-msg');
+                    }
+                    return `NAV ${bestTargetQx} ${bestTargetQy} 4 4`; // Navigate to center of target quadrant
+                } else {
+                    displayText("HINT: Cannot afford to navigate to optimal quadrant. Conserve energy or find a closer starbase.", 'warning');
+                }
+            }
+
+            // --- GAME END CONDITIONS / DEFAULT ---
+
+            if (klingonsRemaining <= 0) {
+                displayText("HINT: All Klingons destroyed! Mission accomplished.", 'success');
+                return "";
+            }
+
+            if (gameTurn >= MAX_TURNS - 5) { // Warn if nearing turn limit (last 5 turns)
+                displayText("HINT: Time is running out! Focus on finding and destroying Klingons.", 'warning');
+                return "LR"; // Suggest long range to find them
+            }
+
+            // Default: perform a scan if nothing else is pressing
+            displayText("HINT: No immediate threats or obvious next steps. Perform a scan to gather intel.", 'hint-msg');
+            return "SR"; // Suggest short range scan as a default
+        }
+
+        /**
+         * Processes the user's command.
+         * @param {string} commandLine - The raw command string from the user.
+         * @param {boolean} [isAutomated=false] - True if command is from automation.
+         */
+        function processCommand(commandLine, isAutomated = false) {
+            if (gameOver) {
+                if (!isAutomated) { // Only show this message for manual input if game is over
+                    displayText("Game is over. Start a new game.", 'error');
+                }
+                return;
+            }
+
+            // Add command to history if not automated and not empty
+            if (!isAutomated && commandLine.trim() !== '') {
+                commandHistory.push(commandLine.trim());
+                historyIndex = commandHistory.length; // Reset index to end of history
+            }
+
+            const parts = commandLine.trim().toUpperCase().split(/\s+/);
+            const command = parts[0];
+
+            switch (command) {
+                case 'NAV':
+                    if (parts.length === 5) {
+                        const qx = parseInt(parts[1]);
+                        const qy = parseInt(parts[2]);
+                        const sx = parseInt(parts[3]);
+                        const sy = parseInt(parts[4]);
+                        if (!isNaN(qx) && !isNaN(qy) && !isNaN(sx) && !isNaN(sy)) {
+                            navigate(qx, qy, sx, sy);
+                        } else {
+                            displayText("Invalid coordinates for NAV. Usage: NAV QX QY SX SY", 'error');
+                        }
+                    } else {
+                        displayText("Invalid NAV command. Usage: NAV QX QY SX SY", 'error');
+                    }
+                    break;
+                case 'SR': // Short Range Scan
+                    shortRangeScan();
+                    endTurn(); // Scanning takes a turn
+                    break;
+                case 'LR': // Long Range Scan
+                    longRangeScan();
+                    endTurn(); // Scanning takes a turn
+                    break;
+                case 'FIRE':
+                    if (parts.length === 3) {
+                        const sx = parseInt(parts[1]);
+                        const sy = parseInt(parts[2]);
+                        if (!isNaN(sx) && !isNaN(sy)) {
+                            fireTorpedoes(sx, sy);
+                        } else {
+                            displayText("Invalid coordinates for FIRE. Usage: FIRE SX SY", 'error');
+                        }
+                    } else {
+                        displayText("Invalid FIRE command. Usage: FIRE SX SY", 'error');
+                    }
+                    break;
+                case 'SHIELDS':
+                    if (parts.length === 2) {
+                        const amount = parseInt(parts[1]);
+                        if (!isNaN(amount)) {
+                            adjustShields(amount);
+                        } else {
+                            displayText("Invalid amount for SHIELDS. Usage: SHIELDS <amount>", 'error');
+                        }
+                    } else {
+                        displayText("Invalid SHIELDS command. Usage: SHIELDS <amount>", 'error');
+                    }
+                    break;
+                case 'STATUS':
+                    updateStatus();
+                    displayText("Current systems status:", 'status-msg');
+                    if (enterprise.damagedSystems.length > 0) {
+                        displayText(`Damaged: ${enterprise.damagedSystems.map(s => s.toUpperCase()).join(', ')}`, 'warning');
+                    } else {
+                        displayText("All systems nominal.", 'info');
+                    }
+                    displayText("");
+                    // Status does not consume a turn
+                    break;
+                case 'DOCK':
+                    dockAtStarbase();
+                    break;
+                case 'HELP':
+                    displayText("--- AVAILABLE COMMANDS ---", 'status-msg');
+                    displayText("NAV QX QY SX SY - Navigate to Quadrant (QX,QY) Sector (SX,SY)", 'status-msg');
+                    displayText("SR              - Short Range Scan (current quadrant)", 'status-msg');
+                    displayText("LR              - Long Range Scan (surrounding quadrants)", 'status-msg');
+                    displayText("FIRE SX SY      - Fire photon torpedo at Sector (SX,SY)", 'status-msg');
+                    displayText("SHIELDS AMOUNT  - Transfer energy to shields", 'status-msg');
+                    displayText("DOCK            - Dock at a starbase (if present)", 'status-msg');
+                    displayText("STATUS          - Display ship status and damaged systems", 'status-msg');
+                    displayText("HELP            - Display this help message", 'status-msg');
+                    displayText("M5 X            - Automate game for X turns using hints", 'status-msg');
+                    displayText("SOUND TOGGLE    - Toggle sound effects ON/OFF", 'status-msg');
+                    displayText("");
+                    // Help does not consume a turn
+                    break;
+                case 'M5': // New automation command
+                    if (isAutomated) { // Prevent M5 from calling itself recursively
+                        displayText("M5 command cannot be automated by M5.", 'error');
+                        return;
+                    }
+                    if (parts.length === 2) {
+                        const turnsToAutomate = parseInt(parts[1]);
+                        if (!isNaN(turnsToAutomate) && turnsToAutomate > 0) {
+                            displayText(`Initiating M5 automation for ${turnsToAutomate} turns...`, 'info');
+                            // Disable input and buttons during automation
+                            commandInput.disabled = true;
+                            submitCommand.disabled = true;
+                            hintButton.disabled = true;
+                            newGameButton.disabled = true;
+                            soundToggleButton.disabled = true;
+                            m5Status.textContent = `M5: Automating turns... (0/${turnsToAutomate})`;
+                            m5Status.style.display = 'block';
+
+                            async function runAutomation() {
+                                for (let i = 0; i < turnsToAutomate; i++) {
+                                    if (gameOver) {
+                                        displayText("Automation halted: Game Over.", 'critical');
+                                        break;
+                                    }
+                                    displayText(`--- M5 Turn ${i + 1} ---`, 'status-msg');
+                                    m5Status.textContent = `M5: Automating turns... (${i + 1}/${turnsToAutomate})`;
+                                    const hintedCommand = getHint(); // getHint already prints its own hint message
+                                    if (hintedCommand) {
+                                        displayText(`M5 executing: ${hintedCommand}`, 'info');
+                                        // Call processCommand with automation flag
+                                        processCommand(hintedCommand, true);
+                                    } else {
+                                        displayText("M5: No further actions suggested by hint system. Halting automation.", 'warning');
+                                        break; // No useful hint, stop automation
+                                    }
+                                    // Small delay to make automation visible
+                                    await new Promise(resolve => setTimeout(resolve, 700));
+                                }
+                                displayText("M5 automation complete.", 'success');
+                                // Re-enable input and buttons after automation
+                                commandInput.disabled = false;
+                                submitCommand.disabled = false;
+                                hintButton.disabled = false;
+                                newGameButton.disabled = false;
+                                soundToggleButton.disabled = false;
+                                m5Status.style.display = 'none'; // Hide M5 status
+                                commandInput.value = ''; // Clear input after automation
+                                commandInput.focus();
+                            }
+                            runAutomation();
+
+                        } else {
+                            displayText("Invalid turns for M5. Usage: M5 X (X must be a positive number)", 'error');
+                        }
+                    } else {
+                        displayText("Invalid M5 command. Usage: M5 X", 'error');
+                    }
+                    break;
+                case 'SOUND':
+                    if (parts.length === 2 && parts[1] === 'TOGGLE') {
+                        toggleSound();
+                    } else {
+                        displayText("Invalid SOUND command. Usage: SOUND TOGGLE", 'error');
+                    }
+                    break;
+                default:
+                    displayText("Unknown command. Type 'HELP' for assistance.", 'warning');
+                    break;
+            }
+
+            if (!isAutomated) { // Only clear input if it was a manual command
+                commandInput.value = ''; // Clear input field
+            }
+        }
+
+        // Event Listeners
+        submitCommand.addEventListener('click', () => {
+            processCommand(commandInput.value);
+        });
+
+        commandInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                processCommand(commandInput.value);
+            }
+        });
+
+        // Command history navigation
+        commandInput.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp') {
+                event.preventDefault(); // Prevent cursor from moving to start of input
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = commandHistory[historyIndex];
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault(); // Prevent cursor from moving to end of input
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    commandInput.value = commandHistory[historyIndex];
+                } else if (historyIndex === commandHistory.length - 1) {
+                    historyIndex = commandHistory.length; // Move past last item
+                    commandInput.value = ''; // Clear input if at end of history
+                }
+            }
+        });
+
+
+        newGameButton.addEventListener('click', () => {
+            if (!gameOver && gameTurn > 1) { // Only ask for confirmation if a game is in progress
+                showConfirmationModal("A game is currently in progress. Do you want to start a new game?",
+                    () => { // On Confirm
+                        newGame();
+                    },
+                    () => { // On Cancel
+                        displayText("New game cancelled.", 'info');
+                    }
+                );
+            } else {
+                newGame();
+            }
+        });
+
+        soundToggleButton.addEventListener('click', toggleSound);
+
+        hintButton.addEventListener('click', () => {
+            const hintCommand = getHint();
+            if (hintCommand) {
+                commandInput.value = hintCommand;
+                commandInput.focus(); // Focus the input for easy submission
+            }
+        });
+
+        // Initialize game on window load
+        window.onload = function() {
+            initSound(); // Initialize Tone.js synths
+            newGame();
+        };
+    </script>
+</body>
+</html>
