@@ -98,6 +98,14 @@
             stroke: #6b7280;
             stroke-width: 1;
         }
+        .relationship-name-text {
+            font-size: 10px;
+            fill: #4b5563; /* gray-600 */
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none; /* Text should not interfere with line click */
+        }
+
 
         .connector-point {
             width: 10px;
@@ -233,8 +241,9 @@
     <!-- Canvas Area -->
     <div id="canvas" class="canvas mt-[60px]">
         <div id="canvasContent" class="canvas-content">
-            <svg id="relationshipSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
-            <!-- Entities will be appended here by JavaScript -->
+            <!-- SVG for relationships - explicitly sized large to ensure drawing surface -->
+            <svg id="relationshipSvg" style="position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; pointer-events: none; overflow: visible;"></svg>
+            <!-- Entities will be appended here by JavaScript, appearing on top of the SVG background but lines within SVG will be visible -->
         </div>
     </div>
 
@@ -300,6 +309,11 @@
             <input type="hidden" id="relationshipFromEntityId">
             <input type="hidden" id="relationshipToEntityId">
             <input type="hidden" id="editingRelationshipId">
+            
+            <div class="mb-4">
+                <label for="relationshipName" class="block text-sm font-medium text-gray-700">Relationship Name (Optional)</label>
+                <input type="text" id="relationshipName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., Manages, Contains">
+            </div>
 
             <div class="mb-4">
                 <label for="relationshipType" class="block text-sm font-medium text-gray-700">Relationship Type</label>
@@ -352,8 +366,8 @@
         const saveEntityModalBtn = document.getElementById('saveEntityModalBtn');
         const entityNameInput = document.getElementById('entityName');
         const entityTypeSelect = document.getElementById('entityType');
-        const entityViewSqlSection = document.getElementById('entityViewSqlSection'); // For View SQL
-        const entityViewSqlInput = document.getElementById('entityViewSql'); // For View SQL
+        const entityViewSqlSection = document.getElementById('entityViewSqlSection'); 
+        const entityViewSqlInput = document.getElementById('entityViewSql'); 
         const attributesContainer = document.getElementById('attributesContainer');
         const addAttributeBtn = document.getElementById('addAttributeBtn');
         const editingEntityIdInput = document.getElementById('editingEntityId');
@@ -372,6 +386,7 @@
         const relationshipModal = document.getElementById('relationshipModal');
         const cancelRelationshipModalBtn = document.getElementById('cancelRelationshipModalBtn');
         const saveRelationshipModalBtn = document.getElementById('saveRelationshipModalBtn');
+        const relationshipNameInput = document.getElementById('relationshipName'); // For relationship name
         const relationshipTypeSelect = document.getElementById('relationshipType');
         const relationshipFromEntityIdInput = document.getElementById('relationshipFromEntityId');
         const relationshipToEntityIdInput = document.getElementById('relationshipToEntityId');
@@ -388,7 +403,7 @@
         // --- Application State Variables ---
         /** @type {Array<Object>} Stores all entity objects. Entity: {id, name, x, y, entityType: 'table'|'view', attributes: Array, indexes?: Array, viewSql?: string} */
         let entities = [];
-        /** @type {Array<Object>} Stores all relationship objects. Relationship: {id, type, fromEntityId, toEntityId, fromAttributeId, toAttributeId} */
+        /** @type {Array<Object>} Stores all relationship objects. Relationship: {id, name?: string, type, fromEntityId, toEntityId, fromAttributeId, toAttributeId} */
         let relationships = [];
         /** @type {Array<Object>} History stack for undo/redo. */
         let history = [];
@@ -1236,7 +1251,7 @@
                 showToast("Views cannot participate in relationships.", "error");
                 return;
             }
-            const requiredElements = [relationshipModal, relationshipFromEntityIdInput, relationshipToEntityIdInput, relModalFromEntityName, relModalToEntityName, relationshipFromAttributeSelect, relationshipToAttributeSelect, editingRelationshipIdInput, relationshipTypeSelect];
+            const requiredElements = [relationshipModal, relationshipFromEntityIdInput, relationshipToEntityIdInput, relModalFromEntityName, relModalToEntityName, relationshipFromAttributeSelect, relationshipToAttributeSelect, editingRelationshipIdInput, relationshipTypeSelect, relationshipNameInput];
             if (requiredElements.some(el => !el)) {
                 console.error("Relationship modal UI elements missing.");
                 showToast("Cannot open relationship editor: UI error.", "error");
@@ -1254,11 +1269,13 @@
 
                 if (relToEdit) {
                     editingRelationshipIdInput.value = relToEdit.id;
+                    relationshipNameInput.value = relToEdit.name || '';
                     relationshipTypeSelect.value = relToEdit.type;
                     relationshipFromAttributeSelect.value = relToEdit.fromAttributeId;
                     relationshipToAttributeSelect.value = relToEdit.toAttributeId;
                 } else {
                     editingRelationshipIdInput.value = '';
+                    relationshipNameInput.value = ''; // Clear for new relationship
                     relationshipTypeSelect.value = 'one-to-many'; 
                     const fromPK = (fromEntity.attributes || []).find(a => a.isPrimaryKey);
                     if (fromPK) relationshipFromAttributeSelect.value = fromPK.id;
@@ -1304,6 +1321,7 @@
 
         saveRelationshipModalBtn.addEventListener('click', () => {
             try {
+                const name = relationshipNameInput.value.trim(); // Get relationship name
                 const type = relationshipTypeSelect.value;
                 const fromEntityId = relationshipFromEntityIdInput.value;
                 const toEntityId = relationshipToEntityIdInput.value;
@@ -1346,6 +1364,7 @@
                 if (editingId) {
                     const rel = findRelationship(editingId);
                     if (rel) {
+                        rel.name = name;
                         rel.type = type;
                         rel.fromAttributeId = fromAttributeId;
                         rel.toAttributeId = toAttributeId; 
@@ -1355,6 +1374,7 @@
                 } else {
                     const newRelationship = {
                         id: generateId('rel_'),
+                        name: name,
                         type,
                         fromEntityId,
                         toEntityId,
@@ -1526,28 +1546,35 @@
                     
                     const propEntityTypeSelect = document.getElementById('propEntityType');
                     if (propEntityTypeSelect) {
-                        if (isView && relationships.some(r => r.fromEntityId === entity.id || r.toEntityId === entity.id)) {
-                            propEntityTypeSelect.disabled = true;
-                            propEntityTypeSelect.title = "Cannot change type: View is part of relationships. This state should not occur.";
-                        }
-
                         propEntityTypeSelect.addEventListener('change', (e) => {
                             const newType = e.target.value;
-                            if (newType === 'view' && relationships.some(r => r.fromEntityId === entity.id || r.toEntityId === entity.id)) {
-                                showToast("Cannot change to View: Entity is part of existing relationships. Delete relationships first.", "error");
-                                e.target.value = entity.entityType; 
-                                return;
+                            const oldType = entity.entityType;
+
+                            if (newType === 'view' && oldType === 'table') {
+                                const involvedRelationships = relationships.filter(r => r.fromEntityId === entity.id || r.toEntityId === entity.id);
+                                if (involvedRelationships.length > 0) {
+                                    if (!window.confirm(`Changing "${entity.name}" to a View will remove its ${involvedRelationships.length} existing relationship(s). Continue?`)) {
+                                        e.target.value = entity.entityType; // Revert selection
+                                        return;
+                                    }
+                                    // Proceed to delete relationships without immediate re-render for each
+                                    involvedRelationships.forEach(rel => deleteRelationship(rel.id, false)); 
+                                }
                             }
+
                             entity.entityType = newType;
                             if (newType === 'view') { 
                                 entity.indexes = []; 
                                 (entity.attributes || []).forEach(attr => {
                                     attr.isPrimaryKey = false; 
                                 });
-                            } else { // Changed to table
-                                entity.viewSql = undefined; // Remove SQL if changed to table
+                                if (typeof entity.viewSql === 'undefined') { // Initialize viewSql if not present
+                                    entity.viewSql = '';
+                                }
+                            } else { 
+                                entity.viewSql = undefined; 
                             }
-                            saveState();
+                            saveState(); 
                             renderAll(); 
                             updatePropertiesPanel(); 
                         });
@@ -1596,8 +1623,11 @@
                     }
                     
                     if (!isView) {
+                        const propIndexesSection = document.getElementById('propIndexesSection');
                         const propIndexesContainer = document.getElementById('propIndexesContainer');
                         const propAddIndexBtn = document.getElementById('propAddIndexBtn');
+                        if (propIndexesSection) propIndexesSection.style.display = 'block'; // Ensure visible if table
+
                         if (propIndexesContainer && propAddIndexBtn) {
                             (entity.indexes || []).forEach(idx => {
                                 propIndexesContainer.appendChild(createPropertyIndexRow(entity, idx));
@@ -1610,6 +1640,9 @@
                                 updatePropertiesPanel();
                             });
                         }
+                    } else {
+                         const propIndexesSection = document.getElementById('propIndexesSection');
+                         if (propIndexesSection) propIndexesSection.style.display = 'none';
                     }
 
 
@@ -1620,6 +1653,9 @@
                     propertiesPanelContent.innerHTML = `
                         <div class="property-group">
                             <h3 class="text-lg font-semibold mb-2">Relationship</h3>
+                            <label class="block text-sm font-medium">Name (Optional):</label>
+                            <input type="text" value="${rel.name || ''}" id="propRelName" class="mt-1 mb-2 w-full p-1 border rounded" placeholder="e.g., Manages">
+
                             <p class="text-sm">From: <strong>${fromEntity?.name || 'N/A'}</strong></p>
                             <p class="text-sm mb-2">To: <strong>${toEntity?.name || 'N/A'}</strong></p>
                             
@@ -1641,8 +1677,10 @@
                         </div>
                     `;
 
+                    const propRelNameInput = document.getElementById('propRelName');
                     const propRelFromAttrSelect = document.getElementById('propRelFromAttr');
                     const propRelToAttrSelect = document.getElementById('propRelToAttr');
+
                     if (fromEntity) populateAttributeSelect(propRelFromAttrSelect, fromEntity.attributes || []);
                     if (toEntity) populateAttributeSelect(propRelToAttrSelect, toEntity.attributes || []);
                     
@@ -1653,7 +1691,7 @@
                     if (propUpdateRelBtn) {
                         propUpdateRelBtn.addEventListener('click', () => {
                             const propRelTypeSelect = document.getElementById('propRelType');
-                            if (!propRelTypeSelect || !propRelFromAttrSelect || !propRelToAttrSelect) {
+                            if (!propRelTypeSelect || !propRelFromAttrSelect || !propRelToAttrSelect || !propRelNameInput) {
                                 console.error("Missing elements for updating relationship properties.");
                                 return;
                             }
@@ -1661,6 +1699,7 @@
                             const oldToAttributeId = rel.toAttributeId;
                             const oldRelType = rel.type;
                             
+                            const newRelName = propRelNameInput.value.trim();
                             const newRelType = propRelTypeSelect.value;
                             const newFromAttributeId = propRelFromAttrSelect.value;
                             const newToAttributeId = propRelToAttrSelect.value;
@@ -1685,6 +1724,7 @@
                                 }
                             }
                             
+                            rel.name = newRelName;
                             rel.type = newRelType;
                             rel.fromAttributeId = newFromAttributeId;
                             rel.toAttributeId = newToAttributeId;
@@ -1708,7 +1748,7 @@
                     if (propDeleteRelBtn) {
                         propDeleteRelBtn.addEventListener('click', () => {
                             if (window.confirm('Are you sure you want to delete this relationship?')) {
-                                deleteRelationship(rel.id);
+                                deleteRelationship(rel.id); // Default to true for save/render
                             }
                         });
                     }
@@ -1918,22 +1958,12 @@
             
             const relsToRemove = relationships.filter(r => r.fromEntityId === entityId || r.toEntityId === entityId);
             relsToRemove.forEach(rel => {
-                const otherEntityId = rel.fromEntityId === entityId ? rel.toEntityId : rel.fromEntityId;
-                const otherAttributeId = rel.fromEntityId === entityId ? rel.toAttributeId : rel.fromAttributeId;
-                
-                if (otherEntityId !== entityId) { 
-                    const otherEntity = findEntity(otherEntityId);
-                    if (otherEntity) {
-                        const targetAttr = (otherEntity.attributes || []).find(a => a.id === otherAttributeId);
-                        if (targetAttr && targetAttr.isForeignKey && targetAttr.foreignKeyTo && 
-                            targetAttr.foreignKeyTo.entityId === (rel.fromEntityId === entityId ? rel.fromEntityId : rel.toEntityId) ) { 
-                            targetAttr.isForeignKey = false;
-                            targetAttr.foreignKeyTo = null;
-                        }
-                    }
-                }
+                // Call deleteRelationship without immediate save/render for each,
+                // as the final saveState/renderAll will cover it.
+                deleteRelationship(rel.id, false); 
             });
-            relationships = relationships.filter(r => r.fromEntityId !== entityId && r.toEntityId !== entityId);
+            // Filter again in case deleteRelationship modified the array (it does)
+            relationships = relationships.filter(r => r.fromEntityId !== entityId && r.toEntityId !== entityId); 
             
             saveState();
             deselectAll();
@@ -1945,8 +1975,9 @@
         /**
          * Deletes a relationship.
          * @param {string} relationshipId - ID of relationship to delete.
+         * @param {boolean} [doSaveAndRender=true] - Whether to save state and re-render immediately.
          */
-        function deleteRelationship(relationshipId) {
+        function deleteRelationship(relationshipId, doSaveAndRender = true) {
             const rel = findRelationship(relationshipId);
             if (!rel) {
                 console.warn("Attempted to delete non-existent relationship ID:", relationshipId);
@@ -1968,11 +1999,14 @@
             }
             
             relationships = relationships.filter(r => r.id !== relationshipId);
-            saveState();
-            deselectAll(); 
-            closePropertiesPanel();
-            renderAll();
-            showToast('Relationship deleted.', 'success');
+            
+            if (doSaveAndRender) {
+                saveState();
+                deselectAll(); 
+                closePropertiesPanel();
+                renderAll();
+                showToast('Relationship deleted.', 'success');
+            }
         }
 
 
@@ -2036,7 +2070,7 @@
             }
         }
 
-        /** Renders all relationship lines. */
+        /** Renders all relationship lines and their names. */
         function renderRelationships() {
             if (!relationshipSvg) {
                 console.error("relationshipSvg element missing for renderRelationships.");
@@ -2063,23 +2097,20 @@
                          console.warn("Skipping relationship: from/to DOM element missing for rel ID", rel.id);
                         return;
                     }
-                    if (!canvasContent) throw new Error("canvasContent missing in renderRelationships");
-
-                    const fromRect = fromEl.getBoundingClientRect(); 
-                    const toRect = toEl.getBoundingClientRect();     
-                    const canvasContentRect = canvasContent.getBoundingClientRect(); 
-
-                    const x1_center = ( (fromRect.left + fromRect.width / 2) - canvasContentRect.left ) / scale;
-                    const y1_center = ( (fromRect.top + fromRect.height / 2) - canvasContentRect.top ) / scale;
-                    const x2_center = ( (toRect.left + toRect.width / 2) - canvasContentRect.left ) / scale;
-                    const y2_center = ( (toRect.top + toRect.height / 2) - canvasContentRect.top ) / scale;
+                    
+                    // Use entity's stored local coordinates and dimensions for SVG space
+                    const svg_x1 = (fromEntity.x || 0) + (fromEl.offsetWidth / 2);
+                    const svg_y1 = (fromEntity.y || 0) + (fromEl.offsetHeight / 2);
+                    const svg_x2 = (toEntity.x || 0) + (toEl.offsetWidth / 2);
+                    const svg_y2 = (toEntity.y || 0) + (toEl.offsetHeight / 2);
                     
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', String(x1_center));
-                    line.setAttribute('y1', String(y1_center));
-                    line.setAttribute('x2', String(x2_center));
-                    line.setAttribute('y2', String(y2_center));
-                    line.setAttribute('class', 'relationship-line');
+                    line.setAttribute('x1', String(svg_x1));
+                    line.setAttribute('y1', String(svg_y1));
+                    line.setAttribute('x2', String(svg_x2));
+                    line.setAttribute('y2', String(svg_y2));
+                                        
+                    line.setAttribute('class', 'relationship-line'); 
                     if (rel.type === 'many-to-many') { 
                         line.classList.add('many-many');
                     }
@@ -2091,32 +2122,45 @@
                     });
                     relationshipSvg.appendChild(line);
 
-                    const angle = Math.atan2(y2_center - y1_center, x2_center - x1_center);
+                    // Add relationship name text
+                    if (rel.name && rel.name.trim() !== '') {
+                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        const midX = (svg_x1 + svg_x2) / 2; 
+                        const midY = (svg_y1 + svg_y2) / 2;
+                        text.setAttribute('x', String(midX));
+                        text.setAttribute('y', String(midY - 7)); // Adjusted offset
+                        text.setAttribute('class', 'relationship-name-text');
+                        text.textContent = rel.name;
+                        relationshipSvg.appendChild(text);
+                    }
+
+
+                    const angle = Math.atan2(svg_y2 - svg_y1, svg_x2 - svg_x1); 
                     const markerSize = 8; 
 
-                    // To Side (x2_center, y2_center)
+                    // To Side (svg_x2, svg_y2)
                     if (rel.type === 'one-to-many') { 
                         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                        arrow.setAttribute('points', `${x2_center},${y2_center} ${x2_center - markerSize * Math.cos(angle - Math.PI/6)},${y2_center - markerSize * Math.sin(angle - Math.PI/6)} ${x2_center - markerSize * Math.cos(angle + Math.PI/6)},${y2_center - markerSize * Math.sin(angle + Math.PI/6)}`);
+                        arrow.setAttribute('points', `${svg_x2},${svg_y2} ${svg_x2 - markerSize * Math.cos(angle - Math.PI/6)},${svg_y2 - markerSize * Math.sin(angle - Math.PI/6)} ${svg_x2 - markerSize * Math.cos(angle + Math.PI/6)},${svg_y2 - markerSize * Math.sin(angle + Math.PI/6)}`);
                         arrow.setAttribute('class', 'arrow-head');
                         relationshipSvg.appendChild(arrow);
                     } else if (rel.type === 'one-to-one') { 
                         const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        tick.setAttribute('x1', String(x2_center - (markerSize/2) * Math.sin(angle)));
-                        tick.setAttribute('y1', String(y2_center + (markerSize/2) * Math.cos(angle)));
-                        tick.setAttribute('x2', String(x2_center + (markerSize/2) * Math.sin(angle)));
-                        tick.setAttribute('y2', String(y2_center - (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x1', String(svg_x2 - (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y1', String(svg_y2 + (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x2', String(svg_x2 + (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y2', String(svg_y2 - (markerSize/2) * Math.cos(angle)));
                         tick.setAttribute('class', 'line-end-marker');
                         relationshipSvg.appendChild(tick);
                     }
                     
-                    // From Side (x1_center, y1_center)
+                    // From Side (svg_x1, svg_y1)
                     if (rel.type === 'one-to-many' || rel.type === 'one-to-one') { 
                         const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        tick.setAttribute('x1', String(x1_center - (markerSize/2) * Math.sin(angle)));
-                        tick.setAttribute('y1', String(y1_center + (markerSize/2) * Math.cos(angle)));
-                        tick.setAttribute('x2', String(x1_center + (markerSize/2) * Math.sin(angle)));
-                        tick.setAttribute('y2', String(y1_center - (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x1', String(svg_x1 - (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y1', String(svg_y1 + (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x2', String(svg_x1 + (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y2', String(svg_y1 - (markerSize/2) * Math.cos(angle)));
                         tick.setAttribute('class', 'line-end-marker');
                         relationshipSvg.appendChild(tick);
                     }
@@ -2193,6 +2237,13 @@
                             entity.x = parseFloat(String(entity.x)) || 50;
                             entity.y = parseFloat(String(entity.y)) || 50;
                         });
+                         // Ensure relationship names are present (for older imports)
+                        relationships.forEach(rel => {
+                            if (typeof rel.name === 'undefined') {
+                                rel.name = '';
+                            }
+                        });
+
 
                         if (importedData.canvasState) {
                             panX = parseFloat(String(importedData.canvasState.panX)) || 0;
