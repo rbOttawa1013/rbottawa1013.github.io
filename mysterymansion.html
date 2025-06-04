@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystery Mansion</title>
+    <!-- Google Fonts for retro console and game title -->
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=VT323&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Reset & Body Styling */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a1a, #000000); /* Darker background for mainframe feel */
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            box-sizing: border-box;
+        }
+
+        /* Game Container */
+        .game-container {
+            background-color: #1a1a2e; /* Slightly lighter than body background */
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            padding: 25px;
+            max-width: 90%;
+            width: 750px; /* Slightly wider for map */
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            border: 2px solid #3a3a5a; /* Darker border */
+            box-sizing: border-box;
+        }
+
+        /* Game Title */
+        h1 {
+            font-family: 'Creepster', cursive;
+            color: #ff6b6b;
+            text-align: center;
+            margin-bottom: 10px; /* Reduced margin */
+            font-size: 3.2em; /* Slightly larger */
+            text-shadow: 2px 2px 8px rgba(255, 107, 107, 0.5); /* More prominent glow */
+        }
+
+        /* Console Output Area (Mainframe Style) */
+        #console-output {
+            background-color: #000000; /* Black background */
+            border: 1px solid #00ff00; /* Neon green border */
+            border-radius: 10px;
+            padding: 15px;
+            min-height: 280px; /* Slightly taller */
+            max-height: 450px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'VT323', monospace; /* Monospaced font */
+            font-size: 1.1em; /* Slightly larger font */
+            line-height: 1.5;
+            color: #39ff14; /* Neon green text */
+            box-shadow: inset 0 0 15px rgba(0, 255, 0, 0.2), 0 0 5px rgba(0, 255, 0, 0.5); /* Inner glow and outer shadow */
+            scrollbar-width: thin;
+            scrollbar-color: #00ff00 #000000; /* Neon green thumb, black track */
+        }
+
+        /* Custom Scrollbar for Webkit browsers */
+        #console-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #console-output::-webkit-scrollbar-track {
+            background: #000000;
+            border-radius: 10px;
+        }
+
+        #console-output::-webkit-scrollbar-thumb {
+            background-color: #00ff00;
+            border-radius: 10px;
+            border: 2px solid #000000;
+        }
+
+        /* Blinking Cursor */
+        .blinking-cursor {
+            font-weight: 100;
+            font-size: 1.2em;
+            color: #39ff14;
+            -webkit-animation: 1s blink step-end infinite;
+            -moz-animation: 1s blink step-end infinite;
+            -ms-animation: 1s blink step-end infinite;
+            -o-animation: 1s blink step-end infinite;
+            animation: 1s blink step-end infinite;
+        }
+
+        @keyframes blink {
+            from, to { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* Action Buttons Container */
+        .actions-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px; /* Slightly larger gap */
+            justify-content: center;
+        }
+
+        /* Buttons Styling */
+        .game-button {
+            background: linear-gradient(145deg, #6a5acd, #483d8b);
+            color: #fff;
+            border: none;
+            padding: 14px 28px; /* Slightly larger padding */
+            border-radius: 10px; /* More rounded */
+            cursor: pointer;
+            font-size: 1.15em; /* Slightly larger font */
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4); /* More prominent shadow */
+            min-width: 130px;
+            flex-grow: 1;
+            max-width: 200px; /* Increased max width */
+            text-transform: uppercase; /* For a more game-like feel */
+            letter-spacing: 0.5px;
+        }
+
+        .game-button:hover {
+            background: linear-gradient(145deg, #7b68ee, #5a4f9d);
+            transform: translateY(-3px); /* More pronounced lift */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-button:disabled {
+            background: #3a3a5a; /* Darker disabled state */
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Specific button styling for start/reset */
+        #start-button {
+            background: linear-gradient(145deg, #4CAF50, #388E3C); /* Green for start */
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+        }
+        #start-button:hover {
+            background: linear-gradient(145deg, #66BB6A, #4CAF50);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.6);
+        }
+        #reset-button {
+            background: linear-gradient(145deg, #F44336, #D32F2F); /* Red for reset */
+            box-shadow: 0 5px 20px rgba(244, 67, 54, 0.4);
+        }
+        #reset-button:hover {
+            background: linear-gradient(145deg, #EF5350, #F44336);
+            box-shadow: 0 8px 25px rgba(244, 67, 54, 0.6);
+        }
+
+        /* Inventory Display */
+        #inventory-display {
+            background-color: #0d0d1a; /* Darker background for inventory */
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 12px 18px; /* Slightly more padding */
+            font-size: 0.95em;
+            color: #c0c0e0;
+            min-height: 45px; /* Slightly taller */
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px; /* More gap for items */
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Mansion Map Display */
+        #mansion-map {
+            background-color: #0d0d1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-wrap: wrap; /* Allow rooms to wrap */
+            gap: 15px; /* Spacing between room nodes */
+            justify-content: center;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .map-room {
+            background-color: #3a3a5a;
+            color: #e0e0e0;
+            padding: 8px 15px;
+            border-radius: 20px; /* Pill shape */
+            font-size: 0.85em;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #5a5a8a;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            white-space: nowrap; /* Prevent wrapping of room names */
+            position: relative; /* For positioning exit indicators */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .map-room.visited {
+            background-color: #2a2a4a;
+            color: #9090b0;
+            border-color: #3a3a5a;
+        }
+
+        .map-room.active {
+            background-color: #00ff00; /* Neon green for active room */
+            color: #000000; /* Black text on active room */
+            border-color: #39ff14;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.7), 0 0 8px rgba(0, 255, 0, 0.5); /* Glow effect */
+            transform: scale(1.05); /* Slightly larger */
+        }
+
+        .room-exits {
+            display: flex;
+            gap: 5px;
+            font-size: 0.7em;
+            color: #606080; /* Subtle grey for inactive indicators */
+        }
+
+        .exit-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #4a4a6e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+            cursor: default; /* Not clickable */
+        }
+
+        .map-room.active .exit-indicator.active-exit {
+            background-color: #39ff14; /* Neon green for active exits */
+            color: #000000; /* Black text */
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.7);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.8em;
+            }
+            .game-container {
+                padding: 15px;
+                gap: 15px;
+            }
+            .game-button {
+                padding: 10px 20px;
+                font-size: 1em;
+                min-width: unset;
+                flex-basis: calc(50% - 6px); /* Two buttons per row */
+                max-width: unset;
+            }
+            .actions-container {
+                justify-content: space-between;
+            }
+            #console-output, #inventory-display, #mansion-map {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            .map-room {
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
+            .room-exits {
+                gap: 3px;
+            }
+            .exit-indicator {
+                width: 12px;
+                height: 12px;
+                font-size: 0.6em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2.2em;
+            }
+            .game-button {
+                flex-basis: 100%; /* One button per row */
+            }
+            #console-output {
+                min-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Mystery Mansion</h1>
+        <div id="console-output"></div>
+        <div id="inventory-display">Inventory: None</div>
+        <div id="mansion-map"></div> <!-- New: Mansion Map -->
+        <div class="actions-container" id="game-actions">
+            <button id="start-button" class="game-button">Start Game</button>
+            <button id="reset-button" class="game-button" disabled>Reset Game</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Data ---
+        const rooms = {
+            "foyer": {
+                name: "Foyer",
+                description: "You stand in the grand foyer of a decaying mansion. Dust motes dance in the faint light filtering through a stained-glass window. A grand staircase leads upstairs. To your left, a heavy oak door; to your right, a dimly lit corridor.",
+                exits: {
+                    "north": "grandStaircase",
+                    "west": "livingRoom",
+                    "east": "kitchen"
+                },
+                items: []
+            },
+            "grandStaircase": {
+                name: "Grand Staircase",
+                description: "The staircase creaks ominously with each step. It's too dark to see clearly at the top, but you can feel a chill. Going back down seems like the only safe option for now.",
+                exits: {
+                    "south": "foyer"
+                },
+                items: []
+            },
+            "livingRoom": {
+                name: "Living Room",
+                description: "A once opulent living room, now covered in white sheets. A grand piano sits silently in one corner. On a dusty mantlepiece, you spot something glinting.",
+                exits: {
+                    "east": "foyer"
+                },
+                items: ["old key"]
+            },
+            "kitchen": {
+                name: "Kitchen",
+                description: "The kitchen is surprisingly clean, but a strange, metallic smell hangs in the air. A large, rusty safe is built into the wall. There's a loose floorboard near the pantry.",
+                exits: {
+                    "west": "foyer"
+                },
+                items: []
+            },
+            "pantry": {
+                name: "Pantry",
+                description: "Behind the loose floorboard, you find a small, dark pantry. It's mostly empty, but a faint outline on the wall suggests something was once hidden here.",
+                exits: {
+                    "north": "kitchen" // Can only go back to kitchen after entering
+                },
+                items: []
+            },
+            "secretPassage": {
+                name: "Secret Passage",
+                description: "You've stumbled into a narrow, dusty secret passage. The air is stale, and you can hear faint whispers. It seems to lead to an unknown part of the mansion.",
+                exits: {
+                    "south": "kitchen", // Back to kitchen if you entered from there
+                    "north": "hiddenStudy"
+                },
+                items: []
+            },
+            "hiddenStudy": {
+                name: "Hidden Study",
+                description: "This small study is filled with ancient books and maps. A large, ornate desk dominates the room. On the desk, a puzzle box awaits.",
+                exits: {
+                    "south": "secretPassage"
+                },
+                items: ["ornate locket"]
+            },
+            "treasureRoom": {
+                name: "Treasure Room",
+                description: "You've found it! A hidden room filled with gleaming gold, jewels, and ancient artifacts. You've uncovered the mansion's greatest secret!",
+                exits: {}, // End of game
+                items: []
+            }
+        };
+
+        const items = {
+            "old key": {
+                description: "A rusty, old key. It looks like it might open an old lock.",
+                action: "unlock"
+            },
+            "cryptic note": {
+                description: "A crumpled note with strange symbols and numbers: '3-8-5'.",
+                action: "read"
+            },
+            "ornate locket": {
+                description: "An ornate locket. It feels heavy and seems to have a hidden compartment.",
+                action: "open"
+            }
+        };
+
+        // Define the order of rooms for the map display (conceptual flow)
+        // This order is for visual layout, not strict game path.
+        const mapDisplayOrder = [
+            "grandStaircase", "foyer", "livingRoom", "kitchen",
+            "pantry", "secretPassage", "hiddenStudy", "treasureRoom"
+        ];
+
+        // --- Game State ---
+        let currentRoomId = "foyer";
+        let inventory = [];
+        let gameStarted = false;
+        let safeUnlocked = false; // State for the safe puzzle
+        let locketOpened = false; // State for the locket puzzle
+        let visitedRooms = new Set(); // To track rooms the player has entered
+
+        // --- DOM Elements ---
+        const consoleOutput = document.getElementById("console-output");
+        const gameActions = document.getElementById("game-actions");
+        const startButton = document.getElementById("start-button");
+        const resetButton = document.getElementById("reset-button");
+        const inventoryDisplay = document.getElementById("inventory-display");
+        const mansionMap = document.getElementById("mansion-map");
+
+        // --- Game Functions ---
+
+        /**
+         * Appends text to the console output, managing the blinking cursor.
+         * @param {string} text - The text to display.
+         * @param {string} type - Optional type ('narration', 'action', 'error', 'info', 'room-title').
+         */
+        function writeToConsole(text, type = 'narration') {
+            // Remove existing cursor before adding new text
+            const existingCursor = consoleOutput.querySelector('.blinking-cursor');
+            if (existingCursor) {
+                existingCursor.remove();
+            }
+
+            const p = document.createElement('p');
+            p.textContent = text;
+            p.classList.add(type);
+            consoleOutput.appendChild(p);
+
+            // Add blinking cursor after the new paragraph
+            const cursor = document.createElement('span');
+            cursor.classList.add('blinking-cursor');
+            cursor.textContent = '_'; // Blinking underscore
+            consoleOutput.appendChild(cursor);
+
+            consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll to bottom
+        }
+
+        /**
+         * Updates the inventory display.
+         */
+        function updateInventoryDisplay() {
+            inventoryDisplay.textContent = "Inventory: " + (inventory.length > 0 ? inventory.join(", ") : "None");
+        }
+
+        /**
+         * Renders or updates the mansion map display.
+         */
+        function renderMap() {
+            mansionMap.innerHTML = ''; // Clear existing map
+            mapDisplayOrder.forEach(roomId => {
+                const roomElement = document.createElement('div');
+                roomElement.classList.add('map-room');
+                roomElement.textContent = rooms[roomId].name; // Room name
+
+                // Add container for directional indicators
+                const exitsContainer = document.createElement('div');
+                exitsContainer.classList.add('room-exits');
+
+                const directions = ['north', 'east', 'south', 'west'];
+                directions.forEach(dir => {
+                    const indicator = document.createElement('span');
+                    indicator.classList.add('exit-indicator', dir);
+                    indicator.textContent = dir.charAt(0).toUpperCase(); // N, E, S, W
+                    exitsContainer.appendChild(indicator);
+                });
+
+                roomElement.appendChild(exitsContainer);
+                roomElement.dataset.roomId = roomId; // Store room ID for reference
+
+                if (visitedRooms.has(roomId)) {
+                    roomElement.classList.add('visited');
+                }
+                if (roomId === currentRoomId) {
+                    roomElement.classList.add('active');
+                    // Highlight active exits for the current room
+                    const currentRoomExits = rooms[currentRoomId].exits;
+                    for (const dir in currentRoomExits) {
+                        const activeIndicator = roomElement.querySelector(`.exit-indicator.${dir}`);
+                        if (activeIndicator) {
+                            activeIndicator.classList.add('active-exit');
+                        }
+                    }
+                }
+                mansionMap.appendChild(roomElement);
+            });
+        }
+
+        /**
+         * Displays the current room and available actions.
+         */
+        function displayRoom() {
+            const room = rooms[currentRoomId];
+            visitedRooms.add(currentRoomId); // Mark current room as visited
+
+            writeToConsole(`\n--- ${room.name} ---`, 'room-title');
+            writeToConsole(room.description);
+
+            // Clear previous actions
+            gameActions.innerHTML = '';
+
+            // Add movement actions
+            for (const direction in room.exits) {
+                const button = createActionButton(`Go ${direction.charAt(0).toUpperCase() + direction.slice(1)}`, () => move(direction));
+                gameActions.appendChild(button);
+            }
+
+            // Add item actions (if items are present and not in inventory)
+            if (room.items && room.items.length > 0) {
+                room.items.forEach(itemName => {
+                    if (!inventory.includes(itemName)) {
+                        const button = createActionButton(`Pick up ${itemName}`, () => pickUpItem(itemName));
+                        gameActions.appendChild(button);
+                    }
+                });
+            }
+
+            // Add specific room actions/puzzles
+            if (currentRoomId === "kitchen") {
+                if (inventory.includes("old key") && !safeUnlocked) {
+                    const button = createActionButton("Try key on safe", () => useKeyOnSafe());
+                    gameActions.appendChild(button);
+                } else if (safeUnlocked) {
+                    writeToConsole("The safe is open.", 'info');
+                }
+                // Option to look under floorboard
+                // Only show if pantry path isn't already open
+                if (!rooms["kitchen"].exits["north"] || rooms["kitchen"].exits["north"] !== "pantry") {
+                    const button = createActionButton("Look under floorboard", () => lookUnderFloorboard());
+                    gameActions.appendChild(button);
+                }
+            }
+
+            if (currentRoomId === "hiddenStudy") {
+                if (inventory.includes("cryptic note") && !locketOpened) {
+                    const button = createActionButton("Solve puzzle box", () => solvePuzzleBox());
+                    gameActions.appendChild(button);
+                } else if (locketOpened) {
+                    writeToConsole("The puzzle box is solved, revealing a secret.", 'info');
+                }
+            }
+
+            // Re-add start/reset buttons at the end of actions
+            gameActions.appendChild(startButton);
+            gameActions.appendChild(resetButton);
+            updateButtonStates();
+            renderMap(); // Update the map after displaying the room
+        }
+
+        /**
+         * Creates a new action button.
+         * @param {string} text - The text for the button.
+         * @param {function} onClickHandler - The function to call when the button is clicked.
+         * @returns {HTMLButtonElement} The created button element.
+         */
+        function createActionButton(text, onClickHandler) {
+            const button = document.createElement('button');
+            button.textContent = text;
+            button.classList.add('game-button');
+            button.addEventListener('click', onClickHandler);
+            return button;
+        }
+
+        /**
+         * Handles player movement between rooms.
+         * @param {string} direction - The direction to move (e.g., "north", "south").
+         */
+        function move(direction) {
+            const room = rooms[currentRoomId];
+            const nextRoomId = room.exits[direction];
+
+            if (nextRoomId) {
+                writeToConsole(`You chose to Go ${direction.charAt(0).toUpperCase() + direction.slice(1)}.`, 'action'); // Show command entry
+                // Special condition for grandStaircase (can be expanded for puzzles)
+                if (nextRoomId === "grandStaircase" && currentRoomId === "foyer") {
+                    writeToConsole("You attempt to ascend the grand staircase, but a sudden gust of wind slams the door shut behind you, making you reconsider. It's too dark to go up right now.", 'action');
+                    // For now, it's a dead end unless a future puzzle opens it.
+                    // Allowing entry for now, but the description makes it clear it's limited.
+                }
+                currentRoomId = nextRoomId;
+                displayRoom();
+            } else {
+                writeToConsole("You can't go that way.", 'error');
+            }
+        }
+
+        /**
+         * Handles picking up an item.
+         * @param {string} itemName - The name of the item to pick up.
+         */
+        function pickUpItem(itemName) {
+            const room = rooms[currentRoomId];
+            const itemIndex = room.items.indexOf(itemName);
+
+            if (itemIndex > -1) {
+                inventory.push(itemName);
+                room.items.splice(itemIndex, 1); // Remove from room
+                writeToConsole(`You picked up the ${itemName}.`, 'action');
+                updateInventoryDisplay();
+                displayRoom(); // Re-render room to remove "pick up" button
+            } else {
+                writeToConsole(`There is no ${itemName} here.`, 'error');
+            }
+        }
+
+        /**
+         * Specific action: Use key on safe in kitchen.
+         */
+        function useKeyOnSafe() {
+            if (currentRoomId === "kitchen" && inventory.includes("old key")) {
+                writeToConsole("You chose to use the key on the safe.", 'action'); // Show command entry
+                writeToConsole("You insert the old key into the safe's lock. With a satisfying click, the heavy door swings open! Inside, you find a small, empty compartment. Wait, there's a faint outline of something that was here.", 'action');
+                safeUnlocked = true;
+                displayRoom(); // Re-render to update actions
+            } else {
+                writeToConsole("You don't have the key or you're not at the safe.", 'error');
+            }
+        }
+
+        /**
+         * Specific action: Look under floorboard in kitchen.
+         */
+        function lookUnderFloorboard() {
+            if (currentRoomId === "kitchen") {
+                writeToConsole("You chose to look under the floorboard.", 'action'); // Show command entry
+                writeToConsole("You pry open the loose floorboard, revealing a hidden passage leading to a small, dark pantry.", 'action');
+                rooms["kitchen"].exits["north"] = "pantry"; // Dynamically open path
+                displayRoom(); // Re-render to show new exit
+            } else {
+                writeToConsole("There's no floorboard to look under here.", 'error');
+            }
+        }
+
+        /**
+         * Specific action: Solve puzzle box in hidden study.
+         */
+        function solvePuzzleBox() {
+            if (currentRoomId === "hiddenStudy" && inventory.includes("cryptic note")) {
+                writeToConsole("You chose to solve the puzzle box.", 'action'); // Show command entry
+                writeToConsole("You examine the puzzle box and the cryptic note. The numbers '3-8-5' seem to be a combination. You carefully enter the sequence. *Click!* The box springs open, revealing a hidden compartment and a secret button!", 'action');
+                locketOpened = true;
+                // Add a new exit to the treasure room
+                rooms["hiddenStudy"].exits["east"] = "treasureRoom"; // Dynamically open path
+                writeToConsole("A section of the wall slides open, revealing a glittering passage!", 'narration');
+                displayRoom();
+            } else {
+                writeToConsole("You need the cryptic note to solve this puzzle, or you're not in the hidden study.", 'error');
+            }
+        }
+
+        /**
+         * Initializes or resets the game state.
+         */
+        function startGame() {
+            if (gameStarted) return; // Prevent multiple starts
+
+            gameStarted = true;
+            currentRoomId = "foyer";
+            inventory = [];
+            safeUnlocked = false;
+            locketOpened = false;
+            visitedRooms.clear(); // Clear visited rooms
+            consoleOutput.innerHTML = ''; // Clear console
+
+            // Reset dynamic exits if they were changed
+            rooms["kitchen"].exits["north"] = undefined; // Close pantry path initially
+            rooms["hiddenStudy"].exits["east"] = undefined; // Close treasure room path initially
+
+            writeToConsole("Welcome to Mystery Mansion!", 'narration');
+            writeToConsole("Your goal is to uncover the mansion's greatest secret. Good luck!", 'narration');
+            updateInventoryDisplay();
+            displayRoom(); // This will also call renderMap()
+            updateButtonStates();
+        }
+
+        /**
+         * Resets the game to its initial state.
+         */
+        function resetGame() {
+            gameStarted = false;
+            consoleOutput.innerHTML = ''; // Clear console
+            inventory = [];
+            safeUnlocked = false;
+            locketOpened = false;
+            currentRoomId = "foyer";
+            visitedRooms.clear(); // Clear visited rooms
+
+            // Reset dynamic exits
+            rooms["kitchen"].exits["north"] = undefined;
+            rooms["hiddenStudy"].exits["east"] = undefined;
+
+            writeToConsole("Game has been reset. Click 'Start Game' to play again.", 'narration');
+            updateInventoryDisplay();
+            renderMap(); // Update map to show only initial state
+            // Clear actions and only show start/reset
+            gameActions.innerHTML = '';
+            gameActions.appendChild(startButton);
+            gameActions.appendChild(resetButton);
+            updateButtonStates();
+        }
+
+        /**
+         * Updates the disabled state of start/reset buttons.
+         */
+        function updateButtonStates() {
+            startButton.disabled = gameStarted;
+            resetButton.disabled = !gameStarted;
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startGame);
+        resetButton.addEventListener('click', resetGame);
+
+        // Initial state on load
+        updateButtonStates();
+        writeToConsole("Click 'Start Game' to begin your adventure!", 'narration');
+        renderMap(); // Render initial map with no active exits
+    </script>
+</body>
+</html>
