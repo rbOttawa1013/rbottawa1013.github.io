@@ -1,0 +1,2429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Entity Modeller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none; /* Prevents pull-to-refresh on mobile */
+        }
+        .canvas {
+            width: 100%;
+            height: calc(100vh - 120px); /* Adjust based on toolbar and footer height */
+            border: 1px solid #ccc;
+            position: relative;
+            overflow: hidden; /* Important for panning and zooming */
+            background-image: radial-gradient(circle, #e0e0e0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .canvas-content {
+            position: absolute;
+            transform-origin: 0 0;
+        }
+        .entity {
+            background-color: white;
+            border: 1px solid #3b82f6; /* blue-500 for Table */
+            border-radius: 8px;
+            padding: 8px;
+            position: absolute;
+            cursor: grab;
+            min-width: 180px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            user-select: none;
+        }
+        .entity.entity-view { /* Specific style for View entities */
+            border-color: #22c55e; /* green-500 for View */
+        }
+        .entity.selected {
+            border-color: #ef4444; /* red-500 */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5);
+        }
+        .entity-header {
+            background-color: #3b82f6; /* blue-500 for Table */
+            color: white;
+            padding: 6px 8px;
+            font-weight: bold;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            margin: -8px -8px 8px -8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .entity.entity-view .entity-header { /* Specific header for View entities */
+            background-color: #22c55e; /* green-500 for View */
+        }
+        .entity-type-badge {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+            background-color: rgba(255,255,255,0.2);
+            margin-right: 5px;
+            text-transform: uppercase;
+        }
+        .entity-name-input {
+            background-color: transparent;
+            color: white;
+            font-weight: bold;
+            border: none;
+            outline: none;
+            width: calc(100% - 50px); /* Adjusted for badge and edit button */
+        }
+        .attribute {
+            font-size: 0.875rem;
+            padding: 4px 0;
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+        }
+        .attribute:last-child {
+            border-bottom: none;
+        }
+        .attribute .pk { font-weight: bold; color: #16a34a; /* green-600 */ }
+        .attribute .fk { font-weight: bold; color: #ea580c; /* orange-600 */ }
+        .attribute .nullable { font-style: italic; color: #71717a; /* zinc-500 */}
+        
+        .relationship-line {
+            stroke: #6b7280; /* gray-500 */
+            stroke-width: 2;
+            fill: none;
+        }
+        .relationship-line.many-many { /* N:N */
+            stroke-dasharray: 5,5;
+        }
+        .arrow-head, .line-end-marker {
+            fill: #6b7280; /* gray-500 */
+            stroke: #6b7280;
+            stroke-width: 1;
+        }
+
+        .connector-point {
+            width: 10px;
+            height: 10px;
+            background-color: #fbbf24; /* amber-400 */
+            border: 1px solid #d97706; /* amber-600 */
+            border-radius: 50%;
+            position: absolute;
+            cursor: crosshair;
+            display: none; 
+            z-index: 10; 
+        }
+        .entity:not(.entity-view):hover .connector-point, /* Show on hover for non-views */
+        .entity:not(.entity-view).show-connectors .connector-point { /* Show for non-views when drawing */
+            display: block;
+        }
+        .connector-point.top { top: -5px; left: 50%; transform: translateX(-50%); }
+        .connector-point.bottom { bottom: -5px; left: 50%; transform: translateX(-50%); }
+        .connector-point.left { left: -5px; top: 50%; transform: translateY(-50%); }
+        .connector-point.right { right: -5px; top: 50%; transform: translateY(-50%); }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #22c55e; /* green-500 */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.error {
+            background-color: #ef4444; /* red-500 */
+        }
+        /* Properties Panel */
+        #propertiesPanel {
+            position: fixed;
+            right: -400px; /* Initially hidden */
+            top: 60px; /* Below toolbar */
+            width: 350px;
+            height: calc(100vh - 60px);
+            background-color: #f9fafb; /* gray-50 */
+            border-left: 1px solid #e5e7eb; /* gray-200 */
+            padding: 16px;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            transition: right 0.3s ease-in-out;
+            z-index: 900;
+            overflow-y: auto;
+        }
+        #propertiesPanel.open {
+            right: 0;
+        }
+        .property-group {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .property-group:last-child {
+            border-bottom: none;
+        }
+        /* Custom scrollbar for properties panel and modals */
+        .modal-content::-webkit-scrollbar, #propertiesPanel::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track, #propertiesPanel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb, #propertiesPanel::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover, #propertiesPanel::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        #entityViewSql, #propEntityViewSql { /* Styling for SQL Textarea */
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100px;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Toolbar -->
+    <div class="bg-slate-700 text-white p-3 flex items-center justify-between shadow-md fixed top-0 left-0 right-0 z-10 h-[60px]">
+        <h1 class="text-xl font-semibold">Entity Modeller</h1>
+        <div class="flex items-center space-x-2">
+            <button id="addEntityBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center"><i class="fas fa-plus mr-1"></i> Add Entity</button>
+            <button id="exportJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center"><i class="fas fa-file-export mr-1"></i> Export JSON</button>
+            <label for="importJsonInput" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out cursor-pointer flex items-center">
+                <i class="fas fa-file-import mr-1"></i> Import JSON
+            </label>
+            <input type="file" id="importJsonInput" class="hidden" accept=".json">
+            <button id="generateSqlBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center"><i class="fas fa-database mr-1"></i> Generate SQLite</button>
+            <button id="undoBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center" disabled><i class="fas fa-undo mr-1"></i> Undo</button>
+            <button id="redoBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center" disabled><i class="fas fa-redo mr-1"></i> Redo</button>
+            <button id="zoomInBtn" class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-2 rounded-md text-sm transition duration-150 ease-in-out"><i class="fas fa-search-plus"></i></button>
+            <button id="zoomOutBtn" class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-2 rounded-md text-sm transition duration-150 ease-in-out"><i class="fas fa-search-minus"></i></button>
+            <button id="resetZoomBtn" class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-2 rounded-md text-sm transition duration-150 ease-in-out"><i class="fas fa-expand-arrows-alt"></i></button>
+             <button id="panModeBtn" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-150 ease-in-out flex items-center"><i class="fas fa-hand-paper mr-1"></i> Pan Mode</button>
+        </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div id="canvas" class="canvas mt-[60px]">
+        <div id="canvasContent" class="canvas-content">
+            <svg id="relationshipSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
+            <!-- Entities will be appended here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Properties Panel -->
+    <div id="propertiesPanel">
+        <button id="closePropertiesPanelBtn" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl">
+            <i class="fas fa-times"></i>
+        </button>
+        <div id="propertiesPanelContent" class="mt-6">
+            <!-- Content will be populated by JavaScript -->
+            <p class="text-gray-500">Select an entity or relationship to see its properties.</p>
+        </div>
+    </div>
+
+    <!-- Entity Modal -->
+    <div id="entityModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="entityModalTitle" class="text-2xl font-semibold mb-4">Add Entity</h2>
+            <input type="hidden" id="editingEntityId">
+            <div class="mb-4">
+                <label for="entityName" class="block text-sm font-medium text-gray-700">Entity Name</label>
+                <input type="text" id="entityName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div class="mb-4">
+                <label for="entityType" class="block text-sm font-medium text-gray-700">Entity Type</label>
+                <select id="entityType" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="table">Table</option>
+                    <option value="view">View</option>
+                </select>
+            </div>
+            <!-- View SQL Definition Area -->
+            <div id="entityViewSqlSection" class="mb-4 hidden">
+                <label for="entityViewSql" class="block text-sm font-medium text-gray-700">View SQL Definition</label>
+                <textarea id="entityViewSql" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="SELECT column1, column2 FROM existing_table WHERE ..."></textarea>
+            </div>
+
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Attributes</h3>
+            <div id="attributesContainer" class="space-y-3 mb-4 max-h-60 overflow-y-auto p-2 border rounded-md">
+                <!-- Attributes will be added here -->
+            </div>
+            <button id="addAttributeBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded-md text-sm mb-4 transition duration-150 ease-in-out"><i class="fas fa-plus mr-1"></i> Add Attribute</button>
+            
+            <div id="indexesSection"> <!-- Wrapper for indexes section -->
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Indexes</h3>
+                <div id="indexesContainer" class="space-y-3 mb-4 max-h-40 overflow-y-auto p-2 border rounded-md">
+                    <!-- Indexes will be added here -->
+                </div>
+                <button id="addIndexBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-3 rounded-md text-sm mb-4 transition duration-150 ease-in-out"><i class="fas fa-plus mr-1"></i> Add Index</button>
+            </div>
+
+
+            <div class="flex justify-end space-x-2">
+                <button id="cancelEntityModalBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-md text-sm transition duration-150 ease-in-out">Cancel</button>
+                <button id="saveEntityModalBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-150 ease-in-out">Save Entity</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relationship Modal -->
+    <div id="relationshipModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-semibold mb-4">Define Relationship</h2>
+            <input type="hidden" id="relationshipFromEntityId">
+            <input type="hidden" id="relationshipToEntityId">
+            <input type="hidden" id="editingRelationshipId">
+
+            <div class="mb-4">
+                <label for="relationshipType" class="block text-sm font-medium text-gray-700">Relationship Type</label>
+                <select id="relationshipType" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="one-to-one">One-to-One</option>
+                    <option value="one-to-many">One-to-Many</option>
+                    <option value="many-to-many">Many-to-Many</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">From: <span id="relModalFromEntityName" class="font-bold"></span></label>
+                <select id="relationshipFromAttribute" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">To: <span id="relModalToEntityName" class="font-bold"></span></label>
+                <select id="relationshipToAttribute" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-2">Note: For One-to-Many, the 'From' entity's selected attribute will typically be its Primary Key, and the 'To' entity's selected attribute will become the Foreign Key.</p>
+
+
+            <div class="flex justify-end space-x-2">
+                <button id="cancelRelationshipModalBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-md text-sm transition duration-150 ease-in-out">Cancel</button>
+                <button id="saveRelationshipModalBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition duration-150 ease-in-out">Save Relationship</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+
+<script>
+    // --- SCRIPT START --- //
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element Variables ---
+        const canvas = document.getElementById('canvas');
+        const canvasContent = document.getElementById('canvasContent');
+        const relationshipSvg = document.getElementById('relationshipSvg');
+        const addEntityBtn = document.getElementById('addEntityBtn');
+        const entityModal = document.getElementById('entityModal');
+        const entityModalTitle = document.getElementById('entityModalTitle');
+        const cancelEntityModalBtn = document.getElementById('cancelEntityModalBtn');
+        const saveEntityModalBtn = document.getElementById('saveEntityModalBtn');
+        const entityNameInput = document.getElementById('entityName');
+        const entityTypeSelect = document.getElementById('entityType');
+        const entityViewSqlSection = document.getElementById('entityViewSqlSection'); // For View SQL
+        const entityViewSqlInput = document.getElementById('entityViewSql'); // For View SQL
+        const attributesContainer = document.getElementById('attributesContainer');
+        const addAttributeBtn = document.getElementById('addAttributeBtn');
+        const editingEntityIdInput = document.getElementById('editingEntityId');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+        const importJsonInput = document.getElementById('importJsonInput');
+        const generateSqlBtn = document.getElementById('generateSqlBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const resetZoomBtn = document.getElementById('resetZoomBtn');
+        const panModeBtn = document.getElementById('panModeBtn');
+        const propertiesPanel = document.getElementById('propertiesPanel');
+        const propertiesPanelContent = document.getElementById('propertiesPanelContent');
+        const closePropertiesPanelBtn = document.getElementById('closePropertiesPanelBtn');
+        const relationshipModal = document.getElementById('relationshipModal');
+        const cancelRelationshipModalBtn = document.getElementById('cancelRelationshipModalBtn');
+        const saveRelationshipModalBtn = document.getElementById('saveRelationshipModalBtn');
+        const relationshipTypeSelect = document.getElementById('relationshipType');
+        const relationshipFromEntityIdInput = document.getElementById('relationshipFromEntityId');
+        const relationshipToEntityIdInput = document.getElementById('relationshipToEntityId');
+        const editingRelationshipIdInput = document.getElementById('editingRelationshipId');
+        const relModalFromEntityName = document.getElementById('relModalFromEntityName');
+        const relModalToEntityName = document.getElementById('relModalToEntityName');
+        const relationshipFromAttributeSelect = document.getElementById('relationshipFromAttribute');
+        const relationshipToAttributeSelect = document.getElementById('relationshipToAttribute');
+        const indexesSection = document.getElementById('indexesSection');
+        const indexesContainer = document.getElementById('indexesContainer');
+        const addIndexBtn = document.getElementById('addIndexBtn');
+        const toast = document.getElementById('toast');
+
+        // --- Application State Variables ---
+        /** @type {Array<Object>} Stores all entity objects. Entity: {id, name, x, y, entityType: 'table'|'view', attributes: Array, indexes?: Array, viewSql?: string} */
+        let entities = [];
+        /** @type {Array<Object>} Stores all relationship objects. Relationship: {id, type, fromEntityId, toEntityId, fromAttributeId, toAttributeId} */
+        let relationships = [];
+        /** @type {Array<Object>} History stack for undo/redo. */
+        let history = [];
+        /** @type {number} Current index in the history stack. */
+        let historyIndex = -1;
+        /** @type {number} Counter for default entity names. */
+        let nextEntityIdCounter = 1; 
+
+        /** @type {null|{type: string, id: string, data: Object}} Currently selected element. */
+        let selectedElement = null;
+        /** @type {boolean} Is an entity being dragged? */
+        let isDragging = false;
+        /** @type {number} X-offset for dragging. */
+        let dragOffsetX;
+        /** @type {number} Y-offset for dragging. */
+        let dragOffsetY;
+        /** @type {null|Object} The entity currently being dragged. */
+        let currentDraggedEntity = null;
+
+        /** @type {number} Current canvas zoom scale. */
+        let scale = 1.0;
+        /** @const @type {number} Min zoom. */
+        const minScale = 0.2;
+        /** @const @type {number} Max zoom. */
+        const maxScale = 3.0;
+        /** @type {number} Canvas X-pan. */
+        let panX = 0;
+        /** @type {number} Canvas Y-pan. */
+        let panY = 0;
+        /** @type {boolean} Is canvas being panned? */
+        let isPanning = false;
+        /** @type {boolean} Is pan mode active? */
+        let panModeActive = false;
+        /** @type {{x: number, y: number}} Pan start coordinates. */
+        let panStart = { x: 0, y: 0 };
+        
+        /** @type {boolean} Is a relationship line being drawn? */
+        let isDrawingRelationship = false;
+        /** @type {null|Object} Source entity for relationship drawing. */
+        let relationshipStartEntity = null;
+        /** @type {null|SVGElement} Temporary line for relationship drawing. */
+        let tempLine = null;
+
+
+        // --- Utility Functions ---
+        /**
+         * Generates a unique ID string.
+         * @param {string} [prefix=''] - Optional prefix.
+         * @returns {string} Unique ID.
+         */
+        const generateId = (prefix = '') => prefix + Date.now() + Math.random().toString(16).slice(2);
+        
+        /**
+         * Displays a toast notification.
+         * @param {string} message - Message to display.
+         * @param {'success'|'error'|'info'} [type='success'] - Toast type.
+         * @param {number} [duration=3000] - Duration in ms.
+         */
+        const showToast = (message, type = 'success', duration = 3000) => {
+            if (!toast) {
+                console.error("Toast element not found.");
+                return;
+            }
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, duration);
+        };
+
+        // --- History (Undo/Redo) ---
+        /** Saves current model state to history. */
+        function saveState() {
+            try {
+                const currentState = {
+                    entities: JSON.parse(JSON.stringify(entities)),
+                    relationships: JSON.parse(JSON.stringify(relationships)),
+                    nextEntityIdCounter,
+                };
+                history = history.slice(0, historyIndex + 1); 
+                history.push(currentState);
+                historyIndex++;
+                updateUndoRedoButtons();
+            } catch (error) {
+                console.error("Error in saveState:", error);
+                showToast("Failed to save model state.", "error");
+            }
+        }
+
+        /**
+         * Loads a model state from history.
+         * @param {Object} state - The state to load.
+         */
+        function loadState(state) {
+            try {
+                if (!state || !state.entities || !state.relationships) {
+                    throw new Error("Invalid state object provided to loadState.");
+                }
+                entities = JSON.parse(JSON.stringify(state.entities));
+                relationships = JSON.parse(JSON.stringify(state.relationships));
+                nextEntityIdCounter = state.nextEntityIdCounter || 1;
+                
+                renderAll();
+
+                if (selectedElement) { 
+                    const currentSelectedId = selectedElement.id;
+                    const currentSelectedType = selectedElement.type;
+                    deselectAll(); 
+                    if (currentSelectedType === 'entity') {
+                        const entityToReselect = findEntity(currentSelectedId);
+                        if (entityToReselect) selectEntity(entityToReselect);
+                    } else if (currentSelectedType === 'relationship') {
+                        const relToReselect = findRelationship(currentSelectedId);
+                        if (relToReselect) selectRelationship(relToReselect);
+                    }
+                } else {
+                    deselectAll();
+                }
+                updatePropertiesPanel(); 
+            } catch (error) {
+                console.error("Error in loadState:", error);
+                showToast("Failed to load model state.", "error");
+            }
+        }
+
+        undoBtn.addEventListener('click', () => {
+            if (historyIndex > 0) {
+                historyIndex--;
+                loadState(history[historyIndex]);
+                updateUndoRedoButtons();
+            }
+        });
+
+        redoBtn.addEventListener('click', () => {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                loadState(history[historyIndex]);
+                updateUndoRedoButtons();
+            }
+        });
+
+        /** Updates undo/redo button states. */
+        function updateUndoRedoButtons() {
+            if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+            if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+
+
+        // --- Canvas Zoom and Pan ---
+        /** Applies current pan/zoom transform to canvas. */
+        function applyTransform() {
+            if (canvasContent) {
+                canvasContent.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            } else {
+                console.error("Canvas content element missing for applyTransform.");
+            }
+        }
+
+        zoomInBtn.addEventListener('click', () => {
+            scale = Math.min(maxScale, scale * 1.1); 
+            scale = parseFloat(scale.toFixed(2));
+            applyTransform();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            scale = Math.max(minScale, scale / 1.1); 
+            scale = parseFloat(scale.toFixed(2));
+            applyTransform();
+        });
+
+        resetZoomBtn.addEventListener('click', () => {
+            scale = 1.0;
+            panX = 0;
+            panY = 0;
+            applyTransform();
+        });
+        
+        panModeBtn.addEventListener('click', () => {
+            panModeActive = !panModeActive;
+            panModeBtn.classList.toggle('bg-orange-700', panModeActive);
+            panModeBtn.classList.toggle('bg-orange-500', !panModeActive);
+            panModeBtn.innerHTML = panModeActive ? '<i class="fas fa-mouse-pointer mr-1"></i> Select Mode' : '<i class="fas fa-hand-paper mr-1"></i> Pan Mode';
+            if (canvas) canvas.style.cursor = panModeActive ? 'grab' : 'default';
+            
+            if (!panModeActive && isPanning) { 
+                isPanning = false;
+                if (canvas) canvas.style.cursor = 'default';
+            }
+            document.querySelectorAll('.entity').forEach(e => e.style.cursor = panModeActive ? 'default': 'grab');
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (panModeActive && (e.target === canvas || e.target === canvasContent || e.target === relationshipSvg)) {
+                isPanning = true;
+                panStart.x = e.clientX - panX;
+                panStart.y = e.clientY - panY;
+                if (canvas) canvas.style.cursor = 'grabbing';
+                e.preventDefault(); 
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                panX = e.clientX - panStart.x;
+                panY = e.clientY - panStart.y;
+                applyTransform();
+            } else if (isDrawingRelationship && relationshipStartEntity && tempLine) {
+                if (!canvasContent) return;
+                const rect = canvasContent.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / scale;
+                const y = (e.clientY - rect.top) / scale;
+                
+                tempLine.setAttribute('x2', String(x));
+                tempLine.setAttribute('y2', String(y));
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                if (canvas) canvas.style.cursor = panModeActive ? 'grab' : 'default';
+            }
+            if (isDrawingRelationship) {
+                const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+                let toEntity = null;
+                if (targetElement && targetElement.classList.contains('connector-point')) {
+                    const toEntityElement = targetElement.closest('.entity');
+                    if (toEntityElement && relationshipStartEntity && toEntityElement.id !== relationshipStartEntity.id) {
+                         toEntity = findEntity(toEntityElement.id);
+                    }
+                }
+                
+                if (toEntity && relationshipStartEntity && relationshipStartEntity.entityType !== 'view' && toEntity.entityType !== 'view') {
+                     openRelationshipModal(relationshipStartEntity, toEntity);
+                } else if (toEntity && relationshipStartEntity && (relationshipStartEntity.entityType === 'view' || toEntity.entityType === 'view')) {
+                    showToast('Views cannot participate in relationships.', 'error');
+                }
+                stopDrawingRelationship(); 
+            }
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            if (isPanning) {
+                isPanning = false;
+                if (canvas) canvas.style.cursor = panModeActive ? 'grab' : 'default';
+            }
+             if (isDrawingRelationship) {
+                stopDrawingRelationship();
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left; 
+            const mouseY = e.clientY - rect.top;
+
+            const worldX = (mouseX - panX) / scale;
+            const worldY = (mouseY - panY) / scale;
+
+            if (e.deltaY < 0) { 
+                scale = Math.min(maxScale, scale * 1.1); 
+            } else { 
+                scale = Math.max(minScale, scale / 1.1); 
+            }
+            scale = parseFloat(scale.toFixed(2)); 
+
+            panX = mouseX - worldX * scale;
+            panY = mouseY - worldY * scale;
+            
+            applyTransform();
+        });
+
+
+        // --- Entity Management ---
+        /**
+         * Finds an entity by ID.
+         * @param {string} id - Entity ID.
+         * @returns {Object|undefined} Entity object or undefined.
+         */
+        function findEntity(id) {
+            return entities.find(e => e.id === id);
+        }
+        /**
+         * Finds a relationship by ID.
+         * @param {string} id - Relationship ID.
+         * @returns {Object|undefined} Relationship object or undefined.
+         */
+        function findRelationship(id) {
+            return relationships.find(r => r.id === id);
+        }
+
+        /**
+         * Creates a DOM element for an entity.
+         * @param {Object} entity - Entity data.
+         * @returns {HTMLDivElement} Entity DOM element.
+         */
+        function createEntityElement(entity) {
+            if (!entity || typeof entity.id !== 'string' || typeof entity.name !== 'string') {
+                console.error("Invalid entity data in createEntityElement:", entity);
+                const errDiv = document.createElement('div');
+                errDiv.textContent = "Error: Invalid Entity Data";
+                errDiv.style.color = "red";
+                return errDiv;
+            }
+            try {
+                const entityDiv = document.createElement('div');
+                entityDiv.id = entity.id;
+                entityDiv.className = 'entity';
+                if (entity.entityType === 'view') {
+                    entityDiv.classList.add('entity-view');
+                }
+                entityDiv.style.left = `${entity.x || 0}px`;
+                entityDiv.style.top = `${entity.y || 0}px`;
+
+                const header = document.createElement('div');
+                header.className = 'entity-header';
+
+                const typeBadge = document.createElement('span');
+                typeBadge.className = 'entity-type-badge';
+                typeBadge.textContent = entity.entityType === 'view' ? 'View' : 'Table';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'entity-name-input';
+                nameInput.value = entity.name;
+                nameInput.addEventListener('change', (e) => {
+                    const newName = e.target.value.trim();
+                    if (newName) {
+                        entity.name = newName;
+                        saveState();
+                        if (selectedElement && selectedElement.id === entity.id) updatePropertiesPanel(); 
+                        renderRelationships(); 
+                    } else {
+                        e.target.value = entity.name; 
+                        showToast("Entity name cannot be empty.", "error");
+                    }
+                });
+                nameInput.addEventListener('click', (e) => e.stopPropagation()); 
+                nameInput.addEventListener('mousedown', (e) => e.stopPropagation()); 
+
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '<i class="fas fa-edit text-xs"></i>';
+                editBtn.className = 'ml-auto text-white hover:text-gray-200 px-1';
+                editBtn.title = "Edit Entity";
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openEntityModal(entity);
+                };
+                
+                header.appendChild(typeBadge);
+                header.appendChild(nameInput);
+                header.appendChild(editBtn);
+                entityDiv.appendChild(header);
+
+                const attributesDiv = document.createElement('div');
+                attributesDiv.className = 'attributes-list p-1';
+                (entity.attributes || []).forEach(attr => {
+                    const attrDiv = document.createElement('div');
+                    attrDiv.className = 'attribute';
+                    let attrText = `${attr.name || 'N/A'}: ${attr.dataType || 'N/A'}`;
+                    if (attr.isPrimaryKey) attrText = `<span class="pk">PK</span> ${attrText}`;
+                    if (attr.isForeignKey) attrText = `<span class="fk">FK</span> ${attrText}`; 
+                    if (attr.isNullable === false) attrText += ' NOT NULL'; // Explicitly check for false
+                    if (attr.defaultValue) attrText += ` DEFAULT ${attr.defaultValue}`;
+                    if (attr.isUnique && !attr.isPrimaryKey) attrText += ` UNIQUE`; 
+                    attrDiv.innerHTML = attrText;
+                    attributesDiv.appendChild(attrDiv);
+                });
+                entityDiv.appendChild(attributesDiv);
+
+                if (entity.entityType !== 'view') {
+                    ['top', 'bottom', 'left', 'right'].forEach(pos => {
+                        const point = document.createElement('div');
+                        point.className = `connector-point ${pos}`;
+                        point.dataset.entityId = entity.id; 
+                        point.addEventListener('mousedown', (e) => {
+                            e.stopPropagation(); 
+                            if (!panModeActive) {
+                               const clickedEntity = findEntity(e.currentTarget.dataset.entityId);
+                               if(clickedEntity && clickedEntity.entityType !== 'view') { 
+                                   startDrawingRelationship(clickedEntity, e.currentTarget);
+                               }
+                            }
+                        });
+                        entityDiv.appendChild(point);
+                    });
+                }
+
+                entityDiv.addEventListener('mousedown', (e) => {
+                    if (panModeActive || e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.classList.contains('connector-point')) {
+                        return; 
+                    }
+                    
+                    isDragging = true;
+                    currentDraggedEntity = entity;
+                    const rect = entityDiv.getBoundingClientRect();
+                    dragOffsetX = (e.clientX - rect.left) / scale;
+                    dragOffsetY = (e.clientY - rect.top) / scale;
+                    
+                    entityDiv.style.cursor = 'grabbing';
+                    entityDiv.style.zIndex = 100; 
+                    selectEntity(entity);
+                    e.stopPropagation(); 
+                });
+                
+                entityDiv.addEventListener('click', (e) => {
+                    if (panModeActive || e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.classList.contains('connector-point')) return;
+                    selectEntity(entity);
+                    e.stopPropagation();
+                });
+                entityDiv.style.cursor = panModeActive ? 'default': 'grab';
+
+                return entityDiv;
+            } catch (error) {
+                console.error("Error in createEntityElement for:", entity, error);
+                showToast("Error displaying an entity.", "error");
+                const errDiv = document.createElement('div');
+                errDiv.textContent = "Error"; errDiv.style.color = "red";
+                return errDiv;
+            }
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !currentDraggedEntity) return;
+            try {
+                if (!canvasContent) throw new Error("canvasContent is null in mousemove");
+                const canvasRect = canvasContent.getBoundingClientRect(); 
+                let newX = (e.clientX - canvasRect.left) / scale - dragOffsetX;
+                let newY = (e.clientY - canvasRect.top) / scale - dragOffsetY;
+
+                currentDraggedEntity.x = newX;
+                currentDraggedEntity.y = newY;
+
+                const entityElement = document.getElementById(currentDraggedEntity.id);
+                if (entityElement) {
+                    entityElement.style.left = `${newX}px`;
+                    entityElement.style.top = `${newY}px`;
+                }
+                renderRelationships(); 
+            } catch (error) {
+                console.error("Error during entity drag (mousemove):", error);
+                isDragging = false; // Stop dragging on error
+                currentDraggedEntity = null;
+            }
+        });
+
+        document.addEventListener('mouseup', () => { 
+            if (isDragging && currentDraggedEntity) {
+                const entityElement = document.getElementById(currentDraggedEntity.id);
+                if (entityElement) {
+                    entityElement.style.cursor = panModeActive ? 'default': 'grab';
+                    entityElement.style.zIndex = ''; 
+                }
+                saveState(); 
+            }
+            isDragging = false;
+            currentDraggedEntity = null;
+        });
+
+
+        // --- Relationship Drawing Logic ---
+        /**
+         * Starts drawing a relationship line.
+         * @param {Object} entity - Source entity.
+         * @param {HTMLElement} connectorPointElement - Clicked connector point.
+         */
+        function startDrawingRelationship(entity, connectorPointElement) {
+            if (!entity || entity.entityType === 'view') { 
+                showToast("Views cannot be part of relationships.", "error");
+                return;
+            }
+            if (!connectorPointElement) {
+                console.error("Missing connectorPointElement in startDrawingRelationship.");
+                return;
+            }
+            try {
+                isDrawingRelationship = true;
+                relationshipStartEntity = entity;
+                
+                tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                const startCoords = getConnectorPointCoords(entity, connectorPointElement); 
+                tempLine.setAttribute('x1', String(startCoords.x));
+                tempLine.setAttribute('y1', String(startCoords.y));
+                tempLine.setAttribute('x2', String(startCoords.x)); 
+                tempLine.setAttribute('y2', String(startCoords.y)); 
+                tempLine.setAttribute('stroke', '#fbbf24'); 
+                tempLine.setAttribute('stroke-width', '2');
+                tempLine.setAttribute('stroke-dasharray', '4,4');
+                if (relationshipSvg) relationshipSvg.appendChild(tempLine);
+                else console.error("relationshipSvg missing for tempLine.");
+
+                if (canvas) canvas.style.cursor = 'crosshair';
+
+                document.querySelectorAll('.entity:not(.entity-view)').forEach(el => el.classList.add('show-connectors'));
+            } catch (error) {
+                console.error("Error in startDrawingRelationship:", error);
+                stopDrawingRelationship(); 
+            }
+        }
+
+        /** Stops drawing relationship line. */
+        function stopDrawingRelationship() {
+            isDrawingRelationship = false;
+            relationshipStartEntity = null;
+            if (tempLine) {
+                tempLine.remove();
+                tempLine = null;
+            }
+            if (canvas) canvas.style.cursor = panModeActive ? 'grab' : 'default';
+            document.querySelectorAll('.entity').forEach(el => el.classList.remove('show-connectors'));
+        }
+
+        /**
+         * Gets coordinates of a connector point.
+         * @param {Object} entity - The entity.
+         * @param {HTMLElement} connectorDiv - The connector DOM element.
+         * @returns {{x: number, y: number}} Coordinates.
+         */
+        function getConnectorPointCoords(entity, connectorDiv) {
+            const entityEl = document.getElementById(entity.id);
+            const fallbackX = (entity.x || 0) + ((entityEl?.offsetWidth || 180) / 2);
+            const fallbackY = (entity.y || 0) + ((entityEl?.offsetHeight || 100) / 2);
+
+            if (!entityEl || !connectorDiv || !canvasContent) {
+                console.warn("Missing elements in getConnectorPointCoords for entity:", entity?.name, "Using fallback.");
+                return { x: fallbackX, y: fallbackY };
+            }
+            try {
+                const connectorRect = connectorDiv.getBoundingClientRect(); 
+                const canvasContentRect = canvasContent.getBoundingClientRect(); 
+
+                const x = ( (connectorRect.left + connectorRect.width / 2) - canvasContentRect.left ) / scale;
+                const y = ( (connectorRect.top + connectorRect.height / 2) - canvasContentRect.top ) / scale;
+                
+                return { x, y };
+            } catch (error) {
+                console.error("Error in getConnectorPointCoords for entity:", entity?.name, error);
+                return { x: fallbackX, y: fallbackY }; 
+            }
+        }
+
+
+        // --- Entity Modal ---
+        addEntityBtn.addEventListener('click', () => openEntityModal());
+        entityTypeSelect.addEventListener('change', (e) => { 
+            const isView = e.target.value === 'view';
+            if(indexesSection) indexesSection.style.display = isView ? 'none' : 'block';
+            if(entityViewSqlSection) entityViewSqlSection.style.display = isView ? 'block' : 'none';
+        });
+
+        /**
+         * Opens entity modal for add/edit.
+         * @param {Object|null} [entityToEdit=null] - Entity to edit, or null for new.
+         */
+        function openEntityModal(entityToEdit = null) {
+            const requiredElements = [entityModal, attributesContainer, indexesContainer, entityModalTitle, editingEntityIdInput, entityNameInput, entityTypeSelect, indexesSection, entityViewSqlSection, entityViewSqlInput];
+            if (requiredElements.some(el => !el)) {
+                console.error("Entity modal UI elements missing.");
+                showToast("Cannot open entity editor: UI error.", "error");
+                return;
+            }
+            try {
+                entityModal.classList.remove('hidden');
+                attributesContainer.innerHTML = ''; 
+                indexesContainer.innerHTML = ''; 
+                entityViewSqlInput.value = ''; // Clear SQL input
+
+                if (entityToEdit) {
+                    entityModalTitle.textContent = 'Edit Entity';
+                    editingEntityIdInput.value = entityToEdit.id;
+                    entityNameInput.value = entityToEdit.name;
+                    entityTypeSelect.value = entityToEdit.entityType || 'table'; 
+                    entityViewSqlInput.value = entityToEdit.viewSql || '';
+
+                    (entityToEdit.attributes || []).forEach(attr => createAttributeInputRow(attr));
+                    
+                    const isView = entityToEdit.entityType === 'view';
+                    indexesSection.style.display = isView ? 'none' : 'block';
+                    entityViewSqlSection.style.display = isView ? 'block' : 'none';
+                    if (!isView) {
+                        (entityToEdit.indexes || []).forEach(idx => createIndexInputRow(idx, entityToEdit.attributes || []));
+                    }
+
+                } else {
+                    entityModalTitle.textContent = 'Add Entity';
+                    editingEntityIdInput.value = '';
+                    entityNameInput.value = `NewEntity${nextEntityIdCounter}`;
+                    entityTypeSelect.value = 'table'; 
+                    const defaultAttr = { id: `attr_temp_${Date.now()}`, name: 'id', dataType: 'INTEGER', isPrimaryKey: true, isNullable: false, defaultValue: '', isUnique: false };
+                    createAttributeInputRow(defaultAttr); 
+                    indexesSection.style.display = 'block'; 
+                    entityViewSqlSection.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error in openEntityModal:", error);
+                showToast("Error opening entity editor.", "error");
+                if (entityModal) entityModal.classList.add('hidden');
+            }
+        }
+
+        addAttributeBtn.addEventListener('click', () => {
+            createAttributeInputRow({ id: `attr_temp_${Date.now()}`, name: '', dataType: 'TEXT', isPrimaryKey: false, isNullable: true, defaultValue: '', isUnique: false });
+        });
+        
+        addIndexBtn.addEventListener('click', () => {
+            const entityId = editingEntityIdInput.value;
+            let currentAttributesForIndex = [];
+            if (entityId) {
+                const entity = findEntity(entityId);
+                if (entity) currentAttributesForIndex = entity.attributes || [];
+            } else { 
+                 currentAttributesForIndex = Array.from(attributesContainer.children).map(row => ({ 
+                    name: row.querySelector('[data-prop="name"]')?.value || ''
+                })).filter(attr => attr.name); 
+            }
+            createIndexInputRow({ id: `idx_temp_${Date.now()}`, name: '', columns: [], isUnique: false }, currentAttributesForIndex);
+        });
+
+        /**
+         * Creates an attribute input row in the entity modal.
+         * @param {Object} attr - Attribute data.
+         */
+        function createAttributeInputRow(attr) { 
+            if (!attributesContainer) {
+                console.error("attributesContainer missing in createAttributeInputRow.");
+                return;
+            }
+            try {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center p-1 bg-gray-50 rounded';
+                const attributeId = attr.id && !attr.id.startsWith('attr_temp_') ? attr.id : generateId('attr_');
+                row.dataset.attributeId = attributeId;
+
+                row.innerHTML = `
+                    <input type="text" data-prop="name" value="${attr.name || ''}" placeholder="Name" class="col-span-3 px-2 py-1 border rounded text-sm">
+                    <select data-prop="dataType" class="col-span-3 px-2 py-1 border rounded text-sm">
+                        <option value="TEXT" ${attr.dataType === 'TEXT' ? 'selected' : ''}>TEXT</option>
+                        <option value="INTEGER" ${attr.dataType === 'INTEGER' ? 'selected' : ''}>INTEGER</option>
+                        <option value="REAL" ${attr.dataType === 'REAL' ? 'selected' : ''}>REAL</option>
+                        <option value="BLOB" ${attr.dataType === 'BLOB' ? 'selected' : ''}>BLOB</option>
+                        <option value="NUMERIC" ${attr.dataType === 'NUMERIC' ? 'selected' : ''}>NUMERIC</option>
+                    </select>
+                    <label class="col-span-1 flex items-center text-xs"><input type="checkbox" data-prop="isPrimaryKey" ${attr.isPrimaryKey ? 'checked' : ''} class="mr-1"> PK</label>
+                    <label class="col-span-1 flex items-center text-xs"><input type="checkbox" data-prop="isNullable" ${attr.isNullable === false ? '' : 'checked'} class="mr-1"> Null</label>
+                    <input type="text" data-prop="defaultValue" value="${attr.defaultValue || ''}" placeholder="Default" class="col-span-2 px-2 py-1 border rounded text-sm">
+                    <label class="col-span-1 flex items-center text-xs"><input type="checkbox" data-prop="isUnique" ${attr.isUnique ? 'checked' : ''} class="mr-1">UQ</label>
+                    <button class="col-span-1 text-red-500 hover:text-red-700 remove-attr-btn"><i class="fas fa-trash-alt"></i></button>
+                `;
+                attributesContainer.appendChild(row);
+                const removeBtn = row.querySelector('.remove-attr-btn');
+                if(removeBtn) removeBtn.addEventListener('click', () => row.remove());
+
+                const pkCheckbox = row.querySelector('[data-prop="isPrimaryKey"]');
+                if (pkCheckbox) {
+                    pkCheckbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            attributesContainer.querySelectorAll('[data-prop="isPrimaryKey"]').forEach(otherPkCheckbox => {
+                                if (otherPkCheckbox !== pkCheckbox) {
+                                    otherPkCheckbox.checked = false;
+                                }
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error in createAttributeInputRow:", error);
+            }
+        }
+        
+        /**
+         * Creates an index input row in the entity modal.
+         * @param {Object} index - Index data.
+         * @param {Array<Object>} [entityAttributes=[]] - Attributes of the entity.
+         */
+        function createIndexInputRow(index, entityAttributes = []) { 
+            if (!indexesContainer) {
+                console.error("indexesContainer missing in createIndexInputRow.");
+                return;
+            }
+            try {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center p-1 bg-gray-50 rounded';
+                row.dataset.indexId = index.id && !index.id.startsWith('idx_temp_') ? index.id : generateId('idx_');
+
+                const attributeOptions = (entityAttributes || [])
+                    .map(attr => attr.name) 
+                    .filter(name => name) 
+                    .map(name => `<option value="${name}" ${ (index.columns || []).includes(name) ? 'selected' : ''}>${name}</option>`)
+                    .join('');
+
+                row.innerHTML = `
+                    <input type="text" data-prop="name" value="${index.name || ''}" placeholder="Index Name" class="col-span-4 px-2 py-1 border rounded text-sm">
+                    <select data-prop="columns" multiple class="col-span-5 px-2 py-1 border rounded text-sm h-16">
+                        ${attributeOptions}
+                    </select>
+                    <label class="col-span-2 flex items-center text-xs"><input type="checkbox" data-prop="isUnique" ${index.isUnique ? 'checked' : ''} class="mr-1"> Unique</label>
+                    <button class="col-span-1 text-red-500 hover:text-red-700 remove-index-btn"><i class="fas fa-trash-alt"></i></button>
+                `;
+                indexesContainer.appendChild(row);
+                const removeBtn = row.querySelector('.remove-index-btn');
+                if (removeBtn) removeBtn.addEventListener('click', () => row.remove());
+            } catch (error) {
+                console.error("Error in createIndexInputRow:", error);
+            }
+        }
+
+
+        cancelEntityModalBtn.addEventListener('click', () => {
+            if (entityModal) entityModal.classList.add('hidden');
+        });
+
+        saveEntityModalBtn.addEventListener('click', () => {
+            try {
+                const name = entityNameInput.value.trim();
+                const entityType = entityTypeSelect.value;
+                const viewSql = entityViewSqlInput.value.trim();
+
+                if (!name) {
+                    showToast('Entity name cannot be empty.', 'error');
+                    return;
+                }
+                if (entityType === 'view' && !viewSql) {
+                    showToast('View SQL definition cannot be empty for a View entity.', 'error');
+                    return;
+                }
+
+
+                const attributes = Array.from(attributesContainer.children).map(row => {
+                    const attrNameInput = row.querySelector('[data-prop="name"]');
+                    const attrName = attrNameInput ? attrNameInput.value.trim() : '';
+                    if (!attrName) return null; 
+                    
+                    const dataTypeSelect = row.querySelector('[data-prop="dataType"]');
+                    const pkCheckbox = row.querySelector('[data-prop="isPrimaryKey"]');
+                    const nullableCheckbox = row.querySelector('[data-prop="isNullable"]');
+                    const defaultValueInput = row.querySelector('[data-prop="defaultValue"]');
+                    const uniqueCheckbox = row.querySelector('[data-prop="isUnique"]');
+
+                    return {
+                        id: row.dataset.attributeId, 
+                        name: attrName,
+                        dataType: dataTypeSelect ? dataTypeSelect.value : 'TEXT',
+                        isPrimaryKey: entityType === 'table' && pkCheckbox ? pkCheckbox.checked : false,
+                        isNullable: nullableCheckbox ? nullableCheckbox.checked : true,
+                        defaultValue: defaultValueInput ? defaultValueInput.value.trim() || null : null,
+                        isUnique: entityType === 'table' && uniqueCheckbox ? uniqueCheckbox.checked : false,
+                        isForeignKey: false, 
+                        foreignKeyTo: null, 
+                    };
+                }).filter(attr => attr !== null); 
+                
+                let pkFound = false;
+                if (entityType === 'table') {
+                    attributes.forEach(attr => {
+                        if (attr.isPrimaryKey) {
+                            if (pkFound) attr.isPrimaryKey = false; 
+                            else pkFound = true;
+                        }
+                    });
+                }
+
+                const indexes = entityType === 'table' ? Array.from(indexesContainer.children).map(row => {
+                    const indexNameInput = row.querySelector('[data-prop="name"]');
+                    const indexName = indexNameInput ? indexNameInput.value.trim() : '';
+                    const columnsSelect = row.querySelector('[data-prop="columns"]');
+                    const selectedColumns = columnsSelect ? Array.from(columnsSelect.selectedOptions).map(opt => opt.value) : [];
+                    
+                    if (!indexName || selectedColumns.length === 0) return null;
+                    
+                    const uniqueCheckbox = row.querySelector('[data-prop="isUnique"]');
+                    return {
+                        id: row.dataset.indexId, 
+                        name: indexName,
+                        columns: selectedColumns,
+                        isUnique: uniqueCheckbox ? uniqueCheckbox.checked : false,
+                    };
+                }).filter(idx => idx !== null) : [];
+
+
+                const editingId = editingEntityIdInput.value;
+                if (editingId) { 
+                    const entity = findEntity(editingId);
+                    if (entity) {
+                        entity.name = name;
+                        entity.entityType = entityType;
+                        entity.viewSql = entityType === 'view' ? viewSql : undefined; // Store SQL only for views
+
+                        const oldAttributes = new Map((entity.attributes || []).map(attr => [attr.id, attr]));
+                        attributes.forEach(newAttr => {
+                            const oldAttr = oldAttributes.get(newAttr.id);
+                            if (oldAttr && oldAttr.isForeignKey) { 
+                                newAttr.isForeignKey = oldAttr.isForeignKey;
+                                newAttr.foreignKeyTo = oldAttr.foreignKeyTo;
+                            }
+                        });
+                        entity.attributes = attributes;
+                        entity.indexes = indexes; 
+
+                        if (entityType === 'view') { // If type changed to view, remove its relationships
+                            relationships = relationships.filter(r => r.fromEntityId !== entity.id && r.toEntityId !== entity.id);
+                        }
+                    } else {
+                        throw new Error(`Failed to find entity for editing with ID: ${editingId}`);
+                    }
+                } else { 
+                    const newEntity = {
+                        id: generateId('ent_'),
+                        name,
+                        entityType,
+                        attributes,
+                        indexes, 
+                        viewSql: entityType === 'view' ? viewSql : undefined,
+                        x: 50 + (entities.length % 5) * 220 + Math.random()*20 - 10, 
+                        y: 50 + Math.floor(entities.length / 5) * 180 + Math.random()*20 - 10,
+                    };
+                    entities.push(newEntity);
+                    nextEntityIdCounter++; 
+                }
+                if (entityModal) entityModal.classList.add('hidden');
+                saveState();
+                renderAll();
+                showToast(`Entity "${name}" saved.`, 'success');
+            } catch (error) {
+                console.error("Error in saveEntityModalBtn handler:", error);
+                showToast(`Failed to save entity: ${error.message}`, "error");
+            }
+        });
+
+        // --- Relationship Modal ---
+        /**
+         * Opens relationship modal.
+         * @param {Object} fromEntity - Source entity.
+         * @param {Object} toEntity - Target entity.
+         * @param {Object|null} [relToEdit=null] - Relationship to edit.
+         */
+        function openRelationshipModal(fromEntity, toEntity, relToEdit = null) {
+            if (!fromEntity || !toEntity) {
+                console.error("Missing fromEntity or toEntity in openRelationshipModal.");
+                showToast("Cannot define relationship: entities missing.", "error");
+                return;
+            }
+            if (fromEntity.entityType === 'view' || toEntity.entityType === 'view') {
+                showToast("Views cannot participate in relationships.", "error");
+                return;
+            }
+            const requiredElements = [relationshipModal, relationshipFromEntityIdInput, relationshipToEntityIdInput, relModalFromEntityName, relModalToEntityName, relationshipFromAttributeSelect, relationshipToAttributeSelect, editingRelationshipIdInput, relationshipTypeSelect];
+            if (requiredElements.some(el => !el)) {
+                console.error("Relationship modal UI elements missing.");
+                showToast("Cannot open relationship editor: UI error.", "error");
+                return;
+            }
+            try {
+                relationshipModal.classList.remove('hidden');
+                relationshipFromEntityIdInput.value = fromEntity.id;
+                relationshipToEntityIdInput.value = toEntity.id;
+                relModalFromEntityName.textContent = fromEntity.name;
+                relModalToEntityName.textContent = toEntity.name;
+
+                populateAttributeSelect(relationshipFromAttributeSelect, fromEntity.attributes || []);
+                populateAttributeSelect(relationshipToAttributeSelect, toEntity.attributes || []);
+
+                if (relToEdit) {
+                    editingRelationshipIdInput.value = relToEdit.id;
+                    relationshipTypeSelect.value = relToEdit.type;
+                    relationshipFromAttributeSelect.value = relToEdit.fromAttributeId;
+                    relationshipToAttributeSelect.value = relToEdit.toAttributeId;
+                } else {
+                    editingRelationshipIdInput.value = '';
+                    relationshipTypeSelect.value = 'one-to-many'; 
+                    const fromPK = (fromEntity.attributes || []).find(a => a.isPrimaryKey);
+                    if (fromPK) relationshipFromAttributeSelect.value = fromPK.id;
+                    
+                    const toFKNameSuggestion = `${fromEntity.name.toLowerCase().replace(/\s+/g, '_')}_id`;
+                    const suggestedToAttr = (toEntity.attributes || []).find(a => a.name === toFKNameSuggestion && !a.isPrimaryKey); 
+                    if (suggestedToAttr) {
+                         relationshipToAttributeSelect.value = suggestedToAttr.id;
+                    } else {
+                        const firstNonPKToAttr = (toEntity.attributes || []).find(a => !a.isPrimaryKey);
+                        if (firstNonPKToAttr) relationshipToAttributeSelect.value = firstNonPKToAttr.id;
+                    }
+                }
+            } catch (error) {
+                console.error("Error in openRelationshipModal:", error);
+                showToast("Error opening relationship editor.", "error");
+                if (relationshipModal) relationshipModal.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Populates a select dropdown with attributes.
+         * @param {HTMLSelectElement} selectElement - The select element.
+         * @param {Array<Object>} attributes - Attribute objects.
+         */
+        function populateAttributeSelect(selectElement, attributes) {
+            if (!selectElement) {
+                console.error("Missing selectElement in populateAttributeSelect.");
+                return;
+            }
+            selectElement.innerHTML = '<option value="">-- Select Attribute --</option>';
+            (attributes || []).forEach(attr => {
+                const option = document.createElement('option');
+                option.value = attr.id;
+                option.textContent = `${attr.name || 'Unnamed Attribute'} (${attr.dataType || 'N/A'})`;
+                selectElement.appendChild(option);
+            });
+        }
+
+        cancelRelationshipModalBtn.addEventListener('click', () => {
+            if (relationshipModal) relationshipModal.classList.add('hidden');
+        });
+
+        saveRelationshipModalBtn.addEventListener('click', () => {
+            try {
+                const type = relationshipTypeSelect.value;
+                const fromEntityId = relationshipFromEntityIdInput.value;
+                const toEntityId = relationshipToEntityIdInput.value;
+                const fromAttributeId = relationshipFromAttributeSelect.value;
+                const toAttributeId = relationshipToAttributeSelect.value;
+                const editingId = editingRelationshipIdInput.value;
+
+                if (!fromAttributeId || !toAttributeId) {
+                    showToast('Please select attributes for both entities.', 'error');
+                    return;
+                }
+                if (fromEntityId === toEntityId && fromAttributeId === toAttributeId) {
+                    showToast('Cannot create a relationship from an attribute to itself on the same entity.', 'error');
+                    return;
+                }
+                
+                const fromEntity = findEntity(fromEntityId);
+                const toEntity = findEntity(toEntityId);
+                if (!fromEntity || !toEntity || fromEntity.entityType === 'view' || toEntity.entityType === 'view') { 
+                     showToast('Source or target entity not found or is a View.', 'error'); return;
+                }
+                const fromAttribute = (fromEntity.attributes || []).find(a => a.id === fromAttributeId);
+                const toAttribute = (toEntity.attributes || []).find(a => a.id === toAttributeId);
+                 if (!fromAttribute || !toAttribute) {
+                     showToast('Source or target attribute not found.', 'error'); return;
+                }
+
+                if (editingId) {
+                    const rel = findRelationship(editingId);
+                    if (rel && rel.toAttributeId !== toAttributeId) { 
+                        const oldToEntity = findEntity(rel.toEntityId); 
+                        const oldToAttr = oldToEntity?.attributes.find(a => a.id === rel.toAttributeId);
+                        if (oldToAttr && oldToAttr.isForeignKey && oldToAttr.foreignKeyTo && oldToAttr.foreignKeyTo.entityId === rel.fromEntityId && oldToAttr.foreignKeyTo.attributeId === rel.fromAttributeId) {
+                            oldToAttr.isForeignKey = false;
+                            oldToAttr.foreignKeyTo = null;
+                        }
+                    }
+                }
+
+                if (editingId) {
+                    const rel = findRelationship(editingId);
+                    if (rel) {
+                        rel.type = type;
+                        rel.fromAttributeId = fromAttributeId;
+                        rel.toAttributeId = toAttributeId; 
+                    } else {
+                         throw new Error(`Failed to find relationship for editing with ID: ${editingId}`);
+                    }
+                } else {
+                    const newRelationship = {
+                        id: generateId('rel_'),
+                        type,
+                        fromEntityId,
+                        toEntityId,
+                        fromAttributeId,
+                        toAttributeId,
+                    };
+                    relationships.push(newRelationship);
+                }
+                
+                if (type === 'one-to-one' || type === 'one-to-many') {
+                    toAttribute.isForeignKey = true;
+                    toAttribute.foreignKeyTo = { entityId: fromEntityId, attributeId: fromAttributeId };
+                } else if (type === 'many-to-many') {
+                    if (toAttribute.isForeignKey && toAttribute.foreignKeyTo && toAttribute.foreignKeyTo.entityId === fromEntityId && toAttribute.foreignKeyTo.attributeId === fromAttributeId) {
+                         toAttribute.isForeignKey = false;
+                         toAttribute.foreignKeyTo = null;
+                    }
+                }
+
+                if (relationshipModal) relationshipModal.classList.add('hidden');
+                saveState();
+                renderAll();
+                showToast('Relationship saved.', 'success');
+            } catch (error) {
+                console.error("Error in saveRelationshipModalBtn handler:", error);
+                showToast(`Failed to save relationship: ${error.message}`, "error");
+            }
+        });
+
+
+        // --- Selection and Properties Panel ---
+        /**
+         * Selects an entity.
+         * @param {Object} entity - Entity to select.
+         */
+        function selectEntity(entity) {
+            if (!entity || !entity.id) {
+                console.warn("Invalid entity passed to selectEntity:", entity);
+                return;
+            }
+            deselectAll();
+            selectedElement = { type: 'entity', id: entity.id, data: entity };
+            const entityEl = document.getElementById(entity.id);
+            if (entityEl) entityEl.classList.add('selected');
+            else console.warn("DOM element not found for entity in selectEntity:", entity.id);
+            openPropertiesPanel();
+            updatePropertiesPanel();
+        }
+        
+        /**
+         * Selects a relationship.
+         * @param {Object} relationship - Relationship to select.
+         */
+        function selectRelationship(relationship) {
+             if (!relationship || !relationship.id) {
+                console.warn("Invalid relationship passed to selectRelationship:", relationship);
+                return;
+            }
+            deselectAll();
+            selectedElement = { type: 'relationship', id: relationship.id, data: relationship };
+            const lineEl = document.querySelector(`line[data-rel-id="${relationship.id}"]`);
+            if (lineEl) lineEl.style.stroke = '#ef4444'; 
+            else console.warn("DOM element not found for relationship line in selectRelationship:", relationship.id);
+            openPropertiesPanel();
+            updatePropertiesPanel();
+        }
+
+        /** Deselects any current element. */
+        function deselectAll() {
+            if (selectedElement && selectedElement.id) {
+                if (selectedElement.type === 'entity') {
+                    const entityEl = document.getElementById(selectedElement.id);
+                    if (entityEl) entityEl.classList.remove('selected');
+                } else if (selectedElement.type === 'relationship') {
+                    const lineEl = document.querySelector(`line[data-rel-id="${selectedElement.id}"]`);
+                    if (lineEl) lineEl.style.stroke = '#6b7280'; 
+                }
+            }
+            selectedElement = null;
+            updatePropertiesPanel(); 
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (e.target === canvas || e.target === canvasContent || e.target === relationshipSvg) {
+                if (!isDrawingRelationship) { 
+                    deselectAll();
+                    closePropertiesPanel();
+                }
+            }
+        });
+        
+        closePropertiesPanelBtn.addEventListener('click', () => {
+            closePropertiesPanel();
+            deselectAll(); 
+        });
+
+        /** Opens properties panel. */
+        function openPropertiesPanel() {
+            if (propertiesPanel) propertiesPanel.classList.add('open');
+            else console.error("propertiesPanel DOM element not found.");
+        }
+        /** Closes properties panel. */
+        function closePropertiesPanel() {
+            if (propertiesPanel) propertiesPanel.classList.remove('open');
+        }
+
+        /** Updates properties panel content. */
+        function updatePropertiesPanel() {
+            if (!propertiesPanelContent) {
+                console.error("propertiesPanelContent DOM element not found.");
+                return;
+            }
+            try {
+                if (!selectedElement || !selectedElement.data) {
+                    propertiesPanelContent.innerHTML = '<p class="text-gray-500">Select an entity or relationship to see its properties.</p>';
+                    return;
+                }
+
+                if (selectedElement.type === 'entity') {
+                    const entity = selectedElement.data;
+                    const isView = entity.entityType === 'view';
+                    propertiesPanelContent.innerHTML = `
+                        <div class="property-group">
+                            <h3 class="text-lg font-semibold mb-1">${entity.name || 'Unnamed Entity'} <span class="text-sm font-normal text-gray-500">(${isView ? 'View' : 'Table'})</span></h3>
+                            <label class="block text-sm font-medium">Name:</label>
+                            <input type="text" value="${entity.name || ''}" id="propEntityName" class="mt-1 mb-2 w-full p-1 border rounded">
+                            <label class="block text-sm font-medium">Type:</label>
+                            <select id="propEntityType" class="mt-1 mb-2 w-full p-1 border rounded">
+                                <option value="table" ${!isView ? 'selected' : ''}>Table</option>
+                                <option value="view" ${isView ? 'selected' : ''}>View</option>
+                            </select>
+                            ${isView ? `
+                                <div class="mb-2">
+                                    <label for="propEntityViewSql" class="block text-sm font-medium text-gray-700">View SQL Definition</label>
+                                    <textarea id="propEntityViewSql" rows="4" class="mt-1 block w-full p-1 border rounded">${entity.viewSql || ''}</textarea>
+                                </div>
+                            ` : ''}
+                            <button id="propDeleteEntityBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded text-sm"><i class="fas fa-trash mr-1"></i> Delete Entity</button>
+                        </div>
+                        <div class="property-group">
+                            <h4 class="text-md font-semibold mb-2">Attributes:</h4>
+                            <div id="propAttributesContainer" class="space-y-2"></div>
+                            <button id="propAddAttributeBtn" class="mt-2 bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded text-sm"><i class="fas fa-plus mr-1"></i> Add Attribute</button>
+                        </div>
+                         <div class="property-group" id="propIndexesSection" style="display: ${isView ? 'none' : 'block'};">
+                            <h4 class="text-md font-semibold mb-2">Indexes:</h4>
+                            <div id="propIndexesContainer" class="space-y-2"></div>
+                            <button id="propAddIndexBtn" class="mt-2 bg-sky-500 hover:bg-sky-600 text-white py-1 px-2 rounded text-sm"><i class="fas fa-plus mr-1"></i> Add Index</button>
+                        </div>
+                    `;
+                    
+                    const propEntityNameInput = document.getElementById('propEntityName');
+                    if (propEntityNameInput) {
+                        propEntityNameInput.addEventListener('change', (e) => {
+                            const newName = e.target.value.trim();
+                            if (newName) {
+                                entity.name = newName;
+                                const entityHeaderInput = document.getElementById(entity.id)?.querySelector('.entity-name-input');
+                                if(entityHeaderInput) entityHeaderInput.value = entity.name;
+                                saveState();
+                                updatePropertiesPanel(); 
+                                renderRelationships(); 
+                            } else {
+                                e.target.value = entity.name || ''; 
+                                showToast("Entity name cannot be empty.", "error");
+                            }
+                        });
+                    }
+                    
+                    const propEntityTypeSelect = document.getElementById('propEntityType');
+                    if (propEntityTypeSelect) {
+                        if (isView && relationships.some(r => r.fromEntityId === entity.id || r.toEntityId === entity.id)) {
+                            propEntityTypeSelect.disabled = true;
+                            propEntityTypeSelect.title = "Cannot change type: View is part of relationships. This state should not occur.";
+                        }
+
+                        propEntityTypeSelect.addEventListener('change', (e) => {
+                            const newType = e.target.value;
+                            if (newType === 'view' && relationships.some(r => r.fromEntityId === entity.id || r.toEntityId === entity.id)) {
+                                showToast("Cannot change to View: Entity is part of existing relationships. Delete relationships first.", "error");
+                                e.target.value = entity.entityType; 
+                                return;
+                            }
+                            entity.entityType = newType;
+                            if (newType === 'view') { 
+                                entity.indexes = []; 
+                                (entity.attributes || []).forEach(attr => {
+                                    attr.isPrimaryKey = false; 
+                                });
+                            } else { // Changed to table
+                                entity.viewSql = undefined; // Remove SQL if changed to table
+                            }
+                            saveState();
+                            renderAll(); 
+                            updatePropertiesPanel(); 
+                        });
+                    }
+
+                    if (isView) {
+                        const propEntityViewSqlInput = document.getElementById('propEntityViewSql');
+                        if (propEntityViewSqlInput) {
+                            propEntityViewSqlInput.addEventListener('change', (e) => {
+                                entity.viewSql = e.target.value.trim();
+                                if (!entity.viewSql) {
+                                    showToast("View SQL definition should not be empty for a View.", "info");
+                                }
+                                saveState();
+                            });
+                        }
+                    }
+
+
+                    const propDeleteEntityBtn = document.getElementById('propDeleteEntityBtn');
+                    if (propDeleteEntityBtn) {
+                        propDeleteEntityBtn.addEventListener('click', () => {
+                            if (window.confirm(`Are you sure you want to delete ${entity.entityType} "${entity.name}"? This will also remove related relationships.`)) {
+                                deleteEntity(entity.id);
+                            }
+                        });
+                    }
+
+                    const propAttributesContainer = document.getElementById('propAttributesContainer');
+                    if (propAttributesContainer) {
+                        (entity.attributes || []).forEach(attr => {
+                            propAttributesContainer.appendChild(createPropertyAttributeRow(entity, attr));
+                        });
+                    }
+                    
+                    const propAddAttributeBtn = document.getElementById('propAddAttributeBtn');
+                    if (propAddAttributeBtn) {
+                        propAddAttributeBtn.addEventListener('click', () => {
+                            const newAttr = { id: generateId('attr_'), name: 'new_attribute', dataType: 'TEXT', isPrimaryKey: false, isNullable: true, defaultValue: '', isUnique: false, isForeignKey: false, foreignKeyTo: null };
+                            if (!entity.attributes) entity.attributes = [];
+                            entity.attributes.push(newAttr);
+                            saveState();
+                            renderEntity(entity.id); 
+                            updatePropertiesPanel(); 
+                        });
+                    }
+                    
+                    if (!isView) {
+                        const propIndexesContainer = document.getElementById('propIndexesContainer');
+                        const propAddIndexBtn = document.getElementById('propAddIndexBtn');
+                        if (propIndexesContainer && propAddIndexBtn) {
+                            (entity.indexes || []).forEach(idx => {
+                                propIndexesContainer.appendChild(createPropertyIndexRow(entity, idx));
+                            });
+                            propAddIndexBtn.addEventListener('click', () => {
+                                const newIdx = { id: generateId('idx_'), name: 'new_index', columns: [], isUnique: false };
+                                if (!entity.indexes) entity.indexes = [];
+                                entity.indexes.push(newIdx);
+                                saveState();
+                                updatePropertiesPanel();
+                            });
+                        }
+                    }
+
+
+                } else if (selectedElement.type === 'relationship') {
+                    const rel = selectedElement.data;
+                    const fromEntity = findEntity(rel.fromEntityId);
+                    const toEntity = findEntity(rel.toEntityId);
+                    propertiesPanelContent.innerHTML = `
+                        <div class="property-group">
+                            <h3 class="text-lg font-semibold mb-2">Relationship</h3>
+                            <p class="text-sm">From: <strong>${fromEntity?.name || 'N/A'}</strong></p>
+                            <p class="text-sm mb-2">To: <strong>${toEntity?.name || 'N/A'}</strong></p>
+                            
+                            <label class="block text-sm font-medium">Type:</label>
+                            <select id="propRelType" class="mt-1 mb-2 w-full p-1 border rounded">
+                                <option value="one-to-one" ${rel.type === 'one-to-one' ? 'selected' : ''}>One-to-One</option>
+                                <option value="one-to-many" ${rel.type === 'one-to-many' ? 'selected' : ''}>One-to-Many</option>
+                                <option value="many-to-many" ${rel.type === 'many-to-many' ? 'selected' : ''}>Many-to-Many</option>
+                            </select>
+
+                            <label class="block text-sm font-medium">From Attribute (<span class="font-normal">${fromEntity?.name || 'N/A'}</span>):</label>
+                            <select id="propRelFromAttr" class="mt-1 mb-2 w-full p-1 border rounded"></select>
+                            
+                            <label class="block text-sm font-medium">To Attribute (<span class="font-normal">${toEntity?.name || 'N/A'}</span>):</label>
+                            <select id="propRelToAttr" class="mt-1 mb-2 w-full p-1 border rounded"></select>
+                            
+                            <button id="propUpdateRelBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-sm mb-2"><i class="fas fa-save mr-1"></i> Update Relationship</button>
+                            <button id="propDeleteRelBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded text-sm"><i class="fas fa-trash mr-1"></i> Delete Relationship</button>
+                        </div>
+                    `;
+
+                    const propRelFromAttrSelect = document.getElementById('propRelFromAttr');
+                    const propRelToAttrSelect = document.getElementById('propRelToAttr');
+                    if (fromEntity) populateAttributeSelect(propRelFromAttrSelect, fromEntity.attributes || []);
+                    if (toEntity) populateAttributeSelect(propRelToAttrSelect, toEntity.attributes || []);
+                    
+                    if(propRelFromAttrSelect) propRelFromAttrSelect.value = rel.fromAttributeId;
+                    if(propRelToAttrSelect) propRelToAttrSelect.value = rel.toAttributeId;
+
+                    const propUpdateRelBtn = document.getElementById('propUpdateRelBtn');
+                    if (propUpdateRelBtn) {
+                        propUpdateRelBtn.addEventListener('click', () => {
+                            const propRelTypeSelect = document.getElementById('propRelType');
+                            if (!propRelTypeSelect || !propRelFromAttrSelect || !propRelToAttrSelect) {
+                                console.error("Missing elements for updating relationship properties.");
+                                return;
+                            }
+
+                            const oldToAttributeId = rel.toAttributeId;
+                            const oldRelType = rel.type;
+                            
+                            const newRelType = propRelTypeSelect.value;
+                            const newFromAttributeId = propRelFromAttrSelect.value;
+                            const newToAttributeId = propRelToAttrSelect.value;
+
+                            if (!newFromAttributeId || !newToAttributeId) {
+                                showToast("Both 'From' and 'To' attributes must be selected.", "error");
+                                return;
+                            }
+                             if (rel.fromEntityId === rel.toEntityId && newFromAttributeId === newToAttributeId) {
+                                showToast('Cannot relate an attribute to itself within the same entity via this relationship.', 'error');
+                                return;
+                            }
+
+                            const targetEntityForOldFK = findEntity(rel.toEntityId);
+                            if (targetEntityForOldFK) {
+                                const oldToAttrObj = (targetEntityForOldFK.attributes || []).find(a => a.id === oldToAttributeId);
+                                if (oldToAttrObj && oldToAttrObj.isForeignKey && oldToAttrObj.foreignKeyTo && oldToAttrObj.foreignKeyTo.entityId === rel.fromEntityId && oldToAttrObj.foreignKeyTo.attributeId === rel.fromAttributeId) {
+                                    if (oldToAttributeId !== newToAttributeId || ( (oldRelType === 'one-to-one' || oldRelType === 'one-to-many') && !(newRelType === 'one-to-one' || newRelType === 'one-to-many') ) ) {
+                                        oldToAttrObj.isForeignKey = false;
+                                        oldToAttrObj.foreignKeyTo = null;
+                                    }
+                                }
+                            }
+                            
+                            rel.type = newRelType;
+                            rel.fromAttributeId = newFromAttributeId;
+                            rel.toAttributeId = newToAttributeId;
+
+                            if (rel.type === 'one-to-one' || rel.type === 'one-to-many') {
+                                const targetEntityForNewFK = findEntity(rel.toEntityId);
+                                const newToAttrObj = targetEntityForNewFK?.attributes.find(a => a.id === rel.toAttributeId);
+                                if (newToAttrObj) {
+                                    newToAttrObj.isForeignKey = true;
+                                    newToAttrObj.foreignKeyTo = { entityId: rel.fromEntityId, attributeId: rel.fromAttributeId };
+                                }
+                            }
+                            
+                            saveState();
+                            renderAll(); 
+                            showToast('Relationship updated.', 'success');
+                            updatePropertiesPanel(); 
+                        });
+                    }
+                    const propDeleteRelBtn = document.getElementById('propDeleteRelBtn');
+                    if (propDeleteRelBtn) {
+                        propDeleteRelBtn.addEventListener('click', () => {
+                            if (window.confirm('Are you sure you want to delete this relationship?')) {
+                                deleteRelationship(rel.id);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error updating properties panel:", error);
+                propertiesPanelContent.innerHTML = '<p class="text-red-500">Error displaying properties. Check console.</p>';
+            }
+        }
+        
+        /**
+         * Creates an attribute row for the properties panel.
+         * @param {Object} entity - Parent entity.
+         * @param {Object} attr - Attribute data.
+         * @returns {HTMLDivElement} Attribute row element.
+         */
+        function createPropertyAttributeRow(entity, attr) {
+            const row = document.createElement('div');
+            row.className = 'p-2 border rounded bg-white mb-1 text-sm';
+            const isView = entity.entityType === 'view';
+            let fkInfoHtml = '';
+            if (attr.isForeignKey && attr.foreignKeyTo) {
+                const fkFromEntity = findEntity(attr.foreignKeyTo.entityId);
+                const fkFromAttribute = fkFromEntity?.attributes.find(a => a.id === attr.foreignKeyTo.attributeId);
+                if (fkFromEntity && fkFromAttribute) {
+                     fkInfoHtml = `<p class="text-xs text-orange-600 mt-1">FK to ${fkFromEntity.name}.${fkFromAttribute.name}</p>`;
+                } else {
+                    fkInfoHtml = `<p class="text-xs text-red-500 mt-1">FK to (missing entity/attribute)</p>`;
+                }
+            }
+
+            row.innerHTML = `
+                <input type="text" value="${attr.name || ''}" data-prop="name" placeholder="Name" class="w-full mb-1 p-1 border rounded">
+                <div class="grid grid-cols-2 gap-1 mb-1">
+                    <select data-prop="dataType" class="p-1 border rounded">
+                        <option value="TEXT" ${attr.dataType === 'TEXT' ? 'selected' : ''}>TEXT</option>
+                        <option value="INTEGER" ${attr.dataType === 'INTEGER' ? 'selected' : ''}>INTEGER</option>
+                        <option value="REAL" ${attr.dataType === 'REAL' ? 'selected' : ''}>REAL</option>
+                        <option value="BLOB" ${attr.dataType === 'BLOB' ? 'selected' : ''}>BLOB</option>
+                        <option value="NUMERIC" ${attr.dataType === 'NUMERIC' ? 'selected' : ''}>NUMERIC</option>
+                    </select>
+                    <input type="text" value="${attr.defaultValue || ''}" data-prop="defaultValue" placeholder="Default" class="p-1 border rounded">
+                </div>
+                <div class="grid grid-cols-3 gap-1 text-xs items-center mb-1">
+                    <label><input type="checkbox" data-prop="isPrimaryKey" ${attr.isPrimaryKey ? 'checked' : ''} ${isView ? 'disabled' : ''} class="mr-1">PK</label>
+                    <label><input type="checkbox" data-prop="isNullable" ${attr.isNullable === false ? '' : 'checked'} class="mr-1">Nullable</label>
+                    <label><input type="checkbox" data-prop="isUnique" ${attr.isUnique ? 'checked' : ''} ${isView ? 'disabled' : ''} class="mr-1">Unique</label>
+                </div>
+                ${fkInfoHtml}
+                <button class="text-red-500 hover:text-red-700 text-xs mt-1 prop-delete-attr-btn"><i class="fas fa-times-circle mr-1"></i>Remove Attribute</button>
+            `;
+            
+            row.querySelector('[data-prop="name"]')?.addEventListener('change', (e) => {
+                const newAttrName = e.target.value.trim();
+                if (newAttrName) {
+                    attr.name = newAttrName;
+                    saveState();
+                    renderEntity(entity.id); 
+                } else {
+                    e.target.value = attr.name || ''; 
+                    showToast("Attribute name cannot be empty.", "error");
+                }
+            });
+            row.querySelector('[data-prop="dataType"]')?.addEventListener('change', (e) => {
+                attr.dataType = e.target.value;
+                saveState();
+                renderEntity(entity.id);
+            });
+            row.querySelector('[data-prop="defaultValue"]')?.addEventListener('change', (e) => {
+                attr.defaultValue = e.target.value.trim() || null;
+                saveState();
+                renderEntity(entity.id);
+            });
+
+            ['isPrimaryKey', 'isNullable', 'isUnique'].forEach(prop => {
+                 const checkbox = row.querySelector(`[data-prop="${prop}"]`);
+                 if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        if (isView && (prop === 'isPrimaryKey' || prop === 'isUnique')) return; 
+
+                        attr[prop] = e.target.checked;
+                        if (prop === 'isPrimaryKey' && e.target.checked && !isView) {
+                            (entity.attributes || []).forEach(a => { 
+                                if (a.id !== attr.id) {
+                                    a.isPrimaryKey = false; 
+                                }
+                            });
+                            document.querySelectorAll(`#propAttributesContainer [data-attribute-id]:not([data-attribute-id="${attr.id}"]) [data-prop="isPrimaryKey"]`).forEach(cb => {
+                                if (cb instanceof HTMLInputElement) cb.checked = false;
+                            });
+                        }
+                        saveState();
+                        renderEntity(entity.id);
+                        updatePropertiesPanel(); 
+                    });
+                 }
+            });
+            row.querySelector('.prop-delete-attr-btn')?.addEventListener('click', () => {
+                if (window.confirm(`Are you sure you want to delete attribute "${attr.name}"? This will also remove any relationships and index columns directly using it.`)) {
+                    entity.attributes = (entity.attributes || []).filter(a => a.id !== attr.id);
+                    
+                    relationships = relationships.filter(r => {
+                        if ((r.fromEntityId === entity.id && r.fromAttributeId === attr.id) ||
+                            (r.toEntityId === entity.id && r.toAttributeId === attr.id)) {
+                            const otherEntityId = r.fromEntityId === entity.id ? r.toEntityId : r.fromEntityId;
+                            const otherAttributeId = r.fromEntityId === entity.id ? r.toAttributeId : r.fromAttributeId;
+                            const otherEntity = findEntity(otherEntityId);
+                            const otherAttribute = otherEntity?.attributes.find(a => a.id === otherAttributeId);
+                            if (otherAttribute && otherAttribute.isForeignKey && otherAttribute.foreignKeyTo && 
+                                ((otherAttribute.foreignKeyTo.entityId === entity.id && otherAttribute.foreignKeyTo.attributeId === attr.id) ||
+                                 (otherAttribute.foreignKeyTo.entityId === r.fromEntityId && otherAttribute.foreignKeyTo.attributeId === r.fromAttributeId && r.toEntityId === entity.id && r.toAttributeId === attr.id) )) {
+                                otherAttribute.isForeignKey = false;
+                                otherAttribute.foreignKeyTo = null;
+                            }
+                            return false; 
+                        }
+                        return true;
+                    });
+
+                    if (!isView && entity.indexes) {
+                        entity.indexes.forEach(index => {
+                            index.columns = (index.columns || []).filter(colName => colName !== attr.name);
+                        });
+                        entity.indexes = entity.indexes.filter(index => (index.columns || []).length > 0);
+                    }
+
+                    saveState();
+                    renderAll(); 
+                    updatePropertiesPanel(); 
+                }
+            });
+            row.dataset.attributeId = attr.id; 
+            return row;
+        }
+
+        /**
+         * Creates an index row for the properties panel.
+         * @param {Object} entity - Parent entity.
+         * @param {Object} index - Index data.
+         * @returns {HTMLDivElement} Index row element.
+         */
+        function createPropertyIndexRow(entity, index) {
+            const row = document.createElement('div');
+            row.className = 'p-2 border rounded bg-white mb-1 text-sm';
+            const attributeOptions = (entity.attributes || [])
+                .map(attr => attr.name)
+                .filter(name => name)
+                .map(attrName => 
+                `<option value="${attrName}" ${(index.columns || []).includes(attrName) ? 'selected' : ''}>${attrName}</option>`
+            ).join('');
+
+            row.innerHTML = `
+                <input type="text" value="${index.name || ''}" data-prop="name" placeholder="Index Name" class="w-full mb-1 p-1 border rounded">
+                <label class="block text-xs">Columns (Ctrl/Cmd + click for multiple):</label>
+                <select data-prop="columns" multiple class="w-full mb-1 p-1 border rounded h-20">
+                    ${attributeOptions}
+                </select>
+                <div class="flex justify-between items-center">
+                    <label class="text-xs"><input type="checkbox" data-prop="isUnique" ${index.isUnique ? 'checked' : ''} class="mr-1">Unique Index</label>
+                    <button class="text-red-500 hover:text-red-700 text-xs prop-delete-index-btn"><i class="fas fa-times-circle mr-1"></i>Remove Index</button>
+                </div>
+            `;
+
+            row.querySelector('[data-prop="name"]')?.addEventListener('change', (e) => {
+                const newIndexName = e.target.value.trim();
+                if (newIndexName) {
+                    index.name = newIndexName;
+                } else {
+                    index.name = (index.columns || []).length > 0 ? `${entity.name}_${index.columns.join('_')}_idx` : 'new_index';
+                    e.target.value = index.name;
+                }
+                saveState();
+            });
+            row.querySelector('[data-prop="columns"]')?.addEventListener('change', (e) => {
+                index.columns = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                const indexNameInput = row.querySelector('[data-prop="name"]');
+                if (!index.name || index.name === 'new_index' || index.name.startsWith(entity.name + "_") ) {
+                    index.name = (index.columns || []).length > 0 ? `${entity.name}_${index.columns.join('_')}_idx` : 'new_index';
+                    if(indexNameInput) indexNameInput.value = index.name;
+                }
+                saveState();
+            });
+            row.querySelector('[data-prop="isUnique"]')?.addEventListener('change', (e) => {
+                index.isUnique = e.target.checked;
+                saveState();
+            });
+            row.querySelector('.prop-delete-index-btn')?.addEventListener('click', () => {
+                entity.indexes = (entity.indexes || []).filter(i => i.id !== index.id);
+                saveState();
+                updatePropertiesPanel();
+            });
+            return row;
+        }
+        
+        /**
+         * Deletes an entity.
+         * @param {string} entityId - ID of entity to delete.
+         */
+        function deleteEntity(entityId) {
+            const entityToDelete = findEntity(entityId);
+            if (!entityToDelete) {
+                console.warn("Attempted to delete non-existent entity ID:", entityId);
+                return;
+            }
+
+            entities = entities.filter(e => e.id !== entityId);
+            
+            const relsToRemove = relationships.filter(r => r.fromEntityId === entityId || r.toEntityId === entityId);
+            relsToRemove.forEach(rel => {
+                const otherEntityId = rel.fromEntityId === entityId ? rel.toEntityId : rel.fromEntityId;
+                const otherAttributeId = rel.fromEntityId === entityId ? rel.toAttributeId : rel.fromAttributeId;
+                
+                if (otherEntityId !== entityId) { 
+                    const otherEntity = findEntity(otherEntityId);
+                    if (otherEntity) {
+                        const targetAttr = (otherEntity.attributes || []).find(a => a.id === otherAttributeId);
+                        if (targetAttr && targetAttr.isForeignKey && targetAttr.foreignKeyTo && 
+                            targetAttr.foreignKeyTo.entityId === (rel.fromEntityId === entityId ? rel.fromEntityId : rel.toEntityId) ) { 
+                            targetAttr.isForeignKey = false;
+                            targetAttr.foreignKeyTo = null;
+                        }
+                    }
+                }
+            });
+            relationships = relationships.filter(r => r.fromEntityId !== entityId && r.toEntityId !== entityId);
+            
+            saveState();
+            deselectAll();
+            closePropertiesPanel();
+            renderAll();
+            showToast(`${entityToDelete.entityType.charAt(0).toUpperCase() + entityToDelete.entityType.slice(1)} "${entityToDelete.name}" deleted.`, 'success');
+        }
+
+        /**
+         * Deletes a relationship.
+         * @param {string} relationshipId - ID of relationship to delete.
+         */
+        function deleteRelationship(relationshipId) {
+            const rel = findRelationship(relationshipId);
+            if (!rel) {
+                console.warn("Attempted to delete non-existent relationship ID:", relationshipId);
+                return;
+            }
+
+            if (rel.type === 'one-to-one' || rel.type === 'one-to-many') {
+                const toEntity = findEntity(rel.toEntityId);
+                if (toEntity) {
+                    const toAttr = (toEntity.attributes || []).find(a => a.id === rel.toAttributeId);
+                    if (toAttr && toAttr.isForeignKey && toAttr.foreignKeyTo && 
+                        toAttr.foreignKeyTo.entityId === rel.fromEntityId && 
+                        toAttr.foreignKeyTo.attributeId === rel.fromAttributeId) {
+                        
+                        toAttr.isForeignKey = false;
+                        toAttr.foreignKeyTo = null;
+                    }
+                }
+            }
+            
+            relationships = relationships.filter(r => r.id !== relationshipId);
+            saveState();
+            deselectAll(); 
+            closePropertiesPanel();
+            renderAll();
+            showToast('Relationship deleted.', 'success');
+        }
+
+
+        // --- Rendering ---
+        /** Renders all entities and relationships. */
+        function renderAll() {
+            try {
+                if (!canvasContent) {
+                    throw new Error("canvasContent element not found for renderAll.");
+                }
+                const entityElements = canvasContent.querySelectorAll('.entity');
+                entityElements.forEach(el => el.remove());
+
+                entities.forEach(entity => {
+                    canvasContent.appendChild(createEntityElement(entity));
+                });
+                renderRelationships();
+                
+                if (selectedElement && selectedElement.id) {
+                    if (selectedElement.type === 'entity') {
+                        const el = document.getElementById(selectedElement.id);
+                        if (el) el.classList.add('selected');
+                    } else if (selectedElement.type === 'relationship') {
+                         const lineEl = document.querySelector(`line[data-rel-id="${selectedElement.id}"]`);
+                        if (lineEl) lineEl.style.stroke = '#ef4444';
+                    }
+                }
+            } catch (error) {
+                console.error("Error in renderAll:", error);
+                showToast("Error rendering the diagram.", "error");
+            }
+        }
+        
+        /**
+         * Re-renders a single entity.
+         * @param {string} entityId - ID of entity to re-render.
+         */
+        function renderEntity(entityId) { 
+            try {
+                const entity = findEntity(entityId);
+                if (!entity) {
+                    console.warn("renderEntity: entity not found for ID:", entityId);
+                    return;
+                }
+                const oldEl = document.getElementById(entityId);
+                const newEl = createEntityElement(entity); 
+                if (oldEl && canvasContent) {
+                    canvasContent.replaceChild(newEl, oldEl);
+                } else if (canvasContent) {
+                    canvasContent.appendChild(newEl);
+                } else {
+                    throw new Error("canvasContent not found for renderEntity.");
+                }
+                
+                if (selectedElement && selectedElement.type === 'entity' && selectedElement.id === entityId) {
+                     newEl.classList.add('selected');
+                }
+                renderRelationships(); 
+            } catch (error) {
+                console.error("Error in renderEntity for ID:", entityId, error);
+            }
+        }
+
+        /** Renders all relationship lines. */
+        function renderRelationships() {
+            if (!relationshipSvg) {
+                console.error("relationshipSvg element missing for renderRelationships.");
+                return;
+            }
+            relationshipSvg.innerHTML = ''; 
+
+            relationships.forEach(rel => {
+                try {
+                    const fromEntity = findEntity(rel.fromEntityId);
+                    const toEntity = findEntity(rel.toEntityId);
+
+                    if (!fromEntity || !toEntity) {
+                        console.warn("Skipping relationship: from/to entity missing for rel ID", rel.id);
+                        return; 
+                    }
+                    if (fromEntity.entityType === 'view' || toEntity.entityType === 'view') return;
+
+
+                    const fromEl = document.getElementById(fromEntity.id);
+                    const toEl = document.getElementById(toEntity.id);
+
+                    if (!fromEl || !toEl) {
+                         console.warn("Skipping relationship: from/to DOM element missing for rel ID", rel.id);
+                        return;
+                    }
+                    if (!canvasContent) throw new Error("canvasContent missing in renderRelationships");
+
+                    const fromRect = fromEl.getBoundingClientRect(); 
+                    const toRect = toEl.getBoundingClientRect();     
+                    const canvasContentRect = canvasContent.getBoundingClientRect(); 
+
+                    const x1_center = ( (fromRect.left + fromRect.width / 2) - canvasContentRect.left ) / scale;
+                    const y1_center = ( (fromRect.top + fromRect.height / 2) - canvasContentRect.top ) / scale;
+                    const x2_center = ( (toRect.left + toRect.width / 2) - canvasContentRect.left ) / scale;
+                    const y2_center = ( (toRect.top + toRect.height / 2) - canvasContentRect.top ) / scale;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', String(x1_center));
+                    line.setAttribute('y1', String(y1_center));
+                    line.setAttribute('x2', String(x2_center));
+                    line.setAttribute('y2', String(y2_center));
+                    line.setAttribute('class', 'relationship-line');
+                    if (rel.type === 'many-to-many') { 
+                        line.classList.add('many-many');
+                    }
+                    line.dataset.relId = rel.id; 
+                    line.style.pointerEvents = 'stroke'; 
+                    line.addEventListener('click', (e) => {
+                        e.stopPropagation(); 
+                        selectRelationship(rel);
+                    });
+                    relationshipSvg.appendChild(line);
+
+                    const angle = Math.atan2(y2_center - y1_center, x2_center - x1_center);
+                    const markerSize = 8; 
+
+                    // To Side (x2_center, y2_center)
+                    if (rel.type === 'one-to-many') { 
+                        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                        arrow.setAttribute('points', `${x2_center},${y2_center} ${x2_center - markerSize * Math.cos(angle - Math.PI/6)},${y2_center - markerSize * Math.sin(angle - Math.PI/6)} ${x2_center - markerSize * Math.cos(angle + Math.PI/6)},${y2_center - markerSize * Math.sin(angle + Math.PI/6)}`);
+                        arrow.setAttribute('class', 'arrow-head');
+                        relationshipSvg.appendChild(arrow);
+                    } else if (rel.type === 'one-to-one') { 
+                        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        tick.setAttribute('x1', String(x2_center - (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y1', String(y2_center + (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x2', String(x2_center + (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y2', String(y2_center - (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('class', 'line-end-marker');
+                        relationshipSvg.appendChild(tick);
+                    }
+                    
+                    // From Side (x1_center, y1_center)
+                    if (rel.type === 'one-to-many' || rel.type === 'one-to-one') { 
+                        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        tick.setAttribute('x1', String(x1_center - (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y1', String(y1_center + (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('x2', String(x1_center + (markerSize/2) * Math.sin(angle)));
+                        tick.setAttribute('y2', String(y1_center - (markerSize/2) * Math.cos(angle)));
+                        tick.setAttribute('class', 'line-end-marker');
+                        relationshipSvg.appendChild(tick);
+                    }
+                } catch (error) {
+                    console.error("Error rendering relationship:", rel, error);
+                }
+            });
+        }
+
+
+        // --- Export/Import JSON ---
+        exportJsonBtn.addEventListener('click', () => {
+            try {
+                const modelData = {
+                    entities: entities,
+                    relationships: relationships,
+                    nextEntityIdCounter, 
+                    canvasState: { panX, panY, scale } 
+                };
+                const jsonString = JSON.stringify(modelData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data_model.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Model exported to JSON.', 'success');
+            } catch (error) {
+                console.error("Error in exportJsonBtn handler:", error);
+                showToast("Failed to export model.", "error");
+            }
+        });
+
+        importJsonInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        if (!e.target || typeof e.target.result !== 'string') {
+                            throw new Error("File content not available or not a string.");
+                        }
+                        const importedData = JSON.parse(e.target.result);
+                        if (!importedData || typeof importedData.entities === 'undefined' || typeof importedData.relationships === 'undefined') {
+                            throw new Error('Invalid JSON format: "entities" and "relationships" are required.');
+                        }
+                        
+                        entities = importedData.entities;
+                        relationships = importedData.relationships;
+                        nextEntityIdCounter = importedData.nextEntityIdCounter || (entities.length > 0 ? Math.max(0, ...entities.map(en => parseInt(String(en.name || '').replace(/[^0-9]/g,'') || '0'))) + 1 : 1);
+                        
+                        entities.forEach(entity => {
+                            entity.entityType = entity.entityType || 'table'; 
+                            entity.attributes = entity.attributes || [];
+                            entity.attributes.forEach(attr => {
+                                attr.isForeignKey = attr.isForeignKey || false;
+                                attr.foreignKeyTo = attr.foreignKeyTo || null;
+                                attr.isUnique = attr.isUnique || false;
+                                attr.isNullable = typeof attr.isNullable === 'boolean' ? attr.isNullable : true; 
+                            });
+                            if (entity.entityType === 'table') {
+                                entity.indexes = entity.indexes || [];
+                            } else {
+                                 entity.indexes = []; 
+                                 entity.viewSql = entity.viewSql || ''; // Ensure viewSql exists for views
+                            }
+                            
+                            (entity.indexes || []).forEach(idx => {
+                                idx.columns = idx.columns || [];
+                            });
+                            entity.x = parseFloat(String(entity.x)) || 50;
+                            entity.y = parseFloat(String(entity.y)) || 50;
+                        });
+
+                        if (importedData.canvasState) {
+                            panX = parseFloat(String(importedData.canvasState.panX)) || 0;
+                            panY = parseFloat(String(importedData.canvasState.panY)) || 0;
+                            scale = parseFloat(String(importedData.canvasState.scale)) || 1.0;
+                            applyTransform();
+                        } else {
+                            panX = 0; panY = 0; scale = 1.0; applyTransform();
+                        }
+
+                        saveState(); 
+                        renderAll();
+                        deselectAll();
+                        closePropertiesPanel();
+                        showToast('Model imported successfully.', 'success');
+                    } catch (error) {
+                        showToast(`Error importing JSON: ${error.message}`, 'error');
+                        console.error("Error in importJsonInput handler:", error);
+                    } finally {
+                        if (importJsonInput) importJsonInput.value = ''; 
+                    }
+                };
+                reader.onerror = (err) => {
+                    console.error("FileReader error on import:", err);
+                    showToast("Error reading file.", "error");
+                     if (importJsonInput) importJsonInput.value = '';
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // --- Generate SQLite DDL ---
+        generateSqlBtn.addEventListener('click', () => {
+            try {
+                let ddl = `--- Generated SQLite DDL ---\n\nPRAGMA foreign_keys = ON;\n\n`;
+                const indexStatements = [];
+
+                const tableEntities = entities.filter(entity => entity.entityType === 'table');
+
+                tableEntities.forEach(entity => {
+                    if (!entity.name || !(entity.attributes instanceof Array)) {
+                        console.warn("Skipping DDL for malformed table entity:", entity);
+                        return;
+                    }
+                    ddl += `CREATE TABLE IF NOT EXISTS "${entity.name}" (\n`;
+                    const attributeDefs = [];
+                    const tableConstraints = []; 
+                    
+                    entity.attributes.forEach(attr => {
+                        if (!attr.name || !attr.dataType) {
+                             console.warn("Skipping DDL for malformed attribute in table:", entity.name, attr);
+                            return;
+                        }
+                        let colDef = `  "${attr.name}" ${attr.dataType}`;
+                        if (attr.isPrimaryKey) {
+                            colDef += ' PRIMARY KEY';
+                            if (attr.dataType === 'INTEGER' && entity.attributes.filter(a => a.isPrimaryKey).length === 1) { 
+                                colDef += ' AUTOINCREMENT'; 
+                            }
+                        }
+                        if (attr.isNullable === false) colDef += ' NOT NULL'; // Check explicitly for false
+                        if (attr.defaultValue) {
+                            if (attr.dataType === 'TEXT' || attr.dataType === 'BLOB' || attr.dataType === 'NUMERIC') { 
+                                colDef += ` DEFAULT '${String(attr.defaultValue).replace(/'/g, "''")}'`; 
+                            } else { 
+                                colDef += ` DEFAULT ${attr.defaultValue}`;
+                            }
+                        }
+                        if (attr.isUnique && !attr.isPrimaryKey) colDef += ' UNIQUE'; 
+
+                        attributeDefs.push(colDef);
+
+                        if (attr.isForeignKey && attr.foreignKeyTo) {
+                            const targetEntity = findEntity(attr.foreignKeyTo.entityId);
+                            if (targetEntity && targetEntity.entityType === 'table') {
+                                const targetAttribute = (targetEntity.attributes || []).find(a => a.id === attr.foreignKeyTo.attributeId);
+                                if (targetAttribute) {
+                                    const definingRel = relationships.find(r => 
+                                        r.toEntityId === entity.id && r.toAttributeId === attr.id &&
+                                        r.fromEntityId === targetEntity.id && r.fromAttributeId === targetAttribute.id &&
+                                        (r.type === 'one-to-one' || r.type === 'one-to-many')
+                                    );
+                                    if (definingRel) { 
+                                        tableConstraints.push(`  FOREIGN KEY ("${attr.name}") REFERENCES "${targetEntity.name}"("${targetAttribute.name}") ON DELETE CASCADE ON UPDATE CASCADE`);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    if (attributeDefs.length === 0) { 
+                        console.warn(`Table entity "${entity.name}" has no valid attributes, adding placeholder.`);
+                        attributeDefs.push(`  "_placeholder_column" TEXT`); 
+                    }
+
+                    ddl += attributeDefs.join(',\n');
+                    if (tableConstraints.length > 0) {
+                        ddl += ',\n' + tableConstraints.join(',\n');
+                    }
+                    ddl += '\n);\n\n';
+
+                    (entity.indexes || []).forEach(index => {
+                        if (index.columns && index.columns.length > 0) {
+                            const uniqueKeyword = index.isUnique ? 'UNIQUE ' : '';
+                            const indexName = index.name || `${entity.name}_${index.columns.join('_')}_idx`;
+                            indexStatements.push(`CREATE ${uniqueKeyword}INDEX IF NOT EXISTS "${indexName}" ON "${entity.name}" ("${index.columns.join('", "')}");`);
+                        }
+                    });
+                });
+                
+                relationships.filter(r => r.type === 'many-to-many').forEach(rel => {
+                    const fromEntity = findEntity(rel.fromEntityId);
+                    const toEntity = findEntity(rel.toEntityId);
+                    if (fromEntity && fromEntity.entityType === 'table' && toEntity && toEntity.entityType === 'table') {
+                        const fromAttr = (fromEntity.attributes || []).find(a => a.id === rel.fromAttributeId); 
+                        const toAttr = (toEntity.attributes || []).find(a => a.id === rel.toAttributeId); 
+
+                        if (fromAttr && toAttr) {
+                            const sanitize = (name) => String(name || '').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                            const fromEntitySanitized = sanitize(fromEntity.name);
+                            const toEntitySanitized = sanitize(toEntity.name);
+                            const fromAttrSanitized = sanitize(fromAttr.name);
+                            const toAttrSanitized = sanitize(toAttr.name);
+
+                            const joinTableName = `${fromEntitySanitized}_${toEntitySanitized}_join`; 
+                            const fk1ColName = `${fromEntitySanitized}_${fromAttrSanitized}`;
+                            const fk2ColName = `${toEntitySanitized}_${toAttrSanitized}`;
+
+                            ddl += `CREATE TABLE IF NOT EXISTS "${joinTableName}" (\n`;
+                            ddl += `  "${fk1ColName}" ${fromAttr.dataType || 'TEXT'} NOT NULL,\n`; 
+                            ddl += `  "${fk2ColName}" ${toAttr.dataType || 'TEXT'} NOT NULL,\n`;
+                            ddl += `  PRIMARY KEY ("${fk1ColName}", "${fk2ColName}"),\n`;
+                            ddl += `  FOREIGN KEY ("${fk1ColName}") REFERENCES "${fromEntity.name}"("${fromAttr.name}") ON DELETE CASCADE ON UPDATE CASCADE,\n`; 
+                            ddl += `  FOREIGN KEY ("${fk2ColName}") REFERENCES "${toEntity.name}"("${toAttr.name}") ON DELETE CASCADE ON UPDATE CASCADE\n`;  
+                            ddl += `);\n\n`;
+                        } else {
+                            console.warn("Skipping M:N join table DDL due to missing attributes for rel:", rel);
+                        }
+                    }
+                });
+
+                if (indexStatements.length > 0) {
+                    ddl += `--- Indexes ---\n`;
+                    ddl += indexStatements.join('\n') + '\n\n';
+                }
+                
+                ddl += `--- Views ---\n`;
+                entities.filter(e => e.entityType === 'view').forEach(view => {
+                    if (view.viewSql && view.viewSql.trim() !== '') {
+                         ddl += `CREATE VIEW IF NOT EXISTS "${view.name || 'Unnamed_View'}" AS\n${view.viewSql};\n\n`;
+                    } else {
+                        ddl += `--- View "${view.name || 'Unnamed_View'}" has no SQL definition provided.\n--- CREATE VIEW "${view.name || 'Unnamed_View'}" AS SELECT ... ;\n\n`;
+                    }
+                });
+
+                const blob = new Blob([ddl], { type: 'application/sql' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'schema.sql';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('SQLite DDL generated.', 'success');
+            } catch (error) {
+                console.error("Error in generateSqlBtn handler:", error);
+                showToast("Failed to generate DDL. Check console.", "error");
+            }
+        });
+        
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            const activeElTag = document.activeElement?.tagName;
+            if (activeElTag === 'INPUT' || activeElTag === 'SELECT' || activeElTag === 'TEXTAREA') {
+                if (e.key === "Escape") { 
+                    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                         document.activeElement.blur();
+                    }
+                    if (entityModal && !entityModal.classList.contains('hidden') && cancelEntityModalBtn) cancelEntityModalBtn.click();
+                    if (relationshipModal && !relationshipModal.classList.contains('hidden') && cancelRelationshipModalBtn) cancelRelationshipModalBtn.click();
+                }
+                return; 
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (undoBtn && !undoBtn.disabled) undoBtn.click();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                if (redoBtn && !redoBtn.disabled) redoBtn.click();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                 if (selectedElement) {
+                    e.preventDefault();
+                    if (selectedElement.type === 'entity') {
+                        document.getElementById('propDeleteEntityBtn')?.click(); 
+                    } else if (selectedElement.type === 'relationship') {
+                        document.getElementById('propDeleteRelBtn')?.click(); 
+                    }
+                }
+            } else if (e.key.toLowerCase() === 'a' && !(e.ctrlKey || e.metaKey)) { 
+                e.preventDefault();
+                if (addEntityBtn) addEntityBtn.click();
+            } else if (e.key.toLowerCase() === 'p' && !(e.ctrlKey || e.metaKey)) { 
+                e.preventDefault();
+                if (panModeBtn) panModeBtn.click();
+            } else if (e.key === "Escape") {
+                if (isDrawingRelationship) {
+                    stopDrawingRelationship();
+                } else {
+                    deselectAll();
+                    closePropertiesPanel();
+                }
+            }
+        });
+
+
+        // --- Initial Setup ---
+        try {
+            saveState(); 
+            renderAll();
+            applyTransform(); 
+            showToast('Welcome to the Entity Modeller! Drag connectors to link entities.', 'success', 5000);
+        } catch (error) {
+            console.error("Error during initial setup:", error);
+            showToast("Application failed to initialize correctly. Check console.", "error");
+            if(canvasContent) canvasContent.innerHTML = '<p class="text-red-500 p-4">Application Error: Could not initialize. Please check the console for details and try refreshing.</p>';
+        }
+
+    }); // End DOMContentLoaded
+    // --- SCRIPT END --- //
+</script>
+</body>
+</html>
