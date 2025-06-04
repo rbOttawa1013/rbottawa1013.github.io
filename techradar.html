@@ -1,1 +1,685 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generative AI Technology Radar - Inline Brief</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #technologyBriefDisplay::-webkit-scrollbar { width: 8px; }
+        #technologyBriefDisplay::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        #technologyBriefDisplay::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        #technologyBriefDisplay::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        #circularRadarContainer {
+            width: 600px;
+            height: 600px;
+            position: relative;
+            margin: 1rem auto; /* Reduced margin for lang buttons */
+        }
+
+        .radar-ring {
+            position: absolute;
+            border-style: solid;
+            border-width: 1px;
+            border-radius: 50%;
+            box-sizing: border-box;
+        }
+
+        .quadrant-line {
+            position: absolute;
+            background-color: #cbd5e1; /* gray-300 */
+            z-index: 0;
+        }
+
+        .quadrant-label {
+            position: absolute;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 600; /* font-semibold */
+            color: #4b5563; /* gray-600 */
+            z-index: 1;
+            padding: 4px;
+            background-color: rgba(243, 244, 246, 0.85); /* bg-gray-100 with opacity */
+            border-radius: 4px;
+        }
+
+        .radar-blip {
+            position: absolute;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            z-index: 10;
+            text-align: center;
+            line-height: 1.2;
+            max-width: 70px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .radar-blip:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 11;
+            white-space: normal;
+            overflow: visible;
+        }
+        .radar-center-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #374151; /* gray-700 */
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+        .brief-section {
+            margin-bottom: 0.75rem;
+        }
+        .brief-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+        .brief-section-content, .brief-section-list li {
+            font-size: 0.75rem;
+            color: #374151;
+            line-height: 1.5;
+        }
+        .brief-section-list {
+            list-style: disc;
+            padding-left: 1.25rem;
+        }
+        #technologyBriefDisplay {
+            height: 500px; 
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+        }
+        .lang-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; /* rounded-md */
+            font-weight: 500; /* medium */
+            transition: background-color 0.2s;
+        }
+        .lang-button.active {
+            background-color: #3b82f6; /* bg-blue-600 */
+            color: white;
+        }
+        .lang-button:not(.active) {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            color: #374151; /* text-gray-700 */
+        }
+        .lang-button:not(.active):hover {
+            background-color: #d1d5db; /* bg-gray-300 */
+        }
+
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-2">
+            <h1 id="radarTitle" class="text-3xl md:text-4xl font-bold text-blue-700 mb-2"></h1>
+            <p id="radarDescription" class="text-md md:text-lg text-gray-600 max-w-3xl mx-auto"></p>
+            <div id="languageToggleContainer" class="mt-4 mb-4 flex justify-center space-x-2">
+                <button id="langEnButton" class="lang-button active">English</button>
+                <button id="langFrButton" class="lang-button">Français</button>
+            </div>
+        </header>
+
+        <div id="circularRadarContainer">
+            <div class="radar-center-dot"></div>
+            <div class="quadrant-line" style="top: 0; left: 50%; width: 1px; height: 100%; transform: translateX(-50%);"></div>
+            <div class="quadrant-line" style="top: 50%; left: 0; width: 100%; height: 1px; transform: translateY(-50%);"></div>
+            <!-- Quadrant labels and Blips will be dynamically cleared and re-rendered on lang change -->
+        </div>
+
+        <footer class="text-center mt-8 mb-4 text-sm text-gray-500">
+            <p id="footerText"></p>
+        </footer>
+
+        <div id="technologyBriefDisplayContainer" class="max-w-4xl mx-auto">
+            <div id="briefPlaceholder" class="p-6 bg-white rounded-lg shadow-lg text-center text-gray-500">
+                <p id="briefPlaceholderText"></p>
+            </div>
+            <div id="technologyBriefDisplay" class="p-6 bg-white rounded-lg shadow-lg hidden">
+                <h3 id="briefTitle" class="text-xl font-bold text-blue-600 mb-3"></h3>
+                
+                <div class="brief-section">
+                    <h4 id="briefSummaryTitle" class="brief-section-title"></h4>
+                    <p id="briefSummary" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefDescriptionTitle" class="brief-section-title"></h4>
+                    <p id="briefDescription" class="brief-section-content"></p>
+                </div>
+                <hr class="my-3">
+                <div class="brief-section">
+                    <h4 id="briefOverviewTitle" class="brief-section-title"></h4>
+                    <p id="briefOverview" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefKeyFeaturesTitle" class="brief-section-title"></h4>
+                    <ul id="briefKeyFeatures" class="brief-section-list"></ul>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefHowItWorksTitle" class="brief-section-title"></h4>
+                    <p id="briefHowItWorks" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefBenefitsUseCasesTitle" class="brief-section-title"></h4>
+                    <p id="briefBenefitsUseCases" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefLimitationsTitle" class="brief-section-title"></h4>
+                    <p id="briefLimitations" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefRisksTitle" class="brief-section-title"></h4>
+                    <p id="briefRisks" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefOpportunitiesTitle" class="brief-section-title"></h4>
+                    <p id="briefOpportunities" class="brief-section-content"></p>
+                </div>
+                <div class="brief-section">
+                    <h4 id="briefImplementationTitle" class="brief-section-title"></h4>
+                    <p id="briefImplementation" class="brief-section-content"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Translatable UI Strings ---
+        const uiStrings = {
+            footerText: {
+                en: "Click on a technology to see more details. Rings indicate adoption maturity.",
+                fr: "Cliquez sur une technologie pour voir plus de détails. Les anneaux indiquent la maturité d'adoption."
+            },
+            briefPlaceholderText: {
+                en: "Click on a technology in the radar above to view its details.",
+                fr: "Cliquez sur une technologie dans le radar ci-dessus pour voir ses détails."
+            },
+            briefSectionTitles: {
+                summary: { en: "Summary", fr: "Résumé" },
+                brief: { en: "Brief", fr: "Briefing" },
+                overview: { en: "Overview", fr: "Aperçu" },
+                keyFeatures: { en: "Key Features", fr: "Fonctionnalités Clés" },
+                howItWorks: { en: "How it Works", fr: "Comment ça Marche" },
+                benefitsUseCases: { en: "Benefits & Use Cases", fr: "Avantages et Cas d'Usage" },
+                limitations: { en: "Limitations", fr: "Limitations" },
+                risks: { en: "Risks", fr: "Risques" },
+                opportunities: { en: "Opportunities", fr: "Opportunités" },
+                implementation: { en: "Implementation Considerations", fr: "Considérations d'Implémentation" }
+            }
+        };
+
+        // --- Radar Data with Translations ---
+        // For brevity, only Prompt Engineering and RAG are fully translated. Others would follow the same pattern.
+        const originalRadarData = {
+          "title": {
+            en: "Generative AI Technology Radar",
+            fr: "Radar Technologique de l'IA Générative"
+          },
+          "description": {
+            en: "This radar provides a snapshot of the current landscape of Generative AI technologies, techniques, platforms, and models. It's designed to help organizations understand where to focus their efforts, what to experiment with, and what to keep an eye on.",
+            fr: "Ce radar fournit un aperçu du paysage actuel des technologies, techniques, plateformes et modèles d'IA Générative. Il est conçu pour aider les organisations à comprendre où concentrer leurs efforts, avec quoi expérimenter et ce qu'il faut surveiller."
+          },
+          "quadrants": [
+            {
+              "name": { en: "Techniques", fr: "Techniques" },
+              "rings": [
+                {
+                  "name": "Adopt", "color": "border-green-500", "cardBgColor": "bg-green-600 hover:bg-green-700",
+                  "blips": [
+                    {
+                      "name": { en: "Prompt Engineering", fr: "Ingénierie des Invites" },
+                      "summary": {
+                        en: "The art and science of crafting effective inputs (prompts) to guide Generative AI models to produce desired outputs. Essential for maximizing the utility of pre-trained models.",
+                        fr: "L'art et la science de créer des entrées (invites) efficaces pour guider les modèles d'IA Générative afin de produire les sorties souhaitées. Essentiel pour maximiser l'utilité des modèles pré-entraînés."
+                      },
+                      "description": {
+                        en: "Fundamental for anyone interacting with LLMs. Mastering prompt design, including few-shot learning and chain-of-thought prompting, is crucial for unlocking model capabilities and reducing undesirable outputs.",
+                        fr: "Fondamental pour quiconque interagit avec les LLM. Maîtriser la conception des invites, y compris l'apprentissage à quelques exemples et l'incitation à la chaîne de pensée, est crucial pour débloquer les capacités du modèle et réduire les sorties indésirables."
+                      },
+                      "overview": {
+                        en: "Prompt Engineering is the iterative process of designing, refining, and optimizing input queries (prompts) to elicit desired, accurate, and contextually appropriate responses from Generative AI models, particularly Large Language Models (LLMs).",
+                        fr: "L'ingénierie des invites est le processus itératif de conception, d'affinage et d'optimisation des requêtes d'entrée (invites) pour obtenir des réponses souhaitées, précises et contextuellement appropriées des modèles d'IA Générative, en particulier les Grands Modèles de Langage (LLM)."
+                      },
+                      "keyFeatures": [
+                        { en: "Instruction-based guidance", fr: "Guidage basé sur les instructions" },
+                        { en: "Contextual priming", fr: "Amorçage contextuel" },
+                        { en: "Few-shot examples", fr: "Exemples à quelques tirs (Few-shot)" },
+                        { en: "Role-playing", fr: "Jeu de rôle" },
+                        { en: "Output formatting control", fr: "Contrôle du formatage de sortie" },
+                        { en: "Iterative refinement", fr: "Affinage itératif" }
+                      ],
+                      "howItWorks": {
+                        en: "Users provide models with carefully constructed text prompts that can include explicit instructions, relevant context, examples of desired output (few-shot learning), or define a persona for the AI. The model processes this input to generate a response aligned with the prompt's intent.",
+                        fr: "Les utilisateurs fournissent aux modèles des invites textuelles soigneusement construites qui peuvent inclure des instructions explicites, un contexte pertinent, des exemples de la sortie souhaitée (apprentissage à quelques exemples), ou définir une persona pour l'IA. Le modèle traite cette entrée pour générer une réponse alignée sur l'intention de l'invite."
+                      },
+                      "benefitsUseCases": {
+                        en: "Improved accuracy and relevance of AI outputs. Enhanced control over AI behavior and style. Customization for specific tasks (e.g., summarization, translation, code generation, creative writing). Reduction of hallucinations and biases. Essential for chatbots, content creation, data analysis.",
+                        fr: "Amélioration de la précision et de la pertinence des sorties de l'IA. Contrôle accru du comportement et du style de l'IA. Personnalisation pour des tâches spécifiques (par ex., résumé, traduction, génération de code, écriture créative). Réduction des hallucinations et des biais. Essentiel pour les chatbots, la création de contenu, l'analyse de données."
+                      },
+                      "limitations": {
+                        en: ["Highly model-dependent; prompts for one model may not work well on another.", "Can be brittle to small changes in wording or structure.", "Requires skill, experimentation, and deep understanding of model capabilities.", "Difficult to achieve perfect consistency."],
+                        fr: ["Fortement dépendant du modèle ; les invites pour un modèle peuvent ne pas bien fonctionner sur un autre.", "Peut être fragile aux petits changements de formulation ou de structure.", "Nécessite compétence, expérimentation et compréhension approfondie des capacités du modèle.", "Difficile d'atteindre une cohérence parfaite."]
+                       },
+                      "risks": {
+                        en: ["Potential for prompt injection attacks leading to unintended model behavior.", "Generation of misleading, biased, or harmful content if not carefully managed.", "Over-reliance on specific prompt structures can limit creativity or exploration.", "Time-consuming to develop robust prompts."],
+                        fr: ["Potentiel d'attaques par injection d'invite menant à un comportement involontaire du modèle.", "Génération de contenu trompeur, biaisé ou nuisible si non géré avec soin.", "La dépendance excessive à des structures d'invite spécifiques peut limiter la créativité ou l'exploration.", "Long à développer des invites robustes."]
+                      },
+                      "opportunities": {
+                        en: ["Democratizing AI interaction by making complex models accessible via natural language.", "Enabling new forms of human-AI collaboration and co-creation.", "Unlocking advanced model capabilities through sophisticated prompting techniques (e.g., Chain-of-Thought, Tree-of-Thought).", "Developing standardized prompt libraries and tools."],
+                        fr: ["Démocratiser l'interaction avec l'IA en rendant les modèles complexes accessibles via le langage naturel.", "Permettre de nouvelles formes de collaboration et de co-création homme-IA.", "Débloquer des capacités de modèle avancées grâce à des techniques d'invite sophistiquées (par ex., Chaîne de Pensée, Arbre de Pensée).", "Développer des bibliothèques d'invites et des outils standardisés."]
+                      },
+                      "implementation": {
+                        en: ["Develop internal prompt libraries and best practices.", "Train users and developers on effective prompting strategies.", "Utilize prompt engineering tools and platforms for versioning and testing.", "Continuously test, evaluate, and iterate on prompt performance against defined metrics."],
+                        fr: ["Développer des bibliothèques d'invites internes et des meilleures pratiques.", "Former les utilisateurs et les développeurs aux stratégies d'invite efficaces.", "Utiliser des outils et plateformes d'ingénierie des invites pour la gestion des versions et les tests.", "Tester, évaluer et itérer en continu sur la performance des invites par rapport à des métriques définies."]
+                      }
+                    },
+                    // ... Fine-tuning (English only for brevity)
+                    {
+                      "name": { en: "Fine-tuning (for specific tasks)", fr: "Affinement (pour tâches spécifiques)" }, // Only name translated
+                      "summary": { en: "Adapting pre-trained Generative AI models on smaller, task-specific datasets to improve performance or align with specific domain knowledge.", fr: "Adapter des modèles d'IA Générative pré-entraînés sur des ensembles de données plus petits et spécifiques à une tâche pour améliorer les performances ou s'aligner sur des connaissances de domaine spécifiques." },
+                      "description": { en: "For use cases requiring high accuracy or domain specificity, fine-tuning offers a powerful way to specialize general-purpose models without training from scratch. It's a mature technique for adapting models.", fr: "Pour les cas d'usage nécessitant une grande précision ou une spécificité de domaine, l'affinement offre un moyen puissant de spécialiser les modèles à usage général sans formation à partir de zéro. C'est une technique mature pour adapter les modèles." },
+                      "overview": { en: "Fine-tuning is the process of taking a pre-trained foundation model and further training it on a smaller, domain-specific dataset to adapt its knowledge, style, or capabilities to a particular task or area.", fr: "L'affinement est le processus consistant à prendre un modèle de fondation pré-entraîné et à le former davantage sur un ensemble de données plus petit et spécifique à un domaine pour adapter ses connaissances, son style ou ses capacités à une tâche ou un domaine particulier." },
+                      "keyFeatures": [ {en:"Knowledge infusion", fr:"Infusion de connaissances"}, {en:"Style adaptation", fr:"Adaptation de style"}, {en:"Improved task-specific performance", fr:"Performance améliorée spécifique à la tâche"} ],
+                      "howItWorks": { en: "A pre-trained model's weights are updated by continuing the training process using a curated dataset relevant to the target task (e.g., medical texts, legal documents, specific coding style). This adjusts the model to better perform on that specific type of data or task.", fr: "Les poids d'un modèle pré-entraîné sont mis à jour en poursuivant le processus de formation à l'aide d'un ensemble de données organisé pertinent pour la tâche cible (par exemple, textes médicaux, documents juridiques, style de codage spécifique). Cela ajuste le modèle pour qu'il fonctionne mieux sur ce type spécifique de données ou de tâches." },
+                      "benefitsUseCases": { en: "Significantly improves performance on niche tasks where general models lack specific knowledge. Tailors model responses to a specific domain's jargon, tone, or format. Reduces hallucinations by grounding in specific data. Use cases: specialized chatbots, domain-specific Q&A, content generation in a particular style.", fr: "Améliore considérablement les performances sur les tâches de niche où les modèles généraux manquent de connaissances spécifiques. Adapte les réponses du modèle au jargon, au ton ou au format d'un domaine spécifique. Réduit les hallucinations en se basant sur des données spécifiques. Cas d'utilisation : chatbots spécialisés, Q&R spécifiques à un domaine, génération de contenu dans un style particulier." },
+                      "limitations": { en: ["Requires a quality, curated dataset for fine-tuning (can be costly to create).", "Risk of 'catastrophic forgetting' where the model loses some general capabilities.", "Computational resources needed for fine-tuning, though less than training from scratch.", "Still requires careful evaluation to ensure alignment and safety."], fr: ["Nécessite un ensemble de données organisé et de qualité pour l'affinement (peut être coûteux à créer).", "Risque d'« oubli catastrophique » où le modèle perd certaines capacités générales.", "Ressources de calcul nécessaires pour l'affinement, bien que moins que la formation à partir de zéro.", "Nécessite toujours une évaluation minutieuse pour garantir l'alignement et la sécurité."] },
+                      "risks": { en: ["Model may inherit biases from the fine-tuning dataset.", "Overfitting to the specific dataset, reducing generalization to slightly different tasks.", "Security risks if fine-tuning on sensitive data without proper safeguards.", "Potential for unintended behaviors if fine-tuning data is not representative."], fr: ["Le modèle peut hériter des biais de l'ensemble de données d'affinement.", "Surajustement à l'ensemble de données spécifique, réduisant la généralisation à des tâches légèrement différentes.", "Risques de sécurité en cas d'affinement sur des données sensibles sans garanties appropriées.", "Potentiel de comportements involontaires si les données d'affinement ne sont pas représentatives."] },
+                      "opportunities": { en: ["Creating highly specialized and efficient models for specific business needs.", "Achieving state-of-the-art performance in narrow domains.", "Reducing inference costs by using smaller, fine-tuned models for specific tasks instead of larger general ones.", "Building proprietary models with unique capabilities."], fr: ["Créer des modèles hautement spécialisés et efficaces pour des besoins commerciaux spécifiques.", "Atteindre des performances de pointe dans des domaines étroits.", "Réduire les coûts d'inférence en utilisant des modèles plus petits et affinés pour des tâches spécifiques au lieu de modèles généraux plus grands.", "Construire des modèles propriétaires dotés de capacités uniques."] },
+                      "implementation": { en: ["Curate and prepare a high-quality, representative dataset for the target task.", "Select an appropriate pre-trained base model.", "Choose a fine-tuning strategy (e.g., full fine-tuning, LoRA, PEFT).", "Set up training infrastructure and monitor the process.", "Rigorously evaluate the fine-tuned model for performance, bias, and safety before deployment."], fr: ["Organiser et préparer un ensemble de données représentatif et de haute qualité pour la tâche cible.", "Sélectionner un modèle de base pré-entraîné approprié.", "Choisir une stratégie d'affinement (par exemple, affinement complet, LoRA, PEFT).", "Mettre en place une infrastructure de formation et surveiller le processus.", "Évaluer rigoureusement le modèle affiné en termes de performances, de biais et de sécurité avant le déploiement."] }
+                    }
+                  ]
+                },
+                {
+                  "name": "Trial", "color": "border-yellow-500", "cardBgColor": "bg-yellow-600 hover:bg-yellow-700",
+                  "blips": [
+                    {
+                      "name": { en: "Retrieval Augmented Generation (RAG)", fr: "Génération Augmentée par Récupération (RAG)" },
+                      "summary": {
+                        en: "Combining large language models (LLMs) with external knowledge bases (e.g., vector databases) to ground responses in factual, up-to-date information, reducing hallucinations.",
+                        fr: "Combinaison de grands modèles de langage (LLM) avec des bases de connaissances externes (par ex., bases de données vectorielles) pour ancrer les réponses dans des informations factuelles et à jour, réduisant ainsi les hallucinations."
+                      },
+                      "description": {
+                        en: "RAG is a game-changer for enterprise LLM applications, offering a robust solution to the hallucination problem by providing models with verifiable information. Organizations should be actively trialing RAG for knowledge-intensive applications.",
+                        fr: "Le RAG change la donne pour les applications LLM d'entreprise, offrant une solution robuste au problème des hallucinations en fournissant aux modèles des informations vérifiables. Les organisations devraient activement tester le RAG pour les applications à forte intensité de connaissances."
+                      },
+                      "overview": {
+                        en: "RAG enhances LLMs by dynamically retrieving relevant information from external knowledge sources and providing it as context to the LLM when generating a response, improving factual accuracy and currency.",
+                        fr: "Le RAG améliore les LLM en récupérant dynamiquement des informations pertinentes à partir de sources de connaissances externes et en les fournissant comme contexte au LLM lors de la génération d'une réponse, améliorant ainsi la précision factuelle et l'actualité."
+                      },
+                      "keyFeatures": [
+                        { en: "Dynamic knowledge retrieval", fr: "Récupération dynamique de connaissances" },
+                        { en: "Reduced hallucinations", fr: "Réduction des hallucinations" },
+                        { en: "Access to up-to-date information", fr: "Accès à des informations à jour" },
+                        { en: "Source attribution (often)", fr: "Attribution des sources (souvent)" },
+                        { en: "Integration with vector databases", fr: "Intégration avec les bases de données vectorielles" }
+                      ],
+                      "howItWorks": {
+                        en: "User query is used to search a knowledge base (e.g., documents in a vector DB). Relevant snippets are retrieved and prepended to the original query as context for the LLM, which then generates an answer based on this augmented prompt.",
+                        fr: "La requête de l'utilisateur est utilisée pour rechercher dans une base de connaissances (par ex., des documents dans une base de données vectorielle). Des extraits pertinents sont récupérés et ajoutés en préfixe à la requête originale comme contexte pour le LLM, qui génère ensuite une réponse basée sur cette invite augmentée."
+                      },
+                      "benefitsUseCases": {
+                        en: "Provides more factual, verifiable, and current answers. Allows LLMs to use proprietary or domain-specific data without retraining. Reduces the tendency to 'make things up'. Use cases: customer support bots, internal knowledge search, research assistants.",
+                        fr: "Fournit des réponses plus factuelles, vérifiables et actuelles. Permet aux LLM d'utiliser des données propriétaires ou spécifiques à un domaine sans réentraînement. Réduit la tendance à « inventer des choses ». Cas d'usage : chatbots de support client, recherche de connaissances internes, assistants de recherche."
+                      },
+                      "limitations": {
+                        en: ["Performance depends heavily on the quality of the retrieval system and knowledge base.", "Can introduce latency due to the retrieval step.", "Complex to set up and optimize the retrieval and generation pipeline.", "Context window limitations of LLMs can restrict amount of retrieved info."],
+                        fr: ["La performance dépend fortement de la qualité du système de récupération et de la base de connaissances.", "Peut introduire une latence due à l'étape de récupération.", "Complexe à mettre en place et à optimiser le pipeline de récupération et de génération.", "Les limitations de la fenêtre contextuelle des LLM peuvent restreindre la quantité d'informations récupérées."]
+                      },
+                      "risks": {
+                        en: ["Irrelevant or incorrect retrieved information can mislead the LLM.", "Security of the knowledge base and access controls are critical.", "Potential for biased information in the knowledge base to be amplified.", "Complexity in managing and updating the knowledge base."],
+                        fr: ["Des informations récupérées non pertinentes ou incorrectes peuvent induire le LLM en erreur.", "La sécurité de la base de connaissances et les contrôles d'accès sont essentiels.", "Potentiel d'amplification des informations biaisées dans la base de connaissances.", "Complexité de la gestion et de la mise à jour de la base de connaissances."]
+                      },
+                      "opportunities": {
+                        en: ["Building highly reliable and trustworthy LLM applications.", "Leveraging vast amounts of existing enterprise data with LLMs.", "Personalizing LLM responses based on user-specific data.", "Developing more transparent AI systems with clear information sources."],
+                        fr: ["Construire des applications LLM hautement fiables et dignes de confiance.", "Exploiter de grandes quantités de données d'entreprise existantes avec les LLM.", "Personnaliser les réponses LLM en fonction des données spécifiques à l'utilisateur.", "Développer des systèmes d'IA plus transparents avec des sources d'information claires."]
+                      },
+                      "implementation": {
+                        en: ["Select/build a knowledge base (documents, FAQs, etc.).", "Implement a vector embedding and retrieval system (e.g., vector database).", "Design an effective prompting strategy to incorporate retrieved context.", "Tune retrieval parameters (e.g., number of documents, similarity thresholds).", "Monitor and evaluate both retrieval quality and generation quality."],
+                        fr: ["Sélectionner/construire une base de connaissances (documents, FAQ, etc.).", "Mettre en œuvre un système d'intégration vectorielle et de récupération (par ex., base de données vectorielle).", "Concevoir une stratégie d'invite efficace pour incorporer le contexte récupéré.", "Ajuster les paramètres de récupération (par ex., nombre de documents, seuils de similarité).", "Surveiller et évaluer à la fois la qualité de la récupération et la qualité de la génération."]
+                      }
+                    },
+                    // ... Agentic AI (English only for brevity)
+                    { "name": { en: "Agentic AI (Multi-step Reasoning & Tool Use)", fr: "IA Agentique (Raisonnement multi-étapes & Utilisation d'outils)" }, "summary": { en: "...", fr: "..." }, "description": { en: "...", fr: "..." }, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}
+                  ]
+                },
+                // ... Assess and Hold rings for Techniques (English only for brevity)
+                { "name": "Assess", "color": "border-blue-500", "cardBgColor": "bg-blue-600 hover:bg-blue-700", "blips": [ { "name": {en:"Multi-modal AI Generation (Text-to-Image/Video/3D)", fr:"Génération IA Multi-modale (Texte vers Image/Vidéo/3D)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Synthetic Data Generation", fr:"Génération de Données Synthétiques"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Hold", "color": "border-gray-500", "cardBgColor": "bg-gray-600 hover:bg-gray-700", "blips": [ { "name": {en:"Over-reliance on Black-Box Models without Explainability", fr:"Dépendance excessive aux modèles boîte noire sans explicabilité"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] }
+              ]
+            },
+            // --- TOOLS Quadrant (Names translated, details English for brevity) ---
+            {
+              "name": { en: "Tools", fr: "Outils" },
+              "rings": [
+                { "name": "Adopt", "color": "border-green-500", "cardBgColor": "bg-green-600 hover:bg-green-700", "blips": [ { "name": {en:"OpenAI API / Anthropic API / Google Gemini API", fr:"API OpenAI / API Anthropic / API Google Gemini"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Hugging Face Transformers Library", fr:"Bibliothèque Transformers de Hugging Face"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Trial", "color": "border-yellow-500", "cardBgColor": "bg-yellow-600 hover:bg-yellow-700", "blips": [ { "name": {en:"LangChain / LlamaIndex", fr:"LangChain / LlamaIndex"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Vector Databases (e.g., Pinecone, Weaviate, Milvus)", fr:"Bases de Données Vectorielles (ex: Pinecone, Weaviate, Milvus)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, {"name": {en:"GitHub Copilot / Amazon CodeWhisperer", fr:"GitHub Copilot / Amazon CodeWhisperer"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, {"name": {en:"RunwayML / Kaiber.ai", fr:"RunwayML / Kaiber.ai"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Assess", "color": "border-blue-500", "cardBgColor": "bg-blue-600 hover:bg-blue-700", "blips": [ { "name": {en:"AI Foundry Platforms (e.g., Google Cloud Vertex AI, Azure OpenAI Service, AWS Bedrock)", fr:"Plateformes AI Foundry (ex: Google Cloud Vertex AI, Azure OpenAI Service, AWS Bedrock)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Specialized MLOps for Generative AI", fr:"MLOps Spécialisé pour l'IA Générative"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, {"name": {en:"ComfyUI", fr:"ComfyUI"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, {"name": {en:"LLM Observability Platforms (e.g., Arize AI, WhyLabs)", fr:"Plateformes d'Observabilité LLM (ex: Arize AI, WhyLabs)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Hold", "color": "border-gray-500", "cardBgColor": "bg-gray-600 hover:bg-gray-700", "blips": [ { "name": {en:"Proprietary Tools with Limited Interoperability", fr:"Outils Propriétaires à Interopérabilité Limitée"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] }
+              ]
+            },
+            // --- PLATFORMS Quadrant (Names translated, details English for brevity) ---
+            {
+              "name": { en: "Platforms", fr: "Plateformes" },
+              "rings": [
+                { "name": "Adopt", "color": "border-green-500", "cardBgColor": "bg-green-600 hover:bg-green-700", "blips": [ { "name": {en:"Cloud AI Infrastructure (e.g., AWS SageMaker, Google Cloud Vertex AI, Azure ML)", fr:"Infrastructure IA Cloud (ex: AWS SageMaker, Google Cloud Vertex AI, Azure ML)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Hugging Face Hub", fr:"Hub Hugging Face"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Trial", "color": "border-yellow-500", "cardBgColor": "bg-yellow-600 hover:bg-yellow-700", "blips": [ { "name": {en:"Serverless Inference Platforms for LLMs", fr:"Plateformes d'Inférence Serverless pour LLM"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"MLOps Platforms for GenAI Workloads (e.g., Kubeflow with GenAI extensions)", fr:"Plateformes MLOps pour Charges de Travail GenAI (ex: Kubeflow avec extensions GenAI)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Assess", "color": "border-blue-500", "cardBgColor": "bg-blue-600 hover:bg-blue-700", "blips": [ { "name": {en:"Edge AI Platforms for Generative AI", fr:"Plateformes IA Edge pour l'IA Générative"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Federated Learning for Generative AI", fr:"Apprentissage Fédéré pour l'IA Générative"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Hold", "color": "border-gray-500", "cardBgColor": "bg-gray-600 hover:bg-gray-700", "blips": [ { "name": {en:"On-premise GenAI Deployments without Clear ROI", fr:"Déploiements GenAI Sur Site sans ROI Clair"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] }
+              ]
+            },
+            // --- MODELS & ARCHITECTURES Quadrant (Names translated, details English for brevity) ---
+            {
+              "name": { en: "Models & Architectures", fr: "Modèles & Architectures" },
+              "rings": [
+                { "name": "Adopt", "color": "border-green-500", "cardBgColor": "bg-green-600 hover:bg-green-700", "blips": [ { "name": {en:"Transformer Architectures", fr:"Architectures Transformer"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Pre-trained Large Language Models (LLMs) (e.g., GPT-3/4, Llama 2, Claude)", fr:"Grands Modèles de Langage Pré-entraînés (LLM) (ex: GPT-3/4, Llama 2, Claude)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Trial", "color": "border-yellow-500", "cardBgColor": "bg-yellow-600 hover:bg-yellow-700", "blips": [ { "name": {en:"Mixture of Experts (MoE) Models", fr:"Modèles Mélange d'Experts (MoE)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Small Language Models (SLMs) for Specific Tasks", fr:"Petits Modèles de Langage (SLM) pour Tâches Spécifiques"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Diffusion Models (for Image/Video Generation)", fr:"Modèles de Diffusion (pour Génération Image/Vidéo)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Assess", "color": "border-blue-500", "cardBgColor": "bg-blue-600 hover:bg-blue-700", "blips": [ { "name": {en:"Foundation Models (as a concept)", fr:"Modèles de Fondation (concept)"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}}, { "name": {en:"Self-supervised Learning for New Modalities", fr:"Apprentissage Auto-supervisé pour Nouvelles Modalités"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] },
+                { "name": "Hold", "color": "border-gray-500", "cardBgColor": "bg-gray-600 hover:bg-gray-700", "blips": [ { "name": {en:"Models with Significant Unmitigated Bias or Ethical Concerns", fr:"Modèles avec Biais Importants Non Atténués ou Préoccupations Éthiques"}, "summary": {en:"...", fr:"..."}, "description": {en:"...", fr:"..."}, "overview": {en: "...", fr: "..."}, "keyFeatures": [], "howItWorks": {en: "...", fr: "..."}, "benefitsUseCases": {en: "...", fr: "..."}, "limitations": {en: "...", fr: "..."}, "risks": {en: "...", fr: "..."}, "opportunities": {en: "...", fr: "..."}, "implementation": {en: "...", fr: "..."}} ] }
+              ]
+            }
+          ]
+        };
+        
+        let currentLanguage = 'en'; // Default language
+        let currentlySelectedBlip = null; // To store the data of the currently selected blip
+
+        // --- DOM Elements ---
+        // Radar elements
+        const radarTitleEl = document.getElementById('radarTitle');
+        const radarDescriptionEl = document.getElementById('radarDescription');
+        const radarContainer = document.getElementById('circularRadarContainer');
+        // Language buttons
+        const langEnButton = document.getElementById('langEnButton');
+        const langFrButton = document.getElementById('langFrButton');
+        // Footer
+        const footerTextEl = document.getElementById('footerText');
+        // Brief display elements
+        const briefDisplayContainer = document.getElementById('technologyBriefDisplay');
+        const briefPlaceholder = document.getElementById('briefPlaceholder');
+        const briefPlaceholderTextEl = document.getElementById('briefPlaceholderText');
+        const briefTitleEl = document.getElementById('briefTitle');
+        const briefSummaryEl = document.getElementById('briefSummary');
+        const briefDescriptionEl = document.getElementById('briefDescription');
+        const briefOverviewEl = document.getElementById('briefOverview');
+        const briefKeyFeaturesEl = document.getElementById('briefKeyFeatures');
+        const briefHowItWorksEl = document.getElementById('briefHowItWorks');
+        const briefBenefitsUseCasesEl = document.getElementById('briefBenefitsUseCases');
+        const briefLimitationsEl = document.getElementById('briefLimitations');
+        const briefRisksEl = document.getElementById('briefRisks');
+        const briefOpportunitiesEl = document.getElementById('briefOpportunities');
+        const briefImplementationEl = document.getElementById('briefImplementation');
+        // Brief section titles
+        const briefSummaryTitleEl = document.getElementById('briefSummaryTitle');
+        const briefDescriptionTitleEl = document.getElementById('briefDescriptionTitle');
+        const briefOverviewTitleEl = document.getElementById('briefOverviewTitle');
+        const briefKeyFeaturesTitleEl = document.getElementById('briefKeyFeaturesTitle');
+        const briefHowItWorksTitleEl = document.getElementById('briefHowItWorksTitle');
+        const briefBenefitsUseCasesTitleEl = document.getElementById('briefBenefitsUseCasesTitle');
+        const briefLimitationsTitleEl = document.getElementById('briefLimitationsTitle');
+        const briefRisksTitleEl = document.getElementById('briefRisksTitle');
+        const briefOpportunitiesTitleEl = document.getElementById('briefOpportunitiesTitle');
+        const briefImplementationTitleEl = document.getElementById('briefImplementationTitle');
+
+
+        // --- Helper Functions ---
+        function getTranslatedText(textObject, lang) {
+            if (typeof textObject === 'string') return textObject; // Fallback for non-translated strings
+            return textObject[lang] || textObject['en']; // Default to English if lang not found
+        }
+
+        // --- Language and Rendering Functions ---
+        function updateUIText() {
+            radarTitleEl.textContent = getTranslatedText(originalRadarData.title, currentLanguage);
+            radarDescriptionEl.textContent = getTranslatedText(originalRadarData.description, currentLanguage);
+            footerTextEl.textContent = getTranslatedText(uiStrings.footerText, currentLanguage);
+            briefPlaceholderTextEl.textContent = getTranslatedText(uiStrings.briefPlaceholderText, currentLanguage);
+
+            // Update brief section titles
+            briefSummaryTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.summary, currentLanguage);
+            briefDescriptionTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.brief, currentLanguage);
+            briefOverviewTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.overview, currentLanguage);
+            briefKeyFeaturesTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.keyFeatures, currentLanguage);
+            briefHowItWorksTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.howItWorks, currentLanguage);
+            briefBenefitsUseCasesTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.benefitsUseCases, currentLanguage);
+            briefLimitationsTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.limitations, currentLanguage);
+            briefRisksTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.risks, currentLanguage);
+            briefOpportunitiesTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.opportunities, currentLanguage);
+            briefImplementationTitleEl.textContent = getTranslatedText(uiStrings.briefSectionTitles.implementation, currentLanguage);
+
+            // Update language button active state
+            if (currentLanguage === 'en') {
+                langEnButton.classList.add('active');
+                langFrButton.classList.remove('active');
+            } else {
+                langFrButton.classList.add('active');
+                langEnButton.classList.remove('active');
+            }
+        }
+        
+        function displayTechnologyBrief(blipData) {
+            currentlySelectedBlip = blipData; // Store the selected blip data
+
+            briefPlaceholder.classList.add('hidden');
+            briefDisplayContainer.classList.remove('hidden');
+
+            briefTitleEl.textContent = getTranslatedText(blipData.name, currentLanguage);
+            briefSummaryEl.textContent = getTranslatedText(blipData.summary, currentLanguage) || 'Not available.';
+            briefDescriptionEl.textContent = getTranslatedText(blipData.description, currentLanguage) || 'Not available.';
+            briefOverviewEl.textContent = getTranslatedText(blipData.overview, currentLanguage) || 'Not available.';
+            
+            briefKeyFeaturesEl.innerHTML = ''; 
+            const keyFeatures = blipData.keyFeatures; // This is an array of objects {en: "", fr: ""}
+            if (keyFeatures && Array.isArray(keyFeatures) && keyFeatures.length > 0) {
+                keyFeatures.forEach(featureObj => {
+                    const li = document.createElement('li');
+                    li.textContent = getTranslatedText(featureObj, currentLanguage);
+                    briefKeyFeaturesEl.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = currentLanguage === 'fr' ? 'Non spécifié.' : 'Not specified.';
+                briefKeyFeaturesEl.appendChild(li);
+            }
+
+            briefHowItWorksEl.textContent = getTranslatedText(blipData.howItWorks, currentLanguage) || 'Not available.';
+            briefBenefitsUseCasesEl.textContent = getTranslatedText(blipData.benefitsUseCases, currentLanguage) || 'Not available.';
+            briefLimitationsEl.textContent = getTranslatedText(blipData.limitations, currentLanguage) || 'Not available.';
+            briefRisksEl.textContent = getTranslatedText(blipData.risks, currentLanguage) || 'Not available.';
+            briefOpportunitiesEl.textContent = getTranslatedText(blipData.opportunities, currentLanguage) || 'Not available.';
+            briefImplementationEl.textContent = getTranslatedText(blipData.implementation, currentLanguage) || 'Not available.';
+            
+            briefDisplayContainer.scrollTop = 0;
+        }
+
+        function renderRadar() {
+            // Clear previous blips and quadrant labels to re-render them
+            const existingBlips = radarContainer.querySelectorAll('.radar-blip');
+            existingBlips.forEach(b => b.remove());
+            const existingLabels = radarContainer.querySelectorAll('.quadrant-label');
+            existingLabels.forEach(l => l.remove());
+            // Note: Rings are not cleared as their appearance doesn't depend on language.
+
+            const radarWidth = 600;
+            const radarHeight = 600;
+            const centerX = radarWidth / 2;
+            const centerY = radarHeight / 2;
+            const maxRadius = Math.min(centerX, centerY) * 0.95;
+
+            const ringDefinitions = {
+                "Adopt": { radiusFraction: 0.40, label: "Adopt" },
+                "Trial": { radiusFraction: 0.60, label: "Trial" },
+                "Assess": { radiusFraction: 0.80, label: "Assess" },
+                "Hold": { radiusFraction: 0.98, label: "Hold" }
+            };
+            
+            const quadrantAngleRanges = [
+                { nameKey: "Techniques", startAngle: -Math.PI / 2, endAngle: 0 }, // NameKey matches original data
+                { nameKey: "Tools", startAngle: -Math.PI, endAngle: -Math.PI / 2 },
+                { nameKey: "Platforms", startAngle: Math.PI / 2, endAngle: Math.PI },
+                { nameKey: "Models & Architectures", startAngle: 0, endAngle: Math.PI/2 }
+            ];
+
+            quadrantAngleRanges.forEach((qDef) => {
+                // Find quadrant data by matching the English name, as the structure uses English names as keys
+                const quadrant = originalRadarData.quadrants.find(qd => qd.name.en === qDef.nameKey);
+                if (!quadrant) return;
+
+                const labelEl = document.createElement('div');
+                labelEl.className = 'quadrant-label';
+                labelEl.textContent = getTranslatedText(quadrant.name, currentLanguage); // Use translated name
+                
+                let x, y, textAlign;
+                const labelOffsetMultiplier = 0.78; 
+
+                if (qDef.nameKey === "Techniques") { 
+                    x = centerX + maxRadius * labelOffsetMultiplier; y = centerY - maxRadius * labelOffsetMultiplier; textAlign = 'right';
+                } else if (qDef.nameKey === "Tools") { 
+                    x = centerX - maxRadius * labelOffsetMultiplier; y = centerY - maxRadius * labelOffsetMultiplier; textAlign = 'left';
+                } else if (qDef.nameKey === "Platforms") { 
+                    x = centerX - maxRadius * labelOffsetMultiplier; y = centerY + maxRadius * labelOffsetMultiplier; textAlign = 'left';
+                } else if (qDef.nameKey === "Models & Architectures") { 
+                    x = centerX + maxRadius * labelOffsetMultiplier; y = centerY + maxRadius * labelOffsetMultiplier; textAlign = 'right';
+                }
+                
+                labelEl.style.left = `${x}px`;
+                labelEl.style.top = `${y}px`;
+                labelEl.style.textAlign = textAlign;
+                if (textAlign === 'right') labelEl.style.transform = 'translate(-10%, -50%)'; 
+                else if (textAlign === 'left') labelEl.style.transform = 'translate(10%, -50%)'; 
+                else labelEl.style.transform = 'translate(-50%, -50%)';
+
+                radarContainer.appendChild(labelEl);
+            });
+
+            originalRadarData.quadrants.forEach((quadrantData) => {
+                const qDef = quadrantAngleRanges.find(q => q.nameKey === quadrantData.name.en);
+                if (!qDef) return;
+
+                const { startAngle, endAngle } = qDef;
+
+                quadrantData.rings.forEach(ringData => {
+                    const ringInfo = ringDefinitions[ringData.name]; // Ring names are categories, not directly translated on radar
+                    if (!ringInfo) return;
+
+                    const blipRadiusBase = ringInfo.radiusFraction * maxRadius;
+                    const numBlipsInSegment = ringData.blips.length;
+                    const anglePadding = numBlipsInSegment > 1 ? Math.PI / 18 : 0; 
+                    const effectiveAngleRange = (endAngle - startAngle) - (2 * anglePadding);
+
+                    ringData.blips.forEach((blip, blipIndex) => {
+                        let blipAngle;
+                        if (numBlipsInSegment === 1) {
+                            blipAngle = startAngle + anglePadding + effectiveAngleRange / 2;
+                        } else {
+                             blipAngle = startAngle + anglePadding + (blipIndex / (numBlipsInSegment -1)) * effectiveAngleRange;
+                        }
+                        
+                        const ringBandWidth = maxRadius * 0.08; 
+                        const jitterRadius = (Math.random() - 0.5) * ringBandWidth;
+                        const jitterAngle = (Math.random() - 0.5) * (Math.PI / 24); 
+
+                        const currentRadius = blipRadiusBase - (ringBandWidth/2) + jitterRadius; 
+                        const currentAngle = blipAngle + jitterAngle;
+
+                        const x = centerX + currentRadius * Math.cos(currentAngle);
+                        const y = centerY + currentRadius * Math.sin(currentAngle);
+
+                        const blipEl = document.createElement('div');
+                        blipEl.className = 'radar-blip';
+                        const blipNameText = getTranslatedText(blip.name, currentLanguage);
+                        blipEl.textContent = blipNameText;
+                        blipEl.title = blipNameText; // Tooltip
+                        
+                        const bgColorClass = ringData.cardBgColor.split(' ')[0];
+                        blipEl.classList.add(bgColorClass);
+
+                        // Approximate width for centering. This is tricky with varying text lengths.
+                        const blipWidthApprox = Math.min(70, blipNameText.length * 4 + 12); 
+                        const blipHeightApprox = 18;
+                        blipEl.style.left = `${x - blipWidthApprox / 2}px`;
+                        blipEl.style.top = `${y - blipHeightApprox / 2}px`;
+                        
+                        blipEl.addEventListener('click', () => {
+                            displayTechnologyBrief(blip);
+                        });
+                        radarContainer.appendChild(blipEl);
+                    });
+                });
+            });
+        }
+        
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            updateUIText();
+            renderRadar(); // Re-render radar for blip names and quadrant labels
+            // If a blip is currently selected, update its displayed brief
+            if (currentlySelectedBlip && !briefDisplayContainer.classList.contains('hidden')) {
+                displayTechnologyBrief(currentlySelectedBlip);
+            }
+        }
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Draw static rings once
+            const radarWidth = 600;
+            const radarHeight = 600;
+            const centerX = radarWidth / 2;
+            const centerY = radarHeight / 2;
+            const maxRadius = Math.min(centerX, centerY) * 0.95;
+            const visualRingRadii = [0.40, 0.60, 0.80, 1.0];
+
+            visualRingRadii.forEach((fraction, index) => {
+                const ringEl = document.createElement('div');
+                ringEl.className = 'radar-ring';
+                const radius = fraction * maxRadius;
+                ringEl.style.width = `${2 * radius}px`;
+                ringEl.style.height = `${2 * radius}px`;
+                ringEl.style.left = `${centerX - radius}px`;
+                ringEl.style.top = `${centerY - radius}px`;
+                
+                let ringName; // Adopt, Trial, Assess, Hold - these are categories
+                if (index === 0) ringName = "Adopt";
+                else if (index === 1) ringName = "Trial";
+                else if (index === 2) ringName = "Assess";
+                else if (index === 3) ringName = "Hold";
+
+                // Find corresponding ring data to get color (assuming consistent colors)
+                const ringData = originalRadarData.quadrants[0].rings.find(r => r.name === ringName);
+                if (ringData && ringData.color) {
+                    ringEl.classList.add(...ringData.color.split(' '));
+                } else {
+                    ringEl.style.borderColor = '#d1d5db'; 
+                }
+                radarContainer.appendChild(ringEl);
+            });
+            
+            // Set initial language and render
+            setLanguage(currentLanguage);
+
+            // Event Listeners for language buttons
+            langEnButton.addEventListener('click', () => setLanguage('en'));
+            langFrButton.addEventListener('click', () => setLanguage('fr'));
+        });
+    </script>
+
+</body>
+</html>
