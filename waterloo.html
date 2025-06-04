@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waterloo: The Last Gamble</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(12, 45px);
+            grid-template-rows: repeat(10, 45px);
+            gap: 1px;
+            background-color: #a3be8c;
+            border: 2px solid #5E4D3B;
+            width: calc(12 * 45px + 11 * 1px);
+            height: calc(10 * 45px + 9 * 1px);
+            touch-action: none;
+        }
+        .hex {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            border: 1px solid #889e74;
+            position: relative;
+            overflow: visible;
+        }
+        .hex.selected-hex { outline: 3px solid yellow; z-index: 10; }
+        .hex.valid-move { background-color: rgba(0, 255, 0, 0.3) !important; }
+        .hex.targetable-hex { background-color: rgba(255, 0, 0, 0.3) !important; }
+        .hex.suggested-target-hex { background-color: rgba(255, 165, 0, 0.4) !important; border: 2px dashed orange !important; }
+
+        .unit {
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            position: absolute;
+            border: 1px solid black;
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+            z-index: 5;
+            padding: 1px;
+        }
+        .unit svg { width: 20px; height: 20px; margin-bottom: 1px; }
+        .unit-sp { font-size: 10px; font-weight: bold; line-height: 1; }
+        .unit.selected-unit { transform: scale(1.1); box-shadow: 0 0 8px yellow; z-index: 15; }
+        .unit.suggested-unit { transform: scale(1.15); box-shadow: 0 0 10px orange; z-index: 16; border: 2px solid orange;}
+        .unit.disordered { opacity: 0.6; border-style: dashed; }
+        .unit.moved, .unit.fired { filter: grayscale(70%); }
+
+        .french { background-color: #0077b6; } .french svg { fill: white; }
+        .allied { background-color: #d00000; } .allied svg { fill: white; }
+        .prussian { background-color: #2d3748; } .prussian svg { fill: white; }
+
+        .terrain-icon { font-size: 24px; opacity: 0.7; }
+        .woods { background-color: #228B22; }
+        .building { background-color: #A0522D; }
+        .ridge { background-color: #D2B48C; }
+        .mud { background-color: #8B4513; opacity: 0.6; }
+        .objective { border: 3px dashed gold !important; }
+        .objective.controlled-french { box-shadow: inset 0 0 0 4px #0077b6; }
+        .objective.controlled-allied { box-shadow: inset 0 0 0 4px #d00000; }
+
+        .tooltip { position: absolute; background-color: rgba(0,0,0,0.85); color: white; padding: 8px; border-radius: 4px; font-size: 0.8rem; z-index: 100; pointer-events: none; display: none; }
+        .modal { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 25px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .dice-container { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
+        .dice { width: 35px; height: 35px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 4px; background-color: #f0f0f0; }
+    </style>
+</head>
+<body class="bg-gray-100 p-2 sm:p-4 flex flex-col items-center min-h-screen">
+
+    <div id="game-mode-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-6 text-gray-700">Select Game Mode</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button data-mode="hvh" class="game-mode-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded transition-colors">Human vs Human</button>
+                <button data-mode="hvf" class="game-mode-btn bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded transition-colors">Human (Allied) vs AI (French)</button>
+                <button data-mode="hva" class="game-mode-btn bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded transition-colors">Human (French) vs AI (Allied)</button>
+                <button data-mode="ava" class="game-mode-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded transition-colors">AI vs AI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container" class="w-full max-w-5xl bg-white shadow-lg rounded-lg p-4 hidden">
+        <header class="text-center mb-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-700">Waterloo: The Last Gamble</h1>
+            <p id="turn-info" class="text-lg text-gray-600">Turn: 1/10 | Phase: Movement | Current Player: French</p>
+            <p id="mode-info" class="text-sm text-gray-500">Mode: Human vs Human</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-4">
+            <div class="flex-grow flex flex-col items-center">
+                <div id="game-board" class="game-board mb-4 shadow-md"></div>
+                <div id="controls" class="flex flex-wrap justify-center gap-2 mb-4">
+                    <button id="end-phase-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">End Phase</button>
+                    <button id="form-square-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors hidden">Form Square</button>
+                    <button id="undo-move-btn" class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-2 px-4 rounded transition-colors hidden">Undo Move</button>
+                    <button id="hint-btn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">Get Hint</button>
+                    <button id="reset-current-game-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-colors">Reset Game</button>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-1/3 bg-gray-50 p-3 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">Unit Info / Actions</h2>
+                <div id="unit-info-panel" class="mb-3 p-2 border rounded bg-white min-h-[120px]"></div>
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">Dice Rolls</h2>
+                <div id="dice-roll-display" class="mb-3 p-2 border rounded bg-white min-h-[50px] flex items-center gap-2"></div>
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">Game Log</h2>
+                <div id="game-log" class="h-48 overflow-y-auto border p-2 rounded bg-white text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="winner-message" class="text-2xl font-bold mb-4">Game Over!</h2>
+            <button id="restart-game-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Play Again (New Mode)</button>
+        </div>
+    </div>
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        // --- Game Configuration ---
+        const BOARD_COLS = 12; const BOARD_ROWS = 10; const MAX_TURNS = 10;
+        const PRUSSIAN_ARRIVAL_TURN = 4; const AI_ACTION_DELAY = 750;
+
+        const TERRAIN_TYPES = {
+            OPEN: { name: 'Open', icon: '', color: '#a3be8c', moveCost: 1, defenseBonus: 0 },
+            WOODS: { name: 'Woods', icon: '🌳', color: '#228B22', moveCost: 2, defenseBonus: 1, isObjective: true, id: 'hougoumont' },
+            BUILDING_HS: { name: 'La Haye Sainte', icon: '🏠', color: '#A0522D', moveCost: 1, defenseBonus: 2, isObjective: true, id: 'lahayesainte' },
+            BUILDING_PL: { name: 'Plancenoit', icon: '⛪', color: '#A0522D', moveCost: 1, defenseBonus: 2, isObjective: true, id: 'plancenoit' },
+            RIDGE: { name: 'Ridge', icon: '⛰️', color: '#D2B48C', moveCost: 1, defenseBonus: 1 },
+            MUD: { name: 'Muddy Ground', icon: '🟫', color: '#8B4513', moveCost: 2, defenseBonus: 0 }
+        };
+        const UNIT_SVG_ICONS = {
+            INF: `<svg viewBox="0 0 24 24"><path d="M12 2C10.89 2 10 2.89 10 4s.89 2 2 2 2-.89 2-2-.89-2-2-2zm0 6c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4h12v-1.17c0-.83-3.27-2.83-6-2.83s-6 2-6 2.83V12zm11 2H7v5l5 2 5-2v-5z"/></svg>`,
+            CAV: `<svg viewBox="0 0 24 24"><path d="M15.5 6.5A2.45 2.45 0 0017 4.22A2.5 2.5 0 0014.5 2a2.5 2.5 0 00-2.5 2.5V5H9.81l-2.44 6.1a1 1 0 00.19 1.05L10 16.22V20a1 1 0 001 1h2a1 1 0 001-1v-3.78l2.44-4.06a1 1 0 00.19-1.05L14.19 5H12v-.5a.5.5 0 01.5-.5h2.5a.5.5 0 01.5.5v1zm-3.5 2h-2L8.19 13h2.5zm5.5-2h-2l-1.81 4.5h2.5zM6 18v-2h2v2zm12 0v-2h-2v2z"/></svg>`,
+            ART: `<svg viewBox="0 0 24 24"><path d="M20 10H4A2 2 0 002 12v2a2 2 0 002 2h1l1.42 2.84A2 2 0 008.16 20h7.68a2 2 0 001.74-1.16L19 16h1a2 2 0 002-2v-2a2 2 0 00-2-2zm-13 4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2zM6.5 6a2.5 2.5 0 110-5 2.5 2.5 0 010 5zM17.5 6a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>`
+        };
+        const UNIT_TYPES_DATA = {
+            INF: { name: 'Infantry', baseMov: 2, baseCv: 2, range: 0, canFormSquare: true, icon: UNIT_SVG_ICONS.INF },
+            CAV: { name: 'Cavalry', baseMov: 3, baseCv: 3, range: 0, canFormSquare: false, icon: UNIT_SVG_ICONS.CAV },
+            ART: { name: 'Artillery', baseMov: 1, baseCv: 1, range: 3, canFormSquare: false, icon: UNIT_SVG_ICONS.ART }
+        };
+
+        let gameMode = 'hvh';
+        let playerControls = { French: 'human', Allied: 'human' };
+        let gameBoard = [], units = [], selectedUnit = null;
+        let currentPlayer = 'French', currentTurn = 1, currentPhase = 'Movement';
+        let prussiansArrived = false, gameOver = false, unitIdCounter = 0;
+        let lastMovedUnitOriginalPosition = null, aiActionTimeout = null, hintedAction = null;
+
+        const gameModeModal = document.getElementById('game-mode-modal');
+        const gameContainer = document.getElementById('game-container');
+        const boardElement = document.getElementById('game-board');
+        const turnInfoElement = document.getElementById('turn-info');
+        const modeInfoElement = document.getElementById('mode-info');
+        const unitInfoPanel = document.getElementById('unit-info-panel');
+        const gameLogElement = document.getElementById('game-log');
+        const diceRollDisplay = document.getElementById('dice-roll-display');
+        const endPhaseBtn = document.getElementById('end-phase-btn');
+        const formSquareBtn = document.getElementById('form-square-btn');
+        const undoMoveBtn = document.getElementById('undo-move-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const resetCurrentGameBtn = document.getElementById('reset-current-game-btn');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const winnerMessageElement = document.getElementById('winner-message');
+        const restartGameBtn = document.getElementById('restart-game-btn');
+        const tooltipElement = document.getElementById('tooltip');
+
+        function selectGameMode(mode) {
+            gameMode = mode;
+            gameModeModal.classList.add('hidden'); gameContainer.classList.remove('hidden');
+            switch(mode) {
+                case 'hvh': playerControls = { French: 'human', Allied: 'human' }; modeInfoElement.textContent = "Mode: Human vs Human"; break;
+                case 'hvf': playerControls = { French: 'ai', Allied: 'human' }; modeInfoElement.textContent = "Mode: Human (Allied) vs AI (French)"; break;
+                case 'hva': playerControls = { French: 'human', Allied: 'ai' }; modeInfoElement.textContent = "Mode: Human (French) vs AI (Allied)"; break;
+                case 'ava': playerControls = { French: 'ai', Allied: 'ai' }; modeInfoElement.textContent = "Mode: AI vs AI"; break;
+            }
+            initGame(false); // false indicates not a full restart to mode selection
+        }
+        document.querySelectorAll('.game-mode-btn').forEach(btn => btn.addEventListener('click', () => selectGameMode(btn.dataset.mode)));
+
+        function initializeGameBoard() { /* ... (same) ... */
+            gameBoard = [];
+            for (let r = 0; r < BOARD_ROWS; r++) {
+                const row = [];
+                for (let c = 0; c < BOARD_COLS; c++) {
+                    let terrain = TERRAIN_TYPES.OPEN;
+                    if ((c >= 1 && c <= 2) && (r >= 1 && r <= 2)) terrain = TERRAIN_TYPES.WOODS;
+                    else if (c === 4 && (r >= 3 && r <= 4)) terrain = TERRAIN_TYPES.BUILDING_HS;
+                    else if ((c >= 9 && c <= 10) && (r >= 7 && r <= 8)) terrain = TERRAIN_TYPES.BUILDING_PL;
+                    else if (r === 5 && (c >= 2 && c <= 8)) terrain = TERRAIN_TYPES.RIDGE;
+                    else if ((c === 5 && r === 6) || (c === 6 && r === 6)) terrain = TERRAIN_TYPES.MUD;
+                    row.push({ x: c, y: r, terrain: terrain, unit: null, isObjective: !!terrain.isObjective, objectiveId: terrain.id || null, controlledBy: null });
+                }
+                gameBoard.push(row);
+            }
+        }
+        function createUnit(config) { /* ... (same) ... */
+            const unitData = UNIT_TYPES_DATA[config.type];
+            const unit = {
+                id: unitIdCounter++, faction: config.faction, type: config.type, name: config.name,
+                sp: config.sp, maxSp: config.sp, mov: unitData.baseMov, currentMov: unitData.baseMov,
+                cv: unitData.baseCv, range: unitData.range, x: config.x, y: config.y,
+                status: 'active', canFormSquare: unitData.canFormSquare, inSquare: false, canAttack: true,
+                originalX: config.x, originalY: config.y, icon: unitData.icon
+            };
+            units.push(unit);
+            if (gameBoard[config.y] && gameBoard[config.y][config.x]) {
+                 gameBoard[config.y][config.x].unit = unit.id;
+            } else { console.error("Error placing unit: Hex out of bounds", config); }
+            return unit;
+        }
+        function initializeUnits() { /* ... (same) ... */
+            units = []; unitIdCounter = 0;
+            createUnit({ name: 'FR Guard INF', type: 'INF', faction: 'French', sp: 4, x: 3, y: 8 });
+            createUnit({ name: 'FR Line INF 1', type: 'INF', faction: 'French', sp: 3, x: 5, y: 8 });
+            createUnit({ name: 'FR Line INF 2', type: 'INF', faction: 'French', sp: 3, x: 7, y: 8 });
+            createUnit({ name: 'FR Cuirassiers', type: 'CAV', faction: 'French', sp: 3, x: 4, y: 9 });
+            createUnit({ name: 'FR Artillery', type: 'ART', faction: 'French', sp: 2, x: 6, y: 9 });
+            createUnit({ name: 'AL British INF', type: 'INF', faction: 'Allied', sp: 3, x: 2, y: 2 });
+            createUnit({ name: 'AL KGL INF', type: 'INF', faction: 'Allied', sp: 3, x: 4, y: 3 });
+            createUnit({ name: 'AL Nassau INF', type: 'INF', faction: 'Allied', sp: 3, x: 6, y: 5 });
+            createUnit({ name: 'AL Heavy CAV', type: 'CAV', faction: 'Allied', sp: 3, x: 7, y: 4 });
+            createUnit({ name: 'AL Artillery', type: 'ART', faction: 'Allied', sp: 2, x: 5, y: 4 });
+        }
+        function spawnPrussians() { /* ... (same) ... */
+            if (prussiansArrived) return;
+            logMessage("The Prussians are arriving!", "event");
+            createUnit({ name: 'PR Landwehr 1', type: 'INF', faction: 'Allied', sp: 3, x: 11, y: 3 });
+            createUnit({ name: 'PR Landwehr 2', type: 'INF', faction: 'Allied', sp: 3, x: 11, y: 5 });
+            createUnit({ name: 'PR Cavalry', type: 'CAV', faction: 'Allied', sp: 2, x: 11, y: 4 });
+            prussiansArrived = true; renderBoard();
+        }
+
+        function renderBoard() { /* ... (same, hint highlights handled) ... */
+            boardElement.innerHTML = '';
+            gameBoard.forEach((row, r) => {
+                row.forEach((hexData, c) => {
+                    const hexEl = document.createElement('div');
+                    hexEl.classList.add('hex');
+                    hexEl.style.backgroundColor = hexData.terrain.color;
+                    if (hexData.terrain.icon) {
+                        const terrainIconEl = document.createElement('span');
+                        terrainIconEl.classList.add('terrain-icon');
+                        terrainIconEl.textContent = hexData.terrain.icon;
+                        if (hexData.terrain === TERRAIN_TYPES.MUD) terrainIconEl.style.opacity = '0.3';
+                        hexEl.appendChild(terrainIconEl);
+                    }
+                    if (hexData.isObjective) hexEl.classList.add('objective');
+                    if (hexData.controlledBy) hexEl.classList.add(`controlled-${hexData.controlledBy.toLowerCase()}`);
+                    hexEl.dataset.x = c; hexEl.dataset.y = r;
+
+                    const unitOnHex = units.find(u => u.id === hexData.unit && u.sp > 0);
+                    if (unitOnHex) {
+                        const unitEl = document.createElement('div');
+                        unitEl.classList.add('unit', unitOnHex.faction.toLowerCase());
+                        unitEl.innerHTML = `${unitOnHex.icon}<span class="unit-sp">${unitOnHex.sp}${unitOnHex.inSquare ? 'S' : ''}</span>`;
+                        if (unitOnHex.status === 'disordered') unitEl.classList.add('disordered');
+                        if (unitOnHex.status === 'moved' || unitOnHex.status === 'fired' || (unitOnHex.status === 'active' && (!unitOnHex.canAttack && unitOnHex.type !== 'ART'))) {
+                           if (currentPhase === 'Movement' && unitOnHex.status === 'moved') unitEl.classList.add('moved');
+                           else if (currentPhase === 'Combat' && (unitOnHex.status === 'fired' || !unitOnHex.canAttack)) unitEl.classList.add('fired');
+                        }
+                        unitEl.dataset.unitId = unitOnHex.id;
+                        unitEl.addEventListener('click', (e) => { e.stopPropagation(); handleUnitClick(unitOnHex); });
+                        if (hintedAction && hintedAction.unitId === unitOnHex.id) unitEl.classList.add('suggested-unit');
+                        hexEl.appendChild(unitEl);
+                    }
+                    if (hintedAction && hintedAction.targetX === c && hintedAction.targetY === r) hexEl.classList.add('suggested-target-hex');
+                    hexEl.addEventListener('click', () => handleHexClick(c, r));
+                    hexEl.addEventListener('mouseenter', (e) => showTooltip(e, hexData));
+                    hexEl.addEventListener('mousemove', (e) => updateTooltipPosition(e));
+                    hexEl.addEventListener('mouseleave', hideTooltip);
+                    boardElement.appendChild(hexEl);
+                });
+            });
+            updateTurnInfo(); updateUnitInfoPanel(); updateButtonStates();
+        }
+
+        function handleUnitClick(unit) { /* ... (same) ... */
+            if (gameOver || playerControls[currentPlayer] === 'ai') return;
+            clearHintHighlights();
+            if (unit.faction !== currentPlayer) {
+                if (selectedUnit && selectedUnit.faction === currentPlayer && currentPhase === 'Combat' && selectedUnit.type === 'ART' && selectedUnit.status !== 'fired') handleHexClick(unit.x, unit.y);
+                else if (selectedUnit && selectedUnit.faction === currentPlayer && currentPhase === 'Combat' && selectedUnit.canAttack && selectedUnit.status !== 'fired') handleHexClick(unit.x, unit.y);
+                else logMessage("Cannot select opponent's unit.", "error");
+                return;
+            }
+            if (selectedUnit === unit) { selectedUnit = null; clearHighlights(); }
+            else {
+                selectedUnit = unit; highlightSelectedUnit();
+                if (currentPhase === 'Movement' && unit.status === 'active') highlightValidMoves(unit);
+                else if (currentPhase === 'Combat') {
+                    if (unit.type === 'ART' && unit.status !== 'fired') highlightTargetableHexes(unit, true);
+                    else if (unit.canAttack && unit.status !== 'fired') highlightTargetableHexes(unit, false);
+                }
+            }
+            updateUnitInfoPanel(); updateButtonStates();
+        }
+        function handleHexClick(x, y) { /* ... (same) ... */
+            if (gameOver || !selectedUnit || playerControls[currentPlayer] === 'ai') return;
+            clearHintHighlights();
+            if (selectedUnit.faction !== currentPlayer) return;
+            const targetHex = gameBoard[y][x];
+            if (currentPhase === 'Movement') {
+                if (selectedUnit.status !== 'active') { logMessage("This unit has already moved or cannot move.", "error"); return; }
+                const path = findPath(selectedUnit, selectedUnit.x, selectedUnit.y, x, y);
+                if (path && path.length > 0 && path.length -1 <= selectedUnit.currentMov) {
+                    if (targetHex.unit !== null && units.find(u => u.id === targetHex.unit).faction !== selectedUnit.faction) { logMessage("Cannot move into an enemy-occupied hex.", "error"); return; }
+                    if (targetHex.unit !== null && units.find(u => u.id === targetHex.unit).faction === selectedUnit.faction) { logMessage("Cannot move into a friendly-occupied hex.", "error"); return; }
+                    lastMovedUnitOriginalPosition = { unitId: selectedUnit.id, x: selectedUnit.x, y: selectedUnit.y, currentMov: selectedUnit.currentMov, status: selectedUnit.status };
+                    gameBoard[selectedUnit.y][selectedUnit.x].unit = null;
+                    selectedUnit.x = x; selectedUnit.y = y;
+                    selectedUnit.currentMov -= (path.length -1);
+                    gameBoard[y][x].unit = selectedUnit.id; selectedUnit.status = 'moved';
+                    logMessage(`${selectedUnit.name} (${selectedUnit.type}) moved to (${x},${y}).`, "action");
+                    clearHighlights(); renderBoard(); undoMoveBtn.classList.remove('hidden');
+                } else { logMessage("Invalid move or out of range.", "error"); }
+            } else if (currentPhase === 'Combat') {
+                const targetUnit = targetHex.unit !== null ? units.find(u => u.id === targetHex.unit && u.sp > 0) : null;
+                if (!targetUnit || targetUnit.faction === selectedUnit.faction) { logMessage("Must target an enemy unit.", "error"); return; }
+                if (selectedUnit.type === 'ART') {
+                    if (selectedUnit.status === 'fired') { logMessage("Artillery has already fired.", "error"); return; }
+                    const distance = getDistance(selectedUnit.x, x, selectedUnit.y, y);
+                    if (distance <= selectedUnit.range) performArtilleryAttack(selectedUnit, targetUnit);
+                    else logMessage("Target out of range.", "error");
+                } else {
+                    if (!selectedUnit.canAttack || selectedUnit.status === 'fired') { logMessage("Unit cannot attack or has attacked.", "error"); return; }
+                    const dx = Math.abs(selectedUnit.x - x); const dy = Math.abs(selectedUnit.y - y);
+                    if ((dx <= 1 && dy <= 1) && !(dx === 0 && dy === 0)) performMeleeAttack(selectedUnit, targetUnit);
+                    else logMessage("Target not adjacent.", "error");
+                }
+                clearHighlights(); renderBoard();
+            }
+        }
+        function handleEndPhase() { /* ... (same) ... */
+            if (gameOver) return;
+            clearTimeout(aiActionTimeout); clearHighlights(); clearHintHighlights(); selectedUnit = null;
+            lastMovedUnitOriginalPosition = null; undoMoveBtn.classList.add('hidden');
+            if (currentPhase === 'Movement') {
+                currentPhase = 'Combat'; logMessage(`${currentPlayer} ends Movement. Combat Phase.`, "event");
+                units.filter(u => u.faction === currentPlayer && u.status === 'moved').forEach(u => { if (u.type !== 'ART') u.canAttack = true; });
+            } else if (currentPhase === 'Combat') {
+                currentPhase = 'Rally'; logMessage(`${currentPlayer} ends Combat. Rally Phase.`, "event");
+                units.filter(u => u.faction === currentPlayer && u.status === 'disordered').forEach(u => {
+                    const roll = rollD6(); displayDiceRoll([roll]);
+                    if (roll >= 4) { u.status = 'active'; logMessage(`${u.name} (${u.type}) rallied! (Rolled ${roll})`, "success"); }
+                    else { logMessage(`${u.name} (${u.type}) failed to rally. (Rolled ${roll})`, "failure"); }
+                });
+            } else if (currentPhase === 'Rally') {
+                logMessage(`${currentPlayer} ends Rally. Turn ends.`, "event");
+                currentPlayer = (currentPlayer === 'French') ? 'Allied' : 'French'; currentPhase = 'Movement';
+                if (currentPlayer === 'French') currentTurn++;
+                units.filter(u => u.faction === currentPlayer && u.sp > 0).forEach(u => { u.status = 'active'; u.currentMov = u.mov; u.canAttack = true; u.inSquare = false; });
+                units.filter(u => u.faction !== currentPlayer && u.sp > 0 && u.inSquare).forEach(u => logMessage(`${u.name} (${u.type}) remains in square.`, "info"));
+                if (currentTurn > MAX_TURNS) { endGame("Time limit! Check objectives."); return; }
+                if (currentTurn >= PRUSSIAN_ARRIVAL_TURN && !prussiansArrived && currentPlayer === 'Allied') spawnPrussians();
+                logMessage(`Turn ${currentTurn}. ${currentPlayer}'s ${currentPhase} Phase.`, "event");
+            }
+            renderBoard(); checkVictoryConditions();
+            if (!gameOver && playerControls[currentPlayer] === 'ai') aiActionTimeout = setTimeout(executeAITurn, AI_ACTION_DELAY);
+        }
+        
+        function executeAITurn() { /* ... (same) ... */
+            if (gameOver || playerControls[currentPlayer] !== 'ai') return;
+            logMessage(`AI (${currentPlayer}) is thinking... (${currentPhase} Phase)`, "ai");
+            if (currentPhase === 'Movement') performAIMovementPhase();
+            else if (currentPhase === 'Combat') performAICombatPhase();
+            aiActionTimeout = setTimeout(() => { if (!gameOver) handleEndPhase(); }, AI_ACTION_DELAY * 1.5);
+            renderBoard();
+        }
+        function performAIMovementPhase() { /* ... (enhanced logging) ... */
+            const aiUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.status === 'active');
+            aiUnits.sort(() => 0.5 - Math.random());
+            for (const unit of aiUnits) {
+                if (unit.status !== 'active' || unit.currentMov <= 0) continue;
+                let bestTargetPos = null; let minDistance = Infinity; let targetReason = "";
+                const objectives = gameBoard.flat().filter(h => h.isObjective && h.controlledBy !== currentPlayer);
+                objectives.forEach(obj => {
+                    const dist = getDistance(unit.x, unit.y, obj.x, obj.y);
+                    if (dist < minDistance) { minDistance = dist; bestTargetPos = {x: obj.x, y: obj.y}; targetReason = `objective ${obj.terrain.name}`;}
+                });
+                const enemyUnits = units.filter(u => u.faction !== currentPlayer && u.sp > 0);
+                enemyUnits.forEach(enemy => {
+                    const dist = getDistance(unit.x, unit.y, enemy.x, enemy.y);
+                    if (dist < minDistance) { minDistance = dist; bestTargetPos = {x: enemy.x, y: enemy.y}; targetReason = `enemy ${enemy.name} (${enemy.type})`;}
+                });
+                if (bestTargetPos) {
+                    const path = findPath(unit, unit.x, unit.y, bestTargetPos.x, bestTargetPos.y);
+                    if (path && path.length > 1) {
+                        let movedDistance = 0; let targetIdx = 0;
+                        for (let i = 1; i < path.length; i++) {
+                            const segmentCost = gameBoard[path[i].y][path[i].x].terrain.moveCost;
+                            if (movedDistance + segmentCost <= unit.currentMov) {
+                                if (gameBoard[path[i].y][path[i].x].unit !== null && i < path.length -1 && units.find(u=>u.id === gameBoard[path[i].y][path[i].x].unit).faction === unit.faction) break;
+                                movedDistance += segmentCost; targetIdx = i;
+                            } else break;
+                        }
+                        if (targetIdx > 0) {
+                            const finalDest = path[targetIdx];
+                            if (gameBoard[finalDest.y][finalDest.x].unit === null || units.find(u => u.id === gameBoard[finalDest.y][finalDest.x].unit).faction !== unit.faction) {
+                                gameBoard[unit.y][unit.x].unit = null; unit.x = finalDest.x; unit.y = finalDest.y;
+                                gameBoard[unit.y][unit.x].unit = unit.id; unit.currentMov -= movedDistance; unit.status = 'moved';
+                                logMessage(`AI: ${unit.name} (${unit.type}) moves towards ${targetReason} at (${unit.x},${unit.y}).`, "ai");
+                            }
+                        }
+                    }
+                }
+                if (unit.type === 'INF' && unit.canFormSquare && !unit.inSquare && unit.status === 'active') {
+                    const nearbyCavalry = enemyUnits.find(e => e.type === 'CAV' && getDistance(unit.x, unit.y, e.x, e.y) <= e.mov + 1);
+                    if (nearbyCavalry) {
+                        unit.inSquare = true; unit.currentMov = 0; unit.status = 'moved';
+                        logMessage(`AI: ${unit.name} (${unit.type}) forms square due to ${nearbyCavalry.name} (${nearbyCavalry.type}) threat.`, "ai");
+                    }
+                }
+            }
+        }
+        function performAICombatPhase() { /* ... (enhanced logging) ... */
+            const aiUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.status !== 'fired' && u.canAttack);
+            aiUnits.sort((a,b) => (a.type === 'ART' ? -1 : 1));
+            for (const unit of aiUnits) {
+                 if (unit.status === 'fired' || !unit.canAttack) continue;
+                const enemyUnits = units.filter(e => e.faction !== currentPlayer && e.sp > 0);
+                let bestTarget = null; let minTargetSp = Infinity; let reason = "";
+                if (unit.type === 'ART') {
+                    enemyUnits.forEach(enemy => {
+                        const dist = getDistance(unit.x, enemy.x, unit.y, enemy.y);
+                        if (dist <= unit.range) { if (enemy.sp < minTargetSp) { minTargetSp = enemy.sp; bestTarget = enemy; reason = "weakest in range"; } }
+                    });
+                    if (bestTarget) { logMessage(`AI: ${unit.name} (${unit.type}) targets ${bestTarget.name} (${bestTarget.type}) (${reason}).`, "ai"); performArtilleryAttack(unit, bestTarget); renderBoard(); if (gameOver) return; }
+                } else {
+                    enemyUnits.forEach(enemy => {
+                        const dx = Math.abs(unit.x - enemy.x); const dy = Math.abs(unit.y - enemy.y);
+                        if ((dx <= 1 && dy <= 1) && !(dx === 0 && dy === 0)) { if (enemy.sp < minTargetSp) { minTargetSp = enemy.sp; bestTarget = enemy; reason = "weakest adjacent"; } }
+                    });
+                    if (bestTarget) { logMessage(`AI: ${unit.name} (${unit.type}) attacks ${bestTarget.name} (${bestTarget.type}) (${reason}).`, "ai"); performMeleeAttack(unit, bestTarget); renderBoard(); if (gameOver) return; }
+                }
+            }
+        }
+        function getDistance(x1, y1, x2, y2) { return Math.abs(x1 - x2) + Math.abs(y1 - y2); }
+
+        function handleHint() { /* ... (same) ... */
+            if (gameOver || playerControls[currentPlayer] === 'ai' || !units.some(u => u.faction === currentPlayer && u.sp > 0)) { logMessage("Hint not available now.", "info"); return; }
+            clearHintHighlights();
+            const hint = getAIHintForHuman();
+            if (hint) { logMessage(`Hint: ${hint.description}`, "hint"); hintedAction = { unitId: hint.unit.id, targetX: hint.targetX, targetY: hint.targetY, actionType: hint.actionType }; renderBoard(); }
+            else { logMessage("No obvious hint found at the moment.", "info"); }
+        }
+        function getAIHintForHuman() { /* ... (same, but ensure unit types in descriptions) ... */
+            const humanUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.status === 'active');
+            if (humanUnits.length === 0 && currentPhase === 'Movement') {
+                 const combatUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.canAttack && u.status !== 'fired');
+                 if(combatUnits.length === 0) return null;
+            } else if (humanUnits.length === 0 && currentPhase !== 'Movement') return null;
+
+            if (currentPhase === 'Combat') {
+                const combatReadyUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.canAttack && u.status !== 'fired');
+                for (const unit of combatReadyUnits) {
+                    const enemyUnits = units.filter(e => e.faction !== currentPlayer && e.sp > 0);
+                    let bestTarget = null; let minTargetSp = Infinity;
+                    if (unit.type === 'ART') {
+                        enemyUnits.forEach(enemy => {
+                            const dist = getDistance(unit.x, enemy.x, unit.y, enemy.y);
+                            if (dist <= unit.range) { if (enemy.sp < minTargetSp) { minTargetSp = enemy.sp; bestTarget = enemy; } }
+                        });
+                        if (bestTarget) return { unit: unit, targetX: bestTarget.x, targetY: bestTarget.y, actionType: 'artillery_attack', description: `${unit.name} (${unit.type}) fire at ${bestTarget.name} (${bestTarget.type}) at (${bestTarget.x},${bestTarget.y}).` };
+                    } else {
+                        enemyUnits.forEach(enemy => {
+                            const dx = Math.abs(unit.x - enemy.x); const dy = Math.abs(unit.y - enemy.y);
+                            if ((dx <= 1 && dy <= 1) && !(dx === 0 && dy === 0)) { if (enemy.sp < minTargetSp) { minTargetSp = enemy.sp; bestTarget = enemy; } }
+                        });
+                        if (bestTarget) return { unit: unit, targetX: bestTarget.x, targetY: bestTarget.y, actionType: 'melee_attack', description: `${unit.name} (${unit.type}) attack ${bestTarget.name} (${bestTarget.type}) at (${bestTarget.x},${bestTarget.y}).` };
+                    }
+                }
+            }
+            if (currentPhase === 'Movement') {
+                const activeUnits = units.filter(u => u.faction === currentPlayer && u.sp > 0 && u.status === 'active' && u.currentMov > 0);
+                for (const unit of activeUnits) {
+                    if (unit.type === 'INF' && unit.canFormSquare && !unit.inSquare) {
+                        const enemyCav = units.find(e => e.faction !== currentPlayer && e.sp > 0 && e.type === 'CAV' && getDistance(unit.x, unit.y, e.x, e.y) <= e.mov + 1);
+                        if (enemyCav) return { unit: unit, actionType: 'form_square', description: `${unit.name} (${unit.type}) form square at (${unit.x},${unit.y}) due to ${enemyCav.name} (${enemyCav.type}).`};
+                    }
+                    const objectives = gameBoard.flat().filter(h => h.isObjective && h.controlledBy !== currentPlayer);
+                    for (const obj of objectives) {
+                        const path = findPath(unit, unit.x, unit.y, obj.x, obj.y);
+                        if (path && path.length > 1) {
+                            const moveSegments = Math.floor(unit.currentMov / (gameBoard[path[1].y]?.[path[1].x]?.terrain.moveCost || 1));
+                            const targetHex = path[Math.min(path.length - 1, moveSegments )];
+                             if (targetHex && (gameBoard[targetHex.y][targetHex.x].unit === null || gameBoard[targetHex.y][targetHex.x].unit === unit.id)) {
+                                return { unit: unit, targetX: targetHex.x, targetY: targetHex.y, actionType: 'move', description: `${unit.name} (${unit.type}) move towards ${obj.terrain.name} at (${targetHex.x},${targetHex.y}).` };
+                            }
+                        }
+                    }
+                    const enemyUnits = units.filter(u => u.faction !== currentPlayer && u.sp > 0);
+                    if(enemyUnits.length > 0) {
+                        enemyUnits.sort((a,b) => getDistance(unit.x, unit.y, a.x, a.y) - getDistance(unit.x, unit.y, b.x, b.y));
+                        const closestEnemy = enemyUnits[0];
+                        const path = findPath(unit, unit.x, unit.y, closestEnemy.x, closestEnemy.y);
+                        if (path && path.length > 1) {
+                             const moveSegments = Math.floor(unit.currentMov / (gameBoard[path[1].y]?.[path[1].x]?.terrain.moveCost || 1));
+                             const targetHex = path[Math.min(path.length - 2, moveSegments )]; // Try not to step directly on enemy
+                             if (targetHex && (gameBoard[targetHex.y][targetHex.x].unit === null || gameBoard[targetHex.y][targetHex.x].unit === unit.id)) {
+                                return { unit: unit, targetX: targetHex.x, targetY: targetHex.y, actionType: 'move', description: `${unit.name} (${unit.type}) move towards ${closestEnemy.name} (${closestEnemy.type}) to (${targetHex.x},${targetHex.y}).` };
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        function clearHintHighlights() { /* ... (same) ... */
+            hintedAction = null;
+            document.querySelectorAll('.suggested-unit').forEach(el => el.classList.remove('suggested-unit'));
+            document.querySelectorAll('.suggested-target-hex').forEach(el => el.classList.remove('suggested-target-hex'));
+        }
+
+        function showTooltip(event, hexData) { /* ... (same) ... */
+            const unit = units.find(u => u.id === hexData.unit && u.sp > 0);
+            let content = `Hex (${hexData.x}, ${hexData.y}): ${hexData.terrain.name}`;
+            if (hexData.isObjective) content += `<br>Objective! (${hexData.controlledBy ? hexData.controlledBy : 'Neutral'})`;
+            if (unit) {
+                content += `<br><b class="${unit.faction.toLowerCase()}">${unit.name} (${unit.type})</b><br>SP: ${unit.sp}/${unit.maxSp}, CV: ${unit.cv}, MOV: ${unit.currentMov}/${unit.mov}`;
+                if (unit.status !== 'active') content += `<br>Status: ${unit.status}`;
+                if (unit.inSquare) content += `<br>In Square Formation`;
+            }
+            tooltipElement.innerHTML = content; tooltipElement.style.display = 'block'; updateTooltipPosition(event);
+        }
+        function updateTooltipPosition(event) { tooltipElement.style.left = (event.pageX + 15) + 'px'; tooltipElement.style.top = (event.pageY + 15) + 'px'; }
+        function hideTooltip() { tooltipElement.style.display = 'none'; }
+        function highlightSelectedUnit() { /* ... (same) ... */
+            document.querySelectorAll('.unit.selected-unit').forEach(el => el.classList.remove('selected-unit'));
+            if (selectedUnit) { const unitEl = document.querySelector(`.unit[data-unit-id='${selectedUnit.id}']`); if (unitEl) unitEl.classList.add('selected-unit'); }
+        }
+        function clearHighlights() { /* ... (same) ... */
+            document.querySelectorAll('.hex.valid-move').forEach(el => el.classList.remove('valid-move'));
+            document.querySelectorAll('.hex.targetable-hex').forEach(el => el.classList.remove('targetable-hex'));
+            document.querySelectorAll('.hex.selected-hex').forEach(el => el.classList.remove('selected-hex'));
+        }
+        function highlightValidMoves(unit) { /* ... (same) ... */
+            clearHighlights(); if (!unit || unit.status !== 'active' || unit.currentMov <= 0) return;
+            const queue = [[unit.x, unit.y, 0]]; const visited = new Set([`${unit.x},${unit.y}`]);
+            while(queue.length > 0) {
+                const [cx, cy, cost] = queue.shift();
+                if (cost > 0 && cost <= unit.currentMov) {
+                    const hexEl = document.querySelector(`.hex[data-x='${cx}'][data-y='${cy}']`);
+                    if (hexEl && !gameBoard[cy][cx].unit) hexEl.classList.add('valid-move');
+                }
+                for (let dx = -1; dx <= 1; dx++) { for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0 || (dx !== 0 && dy !== 0)) continue;
+                    const nx = cx + dx; const ny = cy + dy;
+                    if (nx >= 0 && nx < BOARD_COLS && ny >= 0 && ny < BOARD_ROWS && !visited.has(`${nx},${ny}`)) {
+                        const terrainCost = gameBoard[ny][nx].terrain.moveCost; const newCost = cost + terrainCost;
+                        if (newCost <= unit.currentMov && !gameBoard[ny][nx].unit) { visited.add(`${nx},${ny}`); queue.push([nx, ny, newCost]); }
+                    }
+                }}
+            }
+        }
+        function findPath(unit, startX, startY, endX, endY) { /* ... (same) ... */
+            const openSet = [{ x: startX, y: startY, g: 0, h: getDistance(startX,startY,endX,endY), f: 0, parent: null }];
+            openSet[0].f = openSet[0].h; const closedSet = new Set();
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => a.f - b.f); const current = openSet.shift();
+                if (current.x === endX && current.y === endY) {
+                    const path = []; let temp = current;
+                    while (temp) { path.unshift({ x: temp.x, y: temp.y }); temp = temp.parent; } return path;
+                }
+                closedSet.add(`${current.x},${current.y}`);
+                for (let dx = -1; dx <= 1; dx++) { for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0 || (dx !== 0 && dy !== 0)) continue;
+                    const nx = current.x + dx; const ny = current.y + dy;
+                    if (nx >= 0 && nx < BOARD_COLS && ny >= 0 && ny < BOARD_ROWS && !closedSet.has(`${nx},${ny}`)) {
+                        const targetHex = gameBoard[ny][nx];
+                        const occupyingUnit = targetHex.unit ? units.find(u => u.id === targetHex.unit) : null;
+                        if (occupyingUnit && occupyingUnit.faction !== unit.faction && !(nx === endX && ny === endY)) continue;
+                        if (occupyingUnit && occupyingUnit.faction === unit.faction) continue;
+                        const moveCost = targetHex.terrain.moveCost; const gCost = current.g + moveCost;
+                        let neighborNode = openSet.find(node => node.x === nx && node.y === ny);
+                        if (!neighborNode) {
+                            neighborNode = { x: nx, y: ny, g: gCost, h: getDistance(nx,ny,endX,endY), f: 0, parent: current };
+                            neighborNode.f = neighborNode.g + neighborNode.h; openSet.push(neighborNode);
+                        } else if (gCost < neighborNode.g) { neighborNode.g = gCost; neighborNode.f = neighborNode.g + neighborNode.h; neighborNode.parent = current; }
+                    }
+                }}
+            } return null;
+        }
+        function highlightTargetableHexes(unit, isArtillery) { /* ... (same) ... */
+            clearHighlights(); if (!unit) return;
+            for (let r = 0; r < BOARD_ROWS; r++) { for (let c = 0; c < BOARD_COLS; c++) {
+                const targetHex = gameBoard[r][c];
+                if (targetHex.unit) {
+                    const targetUnitObj = units.find(u => u.id === targetHex.unit && u.sp > 0);
+                    if (targetUnitObj && targetUnitObj.faction !== unit.faction) {
+                        const distance = getDistance(unit.x, c, unit.y, r);
+                        if (isArtillery) { if (distance > 0 && distance <= unit.range) document.querySelector(`.hex[data-x='${c}'][data-y='${r}']`).classList.add('targetable-hex'); }
+                        else { const dx = Math.abs(unit.x - c); const dy = Math.abs(unit.y - r); if ((dx <= 1 && dy <= 1) && !(dx === 0 && dy === 0)) document.querySelector(`.hex[data-x='${c}'][data-y='${r}']`).classList.add('targetable-hex'); }
+                    }
+                }
+            }}
+        }
+        function rollD6() { return Math.floor(Math.random() * 6) + 1; }
+        function performArtilleryAttack(attacker, defender) { /* ... (same) ... */
+            logMessage(`${attacker.name} (${attacker.type}) fires at ${defender.name} (${defender.type})!`, "combat");
+            const roll = rollD6(); displayDiceRoll([roll]); let hitThreshold = 5;
+            if (roll >= hitThreshold) { logMessage(`Hit! (${roll} >= ${hitThreshold})`, "success"); applyDamage(defender, 1, attacker); }
+            else { logMessage(`Missed! (${roll} < ${hitThreshold})`, "failure"); }
+            attacker.status = 'fired'; attacker.canAttack = false;
+        }
+        function performMeleeAttack(attacker, defender) { /* ... (same) ... */
+            logMessage(`${attacker.name} (${attacker.type}) attacks ${defender.name} (${defender.type}) in melee!`, "combat");
+            const attackerRoll = rollD6(); const defenderRoll = rollD6(); displayDiceRoll([attackerRoll, defenderRoll]);
+            let attackerScore = attackerRoll + attacker.cv; let defenderScore = defenderRoll + defender.cv;
+            const defenderTerrain = gameBoard[defender.y][defender.x].terrain;
+            defenderScore += defenderTerrain.defenseBonus;
+            if (defenderTerrain.defenseBonus > 0) logMessage(`${defender.name} (${defender.type}) +${defenderTerrain.defenseBonus} for ${defenderTerrain.name}.`, "info");
+            if (attacker.type === 'CAV' && (attacker.status === 'moved' || attacker.status === 'active')) { attackerScore += 1; logMessage(`${attacker.name} (${attacker.type}) +1 charge.`, "info"); }
+            if (defender.inSquare && attacker.type === 'CAV') { defenderScore += 2; logMessage(`${defender.name} (${defender.type}) square, +2 vs Cav.`, "info"); }
+            logMessage(`${attacker.name}: ${attackerRoll}+${attacker.cv}=${attackerScore} vs ${defender.name}: ${defenderRoll}+${defender.cv}+${defenderTerrain.defenseBonus}=${defenderScore}`, "info");
+            if (attackerScore > defenderScore) {
+                const diff = attackerScore - defenderScore; let damage = (diff >= 3) ? 2 : 1;
+                logMessage(`${attacker.name} wins! Deals ${damage} SP.`, "success"); applyDamage(defender, damage, attacker);
+                if (diff >= 2 && defender.sp > 0) { defender.status = 'disordered'; logMessage(`${defender.name} (${defender.type}) disordered!`, "warning"); }
+            } else if (defenderScore > attackerScore) { logMessage(`${defender.name} wins! Attacker takes 1 SP.`, "failure"); applyDamage(attacker, 1, defender); }
+            else { logMessage("Combat draw!", "info"); }
+            attacker.status = 'fired'; attacker.canAttack = false; if (defender.sp > 0) defender.canAttack = false;
+        }
+        function applyDamage(unit, amount, attacker) { /* ... (same) ... */
+            unit.sp -= amount; logMessage(`${unit.name} (${unit.type}) takes ${amount} SP. Now ${unit.sp} SP.`, "damage");
+            if (unit.sp <= 0) { logMessage(`${unit.name} (${unit.type}) destroyed!`, "critical"); gameBoard[unit.y][unit.x].unit = null; checkVictoryConditions(); }
+        }
+        function displayDiceRoll(rolls) { /* ... (same) ... */
+            diceRollDisplay.innerHTML = '';
+            rolls.forEach(roll => { const diceEl = document.createElement('div'); diceEl.classList.add('dice'); diceEl.textContent = roll; diceRollDisplay.appendChild(diceEl); });
+        }
+        function logMessage(message, type = "info") { /* ... (same) ... */
+            const p = document.createElement('p');
+            p.innerHTML = `[T${currentTurn}-${currentPhase.substring(0,1)}] ${message.replace(/\n/g, "<br>")}`;
+            const typeClasses = { error: 'text-red-600 font-semibold', success: 'text-green-600 font-semibold', warning: 'text-yellow-600 font-semibold', critical: 'text-red-800 font-bold', combat: 'text-purple-600 italic', action: 'text-blue-600', event: 'text-indigo-700 font-bold', ai: 'text-teal-600 italic', hint: 'text-orange-600 font-semibold' };
+            if (typeClasses[type]) p.classList.add(...typeClasses[type].split(' '));
+            gameLogElement.appendChild(p); gameLogElement.scrollTop = gameLogElement.scrollHeight;
+        }
+        function updateTurnInfo() { turnInfoElement.textContent = `Turn: ${currentTurn}/${MAX_TURNS} | Phase: ${currentPhase} | Player: ${currentPlayer} ${playerControls[currentPlayer]==='ai' ? '(AI)': ''}`; }
+        function updateUnitInfoPanel() { /* ... (same) ... */
+            if (selectedUnit) {
+                const terrain = gameBoard[selectedUnit.y][selectedUnit.x].terrain;
+                unitInfoPanel.innerHTML = `<h3 class="font-bold text-lg ${selectedUnit.faction.toLowerCase()}">${selectedUnit.name} (${selectedUnit.type})</h3>
+                    <p>SP: ${selectedUnit.sp}/${selectedUnit.maxSp} | CV: ${selectedUnit.cv} | MOV: ${selectedUnit.currentMov}/${selectedUnit.mov}</p>
+                    ${selectedUnit.type === 'ART' ? `<p>Range: ${selectedUnit.range}</p>` : ''}
+                    <p>Status: ${selectedUnit.status} ${selectedUnit.inSquare ? '(Square)' : ''}</p>
+                    <p>Terrain: ${terrain.name} (Def: ${terrain.defenseBonus}, Cost: ${terrain.moveCost})</p>`;
+            } else { unitInfoPanel.innerHTML = '<p class="text-gray-500">Select a unit or click a hex.</p>'; }
+        }
+        function updateButtonStates() { /* ... (same) ... */
+            formSquareBtn.classList.add('hidden');
+            const isHumanTurn = playerControls[currentPlayer] === 'human';
+            undoMoveBtn.classList.toggle('hidden', !lastMovedUnitOriginalPosition || currentPhase !== 'Movement' || !isHumanTurn);
+            endPhaseBtn.disabled = !isHumanTurn && currentPhase !== 'Rally';
+            hintBtn.disabled = !isHumanTurn || gameOver; hintBtn.classList.toggle('opacity-50', !isHumanTurn || gameOver);
+            resetCurrentGameBtn.disabled = gameOverModal.classList.contains('hidden') ? false : true; // Disable if game over modal is NOT hidden
+            resetCurrentGameBtn.classList.toggle('opacity-50', gameOverModal.classList.contains('hidden') ? false : true);
+
+
+            if (selectedUnit && selectedUnit.faction === currentPlayer && isHumanTurn) {
+                if (selectedUnit.canFormSquare && currentPhase === 'Movement' && selectedUnit.status === 'active') {
+                    formSquareBtn.classList.remove('hidden'); formSquareBtn.textContent = selectedUnit.inSquare ? "Break Square" : "Form Square";
+                }
+            }
+        }
+        function handleFormSquare() { /* ... (same) ... */
+            if (!selectedUnit || !selectedUnit.canFormSquare || selectedUnit.faction !== currentPlayer || currentPhase !== 'Movement' || selectedUnit.status !== 'active' || playerControls[currentPlayer] === 'ai') return;
+            clearHintHighlights(); selectedUnit.inSquare = !selectedUnit.inSquare; selectedUnit.currentMov = 0; selectedUnit.status = 'moved';
+            logMessage(`${selectedUnit.name} (${selectedUnit.type}) ${selectedUnit.inSquare ? 'formed square' : 'broke square'}.`, "action"); renderBoard();
+        }
+        function undoLastMove() { /* ... (same) ... */
+            if (!lastMovedUnitOriginalPosition || playerControls[currentPlayer] === 'ai') { logMessage("No move to undo or AI turn.", "info"); return; }
+            clearHintHighlights(); const unitToUndo = units.find(u => u.id === lastMovedUnitOriginalPosition.unitId);
+            if (unitToUndo) {
+                gameBoard[unitToUndo.y][unitToUndo.x].unit = null;
+                unitToUndo.x = lastMovedUnitOriginalPosition.x; unitToUndo.y = lastMovedUnitOriginalPosition.y;
+                unitToUndo.currentMov = lastMovedUnitOriginalPosition.currentMov; unitToUndo.status = lastMovedUnitOriginalPosition.status;
+                if(unitToUndo.status === 'active') unitToUndo.inSquare = false;
+                gameBoard[unitToUndo.y][unitToUndo.x].unit = unitToUndo.id;
+                logMessage(`${unitToUndo.name} (${unitToUndo.type}) move undone.`, "action");
+                lastMovedUnitOriginalPosition = null; undoMoveBtn.classList.add('hidden');
+                if (selectedUnit && selectedUnit.id === unitToUndo.id && unitToUndo.status === 'active') highlightValidMoves(selectedUnit);
+                renderBoard();
+            }
+        }
+        function checkVictoryConditions() { /* ... (objective capture logging added) ... */
+            if (gameOver) return;
+            let objectiveChanged = false;
+            gameBoard.flat().filter(hex => hex.isObjective).forEach(objHex => {
+                const oldController = objHex.controlledBy;
+                const unitOnObjective = objHex.unit ? units.find(u => u.id === objHex.unit && u.sp > 0) : null;
+                if (unitOnObjective) objHex.controlledBy = unitOnObjective.faction;
+                else {
+                    let frenchAdjacent = false, alliedAdjacent = false;
+                    for (let dx = -1; dx <= 1; dx++) { for (let dy = -1; dy <= 1; dy++) {
+                        if (dx === 0 && dy === 0 || (dx!==0 && dy!==0)) continue;
+                        const adjX = objHex.x + dx, adjY = objHex.y + dy;
+                        if (adjX >=0 && adjX < BOARD_COLS && adjY >=0 && adjY < BOARD_ROWS) {
+                            const adjUnitId = gameBoard[adjY][adjX].unit;
+                            if(adjUnitId){ const adjUnit = units.find(u=>u.id === adjUnitId && u.sp > 0);
+                                if(adjUnit) { if(adjUnit.faction === 'French') frenchAdjacent = true; if(adjUnit.faction === 'Allied') alliedAdjacent = true; }
+                            }
+                        }
+                    }}
+                    if (frenchAdjacent && !alliedAdjacent) objHex.controlledBy = 'French';
+                    else if (alliedAdjacent && !frenchAdjacent) objHex.controlledBy = 'Allied';
+                    else objHex.controlledBy = null;
+                }
+                if (oldController !== objHex.controlledBy && objHex.controlledBy !== null) {
+                    logMessage(`${objHex.controlledBy} captures ${objHex.terrain.name}!`, "event");
+                    objectiveChanged = true;
+                } else if (oldController !== null && objHex.controlledBy === null) {
+                    logMessage(`${objHex.terrain.name} is now neutral/contested.`, "event");
+                    objectiveChanged = true;
+                }
+            });
+            if(objectiveChanged) renderBoard(); // Re-render if objective control changed to show borders
+
+            const frenchUnitsLeft = units.filter(u => u.faction === 'French' && u.sp > 0).length;
+            const alliedUnitsLeft = units.filter(u => u.faction === 'Allied' && u.sp > 0).length;
+            if (frenchUnitsLeft === 0) { endGame("All French units eliminated! Allies Win!"); return; }
+            if (alliedUnitsLeft === 0) { endGame("All Allied units eliminated! French Win!"); return; }
+            if (currentTurn > MAX_TURNS) {
+                let frenchObjectives = 0; let alliedObjectives = 0;
+                gameBoard.flat().filter(hex => hex.isObjective).forEach(objHex => {
+                    if (objHex.controlledBy === 'French') frenchObjectives++; if (objHex.controlledBy === 'Allied') alliedObjectives++;
+                });
+                logMessage(`Final Objectives: French ${frenchObjectives}, Allied ${alliedObjectives}`, "event")
+                if (frenchObjectives > alliedObjectives) endGame("French control more objectives! French Win!");
+                else if (alliedObjectives > frenchObjectives) endGame("Allies control more objectives! Allies Win!");
+                else endGame("Game ends in a draw by objectives!");
+            }
+        }
+        function endGame(message) { /* ... (same) ... */
+            if (gameOver) return; gameOver = true; clearTimeout(aiActionTimeout);
+            logMessage(message, "critical"); winnerMessageElement.textContent = message;
+            gameOverModal.classList.remove('hidden'); selectedUnit = null; clearHighlights(); clearHintHighlights(); updateButtonStates();
+        }
+        function resetCurrentGame() {
+            if (gameOverModal.classList.contains('hidden') === false && !gameOver) { // If game over modal is shown, this button should not be active for this
+                 // This case should ideally not be hit if button is disabled correctly
+                return;
+            }
+            logMessage("Game reset with current mode.", "event");
+            initGame(false); // false to indicate not a full restart to mode selection
+        }
+        function restartGameAndSelectMode() { // Renamed for clarity
+            gameOver = false; currentPlayer = 'French'; currentTurn = 1; currentPhase = 'Movement';
+            prussiansArrived = false; selectedUnit = null; lastMovedUnitOriginalPosition = null; hintedAction = null;
+            gameLogElement.innerHTML = ''; diceRollDisplay.innerHTML = '<p class="text-gray-500">Dice rolls will appear.</p>';
+            gameOverModal.classList.add('hidden'); gameContainer.classList.add('hidden');
+            gameModeModal.classList.remove('hidden'); updateButtonStates();
+        }
+
+        endPhaseBtn.addEventListener('click', handleEndPhase);
+        formSquareBtn.addEventListener('click', handleFormSquare);
+        undoMoveBtn.addEventListener('click', undoLastMove);
+        hintBtn.addEventListener('click', handleHint);
+        resetCurrentGameBtn.addEventListener('click', resetCurrentGame); // Added listener
+        restartGameBtn.addEventListener('click', restartGameAndSelectMode); // This is the "Play Again (New Mode)" button
+
+        function initGame(isFullRestartToModeSelection) {
+            if (isFullRestartToModeSelection) { // This case is now handled by restartGameAndSelectMode
+                gameModeModal.classList.remove('hidden');
+                gameContainer.classList.add('hidden');
+                return;
+            }
+            gameOver = false; currentPlayer = 'French'; currentTurn = 1; currentPhase = 'Movement';
+            prussiansArrived = false; selectedUnit = null; lastMovedUnitOriginalPosition = null; hintedAction = null;
+            if(!isFullRestartToModeSelection) gameLogElement.innerHTML = ''; // Clear log only if not coming from mode selection
+            diceRollDisplay.innerHTML = '<p class="text-gray-500">Dice rolls will appear.</p>';
+            gameOverModal.classList.add('hidden');
+
+            initializeGameBoard(); initializeUnits(); renderBoard();
+            if(!isFullRestartToModeSelection || gameLogElement.innerHTML === ''){ // Add initial log if log is empty
+                 logMessage(`Game started. Mode: ${modeInfoElement.textContent}. ${currentPlayer}'s turn.`, "event");
+            }
+
+            if (playerControls[currentPlayer] === 'ai') {
+                aiActionTimeout = setTimeout(executeAITurn, AI_ACTION_DELAY);
+            }
+            updateButtonStates(); // Ensure buttons are correctly enabled/disabled at start
+        }
+    </script>
+</body>
+</html>
