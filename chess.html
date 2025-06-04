@@ -1,1 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Chess Game V5 (Checkmate Music)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: clamp(300px, 90vmin, 560px);
+            height: clamp(300px, 90vmin, 560px);
+            border: 2px solid #374151;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            border-radius: 0.5rem; margin: auto;
+        }
+        .square {
+            display: flex; justify-content: center; align-items: center;
+            font-size: clamp(24px, 6vmin, 44px);
+            cursor: pointer; user-select: none;
+        }
+        .square.light { background-color: #f3f4f6; } .square.dark { background-color: #9ca3af; }
+        .square.selected { background-color: #60a5fa !important; }
+        .square.legal-move::after {
+            content: ''; display: block; width: 30%; height: 30%;
+            background-color: rgba(34,197,94,0.5); border-radius: 50%;
+        }
+        .square.in-check { background-color: #f87171 !important; }
+        .piece-white { color: #ffffff; text-shadow: 0 0 2px #000,0 0 2px #000,0 0 2px #000; }
+        .piece-black { color: #1f2937; text-shadow: 0 0 2px #fff,0 0 2px #fff,0 0 2px #fff; }
+
+        .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6);align-items:center;justify-content:center;}
+        .modal-content{background-color:#fefefe;margin:auto;padding:20px;border:1px solid #888;width:80%;max-width:300px;border-radius:0.5rem;text-align:center;}
+        .modal-button{background-color:#3b82f6;color:white;padding:10px 15px;margin:5px;border:none;border-radius:0.375rem;cursor:pointer;font-size:1rem;}
+        .modal-button:hover{background-color:#2563eb;}
+
+        .board-container{display:flex;flex-direction:column;align-items:center;}
+        .coord-row,.coord-col{display:flex;font-size:clamp(12px,2.5vmin,16px);color:#4b5563;}
+        .coord-row{justify-content:space-around;width:clamp(300px,90vmin,560px);margin-top:4px;}
+        .coord-col{flex-direction:column;justify-content:space-around;height:clamp(300px,90vmin,560px);margin-right:4px;}
+        .board-layout{display:flex;justify-content:center;align-items:flex-start;}
+        .captured-pieces-area{min-height:30px;font-size:clamp(18px,4.5vmin,28px);}
+        .score-display { font-size: 0.8em; color: #374151; margin-top: -5px; margin-bottom: 5px;}
+        .timer-display { font-size: 0.9em; font-weight: bold; color: #1d4ed8; margin-bottom: 2px;}
+    </style>
+</head>
+<body class="bg-gray-200 text-gray-800 p-2 sm:p-4 flex flex-col items-center min-h-screen">
+
+    <div class="w-full max-w-5xl mx-auto">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-2 sm:mb-4 text-gray-700">HTML Chess V5</h1>
+
+        <div class="controls bg-white p-3 sm:p-4 rounded-lg shadow-md mb-2 sm:mb-4 flex flex-wrap justify-center items-center gap-2 sm:gap-3">
+            <button id="newGameBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm">New Game</button>
+            <select id="gameMode" class="border border-gray-300 rounded py-1.5 px-2 text-sm">
+                <option value="hvc">Human vs Computer</option>
+                <option value="hvh">Human vs Human</option>
+                <option value="cvc">Computer vs Computer</option>
+            </select>
+            <div id="hvcOptions" class="flex items-center gap-1">
+                <label for="playerColor" class="text-xs sm:text-sm">Play as:</label>
+                <select id="playerColor" class="border border-gray-300 rounded py-1.5 px-1 text-xs sm:text-sm">
+                    <option value="white">White</option><option value="black">Black</option>
+                </select>
+            </div>
+            <div id="aiOptions" class="flex items-center gap-1">
+                 <label for="aiLevel" class="text-xs sm:text-sm">AI Level:</label>
+                <select id="aiLevel" class="border border-gray-300 rounded py-1.5 px-1 text-xs sm:text-sm">
+                    <option value="0">Easy</option><option value="1">Medium (D1)</option>
+                    <option value="2">Hard (D2)</option><option value="3">Expert (D3)</option>
+                </select>
+            </div>
+            <button id="hintBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-3 rounded text-sm">Hint</button>
+            <button id="exportJsonBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded text-sm">Export JSON</button>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-2 sm:gap-4 justify-center items-start">
+            <div class="flex-grow flex flex-col items-center w-full lg:w-auto">
+                <div id="blackPlayerInfo" class="text-center">
+                    <div id="blackTimerDisplay" class="timer-display">Black Time: 00:00</div>
+                    <div id="capturedByWhite" class="captured-pieces-area"></div>
+                    <div id="scoreWhiteCaptures" class="score-display">Score: 0</div>
+                </div>
+                <div class="board-layout mt-1 mb-1">
+                    <div class="coord-col" id="coordColLeft"></div>
+                    <div class="board-container">
+                        <div class="chess-board" id="chessBoard"></div>
+                        <div class="coord-row" id="coordRowBottom"></div>
+                    </div>
+                    <div class="coord-col" id="coordColRight"></div>
+                </div>
+                 <div id="whitePlayerInfo" class="text-center">
+                    <div id="whiteTimerDisplay" class="timer-display">White Time: 00:00</div>
+                    <div id="capturedByBlack" class="captured-pieces-area"></div>
+                    <div id="scoreBlackCaptures" class="score-display">Score: 0</div>
+                </div>
+            </div>
+
+            <div class="info-panel bg-white p-3 sm:p-4 rounded-lg shadow-md w-full lg:w-64 xl:w-80 mt-2 lg:mt-0">
+                <h2 class="text-lg sm:text-xl font-semibold mb-2 text-gray-700">Game Info</h2>
+                <div id="status" class="mb-2 text-sm sm:text-base font-medium text-blue-600">White's Turn</div>
+                <div id="moveHistoryWrapper" class="h-48 sm:h-64 overflow-y-auto border border-gray-300 p-2 rounded bg-gray-50 text-xs sm:text-sm">
+                    <ul id="moveHistory" class="list-none p-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="promotionModal" class="modal"><div class="modal-content"><h3 class="text-lg font-semibold mb-3">Promote Pawn to:</h3><button class="modal-button" data-piece="Q">Queen</button><button class="modal-button" data-piece="R">Rook</button><button class="modal-button" data-piece="B">Bishop</button><button class="modal-button" data-piece="N">Knight</button></div></div>
+
+    <script>
+        // --- Constants ---
+        const PIECES = { EMPTY:0,wP:1,wN:2,wB:3,wR:4,wQ:5,wK:6,bP:7,bN:8,bB:9,bR:10,bQ:11,bK:12 };
+        const UNICODE_PIECES = {[PIECES.wP]:'♙',[PIECES.wN]:'♘',[PIECES.wB]:'♗',[PIECES.wR]:'♖',[PIECES.wQ]:'♕',[PIECES.wK]:'♔', [PIECES.bP]:'♟',[PIECES.bN]:'♞',[PIECES.bB]:'♝',[PIECES.bR]:'♜',[PIECES.bQ]:'♛',[PIECES.bK]:'♚'};
+        const PIECE_NAMES = {[PIECES.wP]:'',[PIECES.bP]:'',[PIECES.wN]:'N',[PIECES.bN]:'N',[PIECES.wB]:'B',[PIECES.bB]:'B',[PIECES.wR]:'R',[PIECES.bR]:'R',[PIECES.wQ]:'Q',[PIECES.bQ]:'Q',[PIECES.wK]:'K',[PIECES.bK]:'K'};
+        const PIECE_POINT_VALUES = {[PIECES.wP]:1,[PIECES.bP]:1,[PIECES.wN]:3,[PIECES.bN]:3,[PIECES.wB]:3,[PIECES.bB]:3,[PIECES.wR]:5,[PIECES.bR]:5,[PIECES.wQ]:9,[PIECES.bQ]:9,[PIECES.wK]:0,[PIECES.bK]:0};
+        
+        // --- Music Player Object ---
+        const MusicPlayer = {
+            synth: null,
+            isToneStarted: false,
+
+            initSynth: function() {
+                if (typeof Tone !== 'undefined' && !this.synth) {
+                    try {
+                        this.synth = new Tone.PolySynth(Tone.Synth, {
+                            oscillator: { type: "triangle" },
+                            envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 0.5 },
+                            volume: -15 
+                        }).toDestination();
+                    } catch (e) {
+                        console.error("Error initializing Tone.PolySynth:", e);
+                    }
+                }
+            },
+
+            ensureToneStarted: async function() {
+                if (typeof Tone === 'undefined') {
+                    console.warn("Tone.js is not loaded. Music playback disabled.");
+                    return;
+                }
+                if (!this.isToneStarted) {
+                    try {
+                        await Tone.start();
+                        this.isToneStarted = true;
+                        console.log("AudioContext started by Tone.js.");
+                        this.initSynth(); 
+                    } catch (e) {
+                        console.error("Failed to start Tone.js AudioContext:", e);
+                    }
+                } else if (!this.synth) {
+                     this.initSynth(); 
+                }
+            },
+
+            stopMusic: function() {
+                if (this.synth && this.isToneStarted && typeof Tone !== 'undefined' && Tone.Transport) {
+                    try {
+                        Tone.Transport.stop();
+                        Tone.Transport.cancel(); 
+                        this.synth.releaseAll(); 
+                    } catch (e) {
+                        console.error("Error stopping music with Tone.js:", e);
+                    }
+                }
+            },
+
+            playMozartPhrase1: function() { 
+                if (!this.synth || !this.isToneStarted || typeof Tone === 'undefined') return;
+                this.stopMusic();
+                const now = Tone.now();
+                Tone.Transport.bpm.value = 130;
+
+                const melody1 = [ ["C5", "8n", now], ["E5", "8n", now + 0.25], ["G5", "8n", now + 0.5], ["E5", "8n", now + 0.75],
+                                  ["F5", "8n", now + 1], ["D5", "8n", now + 1.25], ["E5", "8n", now + 1.5], ["C5", "4n", now + 1.75] ];
+                melody1.forEach(note => this.synth.triggerAttackRelease(note[0], note[1], note[2]));
+                
+                const bass1 = [ ["C3", "8n", now, 0.7], ["G3", "8n", now + 0.25, 0.7], ["E3", "8n", now + 0.5, 0.7], ["G3", "8n", now + 0.75, 0.7],
+                                ["F2", "8n", now + 1, 0.7], ["C3", "8n", now + 1.25, 0.7], ["G2", "8n", now + 1.5, 0.7], ["D3", "8n", now + 1.75, 0.7] ];
+                bass1.forEach(note => this.synth.triggerAttackRelease(note[0], note[1], note[2], note[3]));
+                
+                Tone.Transport.start();
+                Tone.Transport.scheduleOnce(() => this.stopMusic(), now + 2.5);
+            },
+
+            playMozartPhrase2: function() { 
+                if (!this.synth || !this.isToneStarted || typeof Tone === 'undefined') return;
+                this.stopMusic();
+                const now = Tone.now();
+                Tone.Transport.bpm.value = 140;
+
+                const melody2 = [ ["G4", "8n", now], ["B4", "8n", now + 0.25], ["D5", "8n", now + 0.5], ["B4", "8n", now + 0.75],
+                                  ["C5", "8n", now + 1.0], ["A4", "8n", now + 1.25], ["B4", "8n", now + 1.5], ["G4", "4n", now + 1.75]];
+                melody2.forEach(note => this.synth.triggerAttackRelease(note[0], note[1], note[2]));
+
+                const bass2 = [ ["G2", "8n", now, 0.6], ["D3", "8n", now + 0.25, 0.6], ["B2", "8n", now + 0.5, 0.6], ["D3", "8n", now + 0.75, 0.6],
+                                ["C3", "8n", now + 1.0, 0.6], ["G3", "8n", now + 1.25, 0.6], ["D3", "8n", now + 1.5, 0.6], ["A3", "8n", now + 1.75, 0.6]];
+                bass2.forEach(note => this.synth.triggerAttackRelease(note[0], note[1], note[2], note[3]));
+
+                Tone.Transport.start();
+                Tone.Transport.scheduleOnce(() => this.stopMusic(), now + 2.5);
+            },
+
+            playCheckmateTune: async function() {
+                await this.ensureToneStarted(); 
+                if (!this.isToneStarted || !this.synth) {
+                    console.warn("Tone.js not ready or synth not initialized, skipping checkmate music.");
+                    return;
+                }
+                try {
+                    const phrases = [this.playMozartPhrase1.bind(this), this.playMozartPhrase2.bind(this)];
+                    const randomPhraseFn = phrases[Math.floor(Math.random() * phrases.length)];
+                    randomPhraseFn();
+                    console.log("Playing checkmate tune...");
+                } catch (e) {
+                    console.error("Error playing checkmate tune:", e);
+                }
+            }
+        };
+
+        // --- Game Core Object ---
+        const GameCore = {
+            board:[],currentPlayer:'white',selectedSquare:null,legalMovesForSelectedPiece:[],gameHistory:[],
+            castlingRights:[true,true,true,true],enPassantTarget:null,gameMode:'hvc',humanPlayerColor:'white',
+            aiSearchDepth:0,isGameOverState:false,isThinking:false,
+            time:{whiteElapsedSeconds:0,blackElapsedSeconds:0,currentTurnStartTime:null,timerIntervalId:null},
+
+            initBoard:function(){
+                MusicPlayer.stopMusic(); 
+                this.board = [[PIECES.bR,PIECES.bN,PIECES.bB,PIECES.bQ,PIECES.bK,PIECES.bB,PIECES.bN,PIECES.bR],[PIECES.bP,PIECES.bP,PIECES.bP,PIECES.bP,PIECES.bP,PIECES.bP,PIECES.bP,PIECES.bP],Array(8).fill(PIECES.EMPTY),Array(8).fill(PIECES.EMPTY),Array(8).fill(PIECES.EMPTY),Array(8).fill(PIECES.EMPTY),[PIECES.wP,PIECES.wP,PIECES.wP,PIECES.wP,PIECES.wP,PIECES.wP,PIECES.wP,PIECES.wP],[PIECES.wR,PIECES.wN,PIECES.wB,PIECES.wQ,PIECES.wK,PIECES.wB,PIECES.wN,PIECES.wR]];
+                this.currentPlayer='white';this.selectedSquare=null;this.legalMovesForSelectedPiece=[];this.gameHistory=[];
+                this.castlingRights=[true,true,true,true];this.enPassantTarget=null;this.isGameOverState=false;this.isThinking=false;
+                this.time.whiteElapsedSeconds=0; this.time.blackElapsedSeconds=0; this.time.currentTurnStartTime=null;
+                if(this.time.timerIntervalId)clearInterval(this.time.timerIntervalId); this.time.timerIntervalId=null;
+                
+                // Call UIManager methods only if UIManager is initialized (which it should be by now if called from DOMContentLoaded)
+                if (UIManager.statusElement) UIManager.updateStatus(); else console.warn("UIManager.statusElement not ready in GameCore.initBoard");
+                if (UIManager.boardElement) UIManager.renderBoard(); else console.warn("UIManager.boardElement not ready in GameCore.initBoard");
+                if (UIManager.moveHistoryElement) UIManager.updateMoveHistory();
+                if (UIManager.capturedByWhiteElement) UIManager.updateCapturedPiecesDisplay();
+                if (UIManager.coordColLeft) UIManager.initCoordinates();
+                if (UIManager.hintBtn) UIManager.setHintButtonState(false);
+                UIManager.hideThinkingIndicator(); // This primarily updates GameCore.isThinking and then calls UIManager.updateStatus
+                if (UIManager.whiteTimerDisplay) UIManager.updateTimersDisplay(); 
+                
+                if(!this.isGameOverState) this.startTurnTimer(); 
+            },
+            switchPlayer:function(){this.currentPlayer=(this.currentPlayer==='white')?'black':'white';UIManager.updateStatus();},
+            getPieceColor:function(p){if(p===PIECES.EMPTY)return null;return(p>=PIECES.wP&&p<=PIECES.wK)?'white':'black';},
+            isWhitePiece:function(p){return p>=PIECES.wP&&p<=PIECES.wK;},
+            startTurnTimer:function(){if(this.isGameOverState)return;if(this.time.timerIntervalId)clearInterval(this.time.timerIntervalId);this.time.currentTurnStartTime=Date.now();this.time.timerIntervalId=setInterval(()=>{UIManager.updateTimersDisplay();},1000);},
+            stopAndRecordTurnTimer:function(){if(this.time.currentTurnStartTime){const eMS=Date.now()-this.time.currentTurnStartTime;if(this.currentPlayer==='white')this.time.whiteElapsedSeconds+=eMS/1000;else this.time.blackElapsedSeconds+=eMS/1000;}this.time.currentTurnStartTime=null;},
+            clearGameTimerInterval:function(){if(this.time.timerIntervalId)clearInterval(this.time.timerIntervalId);this.time.timerIntervalId=null;}
+        };
+
+        // --- Move Logic Object (Condensed) ---
+        const MoveLogic = {
+            isValid:function(r,c){return r>=0&&r<8&&c>=0&&c<8;},
+            getLegalMovesForPiece:function(rp,cp,pV,cB,cCR,cEPT,cKS=true){const m=[];const col=GameCore.getPieceColor(pV);if(pV===PIECES.wP||pV===PIECES.bP){const d=pV===PIECES.wP?-1:1;const sR=pV===PIECES.wP?6:1;if(this.isValid(rp+d,cp)&&cB[rp+d][cp]===PIECES.EMPTY){m.push({from:{row:rp,col:cp},to:{row:rp+d,col:cp},piece:pV});if(rp===sR&&this.isValid(rp+2*d,cp)&&cB[rp+2*d][cp]===PIECES.EMPTY)m.push({from:{row:rp,col:cp},to:{row:rp+2*d,col:cp},piece:pV});}for(let co of [-1,1]){if(this.isValid(rp+d,cp+co)){const tP=cB[rp+d][cp+co];if(tP!==PIECES.EMPTY&&GameCore.getPieceColor(tP)!==col)m.push({from:{row:rp,col:cp},to:{row:rp+d,col:cp+co},piece:pV});if(cEPT&&cEPT.row===rp+d&&cEPT.col===cp+co&&cEPT.forColor===col)m.push({from:{row:rp,col:cp},to:{row:rp+d,col:cp+co},piece:pV,type:'enpassant'});}}}else if(pV===PIECES.wN||pV===PIECES.bN){const o=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];o.forEach(of=>{if(this.isValid(rp+of[0],cp+of[1])){const t=cB[rp+of[0]][cp+of[1]];if(t===PIECES.EMPTY||GameCore.getPieceColor(t)!==col)m.push({from:{row:rp,col:cp},to:{row:rp+of[0],col:cp+of[1]},piece:pV});}});}else{const D={[PIECES.wR]:[[-1,0],[1,0],[0,-1],[0,1]],[PIECES.bR]:[[-1,0],[1,0],[0,-1],[0,1]],[PIECES.wB]:[[-1,-1],[-1,1],[1,-1],[1,1]],[PIECES.bB]:[[-1,-1],[-1,1],[1,-1],[1,1]],[PIECES.wQ]:[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]],[PIECES.bQ]:[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]};if(D[pV])D[pV].forEach(dr=>{for(let i=1;i<8;i++){const nr=rp+dr[0]*i,nc=cp+dr[1]*i;if(!this.isValid(nr,nc))break;const t=cB[nr][nc];if(t===PIECES.EMPTY)m.push({from:{row:rp,col:cp},to:{row:nr,col:nc},piece:pV});else{if(GameCore.getPieceColor(t)!==col)m.push({from:{row:rp,col:cp},to:{row:nr,col:nc},piece:pV});break;}}});}if(pV===PIECES.wK||pV===PIECES.bK){const o=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];o.forEach(of=>{if(this.isValid(rp+of[0],cp+of[1])){const t=cB[rp+of[0]][cp+of[1]];if(t===PIECES.EMPTY||GameCore.getPieceColor(t)!==col)m.push({from:{row:rp,col:cp},to:{row:rp+of[0],col:cp+of[1]},piece:pV});}});const kR=col==='white'?7:0;const cK=col==='white'?cCR[0]:cCR[2];const cQ=col==='white'?cCR[1]:cCR[3];const rPV=col==='white'?PIECES.wR:PIECES.bR;if(rp===kR&&cp===4){if(cK&&cB[kR][5]===PIECES.EMPTY&&cB[kR][6]===PIECES.EMPTY&&cB[kR][7]===rPV&&!this.isSquareAttacked(kR,4,col==='white'?'black':'white',cB,cCR,cEPT)&&!this.isSquareAttacked(kR,5,col==='white'?'black':'white',cB,cCR,cEPT)&&!this.isSquareAttacked(kR,6,col==='white'?'black':'white',cB,cCR,cEPT))m.push({from:{row:rp,col:cp},to:{row:kR,col:6},piece:pV,type:'castling'});if(cQ&&cB[kR][1]===PIECES.EMPTY&&cB[kR][2]===PIECES.EMPTY&&cB[kR][3]===PIECES.EMPTY&&cB[kR][0]===rPV&&!this.isSquareAttacked(kR,4,col==='white'?'black':'white',cB,cCR,cEPT)&&!this.isSquareAttacked(kR,3,col==='white'?'black':'white',cB,cCR,cEPT)&&!this.isSquareAttacked(kR,2,col==='white'?'black':'white',cB,cCR,cEPT))m.push({from:{row:rp,col:cp},to:{row:kR,col:2},piece:pV,type:'castling'});}}if(!cKS)return m;return m.filter(mv=>{const tB=JSON.parse(JSON.stringify(cB));tB[mv.to.row][mv.to.col]=tB[mv.from.row][mv.from.col];tB[mv.from.row][mv.from.col]=PIECES.EMPTY;if(mv.type==='enpassant'){const cpR=col==='white'?mv.to.row+1:mv.to.row-1;tB[cpR][mv.to.col]=PIECES.EMPTY;}if(mv.type==='castling'){if(mv.to.col===6){tB[mv.from.row][5]=tB[mv.from.row][7];tB[mv.from.row][7]=PIECES.EMPTY;}else{tB[mv.from.row][3]=tB[mv.from.row][0];tB[mv.from.row][0]=PIECES.EMPTY;}}return!this.isInCheck(col,tB,cCR,null);});},
+            getAllLegalMoves:function(pC,cB,cCR,cEPT){let aM=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=cB[r][c];if(p!==PIECES.EMPTY&&GameCore.getPieceColor(p)===pC)aM=aM.concat(this.getLegalMovesForPiece(r,c,p,cB,cCR,cEPT));}return aM;},
+            findKing:function(kC,cB){if(!cB||cB.length===0){console.warn("findKing called with uninitialized board");return null;}const kP=kC==='white'?PIECES.wK:PIECES.bK;for(let r=0;r<8;r++){if(!cB[r]){console.warn(`findKing: row ${r} is undefined in board`);continue;}for(let c=0;c<8;c++)if(cB[r][c]===kP)return{row:r,col:c};}return null;},
+            isSquareAttacked:function(rS,cS,attC,cB,cCR,cEPT){if(!cB||cB.length===0){console.warn("isSquareAttacked called with uninitialized board");return false;}for(let rP=0;rP<8;rP++){if(!cB[rP]){console.warn(`isSquareAttacked: row ${rP} is undefined`);continue;}for(let cP=0;cP<8;cP++){const p=cB[rP][cP];if(p!==PIECES.EMPTY&&GameCore.getPieceColor(p)===attC){const mvs=this.getLegalMovesForPiece(rP,cP,p,cB,cCR,cEPT,false);if(mvs.some(mv=>mv.to.row===rS&&mv.to.col===cS))return true;}}}return false;},
+            isInCheck:function(kC,cB,cCR,cEPT){if(!cB||cB.length===0){console.warn("isInCheck called with uninitialized board");return false;}const kPos=this.findKing(kC,cB);if(!kPos)return false;const attC=kC==='white'?'black':'white';return this.isSquareAttacked(kPos.row,kPos.col,attC,cB,cCR,cEPT);},
+            getAlgebraicNotation:function(mv,bBM){const{from,to,piece,type}=mv;let n='';if(type==='castling')return to.col===6?'O-O':'O-O-O';const pC=PIECE_NAMES[piece];n+=pC;if((piece===PIECES.wP||piece===PIECES.bP)&&from.col!==to.col)n+=String.fromCharCode('a'.charCodeAt(0)+from.col);if(pC&&piece!==PIECES.wP&&piece!==PIECES.bP){const oP=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){if(r===from.row&&c===from.col)continue;if(bBM[r][c]===piece){const pLM=this.getLegalMovesForPiece(r,c,piece,bBM,GameCore.castlingRights,GameCore.enPassantTarget,false);if(pLM.some(m=>m.to.row===to.row&&m.to.col===to.col))oP.push({r,c});}}if(oP.length>0){let fU=true,rU=true;for(const op of oP){if(op.c===from.col)fU=false;if(op.r===from.row)rU=false;}if(!fU&&!rU)n+=String.fromCharCode('a'.charCodeAt(0)+from.col)+(8-from.row);else if(!fU)n+=(8-from.row);else n+=String.fromCharCode('a'.charCodeAt(0)+from.col);}}if(bBM[to.row][to.col]!==PIECES.EMPTY||type==='enpassant')n+='x';n+=String.fromCharCode('a'.charCodeAt(0)+to.col)+(8-to.row);return n;}
+        };
+
+        // --- Game Actions Object (Condensed) ---
+        const GameActions = {
+            makeMove:function(mv_obj){try{const{from,to,piece:pMvd,type}=mv_obj;const oPAtF=GameCore.board[from.row][from.col];const cPOnToS=GameCore.board[to.row][to.col];let bN=MoveLogic.getAlgebraicNotation(mv_obj,GameCore.board);GameCore.board[to.row][to.col]=oPAtF;GameCore.board[from.row][from.col]=PIECES.EMPTY;let acpFH=cPOnToS;if(type==='enpassant'){const cpR=GameCore.currentPlayer==='white'?to.row+1:to.row-1;acpFH=GameCore.board[cpR][to.col];GameCore.board[cpR][to.col]=PIECES.EMPTY;}if(type==='castling'){if(to.col===6){GameCore.board[from.row][5]=GameCore.board[from.row][7];GameCore.board[from.row][7]=PIECES.EMPTY;}else{GameCore.board[from.row][3]=GameCore.board[from.row][0];GameCore.board[from.row][0]=PIECES.EMPTY;}}if(oPAtF===PIECES.wK){GameCore.castlingRights[0]=false;GameCore.castlingRights[1]=false;}if(oPAtF===PIECES.bK){GameCore.castlingRights[2]=false;GameCore.castlingRights[3]=false;}if(oPAtF===PIECES.wR){if(from.row===7&&from.col===0)GameCore.castlingRights[1]=false;if(from.row===7&&from.col===7)GameCore.castlingRights[0]=false;}if(oPAtF===PIECES.bR){if(from.row===0&&from.col===0)GameCore.castlingRights[3]=false;if(from.row===0&&from.col===7)GameCore.castlingRights[2]=false;}if(acpFH===PIECES.wR){if(to.row===7&&to.col===0)GameCore.castlingRights[1]=false;if(to.row===7&&to.col===7)GameCore.castlingRights[0]=false;}if(acpFH===PIECES.bR){if(to.row===0&&to.col===0)GameCore.castlingRights[3]=false;if(to.row===0&&to.col===7)GameCore.castlingRights[2]=false;}GameCore.enPassantTarget=null;if((oPAtF===PIECES.wP||oPAtF===PIECES.bP)&&Math.abs(from.row-to.row)===2)GameCore.enPassantTarget={row:(from.row+to.row)/2,col:from.col,forColor:GameCore.currentPlayer==='white'?'black':'white'};if((oPAtF===PIECES.wP&&to.row===0)||(oPAtF===PIECES.bP&&to.row===7)){if((GameCore.gameMode==='hvc'&&GameCore.currentPlayer!==GameCore.humanPlayerColor)||GameCore.gameMode==='cvc'){GameCore.board[to.row][to.col]=GameCore.currentPlayer==='white'?PIECES.wQ:PIECES.bQ;this.completeMove(from,to,oPAtF,acpFH,bN);}else{UIManager.showPromotionModal(to.row,to.col,(pPTC)=>{const pPV=GameCore.currentPlayer==='white'?(pPTC==='Q'?PIECES.wQ:pPTC==='R'?PIECES.wR:pPTC==='B'?PIECES.wB:PIECES.wN):(pPTC==='Q'?PIECES.bQ:pPTC==='R'?PIECES.bR:pPTC==='B'?PIECES.bB:PIECES.bN);GameCore.board[to.row][to.col]=pPV;this.completeMove(from,to,oPAtF,acpFH,bN);});return;}}else{this.completeMove(from,to,oPAtF,acpFH,bN);}}catch(e){console.error("Error in GameActions.makeMove for move:",mv_obj,"Error:",e);}},
+            completeMove:function(fS,tS,oPV,capPV,bNS){try{GameCore.stopAndRecordTurnTimer();let fNS=bNS;const pOTSAFTERP=GameCore.board[tS.row][tS.col];if((oPV===PIECES.wP&&tS.row===0)||(oPV===PIECES.bP&&tS.row===7)){const pPNC=PIECE_NAMES[pOTSAFTERP];if(pPNC)fNS+=`=${pPNC}`;}const oC=GameCore.currentPlayer==='white'?'black':'white';if(MoveLogic.isInCheck(oC,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget)){const oLM=MoveLogic.getAllLegalMoves(oC,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(oLM.length===0)fNS+='#';else fNS+='+';}GameCore.gameHistory.push({from:fS,to:tS,piece:oPV,captured:capPV,notation:fNS});UIManager.updateMoveHistory();UIManager.updateCapturedPiecesDisplay();GameCore.selectedSquare=null;GameCore.legalMovesForSelectedPiece=[];GameCore.switchPlayer();UIManager.renderBoard();if(UIManager.checkGameStatus()){GameCore.isGameOverState=true;UIManager.setHintButtonState(true);GameCore.clearGameTimerInterval();UIManager.updateTimersDisplay();}else{GameCore.isGameOverState=false;UIManager.setHintButtonState(false);GameCore.startTurnTimer();}if(!GameCore.isGameOverState&&((GameCore.gameMode==='hvc'&&GameCore.currentPlayer!==GameCore.humanPlayerColor)||(GameCore.gameMode==='cvc'))){const dly=GameCore.gameMode==='cvc'?600:300;setTimeout(()=>AI.makeAIMove(),dly);}}catch(e){console.error("Error in GameActions.completeMove:",e);}}
+        };
+
+        // --- UI Manager Object (Condensed, with new elements) ---
+        const UIManager = {
+            boardElement:null,statusElement:null,moveHistoryElement:null,capturedByWhiteElement:null,capturedByBlackElement:null,newGameBtn:null,gameModeSelect:null,playerColorSelect:null,aiLevelSelect:null,hintBtn:null,exportJsonBtn:null,hvcOptionsDiv:null,aiOptionsDiv:null,promotionModal:null,moveHistoryWrapper:null,coordColLeft:null,coordColRight:null,coordRowBottom:null,whiteTimerDisplay:null,blackTimerDisplay:null,scoreWhiteCaptures:null,scoreBlackCaptures:null,
+            init:function(){this.boardElement=document.getElementById('chessBoard');this.statusElement=document.getElementById('status');this.moveHistoryElement=document.getElementById('moveHistory');this.capturedByWhiteElement=document.getElementById('capturedByWhite');this.capturedByBlackElement=document.getElementById('capturedByBlack');this.newGameBtn=document.getElementById('newGameBtn');this.gameModeSelect=document.getElementById('gameMode');this.playerColorSelect=document.getElementById('playerColor');this.aiLevelSelect=document.getElementById('aiLevel');this.hintBtn=document.getElementById('hintBtn');this.exportJsonBtn=document.getElementById('exportJsonBtn');this.hvcOptionsDiv=document.getElementById('hvcOptions');this.aiOptionsDiv=document.getElementById('aiOptions');this.promotionModal=document.getElementById('promotionModal');this.moveHistoryWrapper=document.getElementById('moveHistoryWrapper');this.coordColLeft=document.getElementById('coordColLeft');this.coordColRight=document.getElementById('coordColRight');this.coordRowBottom=document.getElementById('coordRowBottom');this.whiteTimerDisplay=document.getElementById('whiteTimerDisplay');this.blackTimerDisplay=document.getElementById('blackTimerDisplay');this.scoreWhiteCaptures=document.getElementById('scoreWhiteCaptures');this.scoreBlackCaptures=document.getElementById('scoreBlackCaptures');this.setupEventListeners();this.updateControlVisibility();},
+            setupEventListeners:function(){this.newGameBtn.addEventListener('click',async()=>{try{await MusicPlayer.ensureToneStarted();GameCore.gameMode=this.gameModeSelect.value;GameCore.humanPlayerColor=this.playerColorSelect.value;GameCore.aiSearchDepth=parseInt(this.aiLevelSelect.value);GameCore.initBoard();if(((GameCore.gameMode==='hvc'&&GameCore.humanPlayerColor==='black')||GameCore.gameMode==='cvc')&&!GameCore.isGameOverState){const d=GameCore.gameMode==='cvc'?600:300;setTimeout(()=>AI.makeAIMove(),d);}}catch(e){console.error("Error in NewGameBtn click handler:",e);}});this.gameModeSelect.addEventListener('change',()=>{GameCore.gameMode=this.gameModeSelect.value;this.updateControlVisibility();});this.playerColorSelect.addEventListener('change',()=>{GameCore.humanPlayerColor=this.playerColorSelect.value;this.initCoordinates();UIManager.renderBoard();});this.aiLevelSelect.addEventListener('change',()=>GameCore.aiSearchDepth=parseInt(this.aiLevelSelect.value));this.hintBtn.addEventListener('click',()=>{try{if(GameCore.isGameOverState||GameCore.isThinking||(GameCore.gameMode==='hvc'&&GameCore.currentPlayer!==GameCore.humanPlayerColor)||GameCore.gameMode==='cvc')return;const aPM=MoveLogic.getAllLegalMoves(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(aPM.length===0)return;let hMO=AI.getHintMove(aPM);if(hMO){GameCore.selectedSquare=hMO.from;GameCore.legalMovesForSelectedPiece=[hMO];this.renderBoard();setTimeout(()=>{if(GameCore.selectedSquare&&GameCore.selectedSquare.row===hMO.from.row&&GameCore.selectedSquare.col===hMO.from.col){const pV=GameCore.board[GameCore.selectedSquare.row][GameCore.selectedSquare.col];if(pV!==PIECES.EMPTY&&GameCore.getPieceColor(pV)===GameCore.currentPlayer)GameCore.legalMovesForSelectedPiece=MoveLogic.getLegalMovesForPiece(GameCore.selectedSquare.row,GameCore.selectedSquare.col,pV,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);else{GameCore.selectedSquare=null;GameCore.legalMovesForSelectedPiece=[];}this.renderBoard();}},3000);}}catch(e){console.error("Error in HintBtn click handler:",e);}});this.exportJsonBtn.addEventListener('click',()=>{try{this.exportGameHistoryJSON();}catch(e){console.error("Error in ExportJsonBtn click handler:",e);}});},
+            updateControlVisibility:function(){this.hvcOptionsDiv.style.display=GameCore.gameMode==='hvc'?'flex':'none';this.aiOptionsDiv.style.display=(GameCore.gameMode==='hvc'||GameCore.gameMode==='cvc')?'flex':'none';this.hintBtn.style.display=(GameCore.gameMode==='hvc'||GameCore.gameMode==='hvh')?'inline-block':'none';this.initCoordinates();this.renderBoard();},
+            renderBoard:function(){this.boardElement.innerHTML='';const iBF=GameCore.gameMode==='cvc'?false:(GameCore.gameMode==='hvc'&&GameCore.humanPlayerColor==='black');const kICPos=MoveLogic.isInCheck(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget)?MoveLogic.findKing(GameCore.currentPlayer,GameCore.board):null;for(let rI=0;rI<8;rI++)for(let cI=0;cI<8;cI++){const rA=iBF?7-rI:rI;const cA=iBF?7-cI:cI;const sE=document.createElement('div');sE.classList.add('square',(rA+cA)%2===0?'light':'dark');sE.dataset.row=rA;sE.dataset.col=cA;const pV=GameCore.board[rA][cA];if(pV!==PIECES.EMPTY){sE.textContent=UNICODE_PIECES[pV];sE.classList.add(GameCore.isWhitePiece(pV)?'piece-white':'piece-black');}if(GameCore.selectedSquare&&GameCore.selectedSquare.row===rA&&GameCore.selectedSquare.col===cA)sE.classList.add('selected');if(GameCore.legalMovesForSelectedPiece.some(m=>m.to.row===rA&&m.to.col===cA))sE.classList.add('legal-move');if(kICPos&&kICPos.row===rA&&kICPos.col===cA&&GameCore.getPieceColor(pV)===GameCore.currentPlayer)sE.classList.add('in-check');sE.addEventListener('click',()=>this.onSquareClick(rA,cA));this.boardElement.appendChild(sE);}},
+            onSquareClick:function(rC,cC){try{if(GameCore.isGameOverState||GameCore.isThinking)return;if(GameCore.gameMode==='cvc'||(GameCore.gameMode==='hvc'&&GameCore.currentPlayer!==GameCore.humanPlayerColor))return;const pV=GameCore.board[rC][cC];if(GameCore.selectedSquare){const mO=GameCore.legalMovesForSelectedPiece.find(m=>m.to.row===rC&&m.to.col===cC);if(mO)GameActions.makeMove(mO);else{GameCore.selectedSquare=null;GameCore.legalMovesForSelectedPiece=[];if(pV!==PIECES.EMPTY&&GameCore.getPieceColor(pV)===GameCore.currentPlayer){GameCore.selectedSquare={row:rC,col:cC};GameCore.legalMovesForSelectedPiece=MoveLogic.getLegalMovesForPiece(rC,cC,pV,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);}}}else{if(pV!==PIECES.EMPTY&&GameCore.getPieceColor(pV)===GameCore.currentPlayer){GameCore.selectedSquare={row:rC,col:cC};GameCore.legalMovesForSelectedPiece=MoveLogic.getLegalMovesForPiece(rC,cC,pV,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);}}this.renderBoard();}catch(e){console.error("Error in UIManager.onSquareClick at ("+rC+","+cC+"): ",e);GameCore.selectedSquare=null;GameCore.legalMovesForSelectedPiece=[];this.renderBoard();}},
+            updateStatus:function(){if(!this.statusElement){console.warn("updateStatus called before statusElement is initialized.");return;}let sT=`${GameCore.currentPlayer.charAt(0).toUpperCase()+GameCore.currentPlayer.slice(1)}'s Turn`;if(GameCore.isThinking)sT+=` (Thinking...)`;else if(MoveLogic.isInCheck(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget))sT+=" (Check!)";this.statusElement.textContent=sT;},
+            checkGameStatus:function(){if(!this.statusElement){console.warn("checkGameStatus called before statusElement is initialized.");return false;}const iC=MoveLogic.isInCheck(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);const hLM=MoveLogic.getAllLegalMoves(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget).length>0;if(!hLM){if(iC){this.statusElement.textContent=`Checkmate! ${GameCore.currentPlayer==='white'?'Black':'White'} wins.`;MusicPlayer.playCheckmateTune();}else this.statusElement.textContent="Stalemate! It's a draw.";return true;}return false;},
+            updateMoveHistory:function(){if(!this.moveHistoryElement || !this.moveHistoryWrapper) return; this.moveHistoryElement.innerHTML='';let mN=1;for(let i=0;i<GameCore.gameHistory.length;i++){const item=document.createElement('li');if(i%2===0){item.textContent=`${mN}. ${GameCore.gameHistory[i].notation}`;if(GameCore.gameHistory[i+1])item.textContent+=` ${GameCore.gameHistory[i+1].notation}`;mN++;this.moveHistoryElement.appendChild(item);}}this.moveHistoryWrapper.scrollTop=this.moveHistoryWrapper.scrollHeight;},
+            updateCapturedPiecesDisplay:function(){if(!this.capturedByWhiteElement || !this.capturedByBlackElement || !this.scoreWhiteCaptures || !this.scoreBlackCaptures) return; const cBWL=[];const cBBL=[];let wS=0;let bS=0;GameCore.gameHistory.forEach(m=>{if(m.captured&&m.captured!==PIECES.EMPTY){if(GameCore.isWhitePiece(m.piece)){cBWL.push(UNICODE_PIECES[m.captured]);wS+=PIECE_POINT_VALUES[m.captured]||0;}else{cBBL.push(UNICODE_PIECES[m.captured]);bS+=PIECE_POINT_VALUES[m.captured]||0;}}});this.capturedByWhiteElement.textContent=cBWL.join(' ');this.capturedByBlackElement.textContent=cBBL.join(' ');this.scoreWhiteCaptures.textContent=`Score: ${wS}`;this.scoreBlackCaptures.textContent=`Score: ${bS}`;},
+            showPromotionModal:function(rP,cP,cbFn){this.promotionModal.style.display='flex';this.promotionModal.querySelectorAll('.modal-button').forEach(b=>{const nB=b.cloneNode(true);b.parentNode.replaceChild(nB,b);nB.onclick=()=>{this.promotionModal.style.display='none';cbFn(nB.dataset.piece);};});},
+            initCoordinates:function(){if(!this.coordColLeft || !this.coordColRight || !this.coordRowBottom) return; this.coordColLeft.innerHTML='';this.coordColRight.innerHTML='';this.coordRowBottom.innerHTML='';const fs=['a','b','c','d','e','f','g','h'];const rs=(GameCore.gameMode==='cvc'||(GameCore.gameMode==='hvc'&&GameCore.humanPlayerColor==='white'))?['8','7','6','5','4','3','2','1']:['1','2','3','4','5','6','7','8'];const bFs=(GameCore.gameMode==='cvc'||(GameCore.gameMode==='hvc'&&GameCore.humanPlayerColor==='white'))?fs:[...fs].reverse();for(let i=0;i<8;i++){const rLE=document.createElement('div');rLE.textContent=rs[i];this.coordColLeft.appendChild(rLE);const rRE=document.createElement('div');rRE.textContent=rs[i];this.coordColRight.appendChild(rRE);const fBE=document.createElement('div');fBE.textContent=bFs[i];this.coordRowBottom.appendChild(fBE);}},
+            setHintButtonState:function(dS){if(this.hintBtn)this.hintBtn.disabled=dS;},
+            showThinkingIndicator:function(){GameCore.isThinking=true;document.body.style.cursor='wait';this.updateStatus();},
+            hideThinkingIndicator:function(){GameCore.isThinking=false;document.body.style.cursor='default';this.updateStatus();},
+            formatTime:function(tS){const min=Math.floor(tS/60);const sec=Math.floor(tS%60);return`${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;},
+            updateTimersDisplay:function(){if(!this.whiteTimerDisplay || !this.blackTimerDisplay) return; let cTES=0;if(GameCore.time.currentTurnStartTime&&!GameCore.isGameOverState)cTES=(Date.now()-GameCore.time.currentTurnStartTime)/1000;const wT=GameCore.time.whiteElapsedSeconds+(GameCore.currentPlayer==='white'?cTES:0);const bT=GameCore.time.blackElapsedSeconds+(GameCore.currentPlayer==='black'?cTES:0);this.whiteTimerDisplay.textContent=`White Time: ${this.formatTime(wT)}`;this.blackTimerDisplay.textContent=`Black Time: ${this.formatTime(bT)}`;},
+            exportGameHistoryJSON:function(){try{const hTE=GameCore.gameHistory.map(m=>({from:`${String.fromCharCode('a'.charCodeAt(0)+m.from.col)}${8-m.from.row}`,to:`${String.fromCharCode('a'.charCodeAt(0)+m.to.col)}${8-m.to.row}`,pieceMoved:Object.keys(PIECES).find(k=>PIECES[k]===m.piece),pieceCaptured:m.captured?Object.keys(PIECES).find(k=>PIECES[k]===m.captured):null,notation:m.notation}));const jD=JSON.stringify(hTE,null,2);const blb=new Blob([jD],{type:'application/json'});const url=URL.createObjectURL(blb);const a=document.createElement('a');a.href=url;a.download='chess_game_history.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){console.error("Error exporting game history as JSON:",e);alert("Failed to export game history. See console.");}}
+        };
+
+        // --- AI Object (Condensed) ---
+        const AI = {
+            makeAIMove:async function(){try{if(GameCore.isGameOverState)return;UIManager.showThinkingIndicator();await new Promise(r=>setTimeout(r,20));const aiC=GameCore.currentPlayer;let bM=null;if(GameCore.aiSearchDepth===0){const aMs=MoveLogic.getAllLegalMoves(aiC,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(aMs.length===0){UIManager.hideThinkingIndicator();UIManager.checkGameStatus();return;}const cMs=aMs.filter(m=>GameCore.board[m.to.row][m.to.col]!==PIECES.EMPTY);bM=cMs.length>0?cMs[Math.floor(Math.random()*cMs.length)]:aMs[Math.floor(Math.random()*aMs.length)];}else{bM=this.findBestMoveUsingMinimax(aiC,GameCore.aiSearchDepth);if(!bM){const aMs=MoveLogic.getAllLegalMoves(aiC,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(aMs.length>0)bM=aMs[Math.floor(Math.random()*aMs.length)];else{UIManager.hideThinkingIndicator();UIManager.checkGameStatus();return;}}}UIManager.hideThinkingIndicator();if(bM)GameActions.makeMove(bM);else if(!GameCore.isGameOverState)UIManager.checkGameStatus();}catch(e){console.error(`Error in AI.makeAIMove for ${GameCore.currentPlayer}:`,e);UIManager.hideThinkingIndicator();const fBMs=MoveLogic.getAllLegalMoves(GameCore.currentPlayer,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(fBMs.length>0)GameActions.makeMove(fBMs[Math.floor(Math.random()*fBMs.length)]);else if(!GameCore.isGameOverState)UIManager.checkGameStatus();}},
+            makeSimulatedMove:function(cBS,mv,pC,cCRS,cEPTS){let nB=JSON.parse(JSON.stringify(cBS));let nCR=JSON.parse(JSON.stringify(cCRS));let nEPT=null;const pV=nB[mv.from.row][mv.from.col];const capPOnToS=cBS[mv.to.row][mv.to.col];nB[mv.to.row][mv.to.col]=pV;nB[mv.from.row][mv.from.col]=PIECES.EMPTY;if(mv.type==='enpassant'){const cpR=pC==='white'?mv.to.row+1:mv.to.row-1;nB[cpR][mv.to.col]=PIECES.EMPTY;}if(mv.type==='castling'){if(mv.to.col===6){nB[mv.from.row][5]=nB[mv.from.row][7];nB[mv.from.row][7]=PIECES.EMPTY;}else{nB[mv.from.row][3]=nB[mv.from.row][0];nB[mv.from.row][0]=PIECES.EMPTY;}}if(pV===PIECES.wK){nCR[0]=false;nCR[1]=false;}if(pV===PIECES.bK){nCR[2]=false;nCR[3]=false;}if(pV===PIECES.wR){if(mv.from.row===7&&mv.from.col===0)nCR[1]=false;if(mv.from.row===7&&mv.from.col===7)nCR[0]=false;}if(pV===PIECES.bR){if(mv.from.row===0&&mv.from.col===0)nCR[3]=false;if(mv.from.row===0&&mv.from.col===7)nCR[2]=false;}if(capPOnToS===PIECES.wR){if(mv.to.row===7&&mv.to.col===0)nCR[1]=false;if(mv.to.row===7&&mv.to.col===7)nCR[0]=false;}if(capPOnToS===PIECES.bR){if(mv.to.row===0&&mv.to.col===0)nCR[3]=false;if(mv.to.row===0&&mv.to.col===7)nCR[2]=false;}if((pV===PIECES.wP||pV===PIECES.bP)&&Math.abs(mv.from.row-mv.to.row)===2)nEPT={row:(mv.from.row+mv.to.row)/2,col:mv.from.col,forColor:pC==='white'?'black':'white'};if((pV===PIECES.wP&&mv.to.row===0)||(pV===PIECES.bP&&mv.to.row===7))nB[mv.to.row][mv.to.col]=pC==='white'?PIECES.wQ:PIECES.bQ;return{nextBoard:nB,nextCastlingRights:nCR,nextEnPassantTarget:nEPT};},
+            minimax:function(cS,dR,a,b,iMPT,rAPCFE){const pFTN=cS.playerToMove;const lMFTN=MoveLogic.getAllLegalMoves(pFTN,cS.board,cS.castlingRights,cS.enPassantTarget);if(dR===0||lMFTN.length===0)return this.evaluateBoard(cS,rAPCFE);if(iMPT){let mE=-Infinity;for(const mv of lMFTN){const{nextBoard:nB,nextCastlingRights:nCR,nextEnPassantTarget:nEPT}=this.makeSimulatedMove(cS.board,mv,pFTN,cS.castlingRights,cS.enPassantTarget);const nP=pFTN==='white'?'black':'white';const ev=this.minimax({board:nB,castlingRights:nCR,enPassantTarget:nEPT,playerToMove:nP},dR-1,a,b,false,rAPCFE);mE=Math.max(mE,ev);a=Math.max(a,ev);if(b<=a)break;}return mE;}else{let mE=Infinity;for(const mv of lMFTN){const{nextBoard:nB,nextCastlingRights:nCR,nextEnPassantTarget:nEPT}=this.makeSimulatedMove(cS.board,mv,pFTN,cS.castlingRights,cS.enPassantTarget);const nP=pFTN==='white'?'black':'white';const ev=this.minimax({board:nB,castlingRights:nCR,enPassantTarget:nEPT,playerToMove:nP},dR-1,a,b,true,rAPCFE);mE=Math.min(mE,ev);b=Math.min(b,ev);if(b<=a)break;}return mE;}},
+            findBestMoveUsingMinimax:function(aiC,sDP){let bV=-Infinity;const lMs=MoveLogic.getAllLegalMoves(aiC,GameCore.board,GameCore.castlingRights,GameCore.enPassantTarget);if(lMs.length===0)return null;const cMs=[];for(const mv of lMs){const{nextBoard:nB,nextCastlingRights:nCR,nextEnPassantTarget:nEPT}=this.makeSimulatedMove(GameCore.board,mv,aiC,GameCore.castlingRights,GameCore.enPassantTarget);const oC=aiC==='white'?'black':'white';const bVl=this.minimax({board:nB,castlingRights:nCR,enPassantTarget:nEPT,playerToMove:oC},sDP-1,-Infinity,Infinity,false,aiC);if(bVl>bV){bV=bVl;cMs.length=0;cMs.push(mv);}else if(bVl===bV)cMs.push(mv);}return cMs.length>0?cMs[Math.floor(Math.random()*cMs.length)]:null;},
+            evaluateBoard:function(cSS,cTM){let mS=0;const pVs={[PIECES.wP]:1,[PIECES.wN]:3,[PIECES.wB]:3.1,[PIECES.wR]:5,[PIECES.wQ]:9,[PIECES.wK]:0,[PIECES.bP]:-1,[PIECES.bN]:-3,[PIECES.bB]:-3.1,[PIECES.bR]:-5,[PIECES.bQ]:-9,[PIECES.bK]:0};for(let r=0;r<8;r++)for(let c=0;c<8;c++){const pV=cSS.board[r][c];if(pV!==PIECES.EMPTY){mS+=pVs[pV]||0;if(pV===PIECES.wP)mS+=(6-r)*0.05+((c>2&&c<5)?0.05:0);if(pV===PIECES.bP)mS-=(r-1)*0.05+((c>2&&c<5)?0.05:0);if(pV===PIECES.wN||pV===PIECES.wB)if((r>1&&r<6)&&(c>1&&c<6))mS+=0.1;if(pV===PIECES.bN||pV===PIECES.bB)if((r>1&&r<6)&&(c>1&&c<6))mS-=0.1;}}const pWTIt=cSS.playerToMove;const lMFP=MoveLogic.getAllLegalMoves(pWTIt,cSS.board,cSS.castlingRights,cSS.enPassantTarget);if(lMFP.length===0){if(MoveLogic.isInCheck(pWTIt,cSS.board,cSS.castlingRights,cSS.enPassantTarget))return(pWTIt===cTM)?-10000:10000;else return 0;}return cTM==='white'?mS:-mS;},
+            getHintMove:function(aPMs){if(aPMs.length===0)return null;let hMO=null;if(GameCore.aiSearchDepth===0||GameCore.gameMode==='hvh')hMO=aPMs[Math.floor(Math.random()*aPMs.length)];else{let bSFH=-Infinity;const pHMs=[];aPMs.forEach(m=>{const{nextBoard:nB,nextCastlingRights:nCR,nextEnPassantTarget:nEPT}=this.makeSimulatedMove(GameCore.board,m,GameCore.currentPlayer,GameCore.castlingRights,GameCore.enPassantTarget);const oOC=GameCore.currentPlayer==='white'?'black':'white';const s=this.evaluateBoard({board:nB,castlingRights:nCR,enPassantTarget:nEPT,playerToMove:oOC},GameCore.currentPlayer);if(s>bSFH){bSFH=s;pHMs.length=0;pHMs.push(m);}else if(s===bSFH)pHMs.push(m);});hMO=pHMs.length>0?pHMs[Math.floor(Math.random()*pHMs.length)]:aPMs[Math.floor(Math.random()*aPMs.length)];}return hMO;}
+        };
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded',()=>{
+            try{
+                // Initialize UI Manager first to get DOM elements
+                UIManager.init(); 
+                // Then initialize GameCore, which might call UIManager methods
+                GameCore.initBoard(); 
+
+                // Initial AI move if applicable
+                if(((GameCore.gameMode==='hvc'&&GameCore.humanPlayerColor==='black')||GameCore.gameMode==='cvc')&&!GameCore.isGameOverState){
+                    const d=GameCore.gameMode==='cvc'?600:300;
+                    setTimeout(()=>AI.makeAIMove(),d);
+                }
+            }catch(e){
+                console.error("Error during DOMContentLoaded init:",e);
+                alert("Failed to initialize chess game. Check console.");
+            }
+        });
+    </script>
+</body>
+</html>
 
