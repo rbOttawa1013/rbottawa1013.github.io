@@ -3,1643 +3,1079 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HyperCard Simulator (Enhanced)</title>
+    <title>Mermaid Diagram Editor</title>
+    <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font for better readability -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Mermaid.js CDN for diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
     <style>
-        /* Custom Retro Theme inspired by HyperCard */
-        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
-
+        /* Base styles for the light theme */
         body {
-            font-family: 'VT323', monospace;
-            background-color: #c0c0c0;
-            color: #000000;
-            overscroll-behavior: none;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Lighter background */
+            color: #1a202c; /* Default text color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1f2937; /* Dark background */
+            color: #e2e8f0;
+        }
+
+        /* Main container for the app */
+        .app-container {
+            width: 100%;
+            max-width: 1600px; /* Increased max width for more content */
+            background-color: #ffffff;
+            border-radius: 1.25rem; /* More rounded corners */
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1); /* Stronger shadow */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            margin: 0;
+            height: 95vh; /* Take more vertical space */
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .main-app-area {
-            flex-grow: 1;
-            overflow-y: auto;
+        .dark-mode .app-container {
+            background-color: #2d3748;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
         }
 
-        .hc-window {
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            box-shadow: 5px 5px 0px #000000;
-            width: 512px; /* Classic HyperCard width */
-            height: 342px; /* Classic HyperCard height */
-            margin: 20px auto;
+        @media (min-width: 768px) {
+            .app-container {
+                flex-direction: row; /* Side-by-side on larger screens */
+            }
+            .editor-pane, .preview-pane {
+                height: 100%; /* Take full height when side-by-side */
+            }
+        }
+
+        .editor-pane, .preview-pane {
+            flex: 1;
+            padding: 2rem; /* Increased padding */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-pane {
+            border-right: 1px solid #e2e8f0; /* Subtle separator */
+            transition: border-color 0.3s ease;
+        }
+
+        .dark-mode .editor-pane {
+            border-right: 1px solid #4a5568;
+        }
+
+        .preview-pane {
+            overflow: auto;
+            background-color: #f8fafc; /* Slightly different background for preview */
             position: relative;
-            overflow: hidden;
+            transition: background-color 0.3s ease;
         }
 
-        .hc-card-area {
+        .dark-mode .preview-pane {
+            background-color: #27303f;
+        }
+
+        textarea {
             width: 100%;
             height: 100%;
-            position: relative;
-            background-color: #ffffff; /* Default card background */
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
+            min-height: 250px; /* Slightly larger min-height */
+            resize: none;
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 1rem; /* Slightly larger font */
+            line-height: 1.6;
+            background-color: #f3f6f9; /* Lighter background for editor */
+            border: 1px solid #cbd5e0;
+            padding: 1.25rem; /* More padding */
+            border-radius: 0.75rem; /* More rounded */
+            transition: border-color 0.2s ease-in-out, background-color 0.3s ease, color 0.3s ease;
+            color: #2d3748; /* Text color for textarea */
         }
-        
-        .hc-toolbar {
-            background-color: #e0e0e0;
-            border-bottom: 2px solid #000000;
-            padding: 4px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            font-size: 16px;
+        textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Soft focus ring */
         }
 
-        .hc-button, .hc-toolbar button, .hc-modal button {
-            font-family: 'VT323', monospace;
-            background-color: #ffffff;
-            border: 1px solid #000000;
-            padding: 2px 8px;
+        .dark-mode textarea {
+            background-color: #1a202c;
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
+        .dark-mode textarea:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Styling for Mermaid output */
+        #diagram-preview svg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .notification-message {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.625rem;
+            margin-top: 1.5rem; /* Increased margin */
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            display: flex;
+            align-items: center;
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity 0.3s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        .notification-message.error {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+        .notification-message.success {
+            background-color: #d1fae5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+        .notification-message.info {
+            background-color: #bfdbfe;
+            color: #2563eb;
+            border: 1px solid #93c5fd;
+        }
+        .notification-message.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .notification-icon {
+            margin-right: 0.75rem; /* Increased margin */
+            font-size: 1.5rem; /* Larger icon */
+            line-height: 1;
+        }
+
+        /* Dark mode notifications */
+        .dark-mode .notification-message.error {
+            background-color: rgba(239, 68, 68, 0.2);
+            border-color: rgba(252, 165, 165, 0.3);
+            color: #fca5a5;
+        }
+        .dark-mode .notification-message.success {
+            background-color: rgba(52, 211, 153, 0.2);
+            border-color: rgba(110, 231, 183, 0.3);
+            color: #6ee7b7;
+        }
+        .dark-mode .notification-message.info {
+            background-color: rgba(99, 102, 241, 0.2);
+            border-color: rgba(165, 180, 252, 0.3);
+            color: #a5b4fc;
+        }
+
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem; /* Space between rows of buttons */
+            margin-bottom: 2rem; /* More space below buttons */
+        }
+
+        @media (min-width: 768px) {
+            .button-group {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: flex-start; /* Align groups to the start */
+                align-items: center;
+                gap: 1rem; /* Space between groups */
+            }
+            .button-group > div {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem; /* Gap within each sub-group */
+            }
+        }
+
+
+        .btn {
+            padding: 0.85rem 1.5rem; /* Larger padding */
+            border-radius: 0.75rem; /* More rounded buttons */
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
             cursor: pointer;
-            box-shadow: 2px 2px 0px #888888;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             text-align: center;
-            font-size: 16px;
-            user-select: none;
-        }
-        .hc-button:disabled, .hc-toolbar button:disabled {
-            background-color: #d0d0d0;
-            color: #777777;
-            cursor: not-allowed;
-            box-shadow: 1px 1px 0px #555555;
-        }
-        .hc-button:not(:disabled):active, 
-        .hc-toolbar button:not(:disabled):active, 
-        .hc-modal button:not(:disabled):active {
-            background-color: #000000;
-            color: #ffffff;
-            box-shadow: none;
-            transform: translate(1px, 1px);
-        }
-        
-        .hc-element {
-            position: absolute;
-            border: 1px dashed transparent;
-            cursor: grab;
-            user-select: none;
-        }
-        
-        .hc-element.selected {
-            border: 1px dashed #0000ff;
-            z-index: 100;
-        }
-        
-        .hc-element-button {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 5px;
-            text-align: center;
-            box-shadow: 2px 2px 0px #888;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            border: 1px solid transparent;
+            font-size: 0.95rem; /* Slightly larger font */
+        }
+
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15); /* Stronger shadow */
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px); /* More pronounced lift */
+        }
+        .btn-primary:active {
+            background-color: #3730a3;
+            box-shadow: none;
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background-color: #eef2ff; /* Lighter indigo background */
+            color: #4338ca;
+            border: 1px solid #d4e0ff;
+        }
+        .btn-secondary:hover {
+            background-color: #dbe4ff; /* Lighter indigo hover */
+            color: #3730a3;
+            transform: translateY(-2px);
+        }
+        .btn-secondary:active {
+            background-color: #c0ccf7;
+            transform: translateY(0);
+        }
+
+        /* Dark mode buttons */
+        .dark-mode .btn-secondary {
+            background-color: #3e4c62;
+            color: #bfdbfe;
+            border: 1px solid #5a6b8c;
+        }
+        .dark-mode .btn-secondary:hover {
+            background-color: #4f5f7a;
+            color: #e2e8f0;
+        }
+
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5); /* Slightly darker overlay */
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .hc-element-button:active {
-             background-color: #000;
-             color: #fff;
+            padding: 1rem;
         }
 
-        .hc-element-field {
-            background-color: #ffffff;
-            border: 1px solid #000;
-            padding: 5px;
-            overflow: auto;
+        .modal-content {
+            padding: 2.5rem; /* More padding */
+            border-radius: 1rem; /* More rounded */
+            box-shadow: 0 12px 24px rgba(0,0,0,0.25); /* Stronger shadow */
+            max-width: 1000px; /* Wider modal */
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark-mode .modal-content {
+            background-color: #2d3748;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+        }
+
+        .template-selector-group {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 2rem; /* More space */
+            flex-wrap: wrap;
+        }
+        .template-selector {
+            padding: 0.75rem 1.25rem; /* Larger padding */
+            border-radius: 0.625rem; /* More rounded */
+            border: 1px solid #cbd5e0;
+            background-color: #f3f6f9;
+            font-weight: 500;
+            color: #2d3748;
+            transition: all 0.2s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            cursor: pointer;
+            min-width: 200px; /* Ensure consistent width */
+        }
+        .dark-mode .template-selector {
+            background-color: #1a202c;
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
+        .template-selector:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .template-display {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 2rem; /* More padding */
+            background-color: #f8fafc;
+            margin-bottom: 1.5rem;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .dark-mode .template-display {
+            background-color: #27303f;
+            border-color: #4a5568;
+        }
+
+        .template-code {
+            border-radius: 0.625rem;
+            padding: 1.25rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.9rem; /* Slightly smaller for code clarity */
+            overflow-x: auto;
             white-space: pre-wrap;
-            word-wrap: break-word;
+            background-color: #f3f6f9;
+            color: #2d3748;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .hc-element-field[contenteditable="true"] {
-            outline: 1px solid #333;
-            user-select: text;
+        .dark-mode .template-code {
+            background-color: #1a202c;
+            color: #e2e8f0;
         }
 
-        .hc-modal {
-            position: fixed;
+        .template-description {
+            color: #4a5568;
+            margin-bottom: 1.25rem; /* More space */
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .dark-mode .template-description {
+            color: #a0aec0;
+        }
+
+        /* Loading state styles */
+        .loading-overlay {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.6);
+            background-color: rgba(255, 255, 255, 0.85); /* Slightly less opaque */
             display: flex;
-            align-items: center;
             justify-content: center;
-            z-index: 1000;
-            padding: 10px;
+            align-items: center;
+            font-size: 1.3rem; /* Larger font */
+            color: #4f46e5;
+            border-radius: 0.75rem;
+            z-index: 10;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .hc-modal-content {
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            padding: 20px;
-            box-shadow: 5px 5px 0px #000000;
-            min-width: 300px;
-            max-width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
+        .dark-mode .loading-overlay {
+            background-color: rgba(30, 41, 59, 0.85); /* Darker overlay */
+            color: #a5b4fc;
         }
-        .hc-modal textarea {
-            width: 100%;
-            min-height: 150px;
-            border: 1px solid #000;
-            padding: 5px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .hc-modal input[type="text"], .hc-modal input[type="number"], .hc-modal input[type="color"] {
-            width: 100%;
-            border: 1px solid #000;
-            padding: 5px;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-         .hc-modal input[type="color"] {
-            height: 40px; /* Make color picker taller */
-         }
-        .hc-status-bar {
-            font-size: 14px;
-            padding: 2px 5px;
-            background-color: #ddd;
-            border-top: 1px solid #000;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-        }
-
-        .properties-panel {
-            position: fixed; 
-            top: 100px; 
-            right: 10px;
-            width: 250px;
-            background-color: #e0e0e0;
-            border: 1px solid #000;
-            box-shadow: 3px 3px 0px #888;
-            padding: 10px;
-            z-index: 500;
-            max-height: calc(100vh - 120px); /* Adjust for toolbar */
-            overflow-y: auto;
-        }
-        .properties-panel h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 5px;
-        }
-        .properties-panel label {
-            display: block;
-            margin-top: 8px;
-            font-size: 14px;
-        }
-        .properties-panel input, .properties-panel textarea, .properties-panel select {
-            width: 100%;
-            padding: 3px;
-            border: 1px solid #555;
-            margin-top: 3px;
-            font-size: 14px;
-        }
-         .properties-panel textarea {
-            min-height: 80px;
-            font-family: 'Courier New', Courier, monospace;
-         }
-
-        .stack-list-item {
-            padding: 8px;
-            border: 1px solid #ccc;
-            margin-bottom: 5px;
-            cursor: pointer;
-            background-color: #f9f9f9;
-        }
-        .stack-list-item:hover {
-            background-color: #eee;
-        }
-        .stack-list-item.loading {
-            background-color: #e0e0e0;
-            font-style: italic;
-        }
-        
-        .hc-element-tooltip {
-            position: absolute;
-            background-color: black;
-            color: white;
-            padding: 2px 5px;
-            font-size: 10px;
-            border-radius: 3px;
-            bottom: -18px; 
-            left: 0;
-            white-space: nowrap;
-            visibility: hidden; 
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 101;
-        }
-        .hc-element:hover .hc-element-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-        .script-help-content {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            white-space: pre-wrap;
-            max-height: 60vh;
-            overflow-y: auto;
-            background-color: #f9f9f9;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        .script-help-content strong { font-weight: bold; color: #333; }
-        .script-help-content em { font-style: italic; color: #555; }
-        .script-help-content code { background-color: #eee; padding: 1px 3px; border-radius: 3px;}
-
     </style>
 </head>
 <body>
-    <div class="main-app-area">
-        <div id="app-container" class="p-2 md:p-4">
-            <!-- Toolbar -->
-            <div id="toolbar" class="hc-toolbar mb-2">
-                <button id="btnNewStack">New Stack</button>
-                <button id="btnSaveStack">Save Stack</button>
-                <button id="btnLoadStack">Load Stacks</button>
-                <button id="btnCreateDemo">Demo Cards</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnNewCard">New Card</button>
-                <button id="btnPrevCard">&lt; Prev</button>
-                <button id="btnNextCard">Next &gt;</button>
-                <button id="btnDeleteCard">Delete Card</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnNewButton">Add Button</button>
-                <button id="btnNewField">Add Field</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <label class="inline-flex items-center">
-                    <input type="checkbox" id="chkEditBackground" class="form-checkbox h-4 w-4 text-black border-black mr-1">
-                    Edit Bkgnd
-                </label>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnRunMode" class="bg-green-300">Run Mode</button>
-            </div>
-            
-            <div class="flex flex-col md:flex-row gap-4">
-                <!-- HyperCard Window -->
-                <div id="hypercard-window" class="hc-window">
-                    <div id="card-area" class="hc-card-area">
-                        <!-- Dynamic content will be rendered here -->
-                    </div>
-                    <div id="status-bar" class="hc-status-bar">Card 1 of 1</div>
+    <div class="app-container">
+        <!-- Editor Pane -->
+        <section id="editorPane" class="editor-pane">
+            <h2 class="text-3xl font-extrabold text-gray-800 mb-6 dark:text-gray-100">Mermaid Notation Editor</h2>
+
+            <div class="button-group">
+                <!-- File Operations -->
+                <div class="flex flex-wrap gap-3">
+                    <button id="newBtn" class="btn btn-secondary">New</button>
+                    <button id="importBtn" class="btn btn-secondary">Import .mmd</button>
+                    <button id="saveMmdBtn" class="btn btn-primary">Save .mmd</button>
+                    <button id="exportSvgBtn" class="btn btn-primary">Export as SVG</button>
                 </div>
 
-                <!-- Properties Panel -->
-                <div id="properties-panel" class="properties-panel hidden">
-                    <h3>Properties</h3>
-                    <div id="properties-content">
-                        <p>Select an element or card/background to see its properties.</p>
+                <!-- Copy & View Toggles -->
+                <div class="flex flex-wrap gap-3">
+                    <button id="copyNotationBtn" class="btn btn-secondary">Copy Notation</button>
+                    <button id="copySvgBtn" class="btn btn-secondary">Copy SVG</button>
+                    <button id="fullscreenEditorBtn" class="btn btn-secondary">Fullscreen Editor</button>
+                    <button id="fullscreenPreviewBtn" class="btn btn-secondary">Fullscreen Preview</button>
+                </div>
+
+                <!-- Appearance & Help -->
+                <div class="flex flex-wrap gap-3">
+                    <button id="helpBtn" class="btn btn-secondary">Help / Templates</button>
+                    <div class="relative">
+                        <select id="themeSelector" class="btn btn-secondary">
+                            <option value="default">Theme: Default</option>
+                            <option value="forest">Theme: Forest</option>
+                            <option value="dark">Theme: Dark</option>
+                            <option value="neutral">Theme: Neutral</option>
+                            <option value="base">Theme: Base</option>
+                        </select>
                     </div>
-                    <button id="btnDeleteElement" class="hc-button mt-4 bg-red-400 text-white w-full hidden">Delete Selected Element</button>
+                    <button id="darkModeToggle" class="btn btn-secondary">Toggle Dark Mode</button>
                 </div>
             </div>
+            <input type="file" id="fileInput" accept=".mmd,.txt" class="hidden">
 
-            <!-- User ID Display -->
-            <div id="user-info" class="mt-4 p-2 border border-black bg-gray-200 text-sm">
-                User ID: <span id="userIdDisplay">Not signed in</span> | App ID: <span id="appIdDisplay">N/A</span>
+            <textarea id="mermaidInput" placeholder="Start typing your Mermaid diagram notation here...">
+graph TD
+    A[Start] --> B(Process)
+    B --> C{Decision}
+    C -- Yes --> D[End Yes]
+    C -- No --> E[End No]
+            </textarea>
+
+            <button id="backFromEditorFullscreen" class="btn btn-secondary mt-6 hidden self-center">Back to Main Screen</button>
+        </section>
+
+        <!-- Preview Pane -->
+        <section id="previewPane" class="preview-pane">
+            <h2 class="text-3xl font-extrabold text-gray-800 mb-6 dark:text-gray-100">Diagram Preview</h2>
+            <div id="diagram-preview" class="flex-grow flex items-center justify-center relative bg-white dark:bg-gray-800 rounded-lg p-4 shadow-inner">
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-400 text-xl dark:text-gray-500" id="emptyMessage">
+                    Your diagram will appear here!
+                </div>
+                <div id="loadingIndicator" class="loading-overlay hidden">
+                    <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mr-3" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Rendering diagram...
+                </div>
             </div>
+            <div id="notificationDisplay" class="notification-message hidden">
+                <span id="notificationIcon" class="notification-icon"></span>
+                <span id="notificationText"></span>
+            </div>
+
+            <button id="backFromPreviewFullscreen" class="btn btn-secondary mt-6 hidden self-center">Back to Main Screen</button>
+        </section>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-3xl font-extrabold text-gray-800 mb-6 dark:text-gray-100">Mermaid Templates</h2>
+
+            <div class="template-selector-group">
+                <label for="templateSelector" class="font-medium text-gray-700 dark:text-gray-300 text-lg">Select Diagram Type:</label>
+                <select id="templateSelector" class="template-selector">
+                    <option value="flowchart">Flowchart</option>
+                    <option value="sequence">Sequence Diagram</option>
+                    <option value="class">Class Diagram</option>
+                    <option value="state">State Diagram</option>
+                    <option value="er">Entity Relationship Diagram</option>
+                    <option value="gantt">Gantt Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="requirement">Requirement Diagram</option>
+                    <option value="git">Git Graph</option>
+                    <option value="mindmap">Mind Map</option>
+                    <option value="timeline">Timeline</option>
+                    <option value="quadrant">Quadrant Chart</option>
+                    <option value="user-journey">User Journey</option>
+                    <option value="sankey">Sankey Diagram</option>
+                    <option value="xychart">XY Chart</option>
+                </select>
+            </div>
+
+            <div id="templateDisplay" class="template-display">
+                <!-- Template content will be dynamically loaded here -->
+            </div>
+
+            <button id="backFromHelpBtn" class="btn btn-secondary mt-6 self-center">Back to Main Screen</button>
         </div>
     </div>
 
-    <!-- Script Editor Modal -->
-    <div id="scriptEditorModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-1/2 lg:w-2/3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold mb-4">Script Editor</h2>
-                <button id="btnScriptHelp" class="hc-button text-sm mb-4">Scripting Help</button>
-            </div>
-            <p class="text-sm mb-2">Editing script for: <strong id="scriptEditorElementName"></strong></p>
-            <textarea id="scriptEditorTextarea"></textarea>
-            <div class="flex justify-end gap-2 mt-2">
-                <button id="btnApplyScript" class="hc-button">Apply</button>
-                <button id="btnCloseScriptEditor" class="hc-button">Close</button>
-            </div>
-        </div>
-    </div>
+    <script>
+        // DOM Element References
+        const DOMElements = {
+            body: document.body,
+            appContainer: document.querySelector('.app-container'),
+            editorPane: document.getElementById('editorPane'),
+            previewPane: document.getElementById('previewPane'),
+            mermaidInput: document.getElementById('mermaidInput'),
+            diagramPreview: document.getElementById('diagram-preview'),
+            notificationDisplay: document.getElementById('notificationDisplay'),
+            notificationText: document.getElementById('notificationText'),
+            notificationIcon: document.getElementById('notificationIcon'),
+            emptyMessage: document.getElementById('emptyMessage'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
 
-    <!-- Scripting Help Modal -->
-    <div id="scriptHelpModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-2/3 lg:w-1/2">
-            <h2 class="text-xl font-bold mb-4">HyperTalk-like Scripting Help</h2>
-            <div id="scriptHelpContent" class="script-help-content">
-                <p><strong>Event Handlers:</strong> Scripts are typically placed inside event handlers.</p>
-                <p><code>on mouseUp</code><br>
-                &nbsp;&nbsp;<code>-- your commands here</code><br>
-                <code>end mouseUp</code></p>
-                <hr class="my-2 border-black">
-                <p><strong>Navigation:</strong></p>
-                <ul>
-                    <li><code>go to next card</code></li>
-                    <li><code>go to prev card</code> <em>(or previous)</em></li>
-                    <li><code>go to first card</code></li>
-                    <li><code>go to last card</code></li>
-                    <li><code>go to card "Card Name"</code></li>
-                    <li><code>go to card id "card-id-string"</code></li>
-                </ul>
-                <hr class="my-2 border-black">
-                <p><strong>Text Manipulation:</strong></p>
-                <ul>
-                    <li><code>put "some text" into field "FieldNameOrID"</code></li>
-                    <li><code>put field "SourceField" into field "TargetField"</code> <em>(SourceField not fully supported yet, use 'it' or literal text)</em></li>
-                    <li><code>put it into field "FieldNameOrID"</code> <em>('it' holds result from 'ask' or 'answer')</em></li>
-                    <li><code>put "prefix " & it into field "FieldNameOrID"</code> <em>(Simple concatenation with 'it')</em></li>
-                </ul>
-                <hr class="my-2 border-black">
-                <p><strong>User Interaction (Dialogs):</strong></p>
-                <ul>
-                    <li><code>answer "Your message here."</code></li>
-                    <li><code>answer "Proceed?" with "Yes" or "No" or "Cancel"</code> <em>(Button text goes into 'it')</em></li>
-                    <li><code>ask "What is your name?"</code> <em>(User input goes into 'it')</em></li>
-                    <li><code>ask "Enter value:" with "Default"</code> <em>(User input or default goes into 'it')</em></li>
-                </ul>
-                 <hr class="my-2 border-black">
-                <p><strong>Element Visibility:</strong></p>
-                <ul>
-                    <li><code>show button "ButtonNameOrID"</code></li>
-                    <li><code>hide field "FieldNameOrID"</code></li>
-                    <li><em>(Applies to buttons and fields on current card or background)</em></li>
-                </ul>
-                 <hr class="my-2 border-black">
-                <p><strong>Comments:</strong></p>
-                <ul>
-                    <li><code>-- This is a comment</code></li>
-                </ul>
-            </div>
-            <div class="flex justify-end mt-4">
-                <button id="btnCloseScriptHelp" class="hc-button">Close</button>
-            </div>
-        </div>
-    </div>
+            newBtn: document.getElementById('newBtn'),
+            importBtn: document.getElementById('importBtn'),
+            fileInput: document.getElementById('fileInput'),
+            saveMmdBtn: document.getElementById('saveMmdBtn'),
+            exportSvgBtn: document.getElementById('exportSvgBtn'),
+            helpBtn: document.getElementById('helpBtn'),
+            themeSelector: document.getElementById('themeSelector'),
 
+            copyNotationBtn: document.getElementById('copyNotationBtn'),
+            copySvgBtn: document.getElementById('copySvgBtn'),
+            fullscreenEditorBtn: document.getElementById('fullscreenEditorBtn'),
+            fullscreenPreviewBtn: document.getElementById('fullscreenPreviewBtn'),
+            darkModeToggle: document.getElementById('darkModeToggle'),
 
-    <!-- Load Stack Modal -->
-    <div id="loadStackModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-1/2 lg:w-1/3">
-            <h2 class="text-xl font-bold mb-4">Load Stack</h2>
-            <div id="stackListContainer" class="max-h-60 overflow-y-auto mb-4">
-                <p>Loading stacks...</p>
-            </div>
-            <div class="flex justify-end gap-2">
-                <button id="btnCloseLoadStack" class="hc-button">Close</button>
-            </div>
-        </div>
-    </div>
+            helpModal: document.getElementById('helpModal'),
+            templateSelector: document.getElementById('templateSelector'),
+            templateDisplay: document.getElementById('templateDisplay'),
 
-    <!-- General Purpose Modal (for answer/ask) -->
-    <div id="generalModal" class="hc-modal hidden">
-        <div class="hc-modal-content">
-            <h2 id="generalModalTitle" class="text-xl font-bold mb-4">Message</h2>
-            <p id="generalModalMessage" class="mb-4"></p>
-            <input type="text" id="generalModalInput" class="hidden w-full p-2 border border-black mb-4">
-            <div id="generalModalButtons" class="flex justify-end gap-2">
-            </div>
-        </div>
-    </div>
-
-
-    <script type="module">
-        // Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase configuration
-        // IMPORTANT: Firestore security rules should be configured on the Firebase console
-        // to ensure users can only access their own data (e.g., /artifacts/{appId}/users/{userId}/{...})
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO_PROJECT" }; // Fallback for local dev
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hypercard-simulator-rebuilt'; 
-
-        let app, auth, db;
-        let currentUserId = null;
-        let isAuthReady = false;
-        
-        // Store the 'it' variable for HyperTalk
-        let hyperTalkItVariable = "";
-
-        // --- App State ---
-        let state = {
-            currentStack: null, 
-            currentCardIndex: 0,
-            isEditingBackground: false,
-            selectedElementId: null,
-            isRunMode: true, 
-            draggedElement: null,
-            dragOffsetX: 0,
-            dragOffsetY: 0,
+            backFromEditorFullscreenBtn: document.getElementById('backFromEditorFullscreen'),
+            backFromPreviewFullscreenBtn: document.getElementById('backFromPreviewFullscreen'),
+            backFromHelpBtn: document.getElementById('backFromHelpBtn'),
         };
 
-        // --- DOM Elements ---
-        const cardArea = document.getElementById('card-area');
-        const statusBar = document.getElementById('status-bar');
-        const chkEditBackground = document.getElementById('chkEditBackground');
-        const scriptEditorModal = document.getElementById('scriptEditorModal');
-        const scriptEditorTextarea = document.getElementById('scriptEditorTextarea');
-        const scriptEditorElementName = document.getElementById('scriptEditorElementName');
-        const propertiesPanel = document.getElementById('properties-panel');
-        const propertiesContent = document.getElementById('properties-content');
-        const btnDeleteElement = document.getElementById('btnDeleteElement');
-        const btnRunMode = document.getElementById('btnRunMode');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const appIdDisplay = document.getElementById('appIdDisplay');
-        const loadStackModal = document.getElementById('loadStackModal');
-        const stackListContainer = document.getElementById('stackListContainer');
-        const generalModal = document.getElementById('generalModal');
-        const generalModalTitle = document.getElementById('generalModalTitle');
-        const generalModalMessage = document.getElementById('generalModalMessage');
-        const generalModalInput = document.getElementById('generalModalInput');
-        const generalModalButtons = document.getElementById('generalModalButtons');
-        const btnSaveStackEl = document.getElementById('btnSaveStack'); 
-        const scriptHelpModal = document.getElementById('scriptHelpModal');
+        // Constants for Local Storage Keys
+        const STORAGE_KEYS = {
+            MERMAID_INPUT: 'mermaidInput',
+            MERMAID_THEME: 'mermaidTheme',
+            DARK_MODE: 'darkMode',
+        };
 
+        // Mermaid Templates and their descriptions
+        const MERMAID_TEMPLATES = {
+            flowchart: {
+                syntax: `graph TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -- One --> D[Laptop]
+    C -- Two --> E[iPhone]
+    C -- Three --> F[Car]`,
+                description: `General-purpose diagrams (like org flows, processes). Syntax keyword: \`flowchart\` or \`graph\`.`
+            },
+            sequence: {
+                syntax: `sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop Healthcheck
+        John->>John: Fight against hypochondria
+    end
+    alt is sick
+        John-->>Alice: Not too good :(
+    else is healthy
+        John-->>Alice: Great!
+    end
+    Alice->>Bob: See you later!`,
+                description: `Visualizes interactions in sequence (e.g., APIs, UX). Syntax keyword: \`sequenceDiagram\`.`
+            },
+            class: {
+                syntax: `classDiagram
+    class Animal{
+        +String name
+        +int age
+        +void makeSound()
+    }
+    class Dog{
+        +String breed
+        +void bark()
+    }
+    class Cat{
+        +String color
+        +void meow()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat`,
+                description: `UML-style class and object relationships. Syntax keyword: \`classDiagram\`.`
+            },
+            state: {
+                syntax: `stateDiagram-v2
+    [*] --> Still
+    Still --> Moving: EvtMotion
+    Moving --> Still: EvtStop
+    Moving --> Crash : EvtCrash
+    Crash --> [*]`,
+                description: `Finite state machines / lifecycle diagrams. Syntax keyword: \`stateDiagram\` or \`stateDiagram-v2\`.`
+            },
+            er: {
+                syntax: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE-ITEM : contains
+    CUSTOMER }|--|{ DELIVERY_ADDRESS : uses`,
+                description: `Database table and relationship structures. Syntax keyword: \`erDiagram\`.`
+            },
+            gantt: {
+                syntax: `gantt
+    dateFormat  YYYY-MM-DD
+    title Adding GANTT diagram functionality to mermaid
 
-        // --- Helper Functions for Object Creation ---
-        function createDefaultBackground(id = crypto.randomUUID(), name = "Default Background") {
-            return {
-                id: id,
-                name: name,
-                script: "",
-                elements: [], 
-                backgroundColor: '#F0F0F0', 
-            };
-        }
+    section A
+    Task A           :a1, 2014-01-01, 30d
+    Task B           :after a1  , 20d
+    section B
+    Task C           :2014-01-12  , 12d
+    Task D           :2014-01-01  , 10d`,
+                description: `Project timelines and scheduling. Syntax keyword: \`gantt\`.`
+            },
+            pie: {
+                syntax: `pie title Daily Activities
+    "Work" : 60
+    "Eat" : 10
+    "Commute" : 10
+    "Relax" : 20`,
+                description: `Shows proportions of data. Syntax keyword: \`pie\`.`
+            },
+            requirement: {
+                syntax: `requirementDiagram
 
-        function createDefaultCard(id = crypto.randomUUID(), backgroundId, cardNumber = 1) {
-            if (!backgroundId) {
-                console.error("createDefaultCard CRITICAL ERROR: called without a backgroundId!");
+requirement test_req {
+    id: 1
+    text: the test text
+    risk: high
+    verifyMethod: test
+}
+
+element test_entity {
+    type: functional
+    docRef: gh/test_entity
+    version: 0.1
+}
+
+test_entity - satisfies -> test_req`,
+                description: `Visualize system/software requirements. Syntax keyword: \`requirementDiagram\`.`
+            },
+            git: {
+                syntax: `gitGraph:
+    commit
+    commit
+    branch develop
+    checkout develop
+    commit
+    commit
+    checkout main
+    merge develop
+    commit
+    tag "v1.0"`,
+                description: `Visualize git commits, branches, merges. Syntax keyword: \`gitGraph\`.`
+            },
+            mindmap: {
+                syntax: `mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      ` + '`' + `Popularisation` + '`' + `
+        ` + '`' + `British popular psychology author Tony Buzan` + '`' + `
+    Uses
+      ` + '`' + `Increase productivity` + '`' + `
+      ` + '`' + `Effective note-taking` + '`' + `
+    ` + '`' + `Advantages` + '`' + `
+      ` + '`' + `Creativity` + '`' + `
+      ` + '`' + `Efficiency` + '`' + `
+      ` + '`' + `Visual appeal` + '`' + ``,
+                description: `Hierarchical idea trees. Syntax keyword: \`mindmap\`. (Experimental)`
+            },
+            timeline: {
+                syntax: `timeline
+    title History of Internet
+    section 1990s
+        ` + '`' + `Tim Berners-Lee` + '`' + `: World Wide Web
+        Netscape Navigator: "Browser Wars"
+    section 2000s
+        Dot-com bubble: burst
+        Wikipedia: online encyclopedia
+        Facebook: social media
+    section 2010s
+        Smartphones: mobile internet
+        Cloud computing: rise of SaaS
+        IoT: connected devices`,
+                description: `Time-based events in vertical format. Syntax keyword: \`timeline\`.`
+            },
+            quadrant: {
+                syntax: `quadrantChart
+    title Reach and engagement of campaigns
+    x-axis "Low Impact" --> "High Impact"
+    y-axis "Low Reach" --> "High Reach"
+    quadrant-1 We should expand
+    quadrant-2 Also consider
+    quadrant-3 Think more about
+    quadrant-4 May be improved
+    "Campaign A": [0.3, 0.6]
+    "Campaign B": [0.45, 0.23]
+    "Campaign C": [0.57, 0.65]
+    "Campaign D": [0.78, 0.34]
+    "Campaign E": [0.40, 0.34]
+    "Campaign F": [0.35, 0.78]`,
+                description: `Plot items on 2x2 grid (e.g. importance vs urgency). Syntax keyword: \`quadrantChart\`.`
+            },
+            'user-journey': {
+                syntax: `journey
+    title My working day
+    section Go to work
+      Make tea: 5: start, a
+      Go upstairs: 3: a, b
+      Do work: 10: b, c
+    section Go home
+      Go downstairs: 5: c, d
+      Play with kids: 3: d, e
+      Prepare dinner: 5: e, f`,
+                description: `Customer/user journey maps. Syntax keyword: \`journey\`.`
+            },
+            sankey: {
+                syntax: `sankey-beta
+    Electricity -> Light: 50
+    Electricity -> Heat: 30
+    Electricity -> "Motor power": 20`,
+                description: `Flow of resources or values. Syntax keyword: \`sankey\` or \`sankey-beta\`.`
+            },
+            xychart: {
+                syntax: `xychart-beta
+    title "Sales Performance"
+    x-axis "Months"
+    y-axis "Revenue (USD)"
+    line "Product A"
+        10, 20, 15, 25, 30
+    line "Product B"
+        5, 12, 8, 18, 22`,
+                description: `Line and scatter charts. Syntax keyword: \`xychart\` or \`xychart-beta\`. (Experimental)`
             }
-            return {
-                id: id,
-                name: `Card ${cardNumber}`,
-                script: "",
-                elements: [], 
-                backgroundId: backgroundId,
-                backgroundColor: '#FFFFFF', 
-                isVisible: true, 
-            };
-        }
+        };
 
-        // --- Initialization ---
-        async function initializeAppCore() {
-            appIdDisplay.textContent = appId;
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                // setLogLevel('debug'); // Can be enabled for Firebase debugging if needed
-
-                await setPersistence(auth, browserLocalPersistence); 
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        userIdDisplay.textContent = currentUserId;
-                    } else {
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Anonymous sign-in error:", error);
-                            userIdDisplay.textContent = "Error signing in";
-                        }
-                    }
-                    isAuthReady = true;
-                    if (!state.currentStack) { 
-                        createNewStack(); 
-                    }
-                    updateUI();
-                });
-                
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else if (!auth.currentUser) { 
-                    if (!auth.currentUser) await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
-                userIdDisplay.textContent = "Firebase Init Error";
-                if (!state.currentStack) {
-                    createNewStack(); 
-                }
-                 updateUI(); 
-            }
-            
-            setupEventListeners();
-            updateUI(); 
-        }
-
-
-        // --- Stack Structure ---
-        function createNewStack(name = "Untitled Stack") {
-            const defaultBackgroundId = crypto.randomUUID();
-            const firstCardId = crypto.randomUUID();
-            
-            state.currentStack = {
-                id: null, 
-                name: name,
-                cards: [createDefaultCard(firstCardId, defaultBackgroundId, 1)],
-                backgrounds: [createDefaultBackground(defaultBackgroundId)],
-                defaultCardWidth: 512,
-                defaultCardHeight: 342,
-                nextElementId: 1, 
-            };
-            state.currentCardIndex = 0;
-            state.selectedElementId = null;
-            state.isEditingBackground = false; 
-            chkEditBackground.checked = false;
-            updateUI();
-        }
-
-        // --- Rendering ---
-        function renderApp() {
-            if (!state.currentStack) {
-                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Stack data is missing. Try creating a new stack.</p>';
-                 statusBar.textContent = "Error: No Stack";
-                 updateToolbarAvailability();
-                 return;
-            }
-            if (!Array.isArray(state.currentStack.cards)) {
-                 state.currentStack.cards = []; 
-                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Card data corrupted. Please create a new stack.</p>';
-                 statusBar.textContent = "Error: Card Data Corrupt";
-                 updateToolbarAvailability();
-                 return;
-            }
-             if (!Array.isArray(state.currentStack.backgrounds)) {
-                state.currentStack.backgrounds = []; 
-            }
-
-
-            if (state.currentStack.cards.length === 0) {
-                cardArea.innerHTML = '<p class="p-4 text-center">Stack is empty. Create a new card.</p>';
-                statusBar.textContent = `Stack: ${state.currentStack.name || "Untitled"} (0 cards)`;
-                if (propertiesPanel) propertiesPanel.classList.add('hidden');
-                updateToolbarAvailability(); 
-                return;
-            }
-            renderCurrentCard();
-            updateStatusBar();
-            updateToolbarAvailability();
-            renderPropertiesPanel();
-        }
-
-        function renderCurrentCard() {
-            cardArea.innerHTML = ''; 
-
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards)) {
-                cardArea.innerHTML = '<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Stack data invalid. Cannot render card.</p>';
-                return;
-            }
-            if (state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) {
-                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card index ${state.currentCardIndex} is out of bounds (Total cards: ${state.currentStack.cards.length}).</p>`;
-                 return;
-            }
-
-            const card = state.currentStack.cards[state.currentCardIndex];
-            if (!card || typeof card !== 'object') { 
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card data at index ${state.currentCardIndex} is missing or invalid.</p>`;
-                return;
-            }
-            if (!Array.isArray(card.elements)) {
-                card.elements = [];
-            }
-
-            if (!card.backgroundId) {
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card "${card.name}" is missing background information.</p>`;
-                return;
-            }
-             if (!Array.isArray(state.currentStack.backgrounds)) {
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Background data corrupted.</p>`;
-                return;
-            }
-
-            const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-            if (!background) {
-                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Background for card "${card.name}" not found.</p>`;
-                 return; 
-            }
-             if (!Array.isArray(background.elements)) {
-                background.elements = [];
-            }
-
-            if (state.isEditingBackground && background) {
-                cardArea.style.backgroundColor = background.backgroundColor || '#F0F0F0';
-            } else if (card) { 
-                cardArea.style.backgroundColor = card.backgroundColor || '#FFFFFF';
-            }
-            
-            let contentRenderedOnCard = false;
-
-            if (background) {
-                background.elements.forEach(element => { 
-                    if (element.isVisible !== false) { 
-                        const elDom = renderElement(element, cardArea, true);
-                        if (elDom) contentRenderedOnCard = true;
-                        if(elDom && state.isEditingBackground) {
-                            elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
-                        } else if (elDom) {
-                            elDom.style.pointerEvents = 'auto'; 
-                        }
-                    }
-                });
-            }  
-
-            card.elements.forEach(element => { 
-                 if (element.isVisible !== false) { 
-                    const elDom = renderElement(element, cardArea, false);
-                    if (elDom) contentRenderedOnCard = true;
-                    if(elDom && !state.isEditingBackground) {
-                        elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
-                    } else if (elDom) {
-                        elDom.style.pointerEvents = 'none'; 
-                    }
-                }
-            });
-
-            if (!contentRenderedOnCard && !state.isEditingBackground) { 
-                const emptyMsg = document.createElement('p');
-                emptyMsg.textContent = '(This card is currently empty)';
-                emptyMsg.style.textAlign = 'center';
-                emptyMsg.style.color = '#888';
-                emptyMsg.style.fontSize = '14px';
-                emptyMsg.style.fontStyle = 'italic';
-                emptyMsg.style.position = 'absolute'; 
-                emptyMsg.style.top = '50%';
-                emptyMsg.style.left = '50%';
-                emptyMsg.style.transform = 'translate(-50%, -50%)'; 
-                emptyMsg.style.width = '100%'; 
-                cardArea.appendChild(emptyMsg);
-            }
-        }
-
-        function renderElement(element, parentDom, isBackgroundElement) {
-            if (element.isVisible === false) { 
-                return null; 
-            }
-
-            const el = document.createElement('div');
-            el.id = `el-${element.id}`;
-            el.className = 'hc-element';
-            if (element.id === state.selectedElementId && (state.isEditingBackground === isBackgroundElement)) {
-                el.classList.add('selected');
-            }
-            
-            element.rect = element.rect || {x:10, y:10, width:100, height:30}; 
-
-            el.style.left = `${element.rect.x}px`; 
-            el.style.top = `${element.rect.y}px`;
-            el.style.width = `${element.rect.width}px`;
-            el.style.height = `${element.rect.height}px`;
-            
-            if (!state.isRunMode) {
-                const tooltip = document.createElement('span');
-                tooltip.className = 'hc-element-tooltip';
-                tooltip.textContent = `${element.type} (ID: ${element.id.substring(0,4)})`;
-                el.appendChild(tooltip);
-            }
-
-            if (element.type === 'button') {
-                el.classList.add('hc-element-button');
-                el.textContent = element.text || "Button";
-                if (element.style) { 
-                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
-                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
-                    if(element.style.color) el.style.color = element.style.color;
-                    if(element.style.backgroundColor) el.style.backgroundColor = element.style.backgroundColor;
-                }
-            } else if (element.type === 'field') {
-                el.classList.add('hc-element-field');
-                el.textContent = element.content || "";
-                if (!state.isRunMode && (state.isEditingBackground === isBackgroundElement)) {
-                    el.contentEditable = "true";
-                    el.addEventListener('blur', (e) => {
-                         if (element.content !== e.target.textContent) {
-                            element.content = e.target.textContent;
-                         }
-                    });
-                } else {
-                    el.contentEditable = "false";
-                }
-                if (element.style) { 
-                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
-                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
-                    if(element.style.color) el.style.color = element.style.color;
-                }
-            }
-            
-            if (state.isRunMode) { 
-                 el.addEventListener('click', (e) => { 
-                    e.stopPropagation();
-                    executeHyperTalk(element.script, { element, isBackgroundElement });
-                 });
-            } else { 
-                el.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                    if (state.isEditingBackground === isBackgroundElement) { 
-                        state.selectedElementId = element.id;
-                        state.draggedElement = element;
-                        const rect = el.getBoundingClientRect();
-                        state.dragOffsetX = e.clientX - rect.left;
-                        state.dragOffsetY = e.clientY - rect.top;
-                        renderApp(); 
-                    }
-                });
-                 el.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    if (state.isEditingBackground === isBackgroundElement) {
-                        openScriptEditor(element);
-                    }
-                 });
-            }
-            parentDom.appendChild(el);
-            return el;
-        }
-        
-        function updateStatusBar() {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0) {
-                statusBar.textContent = "No Stack / Empty";
-                return;
-            }
-            const cardCount = state.currentStack.cards.length;
-            const currentCardNum = (state.currentCardIndex >= 0 && state.currentCardIndex < cardCount) ? state.currentCardIndex + 1 : "?";
-
-            let mode = state.isRunMode ? "Run Mode" : "Edit Mode";
-            if (!state.isRunMode) {
-                mode += state.isEditingBackground ? " (Background)" : " (Card)";
-            }
-            const stackName = state.currentStack.name || "Untitled Stack";
-            statusBar.textContent = `Card ${currentCardNum} of ${cardCount} | Stack: ${stackName} | ${mode}`;
-        }
-
-        function updateToolbarAvailability() {
-            const hasStack = !!state.currentStack;
-            const hasCards = hasStack && Array.isArray(state.currentStack.cards) && state.currentStack.cards.length > 0;
-            
-            document.getElementById('btnSaveStack').disabled = !hasStack || !currentUserId || btnSaveStackEl.textContent === "Saving..."; 
-            document.getElementById('btnLoadStack').disabled = !currentUserId; 
-            document.getElementById('btnNewCard').disabled = !hasStack; 
-            document.getElementById('btnDeleteCard').disabled = !hasCards || state.currentStack.cards.length <=1; 
-            document.getElementById('btnPrevCard').disabled = !hasCards || state.currentCardIndex === 0;
-            document.getElementById('btnNextCard').disabled = !hasCards || state.currentCardIndex >= state.currentStack.cards.length - 1;
-            document.getElementById('btnNewButton').disabled = !hasCards || state.isRunMode; 
-            document.getElementById('btnNewField').disabled = !hasCards || state.isRunMode; 
-            document.getElementById('chkEditBackground').disabled = !hasCards || state.isRunMode; 
-        }
-
-        function updateUI() {
-            renderApp(); 
-        }
-
-        // --- Element Manipulation ---
-        function getActiveLayerElements() {
-            if (!state.currentStack) return null; 
-            if (state.isEditingBackground) {
-                 if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card || !Array.isArray(state.currentStack.backgrounds)) return null;
-                const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-                 if (!background) return null;
-                return background.elements || []; 
-            } else {
-                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card) return null;
-                return card.elements || []; 
-            }
-        }
-
-        function findElementByNameOrId(nameOrId) {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-            const currentCard = state.currentStack.cards[state.currentCardIndex];
-            if (!currentCard) return null;
-
-            let foundElement = (currentCard.elements || []).find(el => el.id === nameOrId || el.name === nameOrId);
-            if (foundElement) return foundElement;
-
-            if (currentCard.backgroundId && Array.isArray(state.currentStack.backgrounds)) {
-                const background = state.currentStack.backgrounds.find(bg => bg.id === currentCard.backgroundId);
-                if (background && Array.isArray(background.elements)) {
-                    foundElement = background.elements.find(el => el.id === nameOrId || el.name === nameOrId);
-                    if (foundElement) return foundElement;
-                }
-            }
-            return null;
-        }
-
-
-        function addElement(type) {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0 || state.currentCardIndex === -1) {
-                showAnswerDialog("Please select or create a card first before adding elements.");
-                return;
-            }
-            if (state.isRunMode) {
-                showAnswerDialog("Switch to Edit Mode to add elements.");
-                return;
-            }
-
-            const activeElements = getActiveLayerElements();
-            if (!activeElements) { 
-                showAnswerDialog("Error: Could not find the active layer (card/background) to add the element. Ensure a card is selected and has a background.");
-                return;
-            }
-            
-            const elementName = `${type} ${state.currentStack.nextElementId++}`;
-            const newElement = {
-                id: crypto.randomUUID(),
-                type: type,
-                name: elementName,
-                rect: { x: 50, y: 50, width: (type === 'button' ? 100 : 150), height: (type === 'button' ? 30 : 50) },
-                text: (type === 'button' ? "New Button" : undefined),
-                content: (type === 'field' ? "New Field" : undefined),
-                script: `on mouseUp\n  -- ${type} script for ${elementName}\nend mouseUp`,
-                style: {}, 
-                isVisible: true, 
-            };
-
-            activeElements.push(newElement);
-            state.selectedElementId = newElement.id; 
-            updateUI();
-        }
-        
-        function deleteSelectedElement() {
-            if (!state.selectedElementId || !state.currentStack) return;
-
-            let elementsList;
-            let parentObject; 
-
-            if (state.isEditingBackground) {
-                if (!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card || !Array.isArray(state.currentStack.backgrounds)) return;
-                parentObject = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-                if (parentObject) elementsList = parentObject.elements;
-            } else {
-                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
-                parentObject = state.currentStack.cards[state.currentCardIndex];
-                if (parentObject) elementsList = parentObject.elements;
-            }
-
-            if (elementsList && Array.isArray(elementsList) && parentObject) {
-                const index = elementsList.findIndex(el => el.id === state.selectedElementId);
-                if (index > -1) {
-                    elementsList.splice(index, 1);
-                    state.selectedElementId = null;
-                    updateUI();
-                }
-            }
-        }
-
-
-        // --- Properties Panel ---
-        function renderPropertiesPanel() {
-            if (state.isRunMode || !state.currentStack || !state.currentStack.cards || state.currentStack.cards.length === 0) {
-                propertiesPanel.classList.add('hidden');
-                return;
-            }
-
-            propertiesContent.innerHTML = ''; // Clear previous
-            btnDeleteElement.classList.add('hidden'); // Hide delete button by default
-
-            const currentCardForProps = state.currentStack.cards[state.currentCardIndex];
-            const currentBackgroundForProps = currentCardForProps ? state.currentStack.backgrounds.find(b => b.id === currentCardForProps.backgroundId) : null;
-
-            if (state.selectedElementId) { // Element is selected
-                const elements = getActiveLayerElements();
-                const element = elements ? elements.find(el => el.id === state.selectedElementId) : null;
-
-                if (element) {
-                    propertiesPanel.classList.remove('hidden');
-                    btnDeleteElement.classList.remove('hidden');
-                    let html = `<h3>Element Properties</h3>
-                        <div><label>ID: <input type="text" value="${element.id}" readonly class="bg-gray-100"></label></div>
-                        <div><label>Name: <input type="text" id="propName" value="${element.name || ''}"></label></div>
-                        <div><label>X: <input type="number" id="propX" value="${element.rect?.x || 10}"></label></div>
-                        <div><label>Y: <input type="number" id="propY" value="${element.rect?.y || 10}"></label></div>
-                        <div><label>Width: <input type="number" id="propWidth" value="${element.rect?.width || 100}"></label></div>
-                        <div><label>Height: <input type="number" id="propHeight" value="${element.rect?.height || 30}"></label></div>
-                    `;
-                    if (element.type === 'button') {
-                        html += `<div><label>Text: <input type="text" id="propButtonText" value="${element.text || ''}"></label></div>`;
-                    } else if (element.type === 'field') {
-                        html += `<div><label>Content: <textarea id="propFieldContent">${element.content || ''}</textarea></label></div>`;
-                    }
-                    html += `<h4 class="mt-3 mb-1 font-semibold text-sm">Basic Styling:</h4>
-                             <div><label>Font Size (px): <input type="number" id="propStyleFontSize" value="${element.style?.fontSize || '16'}"></label></div>
-                             <div><label>Text Color: <input type="color" id="propStyleColor" value="${element.style?.color || '#000000'}"></label></div>`;
-                    if (element.type === 'button') {
-                        html += `<div><label>Background Color: <input type="color" id="propStyleBgColor" value="${element.style?.backgroundColor || '#f0f0f0'}"></label></div>`;
-                    }
-                    html += `<button id="btnEditScriptFromProps" class="hc-button w-full mt-3">Edit Script</button>`;
-                    propertiesContent.innerHTML = html;
-                    
-                    element.rect = element.rect || {x:10, y:10, width:100, height:30};
-                    document.getElementById('propName').addEventListener('change', (e) => { element.name = e.target.value; updateUI(); });
-                    document.getElementById('propX').addEventListener('change', (e) => { element.rect.x = parseInt(e.target.value) || 10; updateUI(); });
-                    document.getElementById('propY').addEventListener('change', (e) => { element.rect.y = parseInt(e.target.value) || 10; updateUI(); });
-                    document.getElementById('propWidth').addEventListener('change', (e) => { element.rect.width = parseInt(e.target.value) || 100; updateUI(); });
-                    document.getElementById('propHeight').addEventListener('change', (e) => { element.rect.height = parseInt(e.target.value) || 30; updateUI(); });
-                    if (element.type === 'button') {
-                        document.getElementById('propButtonText').addEventListener('change', (e) => { element.text = e.target.value; updateUI(); });
-                    } else if (element.type === 'field') {
-                        document.getElementById('propFieldContent').addEventListener('change', (e) => { element.content = e.target.value; updateUI(); });
-                    }
-                    element.style = element.style || {}; 
-                    document.getElementById('propStyleFontSize').addEventListener('change', (e) => { element.style.fontSize = parseInt(e.target.value) || 16; updateUI(); });
-                    document.getElementById('propStyleColor').addEventListener('change', (e) => { element.style.color = e.target.value; updateUI(); });
-                    if (element.type === 'button') {
-                        document.getElementById('propStyleBgColor').addEventListener('change', (e) => { element.style.backgroundColor = e.target.value; updateUI(); });
-                    }
-                    document.getElementById('btnEditScriptFromProps').addEventListener('click', () => openScriptEditor(element));
-                } else { 
-                    propertiesPanel.classList.add('hidden');
-                    state.selectedElementId = null; 
-                }
-            } else if (!state.isRunMode && currentCardForProps) { // No element selected, show Card/Background properties
-                propertiesPanel.classList.remove('hidden');
-                let targetObject = state.isEditingBackground ? currentBackgroundForProps : currentCardForProps;
-                let objectType = state.isEditingBackground ? "Background" : "Card";
-
-                if (targetObject) {
-                    let html = `<h3>${objectType} Properties</h3>
-                        <div><label>ID: <input type="text" value="${targetObject.id}" readonly class="bg-gray-100"></label></div>
-                        <div><label>Name: <input type="text" id="propObjectName" value="${targetObject.name || ''}"></label></div>
-                        <div><label>Background Color: <input type="color" id="propObjectBgColor" value="${targetObject.backgroundColor || (objectType === 'Card' ? '#FFFFFF' : '#F0F0F0')}"></label></div>
-                        <button id="btnEditObjectScript" class="hc-button w-full mt-3">Edit ${objectType} Script</button>
-                    `;
-                    propertiesContent.innerHTML = html;
-
-                    document.getElementById('propObjectName').addEventListener('change', (e) => { targetObject.name = e.target.value; updateUI(); });
-                    document.getElementById('propObjectBgColor').addEventListener('change', (e) => { targetObject.backgroundColor = e.target.value; updateUI(); });
-                    document.getElementById('btnEditObjectScript').addEventListener('click', () => openScriptEditor(targetObject));
-                } else {
-                    propertiesContent.innerHTML = `<p>Select an element, or switch layers to edit ${objectType === "Card" ? "Background" : "Card"} properties.</p>`;
-                }
-            } else { // Run mode or no card
-                propertiesPanel.classList.add('hidden');
-            }
-        }
-
-
-        // --- Scripting ---
-        let currentEditingElement = null; 
-
-        function openScriptEditor(objectWithScript) { 
-            if (!objectWithScript) {
-                console.warn("openScriptEditor: No object provided.");
-                return;
-            }
-            currentEditingElement = objectWithScript; 
-            const objectType = objectWithScript.type ? objectWithScript.type : (state.currentStack.cards.includes(objectWithScript) ? "Card" : "Background");
-            scriptEditorElementName.textContent = `${objectWithScript.name || objectType} (ID: ${objectWithScript.id.substring(0,4)})`;
-            scriptEditorTextarea.value = objectWithScript.script || "";
-            scriptEditorModal.classList.remove('hidden');
-            scriptEditorTextarea.focus();
-        }
-
-        function applyScript() {
-            if (currentEditingElement) {
-                currentEditingElement.script = scriptEditorTextarea.value;
-            }
-            closeScriptEditor();
-        }
-
-        function closeScriptEditor() {
-            scriptEditorModal.classList.add('hidden');
-            currentEditingElement = null;
-        }
-
-        function executeHyperTalk(script, context) {
-            if (!script || !state.isRunMode) return;
-            
-            const lines = script.split('\n').map(line => line.trim());
-            let inMouseUpHandler = false; 
-
-            for (const line of lines) {
-                if (line.toLowerCase().startsWith('on mouseup')) {
-                    inMouseUpHandler = true;
-                    continue;
-                }
-                if (line.toLowerCase() === 'end mouseup') {
-                    inMouseUpHandler = false;
-                    continue;
-                }
-
-                if (inMouseUpHandler) {
-                    // Regex for 'go' command. Catches:
-                    //   go next [card]
-                    //   go prev[ious] [card]
-                    //   go first [card]
-                    //   go last [card]
-                    //   go card "Name" / go card id "id"
-                    const goCmd = line.match(/^go\s+(?:to\s+)?((?:next|previous|prev|first|last)(?:\s+card)?|card(?:\s+(?:id\s+|"|')?([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?)?)$/i);
-                    const putCmd = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i); 
-                    const answerCmd = line.match(/^answer\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?(?:\s+or\s+"(.*?)")?(?:\s+or\s+"(.*?)")?)?/i);
-                    const askCmd = line.match(/^ask\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?)?/i);
-                    const showHideCmd = line.match(/^(show|hide)\s+(?:card\s+button|button|card\s+field|field)\s+(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i);
-
-
-                    if (goCmd) {
-                        let commandArgument = goCmd[1].toLowerCase(); 
-                        let cardNameOrIdFromRegex = goCmd[2]; 
-
-                        let actionType;
-                        let specificCardTarget = null;
-
-                        if (commandArgument.startsWith("next")) actionType = "next";
-                        else if (commandArgument.startsWith("prev")) actionType = "previous";
-                        else if (commandArgument.startsWith("first")) actionType = "first";
-                        else if (commandArgument.startsWith("last")) actionType = "last";
-                        else if (commandArgument.startsWith("card") && cardNameOrIdFromRegex) {
-                            actionType = "card_specific";
-                            specificCardTarget = cardNameOrIdFromRegex;
-                        } else if (commandArgument.startsWith("card") && !cardNameOrIdFromRegex) {
-                             showAnswerDialog(`'go to card' needs a card name or ID.`);
-                             return; 
-                        } else {
-                             showAnswerDialog(`Unknown 'go' command structure: ${line}`);
-                             return;
-                        }
-
-                        // Perform navigation
-                        if (actionType === 'next') {
-                            if (state.currentStack.cards && state.currentCardIndex < state.currentStack.cards.length - 1) state.currentCardIndex++;
-                        } else if (actionType === 'previous') {
-                            if (state.currentCardIndex > 0) state.currentCardIndex--;
-                        } else if (actionType === 'first') {
-                            state.currentCardIndex = 0;
-                        } else if (actionType === 'last' && state.currentStack.cards) {
-                            state.currentCardIndex = state.currentStack.cards.length - 1;
-                        } else if (actionType === 'card_specific' && specificCardTarget) {
-                            const foundIndex = state.currentStack.cards.findIndex(c => c.id === specificCardTarget || c.name === specificCardTarget);
-                            if (foundIndex !== -1) state.currentCardIndex = foundIndex;
-                            else {
-                                showAnswerDialog(`Card "${specificCardTarget}" not found.`);
-                            }
-                        }
-                        state.selectedElementId = null; 
-                        updateUI();
-                    } else if (putCmd) {
-                        let valueToPut = putCmd[1];
-                        const targetFieldIdOrName = putCmd[2];
-                        
-                        if (valueToPut.toLowerCase() === 'it') { 
-                            valueToPut = hyperTalkItVariable;
-                        } else if (valueToPut.includes('& it')) { 
-                            valueToPut = valueToPut.replace(/&\s*it\b/gi, hyperTalkItVariable);
-                        } else if (valueToPut.startsWith('"') && valueToPut.endsWith('"')) { 
-                            valueToPut = valueToPut.substring(1, valueToPut.length - 1);
-                        }
-                        
-                        const targetField = findElementByNameOrId(targetFieldIdOrName);
-                        if (targetField && targetField.type === 'field') {
-                            targetField.content = valueToPut;
-                            updateUI(); 
-                        } else {
-                            showAnswerDialog(`Field "${targetFieldIdOrName}" not found to put value.`);
-                        }
-                    } else if (answerCmd) {
-                        const message = answerCmd[1];
-                        const buttons = [answerCmd[2], answerCmd[3], answerCmd[4]].filter(Boolean);
-                        showAnswerDialog(message, buttons.length > 0 ? buttons : ["OK"])
-                            .then(response => { hyperTalkItVariable = response || ""; }); 
-                    } else if (askCmd) {
-                        const question = askCmd[1];
-                        const defaultValue = askCmd[2] || "";
-                        showAskDialog(question, defaultValue)
-                             .then(userInput => {
-                                hyperTalkItVariable = userInput !== null ? userInput : ""; 
-                             });
-                    } else if (showHideCmd) {
-                        const action = showHideCmd[1].toLowerCase(); 
-                        const targetElementNameOrId = showHideCmd[2];
-                        const elementToToggle = findElementByNameOrId(targetElementNameOrId);
-                        if (elementToToggle) {
-                            elementToToggle.isVisible = (action === "show");
-                            updateUI();
-                        } else {
-                            showAnswerDialog(`Element "${targetElementNameOrId}" not found.`);
-                        }
-                    }
-                     else if (line && !line.startsWith('--')) { 
-                        showAnswerDialog(`Unknown command in script: ${line}`);
-                    }
-                }
-            }
-        }
-
-        // --- Dialogs (Answer/Ask) ---
-        let generalModalResolve = null;
-
-        function showAnswerDialog(message, buttons = ["OK"]) {
-            generalModalTitle.textContent = "Alert";
-            generalModalMessage.textContent = message;
-            generalModalInput.classList.add('hidden');
-            generalModalButtons.innerHTML = '';
-            buttons.forEach(btnText => {
-                const button = document.createElement('button');
-                button.className = 'hc-button';
-                button.textContent = btnText;
-                button.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    if(generalModalResolve) generalModalResolve(btnText);
-                };
-                generalModalButtons.appendChild(button);
-            });
-            generalModal.classList.remove('hidden');
-            return new Promise(resolve => { generalModalResolve = resolve; });
-        }
-
-        function showAskDialog(prompt, defaultValue = "") { 
-            generalModalTitle.textContent = "Question";
-            generalModalMessage.textContent = prompt;
-            generalModalInput.classList.remove('hidden');
-            generalModalInput.value = defaultValue;
-            generalModalButtons.innerHTML = '';
-            
-            return new Promise(resolve => {
-                generalModalResolve = resolve; 
-
-                const okButton = document.createElement('button');
-                okButton.className = 'hc-button';
-                okButton.textContent = "OK";
-                okButton.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    resolve(generalModalInput.value);
-                };
-                generalModalButtons.appendChild(okButton);
-
-                const cancelButton = document.createElement('button');
-                cancelButton.className = 'hc-button';
-                cancelButton.textContent = "Cancel";
-                cancelButton.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    resolve(null); 
-                };
-                generalModalButtons.appendChild(cancelButton);
-                
-                generalModal.classList.remove('hidden');
-                generalModalInput.focus();
+        /**
+         * Initializes Mermaid.js with the selected theme.
+         * @param {string} themeName - The name of the Mermaid theme.
+         */
+        function initializeMermaid(themeName) {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: themeName,
+                securityLevel: 'loose'
             });
         }
 
+        /**
+         * Displays a notification message.
+         * @param {string} message - The message to display.
+         * @param {'success'|'error'|'info'} type - The type of message.
+         */
+        function showNotification(message, type) {
+            DOMElements.notificationText.textContent = message;
+            DOMElements.notificationDisplay.className = `notification-message ${type}`; // Reset and apply type class
 
-        // --- Firebase Operations ---
-        async function saveCurrentStack() {
-            if (!currentUserId || !state.currentStack) {
-                showAnswerDialog("Cannot save: Not signed in or no stack loaded.");
+            let iconHtml = '';
+            if (type === 'error') {
+                iconHtml = '&#9888;'; // Warning sign
+            } else if (type === 'success') {
+                iconHtml = '&#10003;'; // Checkmark
+            } else { // info
+                iconHtml = '&#8505;'; // Info sign
+            }
+            DOMElements.notificationIcon.innerHTML = iconHtml;
+
+            setTimeout(() => {
+                DOMElements.notificationDisplay.classList.add('hidden');
+            }, 3000); // Hide after 3 seconds
+        }
+
+        /**
+         * Renders the Mermaid diagram from the input text.
+         * @param {string} graphDefinition - The Mermaid notation string.
+         */
+        async function renderDiagram(graphDefinition) {
+            DOMElements.diagramPreview.innerHTML = ''; // Clear previous diagram
+            DOMElements.notificationDisplay.classList.add('hidden'); // Hide any previous notifications
+            DOMElements.emptyMessage.classList.add('hidden'); // Hide empty message
+            DOMElements.loadingIndicator.classList.remove('hidden'); // Show loading indicator
+
+            await new Promise(resolve => setTimeout(resolve, 10)); // Small delay for visual feedback
+
+            if (!graphDefinition.trim()) {
+                DOMElements.emptyMessage.classList.remove('hidden');
+                DOMElements.loadingIndicator.classList.add('hidden');
                 return;
             }
-
-            if ((!state.currentStack.id && state.currentStack.name === "Untitled Stack") || 
-                !state.currentStack.name || state.currentStack.name.trim() === "") {
-                
-                const promptText = (!state.currentStack.id && state.currentStack.name === "Untitled Stack") 
-                                   ? "Enter a name for this new stack:" 
-                                   : "Enter stack name:";
-                const currentNameSuggestion = (state.currentStack.name === "Untitled Stack" && !state.currentStack.id) 
-                                              ? "" 
-                                              : state.currentStack.name || "Untitled Stack";
-                const newName = await showAskDialog(promptText, currentNameSuggestion);
-                
-                if (newName && newName.trim() !== "") {
-                    state.currentStack.name = newName.trim();
-                } else if (!state.currentStack.name || state.currentStack.name.trim() === "") { 
-                    showAnswerDialog("Save cancelled: Stack name cannot be empty.");
-                    updateStatusBar(); 
-                    return;
-                }
-            }
-
-            const stackData = { ...state.currentStack, userId: currentUserId, updatedAt: serverTimestamp() };
-            
-            const originalButtonText = btnSaveStackEl.textContent;
-            btnSaveStackEl.textContent = "Saving...";
-            btnSaveStackEl.disabled = true;
 
             try {
-                let stackRef;
-                if (state.currentStack.id) { 
-                    stackRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${state.currentStack.id}`);
-                    await setDoc(stackRef, stackData, { merge: true }); 
-                    showAnswerDialog(`Stack "${state.currentStack.name}" updated successfully!`);
-                } else { 
-                    stackData.createdAt = serverTimestamp();
-                    const collectionRef = collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`);
-                    const newDocRef = await addDoc(collectionRef, stackData);
-                    state.currentStack.id = newDocRef.id; 
-                    showAnswerDialog(`Stack "${state.currentStack.name}" saved successfully with ID: ${newDocRef.id}`);
+                const { svg, bindFunctions } = await mermaid.render('graphDiv', graphDefinition);
+                DOMElements.diagramPreview.innerHTML = svg;
+                if (bindFunctions) {
+                    bindFunctions(DOMElements.diagramPreview);
                 }
             } catch (error) {
-                console.error("Error saving stack to Firestore:", error);
-                let userMessage = "Error saving stack. Please try again.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to save stack. Check Firestore rules.";
-                else if (error.code === 'unavailable') userMessage = "Error: Network unavailable. Please check your connection and try again.";
-                showAnswerDialog(userMessage);
+                showNotification(`Mermaid Render Error:\n${error.message || error}`, 'error');
+                console.error("Mermaid Render Error:", error);
             } finally {
-                btnSaveStackEl.textContent = originalButtonText;
-                updateToolbarAvailability(); 
+                DOMElements.loadingIndicator.classList.add('hidden');
             }
-            updateUI(); 
         }
 
-        async function listAndLoadStacks() {
-            if (!currentUserId) {
-                 showAnswerDialog("Cannot load stacks: Not signed in.");
-                return;
-            }
-            loadStackModal.classList.remove('hidden');
-            stackListContainer.innerHTML = '<p>Loading your stacks...</p>';
+        /**
+         * Resets the fullscreen state of both panes to the default split view.
+         */
+        function resetFullscreen() {
+            DOMElements.editorPane.classList.remove('fullscreen');
+            DOMElements.previewPane.classList.remove('fullscreen');
+            DOMElements.editorPane.style.display = 'flex';
+            DOMElements.previewPane.style.display = 'flex';
 
-            try {
-                const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`));
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) {
-                    stackListContainer.innerHTML = '<p>No stacks found. Create and save one first!</p>';
-                    return;
-                }
-                
-                stackListContainer.innerHTML = ''; 
-                querySnapshot.forEach((docSnap) => {
-                    const stack = docSnap.data();
-                    const listItem = document.createElement('div');
-                    listItem.className = 'stack-list-item p-2 border-b cursor-pointer hover:bg-gray-100';
-                    listItem.textContent = `${stack.name || 'Untitled Stack'} (ID: ${docSnap.id.substring(0,8)}...)`;
-                    listItem.onclick = async () => {
-                        listItem.textContent = "Loading selected stack..."; 
-                        listItem.classList.add("loading");
-                        try {
-                            await loadStackFromFirestore(docSnap.id);
-                        } catch (loadError) {
-                             // Error already shown by loadStackFromFirestore
-                        } finally {
-                            loadStackModal.classList.add('hidden'); 
-                        }
-                    };
-                    stackListContainer.appendChild(listItem);
+            DOMElements.fullscreenEditorBtn.textContent = 'Fullscreen Editor';
+            DOMElements.fullscreenPreviewBtn.textContent = 'Fullscreen Preview';
+            DOMElements.backFromEditorFullscreenBtn.classList.add('hidden');
+            DOMElements.backFromPreviewFullscreenBtn.classList.add('hidden');
+
+            renderDiagram(DOMElements.mermaidInput.value);
+        }
+
+        /**
+         * Toggles fullscreen mode for a given pane.
+         * @param {HTMLElement} targetPane - The pane to toggle fullscreen for.
+         * @param {HTMLElement} otherPane - The other pane to hide/show.
+         * @param {HTMLElement} toggleButton - The button that triggered the toggle.
+         * @param {HTMLElement} backButton - The specific back button for this pane.
+         * @param {string} originalButtonText - The original text for the toggle button.
+         */
+        function toggleFullscreenPane(targetPane, otherPane, toggleButton, backButton, originalButtonText) {
+            const isCurrentlyInFullscreen = targetPane.classList.contains('fullscreen');
+
+            // Always reset fullscreen state first
+            resetFullscreen();
+
+            // If the pane was NOT in fullscreen when the button was clicked, then enter fullscreen for it.
+            if (!isCurrentlyInFullscreen) {
+                targetPane.classList.add('fullscreen');
+                otherPane.style.display = 'none';
+                toggleButton.textContent = 'Exit Fullscreen';
+                backButton.classList.remove('hidden');
+            }
+            renderDiagram(DOMElements.mermaidInput.value);
+        }
+
+        /**
+         * Triggers a download for the given content as a file.
+         * @param {string} content - The content to download.
+         * @param {string} filename - The name of the file.
+         * @param {string} mimeType - The MIME type of the file.
+         */
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /**
+         * Displays the selected template in the modal.
+         * @param {string} templateKey - The key of the template to display.
+         */
+        function displaySelectedTemplate(templateKey) {
+            const templateData = MERMAID_TEMPLATES[templateKey];
+            if (templateData) {
+                DOMElements.templateDisplay.innerHTML = `
+                    <h3 class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-4">${templateKey.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Example</h3>
+                    <p class="template-description">
+                        ${templateData.description}
+                    </p>
+                    <pre class="template-code">${templateData.syntax}</pre>
+                    <button class="btn btn-primary use-template-btn" data-template="${templateKey}">Use Template</button>
+                `;
+                DOMElements.templateDisplay.querySelector('.use-template-btn').addEventListener('click', (event) => {
+                    const selectedTemplate = event.target.dataset.template;
+                    DOMElements.mermaidInput.value = MERMAID_TEMPLATES[selectedTemplate].syntax;
+                    renderDiagram(DOMElements.mermaidInput.value);
+                    localStorage.setItem(STORAGE_KEYS.MERMAID_INPUT, DOMElements.mermaidInput.value);
+                    DOMElements.helpModal.classList.add('hidden');
+                    showNotification(`Template "${selectedTemplate}" loaded.`, 'success');
                 });
-            } catch (error) {
-                console.error("Error fetching stacks from Firestore:", error);
-                 let userMessage = "Error fetching stack list.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to list stacks.";
-                stackListContainer.innerHTML = `<p class="text-red-500">${userMessage}</p>`;
+            } else {
+                DOMElements.templateDisplay.innerHTML = `<p class="text-gray-600 dark:text-gray-400">Template not found.</p>`;
             }
         }
-        
-        async function loadStackFromFirestore(stackId) {
-            if (!currentUserId) {
-                throw new Error("Not signed in, cannot load stack."); 
-            }
-            
-            const defaultRect = { x: 10, y: 10, width: 100, height: 30 };
-
-            try {
-                const stackDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${stackId}`);
-                const docSnap = await getDoc(stackDocRef);
-
-                if (docSnap.exists()) {
-                    const loadedStackData = docSnap.data();
-                    state.currentStack = { id: docSnap.id, ...loadedStackData };
-                    
-                    state.currentStack.cards = Array.isArray(state.currentStack.cards) ? state.currentStack.cards : [];
-                    state.currentStack.backgrounds = Array.isArray(state.currentStack.backgrounds) ? state.currentStack.backgrounds : [];
-                    state.currentStack.nextElementId = state.currentStack.nextElementId || 1;
-
-                    let defaultBgForLoadId;
-                    if (state.currentStack.backgrounds.length === 0) {
-                        const newDefaultBg = createDefaultBackground();
-                        state.currentStack.backgrounds.push(newDefaultBg);
-                        defaultBgForLoadId = newDefaultBg.id;
-                    } else {
-                        state.currentStack.backgrounds.forEach(bg => {
-                            bg.elements = Array.isArray(bg.elements) ? bg.elements : [];
-                            bg.elements.forEach(el => { 
-                                if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
-                                    el.rect = { ...defaultRect };
-                                }
-                                el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
-                            });
-                        });
-                        defaultBgForLoadId = state.currentStack.backgrounds[0].id; 
-                    }
-
-                    state.currentStack.cards.forEach((card, index) => {
-                        card.elements = Array.isArray(card.elements) ? card.elements : [];
-                        card.elements.forEach(el => { 
-                            if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
-                                el.rect = { ...defaultRect };
-                            }
-                             el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
-                        });
-                        card.backgroundColor = card.backgroundColor || '#FFFFFF';
-                        const bgExists = state.currentStack.backgrounds.some(bg => bg.id === card.backgroundId);
-                        if (!card.backgroundId || !bgExists) {
-                            card.backgroundId = defaultBgForLoadId;
-                        }
-                    });                    
-
-                    state.currentCardIndex = state.currentStack.cards.length > 0 ? 0 : -1; 
-                    state.selectedElementId = null;
-                    state.isEditingBackground = false;
-                    chkEditBackground.checked = false;
-                    showAnswerDialog(`Stack "${state.currentStack.name || 'Untitled Stack'}" loaded.`);
-                    updateUI();
-                } else {
-                    showAnswerDialog("Error: Stack not found.");
-                     throw new Error(`Stack not found: ${stackId}`);
-                }
-            } catch (error) {
-                console.error("Error loading stack from Firestore (detailed):", error);
-                let userMessage = "Error loading stack data.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to load stack.";
-                else if (error.message.includes("Stack not found")) userMessage = error.message; 
-                showAnswerDialog(userMessage);
-                throw error; 
-            }
-        }
-
-         // --- Demo Stack Content ---
-        function createDemoStack() {
-            showAnswerDialog("This will replace the current stack with demo content. Proceed?", ["Create Demo", "Cancel"])
-                .then(response => {
-                    if (response === "Create Demo") {
-                        createNewStack("Demo Stack"); // Creates a basic stack with 1 card and 1 bg
-
-                        const bgId = state.currentStack.backgrounds[0].id;
-
-                        // Card 1: Navigation and Simple Put
-                        state.currentStack.cards[0].name = "Welcome Card";
-                        state.currentStack.cards[0].elements.push({
-                            id: crypto.randomUUID(), type: 'field', name: 'WelcomeField',
-                            rect: { x: 20, y: 20, width: 472, height: 60 },
-                            content: "Welcome to the HyperCard Demo!\nClick the button below to go to the next card.",
-                            isVisible: true, script: ""
-                        });
-                        state.currentStack.cards[0].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'NextButton1',
-                            rect: { x: 200, y: 100, width: 112, height: 30 },
-                            text: "Next Card", isVisible: true,
-                            script: "on mouseUp\n  go to next card\nend mouseUp"
-                        });
-
-                        // Card 2: Dialogs and Text Manipulation
-                        const card2Id = crypto.randomUUID();
-                        state.currentStack.cards.push(createDefaultCard(card2Id, bgId, 2));
-                        state.currentStack.cards[1].name = "Interaction Card";
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'AnswerButton',
-                            rect: { x: 50, y: 50, width: 120, height: 30 },
-                            text: "Test Answer", isVisible: true,
-                            script: 'on mouseUp\n  answer "This is an answer dialog." with "OK" or "Great!"\n  put it into field "ResultField"\nend mouseUp'
-                        });
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'AskButton',
-                            rect: { x: 50, y: 100, width: 120, height: 30 },
-                            text: "Test Ask", isVisible: true,
-                            script: 'on mouseUp\n  ask "What is your favorite color?" with "Blue"\n  put "You chose: " & it into field "ResultField"\nend mouseUp'
-                        });
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'field', name: 'ResultField',
-                            rect: { x: 200, y: 50, width: 262, height: 80 },
-                            content: "Results will appear here...", isVisible: true, script: ""
-                        });
-                         state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'NextButton2',
-                            rect: { x: 200, y: 150, width: 112, height: 30 },
-                            text: "Next Card", isVisible: true,
-                            script: "on mouseUp\n  go to next card\nend mouseUp"
-                        });
-
-
-                        // Card 3: Show/Hide and Navigation
-                        const card3Id = crypto.randomUUID();
-                        state.currentStack.cards.push(createDefaultCard(card3Id, bgId, 3));
-                        state.currentStack.cards[2].name = "Visibility Card";
-                        const targetElementId = crypto.randomUUID(); // Generate a unique ID for the field to be shown/hidden
-                        state.currentStack.cards[2].elements.push({
-                            id: targetElementId, type: 'field', name: 'SecretField', // Give it a name for easier scripting if preferred, but ID is more robust
-                            rect: { x: 150, y: 100, width: 200, height: 50 },
-                            content: "This is a secret field!", isVisible: true, script: ""
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'ShowButton',
-                            rect: { x: 50, y: 50, width: 120, height: 30 },
-                            text: "Show Secret", isVisible: true,
-                            script: `on mouseUp\n  show field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'HideButton',
-                            rect: { x: 200, y: 50, width: 120, height: 30 },
-                            text: "Hide Secret", isVisible: true,
-                            script: `on mouseUp\n  hide field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'BackButton',
-                            rect: { x: 150, y: 180, width: 200, height: 30 },
-                            text: "Go to Welcome Card", isVisible: true,
-                            script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp'
-                        });
-                        
-                        state.currentCardIndex = 0; // Start at the first demo card
-                        updateUI();
-                        showAnswerDialog("Demo stack created with 3 cards!");
-                    }
-                });
-        }
-
 
         // --- Event Listeners ---
-        function setupEventListeners() {
-            document.getElementById('btnNewStack').addEventListener('click', () => {
-                showAnswerDialog("Create new stack? Unsaved changes to the current stack will be lost.", ["Create New", "Cancel"])
-                    .then(response => { if (response === "Create New") createNewStack(); });
-            });
-            btnSaveStackEl.addEventListener('click', saveCurrentStack); 
-            document.getElementById('btnLoadStack').addEventListener('click', listAndLoadStacks);
-            document.getElementById('btnCreateDemo').addEventListener('click', createDemoStack);
-            
-            document.getElementById('btnNewCard').addEventListener('click', () => {
-                if (!state.currentStack) {
-                    showAnswerDialog("No stack loaded. Please create or load a stack first.");
-                    return;
-                }
-                if (!Array.isArray(state.currentStack.cards)) state.currentStack.cards = [];
-                if (!Array.isArray(state.currentStack.backgrounds)) state.currentStack.backgrounds = [];
 
-                let backgroundToUseId;
-                if (state.currentStack.backgrounds.length === 0) {
-                    const newBg = createDefaultBackground(); 
-                    state.currentStack.backgrounds.push(newBg);
-                    backgroundToUseId = newBg.id;
-                } else {
-                    if (!state.currentStack.backgrounds[0] || !state.currentStack.backgrounds[0].id) {
-                        const newBg = createDefaultBackground();
-                        state.currentStack.backgrounds[0] = newBg; 
-                        backgroundToUseId = newBg.id;
-                    } else {
-                        backgroundToUseId = state.currentStack.backgrounds[0].id; 
-                    }
-                }
-                
-                const newCardNumber = state.currentStack.cards.length + 1;
-                const newCard = createDefaultCard(crypto.randomUUID(), backgroundToUseId, newCardNumber); 
-                state.currentStack.cards.push(newCard);
-                state.currentCardIndex = state.currentStack.cards.length - 1; 
-                state.selectedElementId = null; 
-                updateUI();
-            });
+        DOMElements.mermaidInput.addEventListener('input', () => {
+            renderDiagram(DOMElements.mermaidInput.value);
+            localStorage.setItem(STORAGE_KEYS.MERMAID_INPUT, DOMElements.mermaidInput.value);
+        });
 
-            document.getElementById('btnDeleteCard').addEventListener('click', () => {
-                if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length <= 1) {
-                    showAnswerDialog("Cannot delete the last card in a stack.");
-                    return;
-                }
-                showAnswerDialog("Delete current card?", ["Delete", "Cancel"])
-                    .then(response => {
-                        if (response === "Delete") {
-                            state.currentStack.cards.splice(state.currentCardIndex, 1);
-                            if (state.currentCardIndex >= state.currentStack.cards.length) {
-                                state.currentCardIndex = state.currentStack.cards.length - 1;
-                            }
-                            if (state.currentStack.cards.length === 0) state.currentCardIndex = -1; 
-                            else if (state.currentCardIndex < 0 && state.currentStack.cards.length > 0) state.currentCardIndex = 0; 
-                            state.selectedElementId = null;
-                            updateUI();
-                        }
-                    });
+        DOMElements.newBtn.addEventListener('click', () => {
+            DOMElements.mermaidInput.value = '';
+            renderDiagram('');
+            localStorage.removeItem(STORAGE_KEYS.MERMAID_INPUT);
+            showNotification('New diagram started.', 'info');
+        });
 
-            });
-            document.getElementById('btnPrevCard').addEventListener('click', () => {
-                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex > 0) {
-                    state.currentCardIndex--;
-                    state.selectedElementId = null;
-                    updateUI();
-                }
-            });
-            document.getElementById('btnNextCard').addEventListener('click', () => {
-                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex < state.currentStack.cards.length - 1) {
-                    state.currentCardIndex++;
-                     state.selectedElementId = null;
-                    updateUI();
-                }
-            });
+        DOMElements.importBtn.addEventListener('click', () => {
+            DOMElements.fileInput.click();
+        });
 
-            document.getElementById('btnNewButton').addEventListener('click', () => addElement('button'));
-            document.getElementById('btnNewField').addEventListener('click', () => addElement('field'));
-            
-            chkEditBackground.addEventListener('change', (e) => {
-                if (state.isRunMode) {
-                    e.target.checked = state.isEditingBackground; 
-                    showAnswerDialog("Switch to Edit Mode to change layers.");
-                    return;
-                }
-                state.isEditingBackground = e.target.checked;
-                state.selectedElementId = null; 
-                updateUI();
-            });
-
-            btnRunMode.addEventListener('click', () => {
-                state.isRunMode = !state.isRunMode;
-                state.selectedElementId = null; 
-                btnRunMode.textContent = state.isRunMode ? "Edit Mode" : "Run Mode";
-                btnRunMode.classList.toggle('bg-green-300', state.isRunMode);
-                btnRunMode.classList.toggle('bg-yellow-300', !state.isRunMode);
-                if (state.isRunMode) {
-                    propertiesPanel.classList.add('hidden');
-                } else {
-                    // Update properties panel for current card/bg if no element selected
-                    renderPropertiesPanel(); 
-                }
-                updateUI(); 
-            });
-
-            document.getElementById('btnApplyScript').addEventListener('click', applyScript);
-            document.getElementById('btnCloseScriptEditor').addEventListener('click', closeScriptEditor);
-            document.getElementById('btnScriptHelp').addEventListener('click', () => scriptHelpModal.classList.remove('hidden'));
-            document.getElementById('btnCloseScriptHelp').addEventListener('click', () => scriptHelpModal.classList.add('hidden'));
-
-
-            if (btnDeleteElement) {
-                btnDeleteElement.addEventListener('click', () => {
-                    if (state.selectedElementId) {
-                         showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
-                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
-                    } else {
-                        showAnswerDialog("No element selected to delete.");
-                    }
-                });
+        DOMElements.fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    DOMElements.mermaidInput.value = e.target.result;
+                    renderDiagram(DOMElements.mermaidInput.value);
+                    localStorage.setItem(STORAGE_KEYS.MERMAID_INPUT, DOMElements.mermaidInput.value);
+                    showNotification(`File "${file.name}" imported.`, 'success');
+                };
+                reader.onerror = () => {
+                    showNotification('Error reading file.', 'error');
+                };
+                reader.readAsText(file);
             }
-            
-            document.getElementById('btnCloseLoadStack').addEventListener('click', () => {
-                loadStackModal.classList.add('hidden');
-            });
+            DOMElements.fileInput.value = '';
+        });
 
-            cardArea.addEventListener('mousedown', (e) => { // Clear selection if clicking on card area itself (not an element)
-                 if (!state.isRunMode && e.target === cardArea) {
-                    state.selectedElementId = null;
-                    renderPropertiesPanel(); // To show card/bg properties
-                 }
-            });
+        DOMElements.saveMmdBtn.addEventListener('click', () => {
+            if (DOMElements.mermaidInput.value.trim()) {
+                const filename = `mermaid-diagram-${Date.now()}.mmd`;
+                downloadFile(DOMElements.mermaidInput.value, filename, 'text/plain');
+                showNotification('Mermaid notation saved.', 'success');
+            } else {
+                showNotification('Nothing to save. Please type some Mermaid notation first.', 'error');
+            }
+        });
 
-            cardArea.addEventListener('mousemove', (e) => {
-                if (!state.draggedElement || state.isRunMode) return;
-                e.preventDefault();
-                const parentRect = cardArea.getBoundingClientRect();
-                let newX = e.clientX - parentRect.left - state.dragOffsetX;
-                let newY = e.clientY - parentRect.top - state.dragOffsetY;
-                state.draggedElement.rect.x = newX;
-                state.draggedElement.rect.y = newY;
-                const elDom = document.getElementById(`el-${state.draggedElement.id}`);
-                if (elDom) {
-                    elDom.style.left = `${newX}px`;
-                    elDom.style.top = `${newY}px`;
-                }
-                if (!propertiesPanel.classList.contains('hidden') && state.selectedElementId === state.draggedElement.id) {
-                    const propXInput = document.getElementById('propX');
-                    const propYInput = document.getElementById('propY');
-                    if (propXInput) propXInput.value = Math.round(newX);
-                    if (propYInput) propYInput.value = Math.round(newY);
-                }
-            });
+        DOMElements.exportSvgBtn.addEventListener('click', () => {
+            const svgElement = DOMElements.diagramPreview.querySelector('svg');
+            if (svgElement && DOMElements.mermaidInput.value.trim()) {
+                const filename = `mermaid-diagram-${Date.now()}.svg`;
+                const svgContent = new XMLSerializer().serializeToString(svgElement);
+                downloadFile(svgContent, filename, 'image/svg+xml');
+                showNotification('Diagram exported as SVG.', 'success');
+            } else {
+                showNotification('No diagram to export as SVG. Please draw a diagram first.', 'error');
+            }
+        });
 
-            document.addEventListener('mouseup', (e) => { 
-                if (state.draggedElement) {
-                    state.draggedElement.rect.x = Math.round(state.draggedElement.rect.x);
-                    state.draggedElement.rect.y = Math.round(state.draggedElement.rect.y);
-                    state.draggedElement = null;
-                    renderPropertiesPanel(); 
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; 
-                if (e.key === 'Delete' || e.key === 'Backspace') {
-                    if (!state.isRunMode && state.selectedElementId) {
-                        e.preventDefault();
-                        showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
-                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
+        DOMElements.copyNotationBtn.addEventListener('click', () => {
+            if (DOMElements.mermaidInput.value.trim()) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(DOMElements.mermaidInput.value)
+                        .then(() => showNotification('Mermaid notation copied to clipboard!', 'success'))
+                        .catch(err => showNotification('Error copying notation: ' + err.message, 'error'));
+                } else {
+                    DOMElements.mermaidInput.select();
+                    try {
+                        document.execCommand('copy');
+                        showNotification('Mermaid notation copied to clipboard!', 'success');
+                    } catch (err) {
+                        showNotification('Failed to copy notation to clipboard. ' + err.message, 'error');
                     }
+                    DOMElements.mermaidInput.blur();
                 }
-            });
-        }
+            } else {
+                showNotification('Nothing to copy. Please type some Mermaid notation first.', 'error');
+            }
+        });
 
-        // --- Start the app ---
-        initializeAppCore();
+        DOMElements.copySvgBtn.addEventListener('click', () => {
+            const svgElement = DOMElements.diagramPreview.querySelector('svg');
+            if (svgElement && DOMElements.mermaidInput.value.trim()) {
+                const svgContent = new XMLSerializer().serializeToString(svgElement);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                     navigator.clipboard.writeText(svgContent)
+                        .then(() => showNotification('SVG copied to clipboard!', 'success'))
+                        .catch(err => showNotification('Error copying SVG: ' + err.message, 'error'));
+                } else {
+                    const tempTextArea = document.createElement('textarea');
+                    tempTextArea.value = svgContent;
+                    document.body.appendChild(tempTextArea);
+                    tempTextArea.select();
+                    try {
+                        document.execCommand('copy');
+                        showNotification('SVG copied to clipboard!', 'success');
+                    } catch (err) {
+                        showNotification('Failed to copy SVG to clipboard. ' + err.message, 'error');
+                    }
+                    document.body.removeChild(tempTextArea);
+                }
+            } else {
+                showNotification('No diagram to copy as SVG. Please draw a diagram first.', 'error');
+            }
+        });
 
+        DOMElements.fullscreenEditorBtn.addEventListener('click', () => {
+            toggleFullscreenPane(DOMElements.editorPane, DOMElements.previewPane, DOMElements.fullscreenEditorBtn, DOMElements.backFromEditorFullscreenBtn, 'Fullscreen Editor');
+        });
+
+        DOMElements.fullscreenPreviewBtn.addEventListener('click', () => {
+            toggleFullscreenPane(DOMElements.previewPane, DOMElements.editorPane, DOMElements.fullscreenPreviewBtn, DOMElements.backFromPreviewFullscreenBtn, 'Fullscreen Preview');
+        });
+
+        DOMElements.backFromEditorFullscreenBtn.addEventListener('click', resetFullscreen);
+        DOMElements.backFromPreviewFullscreenBtn.addEventListener('click', resetFullscreen);
+
+        DOMElements.darkModeToggle.addEventListener('click', () => {
+            DOMElements.body.classList.toggle('dark-mode');
+            const isDarkMode = DOMElements.body.classList.contains('dark-mode');
+            localStorage.setItem(STORAGE_KEYS.DARK_MODE, isDarkMode ? 'enabled' : 'disabled');
+            renderDiagram(DOMElements.mermaidInput.value);
+            showNotification(`Dark mode ${isDarkMode ? 'enabled' : 'disabled'}.`, 'info');
+        });
+
+        DOMElements.helpBtn.addEventListener('click', () => {
+            DOMElements.helpModal.classList.remove('hidden');
+            displaySelectedTemplate(DOMElements.templateSelector.value);
+        });
+
+        DOMElements.backFromHelpBtn.addEventListener('click', () => {
+            DOMElements.helpModal.classList.add('hidden');
+        });
+
+        DOMElements.templateSelector.addEventListener('change', (event) => {
+            displaySelectedTemplate(event.target.value);
+        });
+
+        DOMElements.themeSelector.addEventListener('change', (event) => {
+            const selectedTheme = event.target.value;
+            initializeMermaid(selectedTheme);
+            renderDiagram(DOMElements.mermaidInput.value);
+            localStorage.setItem(STORAGE_KEYS.MERMAID_THEME, selectedTheme);
+            showNotification(`Mermaid theme changed to "${selectedTheme}".`, 'info');
+        });
+
+        // --- Initial Load Logic ---
+        window.onload = () => {
+            // Load dark mode preference
+            const savedDarkMode = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
+            if (savedDarkMode === 'enabled') {
+                DOMElements.body.classList.add('dark-mode');
+            } else {
+                DOMElements.body.classList.remove('dark-mode');
+            }
+
+            // Load input from local storage, or use default example
+            const savedInput = localStorage.getItem(STORAGE_KEYS.MERMAID_INPUT);
+            if (savedInput) {
+                DOMElements.mermaidInput.value = savedInput;
+            } else {
+                DOMElements.mermaidInput.value = MERMAID_TEMPLATES.flowchart.syntax;
+            }
+
+            // Load Mermaid theme from local storage, or use 'default'
+            const savedTheme = localStorage.getItem(STORAGE_KEYS.MERMAID_THEME);
+            if (savedTheme) {
+                DOMElements.themeSelector.value = savedTheme;
+                initializeMermaid(savedTheme);
+            } else {
+                initializeMermaid('default');
+            }
+
+            renderDiagram(DOMElements.mermaidInput.value);
+        };
     </script>
 </body>
 </html>
+
