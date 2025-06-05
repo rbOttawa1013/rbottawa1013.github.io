@@ -1,1 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadrant Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; 
+        }
+        .quadrant-bg {
+            background-image:
+                linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+                linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .blip {
+            /* width and height will be set by JS based on symbolFontSize */
+            position: absolute;
+            cursor: grab;
+            transition: box-shadow 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            /* font-size set by JS */
+            line-height: 1; 
+            text-align: center;
+        }
+        .blip.dragging {
+            cursor: grabbing;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .blip:hover:not(.dragging) {
+            transform: scale(1.2); 
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+        .blip-label {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-3px); 
+            font-size: 10px;
+            padding: 1px 3px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #e5e7eb;
+            border-radius: 3px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .blip.selected {
+             text-shadow: 0 0 5px #2563eb, 0 0 10px #2563eb;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: #1f2937;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
+        input[type="text"], input[type="date"], input[type="number"], textarea, select {
+            @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm;
+        }
+        label, .lang-label {
+            @apply block text-sm font-medium text-gray-700 mb-0.5;
+        }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); display: flex;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-content {
+            background-color: white; padding: 24px; border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px;
+        }
+        .blip-list-container::-webkit-scrollbar { width: 8px; }
+        .blip-list-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .blip-list-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .blip-list-container::-webkit-scrollbar-thumb:hover { background: #555; }
 
+        .quadrant-display-area {
+             display: flex; flex-direction: column; align-items: center;
+        }
+        #pageHeaderTitle {
+            font-size: 2.25rem; 
+            font-weight: 700; 
+            color: #111827; 
+            letter-spacing: -0.025em;
+        }
+        #quadrantTitleDisplay {
+            font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #374151;
+        }
+        .quadrant-container {
+            width: 500px; height: 500px;
+            touch-action: none;
+        }
+        .axis-label {
+            position: absolute; font-weight: 600; color: #4b5563; font-size: 0.75rem; /* text-xs, reduced to match legend target */
+        }
+        .y-axis-label {
+            transform: rotate(-90deg); transform-origin: left top; left: -30px; top: 50%; /* Adjusted left for smaller font */
+        }
+        .x-axis-label {
+            bottom: -35px; left: 50%; transform: translateX(-50%); /* Adjusted bottom for smaller font */
+        }
+        .quadrant-name {
+            position: absolute; font-size: 0.75rem; color: #6b7280; font-style: italic;
+            padding: 2px 4px; background-color: rgba(255, 255, 255, 0.7); border-radius: 3px;
+        }
+        .lang-toggle-btn {
+            @apply px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100;
+        }
+        .lang-toggle-btn.active {
+            @apply bg-blue-600 text-white hover:bg-blue-700;
+        }
+        .fr-label { display: none; }
+
+        .on-screen-legend {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 2.5rem;
+            padding: 0.75rem;
+            background-color: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .on-screen-legend h3 {
+            @apply font-semibold text-gray-700 mb-1.5;
+            font-size: 0.75rem; /* text-xs, same as axis labels */
+        }
+        .on-screen-legend p {
+            @apply text-gray-600 mb-1;
+            font-size: 0.75rem; /* text-xs */
+        }
+        .on-screen-legend p strong {
+            @apply font-medium text-gray-700;
+        }
+        .legend-symbol { /* For displaying symbols in the legend */
+            display: inline-block;
+            width: 1em;
+            text-align: center;
+            margin-right: 0.25em;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-6">
+    <div class="container mx-auto max-w-7xl">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 id="pageHeaderTitle" class="lang-element" data-lang-key="appTitle">Quadrant Editor</h1>
+                <p class="text-sm text-gray-500 lang-element" data-lang-key="appVersion">Version 1.2 (Interactive Demo) - Date: June 5, 2025</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600 lang-element" data-lang-key="languageLabel">Language:</span>
+                <button id="langEnBtn" class="lang-toggle-btn active">EN</button>
+                <button id="langFrBtn" class="lang-toggle-btn">FR</button>
+            </div>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Left Side: Quadrant Display -->
+            <div class="md:w-2/3 flex flex-col gap-6">
+                <div class="bg-white p-4 sm:p-6 rounded-lg shadow relative quadrant-display-area" style="min-height: 620px;">
+                    <h2 id="quadrantTitleDisplay" class="text-center">Vendor Quadrant</h2>
+                    <div id="quadrantContainer" class="quadrant-container relative border-2 border-gray-400 quadrant-bg">
+                        <div class="absolute top-0 left-1/2 w-0.5 h-full bg-gray-400 -ml-px"></div>
+                        <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-400 -mt-px"></div>
+                        <div id="quadrantNameTopLeft" class="quadrant-name" style="top: 10px; left: 10px;">Challengers</div>
+                        <div id="quadrantNameTopRight" class="quadrant-name" style="top: 10px; right: 10px;">Leaders</div>
+                        <div id="quadrantNameBottomLeft" class="quadrant-name" style="bottom: 10px; left: 10px;">Niche Players</div>
+                        <div id="quadrantNameBottomRight" class="quadrant-name" style="bottom: 10px; right: 10px;">Visionaries</div>
+                        <div id="dynamicYAxisLabel" class="axis-label y-axis-label">Completeness of Vision</div>
+                        <div id="dynamicXAxisLabel" class="axis-label x-axis-label">Ability to Execute</div>
+                    </div>
+                    <div id="tooltip" class="tooltip hidden"></div>
+                    <div id="onScreenLegend" class="on-screen-legend">
+                        <h3 class="lang-element" data-lang-key="legendTitle">Legend</h3>
+                        <p><strong class="lang-element" data-lang-key="legendLeadersTitle">Leaders</strong><span id="legendLeadersSymbol" class="legend-symbol"></span>: <span class="lang-element" data-lang-key="legendLeadersDesc">Vendors that are well positioned and deliver excellent performance.</span></p>
+                        <p><strong class="lang-element" data-lang-key="legendVisionariesTitle">Visionaries</strong><span id="legendVisionariesSymbol" class="legend-symbol"></span>: <span class="lang-element" data-lang-key="legendVisionariesDesc">Vendors that are innovative and can lead the market.</span></p>
+                        <p><strong class="lang-element" data-lang-key="legendNichePlayersTitle">Niche Players</strong><span id="legendNichePlayersSymbol" class="legend-symbol"></span>: <span class="lang-element" data-lang-key="legendNichePlayersDesc">Vendors that are specialized and can provide unique value.</span></p>
+                        <p><strong class="lang-element" data-lang-key="legendChallengersTitle">Challengers</strong><span id="legendChallengersSymbol" class="legend-symbol"></span>: <span class="lang-element" data-lang-key="legendChallengersDesc">Vendors that are emerging and can compete effectively.</span></p>
+                    </div>
+                </div>
+                 <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 lang-element" data-lang-key="exportGraphicsTitle">Export Graphics</h2>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="exportSvgButton" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 lang-element" data-lang-key="exportSVG">Export SVG</button>
+                        <button id="exportPngButton" class="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 lang-element" data-lang-key="exportPNG">Export PNG</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Editor and Controls -->
+            <div class="md:w-1/3 flex flex-col gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 lang-element" data-lang-key="blipEditorTitle">Vendor Blip Editor</h2>
+                    <form id="blipForm" class="space-y-4">
+                        <input type="hidden" id="blipId">
+                        <div>
+                            <label for="blipTitle" class="lang-label"><span class="lang-element" data-lang-key="blipTitleLabel">Title (Vendor Name):</span> <span class="fr-label lang-element" data-lang-key="blipTitleLabel_fr">Titre (Nom du fournisseur):</span></label>
+                            <input type="text" id="blipTitle" required>
+                        </div>
+                        <div>
+                            <label for="blipDate" class="lang-label"><span class="lang-element" data-lang-key="blipDateLabel">Date:</span> <span class="fr-label lang-element" data-lang-key="blipDateLabel_fr">Date:</span></label>
+                            <input type="date" id="blipDate" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="blipX" class="lang-label"><span class="lang-element" data-lang-key="blipXLabel">X Coordinate (0-100):</span> <span class="fr-label lang-element" data-lang-key="blipXLabel_fr">Coordonnée X (0-100):</span></label>
+                                <input type="number" id="blipX" min="0" max="100" step="0.1" required>
+                            </div>
+                            <div>
+                                <label for="blipY" class="lang-label"><span class="lang-element" data-lang-key="blipYLabel">Y Coordinate (0-100):</span> <span class="fr-label lang-element" data-lang-key="blipYLabel_fr">Coordonnée Y (0-100):</span></label>
+                                <input type="number" id="blipY" min="0" max="100" step="0.1" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="vendorOverview" class="lang-label"><span class="lang-element" data-lang-key="vendorOverviewLabel">Vendor Overview:</span> <span class="fr-label lang-element" data-lang-key="vendorOverviewLabel_fr">Aperçu du fournisseur:</span></label>
+                            <textarea id="vendorOverview" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label for="strengths" class="lang-label"><span class="lang-element" data-lang-key="strengthsLabel">Strengths:</span> <span class="fr-label lang-element" data-lang-key="strengthsLabel_fr">Points forts:</span></label>
+                            <textarea id="strengths" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label for="cautions" class="lang-label"><span class="lang-element" data-lang-key="cautionsLabel">Cautions:</span> <span class="fr-label lang-element" data-lang-key="cautionsLabel_fr">Mises en garde:</span></label>
+                            <textarea id="cautions" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label for="evaluationNotes" class="lang-label"><span class="lang-element" data-lang-key="evaluationNotesLabel">Evaluation Criteria/Notes:</span> <span class="fr-label lang-element" data-lang-key="evaluationNotesLabel_fr">Critères/Notes d'évaluation:</span></label>
+                            <textarea id="evaluationNotes" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label for="futureReadiness" class="lang-label"><span class="lang-element" data-lang-key="futureReadinessLabel">Future Readiness & Delivery Capability:</span> <span class="fr-label lang-element" data-lang-key="futureReadinessLabel_fr">Préparation future et capacité de livraison:</span></label>
+                            <textarea id="futureReadiness" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label for="relevantLinks" class="lang-label"><span class="lang-element" data-lang-key="relevantLinksLabel">Relevant Links (one per line):</span> <span class="fr-label lang-element" data-lang-key="relevantLinksLabel_fr">Liens pertinents (un par ligne):</span></label>
+                            <textarea id="relevantLinks" rows="2"></textarea>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-2">
+                            <button type="submit" id="saveBlip" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 lang-element" data-lang-key="saveBlip">Save Blip</button>
+                            <button type="button" id="addNewBlip" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 lang-element" data-lang-key="addNewBlip">Add New Blip</button>
+                            <button type="button" id="deleteBlip" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 lang-element" data-lang-key="deleteBlip" disabled>Delete Blip</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 lang-element" data-lang-key="blipListTitle">Tech Provider Blips</h2>
+                    <div id="blipListContainer" class="blip-list-container max-h-60 overflow-y-auto border border-gray-200 rounded-md p-2">
+                        <ul id="blipList" class="divide-y divide-gray-200">
+                            <li class="py-2 px-1 text-sm text-gray-500 lang-element" data-lang-key="noBlipsYet">No blips added yet.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 lang-element" data-lang-key="dataManagementTitle">Data Management</h2>
+                    <div class="mb-4">
+                        <label for="quadrantTitleInputDM" class="block text-sm font-medium text-gray-700 lang-element" data-lang-key="quadrantTitleLabel">Quadrant Title (for exports):</label>
+                        <input type="text" id="quadrantTitleInputDM" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" value="Vendor Quadrant">
+                    </div>
+                    <div class="mb-4">
+                        <label for="displayStyleSelect" class="block text-sm font-medium text-gray-700 lang-element" data-lang-key="displayStyleLabel">Blip Display Style:</label>
+                        <select id="displayStyleSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <option value="color_symbol" class="lang-element" data-lang-key="displayStyleColorSymbol">Color & Symbol</option>
+                            <option value="black_symbol" class="lang-element" data-lang-key="displayStyleBlackSymbol">Black Symbol Only</option>
+                            <option value="color_dot" class="lang-element" data-lang-key="displayStyleColorDot">Color Dot</option>
+                        </select>
+                    </div>
+                    <div class="mb-4"> <!-- New Dropdown for Symbol Font Size -->
+                        <label for="symbolFontSizeSelect" class="block text-sm font-medium text-gray-700 lang-element" data-lang-key="symbolFontSizeLabel">Symbol Font Size:</label>
+                        <select id="symbolFontSizeSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <option value="12px" class="lang-element" data-lang-key="fontSizeSmall">Small</option>
+                            <option value="14px" selected class="lang-element" data-lang-key="fontSizeMedium">Medium</option>
+                            <option value="16px" class="lang-element" data-lang-key="fontSizeLarge">Large</option>
+                             <option value="18px" class="lang-element" data-lang-key="fontSizeXLarge">X-Large</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button id="exportBlipsCsvButton" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 lang-element" data-lang-key="exportCsv">Export Blips (CSV)</button>
+                        <div>
+                             <label for="importFile" class="sr-only lang-element" data-lang-key="importFileLabel">Import File</label>
+                             <input type="file" id="importFile" accept=".json" class="hidden">
+                             <button id="importQuadrantJsonButton" class="w-full px-4 py-2 bg-yellow-500 text-gray-800 rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 lang-element" data-lang-key="importJson">Import Quadrant (JSON)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="modalTitle" class="text-lg font-medium leading-6 text-gray-900 mb-2">Confirmation</h3>
+            <p id="modalMessage" class="text-sm text-gray-600 mb-4">Are you sure?</p>
+            <div class="flex justify-end gap-3">
+                <button id="modalCancel" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 lang-element" data-lang-key="cancel">Cancel</button>
+                <button id="modalConfirm" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 lang-element" data-lang-key="confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="importConflictModal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="importConflictModalTitle" class="text-lg font-medium leading-6 text-gray-900 mb-2 lang-element" data-lang-key="importConflictTitle">Import Conflict</h3>
+            <p id="importConflictMessage" class="text-sm text-gray-600 mb-4">A blip with ID [ID] already exists. How do you want to proceed?</p>
+            <div class="flex justify-end gap-3">
+                <button id="conflictOverwrite" class="px-4 py-2 bg-yellow-500 text-gray-800 rounded-md hover:bg-yellow-600 lang-element" data-lang-key="overwrite">Overwrite</button>
+                <button id="conflictAddNew" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 lang-element" data-lang-key="addNew">Add as New</button>
+                <button id="conflictSkip" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 lang-element" data-lang-key="skip">Skip</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- TRANSLATIONS ---
+    const translations = {
+        en: {
+            appTitle: "Quadrant Editor",
+            appVersion: "Version 1.2 (Interactive Demo) - Date: June 5, 2025",
+            languageLabel: "Language:",
+            quadrantTitleLabel: "Quadrant Title (for exports):",
+            displayStyleLabel: "Blip Display Style:", 
+            displayStyleColorSymbol: "Color & Symbol", 
+            displayStyleBlackSymbol: "Black Symbol Only",
+            displayStyleColorDot: "Color Dot", // New
+            symbolFontSizeLabel: "Symbol Font Size:", // New
+            fontSizeSmall: "Small", // New
+            fontSizeMedium: "Medium", // New
+            fontSizeLarge: "Large", // New
+            fontSizeXLarge: "X-Large", // New
+            settingXAxisLabel: "Ability to Execute",
+            settingYAxisLabel: "Completeness of Vision",
+            settingQuadrantNameTopLeft: "Challengers",
+            settingQuadrantNameTopRight: "Leaders",
+            settingQuadrantNameBottomLeft: "Niche Players",
+            settingQuadrantNameBottomRight: "Visionaries",
+            legendTitle: "Legend",
+            legendLeadersTitle: "Leaders", 
+            legendLeadersDesc: "Vendors that are well positioned and deliver excellent performance.",
+            legendVisionariesTitle: "Visionaries",
+            legendVisionariesDesc: "Vendors that are innovative and can lead the market.",
+            legendNichePlayersTitle: "Niche Players",
+            legendNichePlayersDesc: "Vendors that are specialized and can provide unique value.",
+            legendChallengersTitle: "Challengers",
+            legendChallengersDesc: "Vendors that are emerging and can compete effectively.",
+            exportGraphicsTitle: "Export Graphics",
+            exportSVG: "Export SVG",
+            exportPNG: "Export PNG",
+            blipEditorTitle: "Vendor Blip Editor",
+            blipTitleLabel: "Title (Vendor Name):",
+            blipDateLabel: "Date:",
+            blipXLabel: "X Coordinate (0-100):",
+            blipYLabel: "Y Coordinate (0-100):",
+            vendorOverviewLabel: "Vendor Overview:",
+            strengthsLabel: "Strengths:",
+            cautionsLabel: "Cautions:",
+            evaluationNotesLabel: "Evaluation Criteria/Notes:",
+            futureReadinessLabel: "Future Readiness & Delivery Capability:",
+            relevantLinksLabel: "Relevant Links (one per line):",
+            saveBlip: "Save Blip",
+            addNewBlip: "Add New Blip",
+            deleteBlip: "Delete Blip",
+            blipListTitle: "Tech Provider Blips",
+            noBlipsYet: "No blips added yet.",
+            dataManagementTitle: "Data Management",
+            exportCsv: "Export Blips (CSV)",
+            importFileLabel: "Import File",
+            importJson: "Import Quadrant (JSON)",
+            cancel: "Cancel",
+            confirm: "Confirm",
+            confirmAction: "Confirm Action",
+            areYouSure: "Are you sure?",
+            deleteBlipTitle: "Delete Blip",
+            deleteBlipMessage: (name) => `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+            exportNoDataTitle: "Export Data",
+            exportNoDataMessage: "There are no blips to export.",
+            importSuccessTitle: "Import Successful",
+            importSuccessMessage: "Data imported successfully.",
+            importErrorTitle: "Import Error",
+            importErrorMessage: (err) => `Failed to import file: ${err}`,
+            importConflictTitle: "Import Conflict",
+            importConflictMessageText: (title, id) => `A blip with Title "${title}" (ID: ${id.substring(0,8)}...) already exists. How do you want to proceed?`,
+            overwrite: "Overwrite",
+            addNew: "Add as New",
+            skip: "Skip",
+            ok: "OK",
+        },
+        fr: {
+            appTitle: "Éditeur de Quadrant",
+            appVersion: "Version 1.2 (Démo Interactive) - Date: 5 juin 2025",
+            languageLabel: "Langue:",
+            quadrantTitleLabel: "Titre du Quadrant (pour exports):",
+            displayStyleLabel: "Style d'Affichage des Points:", 
+            displayStyleColorSymbol: "Couleur & Symbole", 
+            displayStyleBlackSymbol: "Symbole Noir Seulement",
+            displayStyleColorDot: "Point de Couleur", // New
+            symbolFontSizeLabel: "Taille de Police du Symbole:", // New
+            fontSizeSmall: "Petit", // New
+            fontSizeMedium: "Moyen", // New
+            fontSizeLarge: "Grand", // New
+            fontSizeXLarge: "Très Grand", // New
+            settingXAxisLabel: "Capacité à Exécuter",
+            settingYAxisLabel: "Complétude de la Vision",
+            settingQuadrantNameTopLeft: "Challangeurs",
+            settingQuadrantNameTopRight: "Leaders",
+            settingQuadrantNameBottomLeft: "Acteurs de Niche",
+            settingQuadrantNameBottomRight: "Visionnaires",
+            legendTitle: "Légende",
+            legendLeadersTitle: "Leaders",
+            legendLeadersDesc: "Fournisseurs bien positionnés offrant d'excellentes performances.",
+            legendVisionariesTitle: "Visionnaires",
+            legendVisionariesDesc: "Fournisseurs innovants pouvant dominer le marché.",
+            legendNichePlayersTitle: "Acteurs de Niche",
+            legendNichePlayersDesc: "Fournisseurs spécialisés offrant une valeur unique.",
+            legendChallengersTitle: "Challangeurs",
+            legendChallengersDesc: "Fournisseurs émergents pouvant concurrencer efficacement.",
+            exportGraphicsTitle: "Exporter les Graphiques",
+            exportSVG: "Exporter SVG",
+            exportPNG: "Exporter PNG",
+            blipEditorTitle: "Éditeur de Fournisseur",
+            blipTitleLabel_fr: "Titre (Nom du fournisseur):",
+            blipDateLabel_fr: "Date:",
+            blipXLabel_fr: "Coordonnée X (0-100):",
+            blipYLabel_fr: "Coordonnée Y (0-100):",
+            vendorOverviewLabel_fr: "Aperçu du fournisseur:",
+            strengthsLabel_fr: "Points forts:",
+            cautionsLabel_fr: "Mises en garde:",
+            evaluationNotesLabel_fr: "Critères/Notes d'évaluation:",
+            futureReadinessLabel_fr: "Préparation future et capacité de livraison:",
+            relevantLinksLabel_fr: "Liens pertinents (un par ligne):",
+            saveBlip: "Sauvegarder",
+            addNewBlip: "Ajouter Nouveau",
+            deleteBlip: "Supprimer",
+            blipListTitle: "Fournisseurs Technologiques",
+            noBlipsYet: "Aucun fournisseur ajouté pour le moment.",
+            dataManagementTitle: "Gestion des Données",
+            exportCsv: "Exporter Fournisseurs (CSV)",
+            importFileLabel: "Importer Fichier",
+            importJson: "Importer Quadrant (JSON)",
+            cancel: "Annuler",
+            confirm: "Confirmer",
+            confirmAction: "Confirmer l'action",
+            areYouSure: "Êtes-vous sûr?",
+            deleteBlipTitle: "Supprimer le Fournisseur",
+            deleteBlipMessage: (name) => `Êtes-vous sûr de vouloir supprimer "${name}"? Cette action est irréversible.`,
+            exportNoDataTitle: "Exporter les Données",
+            exportNoDataMessage: "Aucun fournisseur à exporter.",
+            importSuccessTitle: "Importation Réussie",
+            importSuccessMessage: "Données importées avec succès.",
+            importErrorTitle: "Erreur d'Importation",
+            importErrorMessage: (err) => `Échec de l'importation du fichier: ${err}`,
+            importConflictTitle: "Conflit d'Importation",
+            importConflictMessageText: (title, id) => `Un fournisseur avec le titre "${title}" (ID: ${id.substring(0,8)}...) existe déjà. Comment voulez-vous procéder?`,
+            overwrite: "Écraser",
+            addNew: "Ajouter comme Nouveau",
+            skip: "Ignorer",
+            ok: "OK",
+        }
+    };
+    const BILINGUAL_FIELDS = ['vendorOverview', 'strengths', 'cautions', 'evaluationNotes', 'futureReadiness'];
+    const QUADRANT_STYLES = {
+        leaders:       { color: '#2ECC71', symbol: '★' }, 
+        challengers:   { color: '#3498DB', symbol: '■' }, 
+        visionaries:   { color: '#F1C40F', symbol: '◆' }, 
+        niche_players: { color: '#E74C3C', symbol: '◼' }  
+    };
+    const DOT_SYMBOL = '●'; // Generic dot symbol
+
+
+    // --- APPLICATION STATE ---
+    let appState = {
+        blips: [],
+        settings: {
+            quadrantTitle: 'Vendor Quadrant',
+            displayStyle: 'color_symbol', 
+            symbolFontSize: '14px', // New, default to medium
+            xAxisLabel: { en: translations.en.settingXAxisLabel, fr: translations.fr.settingXAxisLabel },
+            yAxisLabel: { en: translations.en.settingYAxisLabel, fr: translations.fr.settingYAxisLabel },
+            quadrantNames: {
+                topLeft:    { en: translations.en.settingQuadrantNameTopLeft,    fr: translations.fr.settingQuadrantNameTopLeft },
+                topRight:   { en: translations.en.settingQuadrantNameTopRight,   fr: translations.fr.settingQuadrantNameTopRight },
+                bottomLeft: { en: translations.en.settingQuadrantNameBottomLeft, fr: translations.fr.settingQuadrantNameBottomLeft },
+                bottomRight:{ en: translations.en.settingQuadrantNameBottomRight,fr: translations.fr.settingQuadrantNameBottomRight }
+            }
+        },
+        currentEditingBlipId: null,
+        language: 'en'
+    };
+
+    // --- DOM ELEMENTS ---
+    const quadrantContainer = document.getElementById('quadrantContainer');
+    const blipForm = document.getElementById('blipForm');
+    const blipList = document.getElementById('blipList');
+    const tooltip = document.getElementById('tooltip');
+    const quadrantTitleInputDM = document.getElementById('quadrantTitleInputDM'); 
+    const quadrantTitleDisplay = document.getElementById('quadrantTitleDisplay');
+    const displayStyleSelect = document.getElementById('displayStyleSelect'); 
+    const symbolFontSizeSelect = document.getElementById('symbolFontSizeSelect'); // New
+    const blipIdInput = document.getElementById('blipId');
+    const blipTitleInput = document.getElementById('blipTitle');
+    const blipDateInput = document.getElementById('blipDate');
+    const blipXInput = document.getElementById('blipX');
+    const blipYInput = document.getElementById('blipY');
+    const vendorOverviewInput = document.getElementById('vendorOverview');
+    const strengthsInput = document.getElementById('strengths');
+    const cautionsInput = document.getElementById('cautions');
+    const evaluationNotesInput = document.getElementById('evaluationNotes');
+    const futureReadinessInput = document.getElementById('futureReadiness');
+    const relevantLinksInput = document.getElementById('relevantLinks');
+    const saveBlipButton = document.getElementById('saveBlip');
+    const addNewBlipButton = document.getElementById('addNewBlip');
+    const deleteBlipButton = document.getElementById('deleteBlip');
+    const exportBlipsCsvButton = document.getElementById('exportBlipsCsvButton');
+    const importQuadrantJsonButton = document.getElementById('importQuadrantJsonButton');
+    const importFileInput = document.getElementById('importFile');
+    const exportSvgButton = document.getElementById('exportSvgButton');
+    const exportPngButton = document.getElementById('exportPngButton');
+    const langEnBtn = document.getElementById('langEnBtn');
+    const langFrBtn = document.getElementById('langFrBtn');
+    const dynamicYAxisLabel = document.getElementById('dynamicYAxisLabel');
+    const dynamicXAxisLabel = document.getElementById('dynamicXAxisLabel');
+    const quadrantNameTopLeft = document.getElementById('quadrantNameTopLeft');
+    const quadrantNameTopRight = document.getElementById('quadrantNameTopRight');
+    const quadrantNameBottomLeft = document.getElementById('quadrantNameBottomLeft');
+    const quadrantNameBottomRight = document.getElementById('quadrantNameBottomRight');
+    const onScreenLegend = document.getElementById('onScreenLegend'); 
+    const confirmationModal = document.getElementById('confirmationModal');
+    let modalTitle = document.getElementById('modalTitle');
+    let modalMessage = document.getElementById('modalMessage');
+    let modalCancelButton = document.getElementById('modalCancel');
+    let modalConfirmButton = document.getElementById('modalConfirm');
+    const importConflictModal = document.getElementById('importConflictModal');
+    const importConflictModalTitle = document.getElementById('importConflictModalTitle');
+    const importConflictMessage = document.getElementById('importConflictMessage');
+    const conflictOverwriteButton = document.getElementById('conflictOverwrite');
+    const conflictAddNewButton = document.getElementById('conflictAddNew');
+    const conflictSkipButton = document.getElementById('conflictSkip');
+    let importConflictCallback = null;
+
+
+    // --- LANGUAGE FUNCTIONS ---
+    function updateUIText() {
+        const lang = appState.language;
+        document.querySelectorAll('.lang-element').forEach(el => {
+            const key = el.dataset.langKey;
+            const translationText = translations[lang]?.[key] || translations.en[key];
+            if (translationText && typeof translationText === 'string') { 
+                 el.textContent = translationText;
+            } 
+        });
+        document.querySelectorAll('.lang-label').forEach(labelElement => {
+            const enSpan = labelElement.querySelector('span.lang-element:not(.fr-label)');
+            const frSpan = labelElement.querySelector('span.fr-label.lang-element');
+            if(enSpan && frSpan) {
+                const enKey = enSpan.dataset.langKey;
+                const frKey = frSpan.dataset.langKey;
+                enSpan.textContent = translations.en[enKey.replace('_fr','')] || '';
+                frSpan.textContent = translations.fr[frKey] || '';
+                enSpan.style.display = (lang === 'fr') ? 'none' : 'inline';
+                frSpan.style.display = (lang === 'fr') ? 'inline' : 'none';
+            }
+        });
+
+        if(onScreenLegend) {
+            const currentDisplayStyle = appState.settings.displayStyle;
+            const currentSymbolSize = appState.settings.symbolFontSize;
+
+            onScreenLegend.querySelector('[data-lang-key="legendTitle"]').textContent = translations[lang].legendTitle;
+
+            const legendMapping = {
+                leaders: { titleKey: 'legendLeadersTitle', descKey: 'legendLeadersDesc', symbolElId: 'legendLeadersSymbol' },
+                visionaries: { titleKey: 'legendVisionariesTitle', descKey: 'legendVisionariesDesc', symbolElId: 'legendVisionariesSymbol' },
+                niche_players: { titleKey: 'legendNichePlayersTitle', descKey: 'legendNichePlayersDesc', symbolElId: 'legendNichePlayersSymbol' },
+                challengers: { titleKey: 'legendChallengersTitle', descKey: 'legendChallengersDesc', symbolElId: 'legendChallengersSymbol' }
+            };
+
+            for (const role in legendMapping) {
+                const item = legendMapping[role];
+                const styleInfo = QUADRANT_STYLES[role];
+                const symbolEl = document.getElementById(item.symbolElId);
+                
+                let symbolToDisplay = styleInfo.symbol;
+                let colorToDisplay = styleInfo.color;
+
+                if (currentDisplayStyle === 'color_dot') {
+                    symbolToDisplay = DOT_SYMBOL;
+                } else if (currentDisplayStyle === 'black_symbol') {
+                    colorToDisplay = '#000000';
+                }
+                
+                if(symbolEl) {
+                    symbolEl.textContent = `(${symbolToDisplay}`;
+                    symbolEl.style.color = colorToDisplay;
+                    symbolEl.style.fontSize = currentSymbolSize; // Apply font size to legend symbol too
+                    if (currentDisplayStyle !== 'black_symbol' && currentDisplayStyle !== 'color_dot') { // Only add color name if not black_symbol or color_dot (as dot color is implied by quadrant)
+                         // Add color description if relevant
+                         // This part needs careful thought on how to represent in legend.
+                         // For now, symbol + color if applicable.
+                    }
+                     symbolEl.textContent += ')';
+                }
+                onScreenLegend.querySelector(`[data-lang-key="${item.titleKey}"]`).textContent = translations[lang][item.titleKey];
+                onScreenLegend.querySelector(`[data-lang-key="${item.descKey}"]`).textContent = (translations[lang][item.descKey].split(': ')[1] || translations[lang][item.descKey]).trim();
+            }
+        }
+
+        if (!confirmationModal.classList.contains('hidden')) {
+            document.getElementById('modalCancel').textContent = translations[lang].cancel;
+            const confirmBtn = document.getElementById('modalConfirm');
+            if(confirmBtn.style.display !== 'none') confirmBtn.textContent = translations[lang].confirm;
+        }
+         if (!importConflictModal.classList.contains('hidden')) {
+            document.getElementById('importConflictModalTitle').textContent = translations[lang].importConflictTitle;
+            document.getElementById('conflictOverwrite').textContent = translations[lang].overwrite;
+            document.getElementById('conflictAddNew').textContent = translations[lang].addNew;
+            document.getElementById('conflictSkip').textContent = translations[lang].skip;
+        }
+        if (appState.currentEditingBlipId) {
+            const blip = appState.blips.find(b => b.id === appState.currentEditingBlipId);
+            if (blip) populateForm(blip);
+        }
+        renderQuadrant();
+    }
+
+    function setLanguage(lang) {
+        appState.language = lang;
+        langEnBtn.classList.toggle('active', lang === 'en');
+        langFrBtn.classList.toggle('active', lang === 'fr');
+        updateUIText();
+        renderBlipList();
+    }
+    langEnBtn.addEventListener('click', () => setLanguage('en'));
+    langFrBtn.addEventListener('click', () => setLanguage('fr'));
+
+    // --- UTILITY FUNCTIONS ---
+    const generateId = () => crypto.randomUUID();
+    const getCurrentDate = () => new Date().toISOString().split('T')[0];
+    const getRandomCoordinate = () => (Math.random() * 100).toFixed(1); // For default blip values
+
+    // --- BLIP STYLING LOGIC ---
+    function getBlipStyle(x, y) {
+        let quadrantRole = '';
+        if (x >= 50 && y >= 50) quadrantRole = 'leaders';
+        else if (x < 50 && y >= 50) quadrantRole = 'challengers';
+        else if (x >= 50 && y < 50) quadrantRole = 'visionaries';
+        else quadrantRole = 'niche_players'; 
+
+        const baseStyle = QUADRANT_STYLES[quadrantRole];
+        const effectiveStyle = { 
+            symbol: baseStyle.symbol, 
+            color: baseStyle.color,
+            fontSize: appState.settings.symbolFontSize 
+        };
+
+        if (appState.settings.displayStyle === 'black_symbol') {
+            effectiveStyle.color = '#000000';
+        } else if (appState.settings.displayStyle === 'color_dot') {
+            effectiveStyle.symbol = DOT_SYMBOL;
+            // Color remains as per quadrant
+        }
+        return effectiveStyle;
+    }
+
+
+    // --- MODAL FUNCTIONS ---
+    function showConfirmationModal(titleKey, messageContent, onConfirm, isInfoOnly = false) {
+        const lang = appState.language;
+        modalTitle.textContent = translations[lang][titleKey] || titleKey;
+        if (typeof messageContent === 'function') modalMessage.textContent = messageContent();
+        else modalMessage.textContent = translations[lang][messageContent] || messageContent;
+        confirmationModal.classList.remove('hidden');
+        const newCancelButton = modalCancelButton.cloneNode(true);
+        newCancelButton.textContent = isInfoOnly ? translations[lang].ok : translations[lang].cancel;
+        modalCancelButton.parentNode.replaceChild(newCancelButton, modalCancelButton);
+        modalCancelButton = newCancelButton;
+        const newConfirmButton = modalConfirmButton.cloneNode(true);
+        newConfirmButton.textContent = translations[lang].confirm;
+        modalConfirmButton.parentNode.replaceChild(newConfirmButton, modalConfirmButton);
+        modalConfirmButton = newConfirmButton;
+        if (isInfoOnly) {
+            modalConfirmButton.style.display = 'none';
+            modalCancelButton.onclick = () => confirmationModal.classList.add('hidden');
+        } else {
+            modalConfirmButton.style.display = 'inline-flex';
+            modalConfirmButton.onclick = () => { onConfirm(); confirmationModal.classList.add('hidden'); };
+            modalCancelButton.onclick = () => confirmationModal.classList.add('hidden');
+        }
+    }
+    function showImportConflictModal(conflictingBlip, onResolve) {
+        importConflictCallback = onResolve;
+        const lang = appState.language;
+        importConflictModalTitle.textContent = translations[lang].importConflictTitle;
+        importConflictMessage.textContent = translations[lang].importConflictMessageText(conflictingBlip.title, conflictingBlip.id);
+        conflictOverwriteButton.textContent = translations[lang].overwrite;
+        conflictAddNewButton.textContent = translations[lang].addNew;
+        conflictSkipButton.textContent = translations[lang].skip;
+        importConflictModal.classList.remove('hidden');
+    }
+    conflictOverwriteButton.onclick = () => { if (importConflictCallback) importConflictCallback('overwrite'); importConflictModal.classList.add('hidden'); };
+    conflictAddNewButton.onclick = () => { if (importConflictCallback) importConflictCallback('add_new'); importConflictModal.classList.add('hidden'); };
+    conflictSkipButton.onclick = () => { if (importConflictCallback) importConflictCallback('skip'); importConflictModal.classList.add('hidden'); };
+
+    // --- QUADRANT RENDERING & DRAG-DROP ---
+    function renderQuadrant() {
+        const lang = appState.language;
+        quadrantContainer.querySelectorAll('.blip').forEach(el => el.remove());
+        quadrantTitleDisplay.textContent = appState.settings.quadrantTitle;
+
+        dynamicXAxisLabel.textContent = appState.settings.xAxisLabel[lang] || appState.settings.xAxisLabel.en;
+        dynamicYAxisLabel.textContent = appState.settings.yAxisLabel[lang] || appState.settings.yAxisLabel.en;
+        quadrantNameTopLeft.textContent = appState.settings.quadrantNames.topLeft[lang] || appState.settings.quadrantNames.topLeft.en;
+        quadrantNameTopRight.textContent = appState.settings.quadrantNames.topRight[lang] || appState.settings.quadrantNames.topRight.en;
+        quadrantNameBottomLeft.textContent = appState.settings.quadrantNames.bottomLeft[lang] || appState.settings.quadrantNames.bottomLeft.en;
+        quadrantNameBottomRight.textContent = appState.settings.quadrantNames.bottomRight[lang] || appState.settings.quadrantNames.bottomRight.en;
+
+        appState.blips.forEach(blip => {
+            const blipElement = document.createElement('div');
+            blipElement.className = 'blip';
+            
+            const style = getBlipStyle(blip.x, blip.y);
+            blipElement.textContent = style.symbol; 
+            blipElement.style.color = style.color;
+            blipElement.style.fontSize = style.fontSize; // Apply selected font size
+            
+            // Adjust blip size based on font size for better visual centering
+            const fontSizePx = parseInt(style.fontSize.replace('px', ''));
+            const blipDimension = Math.max(16, fontSizePx + 4) + 'px'; // Ensure min size
+            blipElement.style.width = blipDimension;
+            blipElement.style.height = blipDimension;
+            const offset = parseInt(blipDimension.replace('px','')) / 2 + 'px';
+
+
+            blipElement.style.left = `calc(${blip.x}% - ${offset})`; 
+            blipElement.style.bottom = `calc(${blip.y}% - ${offset})`; 
+            blipElement.dataset.id = blip.id;
+
+            const blipLabel = document.createElement('span');
+            blipLabel.className = 'blip-label';
+            blipLabel.textContent = blip.title.substring(0,20) + (blip.title.length > 20 ? '...' : '');
+            blipElement.appendChild(blipLabel);
+
+            if (blip.id === appState.currentEditingBlipId) blipElement.classList.add('selected');
+            blipElement.addEventListener('mousedown', startDragBlip);
+            blipElement.addEventListener('touchstart', startDragBlip, { passive: false });
+            blipElement.addEventListener('click', (e) => {
+                if (blipElement.dataset.dragged === 'true') {
+                    blipElement.dataset.dragged = 'false';
+                    e.stopPropagation(); return;
+                }
+                selectBlip(blip.id);
+            });
+            blipElement.addEventListener('mouseenter', (e) => showTooltip(e, blip)); 
+            blipElement.addEventListener('mouseleave', hideTooltip);
+            quadrantContainer.appendChild(blipElement);
+        });
+    }
+
+    let draggedBlipElement = null; let offsetX, offsetY;
+
+    function startDragBlip(e) {
+        e.preventDefault(); 
+        draggedBlipElement = e.target.closest('.blip');
+        if (!draggedBlipElement) return;
+        draggedBlipElement.classList.add('dragging');
+        draggedBlipElement.dataset.dragged = 'false';
+        const rect = quadrantContainer.getBoundingClientRect();
+        let clientX = e.clientX || e.touches[0].clientX;
+        let clientY = e.clientY || e.touches[0].clientY;
+        offsetX = clientX - draggedBlipElement.getBoundingClientRect().left;
+        offsetY = clientY - draggedBlipElement.getBoundingClientRect().top;
+        document.addEventListener('mousemove', dragBlip);
+        document.addEventListener('mouseup', endDragBlip);
+        document.addEventListener('touchmove', dragBlip, { passive: false });
+        document.addEventListener('touchend', endDragBlip);
+    }
+    function dragBlip(e) {
+        if (!draggedBlipElement) return;
+        e.preventDefault(); 
+        draggedBlipElement.dataset.dragged = 'true';
+        const rect = quadrantContainer.getBoundingClientRect();
+        let clientX = e.clientX || e.touches[0].clientX;
+        let clientY = e.clientY || e.touches[0].clientY;
+        let newLeft = clientX - rect.left - offsetX;
+        let newTop = clientY - rect.top - offsetY;
+        newLeft = Math.max(0, Math.min(newLeft, rect.width - draggedBlipElement.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, rect.height - draggedBlipElement.offsetHeight));
+        draggedBlipElement.style.left = `${newLeft}px`;
+        draggedBlipElement.style.top = `${newTop}px`;
+        const blipId = draggedBlipElement.dataset.id;
+        const blip = appState.blips.find(b => b.id === blipId);
+        if (blip) {
+            const currentXPercent = ((newLeft + draggedBlipElement.offsetWidth / 2) / rect.width) * 100;
+            const currentYPercent = 100 - (((newTop + draggedBlipElement.offsetHeight / 2) / rect.height) * 100);
+            if (appState.currentEditingBlipId === blipId) {
+                blipXInput.value = currentXPercent.toFixed(1);
+                blipYInput.value = currentYPercent.toFixed(1);
+            }
+        }
+    }
+    function endDragBlip() {
+        if (!draggedBlipElement) return;
+        const blipId = draggedBlipElement.dataset.id;
+        const blipIndex = appState.blips.findIndex(b => b.id === blipId);
+        if (blipIndex !== -1) {
+            const rect = quadrantContainer.getBoundingClientRect();
+            const finalLeftPx = parseFloat(draggedBlipElement.style.left);
+            const finalTopPx = parseFloat(draggedBlipElement.style.top);
+            appState.blips[blipIndex].x = parseFloat((((finalLeftPx + draggedBlipElement.offsetWidth / 2) / rect.width) * 100).toFixed(1));
+            appState.blips[blipIndex].y = parseFloat((100 - (((finalTopPx + draggedBlipElement.offsetHeight / 2) / rect.height) * 100)).toFixed(1));
+            appState.blips[blipIndex].x = Math.max(0, Math.min(100, appState.blips[blipIndex].x));
+            appState.blips[blipIndex].y = Math.max(0, Math.min(100, appState.blips[blipIndex].y));
+            if (appState.currentEditingBlipId === blipId) {
+                populateForm(appState.blips[blipIndex]);
+            }
+            renderQuadrant(); 
+        }
+        draggedBlipElement.classList.remove('dragging');
+        draggedBlipElement = null;
+        document.removeEventListener('mousemove', dragBlip);
+        document.removeEventListener('mouseup', endDragBlip);
+        document.removeEventListener('touchmove', dragBlip);
+        document.removeEventListener('touchend', endDragBlip);
+    }
+    function showTooltip(event, blip) { 
+        tooltip.innerHTML = `<strong>${blip.title}</strong>`;
+        tooltip.classList.remove('hidden');
+        const rect = quadrantContainer.getBoundingClientRect(); 
+        let x = event.clientX - rect.left + 15;
+        let y = event.clientY - rect.top + 15;
+        if (x + tooltip.offsetWidth > rect.width) x = event.clientX - rect.left - tooltip.offsetWidth - 5;
+        if (y + tooltip.offsetHeight > rect.height) y = event.clientY - rect.top - tooltip.offsetHeight - 5;
+        if (x < 0) x = 5;
+        if (y < 0) y = 5;
+        tooltip.style.left = `${x}px`;
+        tooltip.style.top = `${y}px`;
+    }
+    function hideTooltip() { tooltip.classList.add('hidden'); }
+
+    // --- BLIP LIST RENDERING ---
+    function renderBlipList() {
+        blipList.innerHTML = '';
+        if (appState.blips.length === 0) {
+            blipList.innerHTML = `<li class="py-2 px-1 text-sm text-gray-500">${translations[appState.language].noBlipsYet}</li>`;
+            return;
+        }
+        appState.blips.forEach(blip => {
+            const listItem = document.createElement('li');
+            listItem.className = `py-2 px-3 cursor-pointer hover:bg-gray-100 rounded-md text-sm ${blip.id === appState.currentEditingBlipId ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700'}`;
+            const dateLabelKey = translations[appState.language].blipDateLabel || 'Date:';
+            listItem.textContent = `${blip.title} (${dateLabelKey.replace(':','')} ${blip.date})`;
+            listItem.dataset.id = blip.id;
+            listItem.addEventListener('click', () => selectBlip(blip.id));
+            blipList.appendChild(listItem);
+        });
+    }
+
+    // --- FORM HANDLING & BILINGUAL DATA ---
+    quadrantTitleInputDM.addEventListener('input', (e) => { 
+        appState.settings.quadrantTitle = e.target.value;
+        quadrantTitleDisplay.textContent = e.target.value; 
+    });
+    displayStyleSelect.addEventListener('change', (e) => { 
+        appState.settings.displayStyle = e.target.value;
+        updateUIText(); // Update legend based on new style
+        renderQuadrant(); 
+    });
+    symbolFontSizeSelect.addEventListener('change', (e) => { // New
+        appState.settings.symbolFontSize = e.target.value;
+        updateUIText(); // Update legend symbol size
+        renderQuadrant();
+    });
+
+
+    function resetForm() {
+        blipForm.reset();
+        blipIdInput.value = '';
+        blipDateInput.value = getCurrentDate();
+        blipXInput.value = getRandomCoordinate(); // Set random X
+        blipYInput.value = getRandomCoordinate(); // Set random Y
+        appState.currentEditingBlipId = null;
+        deleteBlipButton.disabled = true;
+        blipTitleInput.focus();
+        renderQuadrant(); renderBlipList();
+    }
+    function populateForm(blip) {
+        const lang = appState.language;
+        blipIdInput.value = blip.id;
+        blipTitleInput.value = blip.title;
+        blipDateInput.value = blip.date;
+        blipXInput.value = blip.x;
+        blipYInput.value = blip.y;
+        BILINGUAL_FIELDS.forEach(field => {
+            const inputElement = document.getElementById(field);
+            if(inputElement) inputElement.value = blip[`${field}_${lang}`] || '';
+        });
+        relevantLinksInput.value = blip.relevantLinks ? blip.relevantLinks.join('\n') : '';
+        deleteBlipButton.disabled = false;
+    }
+    addNewBlipButton.addEventListener('click', resetForm);
+    blipForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = blipIdInput.value || generateId();
+        const lang = appState.language;
+        const otherLang = lang === 'en' ? 'fr' : 'en';
+        let existingBlip = appState.blips.find(b => b.id === id);
+        const newBlipData = existingBlip ? { ...existingBlip } : { id };
+        newBlipData.title = blipTitleInput.value;
+        newBlipData.date = blipDateInput.value;
+        newBlipData.x = parseFloat(blipXInput.value);
+        newBlipData.y = parseFloat(blipYInput.value);
+        newBlipData.relevantLinks = relevantLinksInput.value.split('\n').map(link => link.trim()).filter(link => link !== '');
+        BILINGUAL_FIELDS.forEach(field => {
+            const inputElement = document.getElementById(field);
+            if (inputElement) {
+                newBlipData[`${field}_${lang}`] = inputElement.value;
+                if (!newBlipData.hasOwnProperty(`${field}_${otherLang}`)) {
+                    newBlipData[`${field}_${otherLang}`] = existingBlip?.[`${field}_${otherLang}`] || '';
+                }
+            }
+        });
+        if (existingBlip) {
+            const index = appState.blips.findIndex(b => b.id === id);
+            appState.blips[index] = newBlipData;
+        } else {
+            appState.blips.push(newBlipData);
+        }
+        appState.currentEditingBlipId = id;
+        renderAll();
+    });
+
+    // --- BLIP SELECTION & DELETION ---
+    function selectBlip(id) {
+        const blip = appState.blips.find(b => b.id === id);
+        if (blip) {
+            appState.currentEditingBlipId = id;
+            populateForm(blip);
+            renderQuadrant(); renderBlipList();
+        }
+    }
+    deleteBlipButton.addEventListener('click', () => {
+        if (!appState.currentEditingBlipId) return;
+        const blipToDelete = appState.blips.find(b => b.id === appState.currentEditingBlipId);
+        if (!blipToDelete) return;
+        showConfirmationModal('deleteBlipTitle', () => translations[appState.language].deleteBlipMessage(blipToDelete.title), () => {
+            appState.blips = appState.blips.filter(b => b.id !== appState.currentEditingBlipId);
+            resetForm(); renderAll();
+        });
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            const activeEl = document.activeElement;
+            const isInputFocused = activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA';
+            if (appState.currentEditingBlipId && !isInputFocused) {
+                const blipToDelete = appState.blips.find(b => b.id === appState.currentEditingBlipId);
+                if (!blipToDelete) return;
+                showConfirmationModal('deleteBlipTitle', () => translations[appState.language].deleteBlipMessage(blipToDelete.title), () => {
+                    appState.blips = appState.blips.filter(b => b.id !== appState.currentEditingBlipId);
+                    resetForm(); renderAll();
+                });
+            }
+        }
+    });
+
+    // --- QUADRANT DOUBLE CLICK INTERACTION ---
+    quadrantContainer.addEventListener('dblclick', (e) => {
+        if (e.target === quadrantContainer || e.target.classList.contains('quadrant-bg-visualization-element')) {
+            const rect = quadrantContainer.getBoundingClientRect();
+            const xPercent = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+            const yPercent = Math.max(0, Math.min(100, 100 - (((e.clientY - rect.top) / rect.height) * 100)));
+            resetForm();
+            blipXInput.value = xPercent.toFixed(1);
+            blipYInput.value = yPercent.toFixed(1);
+            blipTitleInput.focus();
+        }
+    });
+
+    // --- IMPORT JSON / EXPORT CSV ---
+    function escapeCsvCell(cellData) {
+        if (cellData === null || typeof cellData === 'undefined') return '';
+        let str = String(cellData);
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+            str = `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    }
+    exportBlipsCsvButton.addEventListener('click', () => {
+        if (appState.blips.length === 0) {
+            showConfirmationModal('exportNoDataTitle', 'exportNoDataMessage', () => {}, true);
+            return;
+        }
+        const headers = [
+            'id', 'title', 'date', 'x', 'y',
+            ...BILINGUAL_FIELDS.map(f => `${f}_en`),
+            ...BILINGUAL_FIELDS.map(f => `${f}_fr`),
+            'relevantLinks'
+        ];
+        let csvContent = headers.join(',') + '\n';
+        appState.blips.forEach(blip => {
+            const row = [
+                blip.id, blip.title, blip.date, blip.x, blip.y,
+                ...BILINGUAL_FIELDS.map(f => blip[`${f}_en`] || ''),
+                ...BILINGUAL_FIELDS.map(f => blip[`${f}_fr`] || ''),
+                blip.relevantLinks ? blip.relevantLinks.join(';') : ''
+            ];
+            csvContent += row.map(escapeCsvCell).join(',') + '\n';
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `magic_quadrant_blips_${appState.settings.quadrantTitle.replace(/\s+/g, '_')}_${getCurrentDate()}.csv`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    });
+    importQuadrantJsonButton.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData && importedData.blips && importedData.settings) {
+                        const newBlips = [];
+                        for (const importedBlip of importedData.blips) {
+                            const existingBlipIndex = appState.blips.findIndex(b => b.id === importedBlip.id);
+                            if (existingBlipIndex !== -1) {
+                                const resolution = await new Promise(resolve => {
+                                    showImportConflictModal(appState.blips[existingBlipIndex], resolve);
+                                });
+                                if (resolution === 'overwrite') {
+                                    const targetIndex = newBlips.findIndex(b => b.id === importedBlip.id);
+                                    if (targetIndex !== -1) newBlips[targetIndex] = importedBlip; else newBlips.push(importedBlip);
+                                } else if (resolution === 'add_new') {
+                                    importedBlip.id = generateId(); newBlips.push(importedBlip);
+                                } else {
+                                    newBlips.push(appState.blips[existingBlipIndex]);
+                                }
+                            } else {
+                                newBlips.push(importedBlip);
+                            }
+                        }
+                        appState.blips = newBlips;
+                        const defaultSettingsTemplate = {
+                            displayStyle: 'color_symbol',
+                            symbolFontSize: '14px',
+                            xAxisLabel: { en: translations.en.settingXAxisLabel, fr: translations.fr.settingXAxisLabel },
+                            yAxisLabel: { en: translations.en.settingYAxisLabel, fr: translations.fr.settingYAxisLabel },
+                            quadrantNames: {
+                                topLeft:    { en: translations.en.settingQuadrantNameTopLeft,    fr: translations.fr.settingQuadrantNameTopLeft },
+                                topRight:   { en: translations.en.settingQuadrantNameTopRight,   fr: translations.fr.settingQuadrantNameTopRight },
+                                bottomLeft: { en: translations.en.settingQuadrantNameBottomLeft, fr: translations.fr.settingQuadrantNameBottomLeft },
+                                bottomRight:{ en: translations.en.settingQuadrantNameBottomRight,fr: translations.fr.settingQuadrantNameBottomRight }
+                            }
+                        };
+                        appState.settings.quadrantTitle = importedData.settings.quadrantTitle || 'Vendor Quadrant';
+                        appState.settings.displayStyle = importedData.settings.displayStyle || defaultSettingsTemplate.displayStyle;
+                        appState.settings.symbolFontSize = importedData.settings.symbolFontSize || defaultSettingsTemplate.symbolFontSize;
+                        displayStyleSelect.value = appState.settings.displayStyle; 
+                        symbolFontSizeSelect.value = appState.settings.symbolFontSize;
+
+
+                        for (const key of ['xAxisLabel', 'yAxisLabel']) {
+                            if (typeof importedData.settings[key] === 'string') {
+                                appState.settings[key] = { en: importedData.settings[key], fr: defaultSettingsTemplate[key].fr };
+                            } else if (importedData.settings[key] && typeof importedData.settings[key] === 'object') {
+                                appState.settings[key] = {
+                                    en: importedData.settings[key].en || defaultSettingsTemplate[key].en,
+                                    fr: importedData.settings[key].fr || defaultSettingsTemplate[key].fr
+                                };
+                            } else {
+                                appState.settings[key] = defaultSettingsTemplate[key];
+                            }
+                        }
+                        for (const qKey of ['topLeft', 'topRight', 'bottomLeft', 'bottomRight']) {
+                             if (importedData.settings.quadrantNames && typeof importedData.settings.quadrantNames[qKey] === 'string') {
+                                appState.settings.quadrantNames[qKey] = { en: importedData.settings.quadrantNames[qKey], fr: defaultSettingsTemplate.quadrantNames[qKey].fr };
+                            } else if (importedData.settings.quadrantNames && typeof importedData.settings.quadrantNames[qKey] === 'object') {
+                                appState.settings.quadrantNames[qKey] = {
+                                    en: importedData.settings.quadrantNames[qKey].en || defaultSettingsTemplate.quadrantNames[qKey].en,
+                                    fr: importedData.settings.quadrantNames[qKey].fr || defaultSettingsTemplate.quadrantNames[qKey].fr
+                                };
+                            } else {
+                                appState.settings.quadrantNames[qKey] = defaultSettingsTemplate.quadrantNames[qKey];
+                            }
+                        }
+                        appState.blips.forEach(blip => {
+                            BILINGUAL_FIELDS.forEach(bField => {
+                                if (!blip.hasOwnProperty(`${bField}_en`)) blip[`${bField}_en`] = blip[bField] || '';
+                                if (!blip.hasOwnProperty(`${bField}_fr`)) blip[`${bField}_fr`]= blip.hasOwnProperty(bField) && blip[bField] && appState.language === 'fr' ? blip[bField] : '';
+                                if (blip.hasOwnProperty(bField) && (blip[bField] !== blip[`${bField}_en`])) {
+                                   if(blip[`${bField}_en`] === '' && blip[bField] !== '') blip[`${bField}_en`] = blip[bField];
+                                }
+                                delete blip[bField];
+                            });
+                        });
+                        quadrantTitleInputDM.value = appState.settings.quadrantTitle;
+                        resetForm(); renderAll();
+                        showConfirmationModal('importSuccessTitle', 'importSuccessMessage', () => {}, true);
+                    } else throw new Error("Invalid file format. Missing 'blips' or 'settings'.");
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showConfirmationModal('importErrorTitle', () => translations[appState.language].importErrorMessage(error.message), () => {}, true);
+                } finally { importFileInput.value = ''; }
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // --- EXPORT SVG/PNG ---
+    function generateQuadrantSVG(lang) {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const chartWidth = 500;
+        const chartHeight = 500;
+        const legendItemHeight = 14; // Reduced for smaller font
+        const legendPadding = 8;
+        const legendTitleHeight = 18;
+        const legendHeightEstimate = legendTitleHeight + (4 * (legendItemHeight + 4 + legendPadding)) + 25; 
+
+        const svgWidth = chartWidth + 100; 
+        const svgHeight = chartHeight + 100 + legendHeightEstimate; 
+
+        const chartOriginX = (svgWidth - chartWidth) / 2;
+        const chartOriginY = 50; 
+        const titleYOffset = 30;
+        const axisLabelFontSize = '10px'; // Smaller font for axis labels to match legend target
+        const legendFontSize = '9px'; // Smaller font for legend text
+        const legendTitleSvgFontSize = '10px'; // Slightly larger for legend title
+
+        let svgString = `<svg width="${svgWidth}" height="${svgHeight}" xmlns="${svgNS}" style="font-family: Inter, sans-serif; background-color: white;">`;
+        svgString += `<text x="${svgWidth/2}" y="${titleYOffset}" font-size="20" font-weight="bold" text-anchor="middle" fill="#374151">${appState.settings.quadrantTitle}</text>`;
+        for (let i = 0; i <= 10; i++) {
+            const pos = i * (chartWidth / 10);
+            svgString += `<line x1="${chartOriginX + pos}" y1="${chartOriginY}" x2="${chartOriginX + pos}" y2="${chartOriginY + chartHeight}" stroke="#e5e7eb" stroke-width="0.5"/>`;
+            svgString += `<line x1="${chartOriginX}" y1="${chartOriginY + pos}" x2="${chartOriginX + chartWidth}" y2="${chartOriginY + pos}" stroke="#e5e7eb" stroke-width="0.5"/>`;
+        }
+        svgString += `<line x1="${chartOriginX + chartWidth/2}" y1="${chartOriginY}" x2="${chartOriginX + chartWidth/2}" y2="${chartOriginY + chartHeight}" stroke="#4b5563" stroke-width="1.5"/>`;
+        svgString += `<line x1="${chartOriginX}" y1="${chartOriginY + chartHeight/2}" x2="${chartOriginX + chartWidth}" y2="${chartOriginY + chartHeight/2}" stroke="#4b5563" stroke-width="1.5"/>`;
+        svgString += `<text x="${chartOriginX - 30}" y="${chartOriginY + chartHeight/2}" font-size="${axisLabelFontSize}" font-weight="semibold" fill="#4b5563" transform="rotate(-90, ${chartOriginX - 30}, ${chartOriginY + chartHeight/2})" text-anchor="middle">${appState.settings.yAxisLabel[lang] || appState.settings.yAxisLabel.en}</text>`;
+        svgString += `<text x="${chartOriginX + chartWidth/2}" y="${chartOriginY + chartHeight + 25}" font-size="${axisLabelFontSize}" font-weight="semibold" fill="#4b5563" text-anchor="middle">${appState.settings.xAxisLabel[lang] || appState.settings.xAxisLabel.en}</text>`; // Adjusted y for smaller font
+        svgString += `<text x="${chartOriginX + chartWidth*0.25}" y="${chartOriginY + 20}" font-size="10px" font-style="italic" fill="#6b7280" text-anchor="middle">${appState.settings.quadrantNames.topLeft[lang] || appState.settings.quadrantNames.topLeft.en}</text>`;
+        svgString += `<text x="${chartOriginX + chartWidth*0.75}" y="${chartOriginY + 20}" font-size="10px" font-style="italic" fill="#6b7280" text-anchor="middle">${appState.settings.quadrantNames.topRight[lang] || appState.settings.quadrantNames.topRight.en}</text>`;
+        svgString += `<text x="${chartOriginX + chartWidth*0.25}" y="${chartOriginY + chartHeight - 10}" font-size="10px" font-style="italic" fill="#6b7280" text-anchor="middle">${appState.settings.quadrantNames.bottomLeft[lang] || appState.settings.quadrantNames.bottomLeft.en}</text>`;
+        svgString += `<text x="${chartOriginX + chartWidth*0.75}" y="${chartOriginY + chartHeight - 10}" font-size="10px" font-style="italic" fill="#6b7280" text-anchor="middle">${appState.settings.quadrantNames.bottomRight[lang] || appState.settings.quadrantNames.bottomRight.en}</text>`;
+        
+        appState.blips.forEach(blip => {
+            const cx = chartOriginX + (blip.x / 100 * chartWidth);
+            const cy = chartOriginY + chartHeight - (blip.y / 100 * chartHeight);
+            const style = getBlipStyle(blip.x, blip.y); // Includes fontSize
+            const symbolFontSizeForSVG = style.fontSize; // Use the dynamic font size
+
+            if (appState.settings.displayStyle === 'color_dot') {
+                const dotRadius = parseInt(symbolFontSizeForSVG.replace('px', '')) / 2.5; // Make dot size relative to font selection
+                svgString += `<circle cx="${cx}" cy="${cy}" r="${dotRadius}" fill="${style.color}"/>`;
+            } else {
+                svgString += `<text x="${cx}" y="${cy}" font-size="${symbolFontSizeForSVG}" text-anchor="middle" dominant-baseline="central" fill="${style.color}">${style.symbol}</text>`;
+            }
+            svgString += `<text x="${cx}" y="${cy - (parseInt(symbolFontSizeForSVG.replace('px',''))/2 + 4)}" font-size="9px" text-anchor="middle" fill="#1f2937">${blip.title.substring(0,15)+(blip.title.length>15?'...':'')}</text>`;
+        });
+
+        let legendY = chartOriginY + chartHeight + 50; 
+        const legendX = chartOriginX + 20; 
+        const legendLineHeightSvg = 12; // Reduced for smaller font
+        const legendItemSpacingSvg = 5;
+
+        svgString += `<text x="${legendX}" y="${legendY}" font-size="${legendTitleSvgFontSize}" font-weight="bold" fill="#374151">${translations[lang].legendTitle}</text>`; 
+        legendY += legendTitleHeight * 0.8; // Use title height for spacing
+        
+        const legendItems = [
+            {role: 'leaders', titleKey: 'legendLeadersTitle', descKey: 'legendLeadersDesc'},
+            {role: 'visionaries', titleKey: 'legendVisionariesTitle', descKey: 'legendVisionariesDesc'},
+            {role: 'niche_players', titleKey: 'legendNichePlayersTitle', descKey: 'legendNichePlayersDesc'},
+            {role: 'challengers', titleKey: 'legendChallengersTitle', descKey: 'legendChallengersDesc'}
+        ];
+
+        legendItems.forEach(item => {
+            const quadrantStyle = QUADRANT_STYLES[item.role];
+            let symbolToDisplayInLegend = quadrantStyle.symbol;
+            let colorForLegendSymbol = quadrantStyle.color;
+
+            if (appState.settings.displayStyle === 'color_dot') {
+                symbolToDisplayInLegend = DOT_SYMBOL;
+            } else if (appState.settings.displayStyle === 'black_symbol') {
+                colorForLegendSymbol = '#000000';
+            }
+
+            const titleText = `${translations[lang][item.titleKey]} (<tspan fill="${colorForLegendSymbol}" font-size="${appState.settings.symbolFontSize}">${symbolToDisplayInLegend}</tspan>):`;
+            let descText = (translations[lang][item.descKey] || '');
+            descText = descText.includes(': ') ? descText.split(': ')[1] : descText; 
+
+            svgString += `<text x="${legendX}" y="${legendY}" font-size="${legendFontSize}" font-weight="semibold" fill="#1f2937">${titleText}</text>`; 
+            
+            const words = descText.split(' ');
+            let line = '';
+            legendY += legendLineHeightSvg * 0.9; 
+
+            words.forEach(word => {
+                if ((line + word).length < 85) { // Adjusted for smaller font
+                    line += (line ? ' ' : '') + word;
+                } else {
+                    svgString += `<text x="${legendX + 10}" y="${legendY}" font-size="${legendFontSize}" fill="#4b5563">${line}</text>`; 
+                    legendY += legendLineHeightSvg * 0.9;
+                    line = word;
+                }
+            });
+            if (line) {
+                svgString += `<text x="${legendX + 10}" y="${legendY}" font-size="${legendFontSize}" fill="#4b5563">${line}</text>`; 
+            }
+            legendY += legendLineHeightSvg * 0.9 + legendItemSpacingSvg;
+        });
+        svgString += `</svg>`;
+        return svgString;
+    }
+
+    function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    exportSvgButton.addEventListener('click', () => {
+        ['en', 'fr'].forEach(lang => {
+            const svgData = generateQuadrantSVG(lang);
+            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            triggerDownload(blob, `magic_quadrant_${appState.settings.quadrantTitle.replace(/\s+/g, '_')}_${lang}.svg`);
+        });
+    });
+
+    exportPngButton.addEventListener('click', () => {
+        ['en', 'fr'].forEach(lang => {
+            const svgData = generateQuadrantSVG(lang);
+            const canvas = document.createElement('canvas');
+            const svgElementForSize = new DOMParser().parseFromString(svgData, "image/svg+xml").documentElement;
+            canvas.width = parseInt(svgElementForSize.getAttribute('width') || '600'); 
+            canvas.height = parseInt(svgElementForSize.getAttribute('height') || '740'); 
+            
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.crossOrigin = "anonymous"; 
+            
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const svgUrl = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.fillStyle = 'white'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                canvas.toBlob(blob => {
+                    if (blob) {
+                       triggerDownload(blob, `magic_quadrant_${appState.settings.quadrantTitle.replace(/\s+/g, '_')}_${lang}.png`);
+                    } else {
+                        console.error(`Error creating blob for PNG (${lang})`);
+                         showConfirmationModal('importErrorTitle', () => translations[appState.language].importErrorMessage(`PNG creation failed for ${lang.toUpperCase()}.`), () => {}, true);
+                    }
+                    URL.revokeObjectURL(svgUrl); 
+                }, 'image/png');
+            };
+            img.onerror = (e) => {
+                console.error(`Error loading SVG (${lang}) into image for PNG conversion:`, e);
+                showConfirmationModal('importErrorTitle', () => translations[appState.language].importErrorMessage(`SVG to PNG conversion failed for ${lang.toUpperCase()}. Check console for details.`), () => {}, true);
+                URL.revokeObjectURL(svgUrl); 
+            };
+            img.src = svgUrl;
+        });
+    });
+
+    // --- INITIALIZATION ---
+    function renderAll() {
+        renderQuadrant();
+        renderBlipList();
+        updateUIText();
+    }
+    function initializeApp() {
+        quadrantTitleInputDM.value = appState.settings.quadrantTitle;
+        displayStyleSelect.value = appState.settings.displayStyle; 
+        symbolFontSizeSelect.value = appState.settings.symbolFontSize; // Set initial symbol font size
+        blipDateInput.value = getCurrentDate();
+        deleteBlipButton.disabled = true;
+        setLanguage(appState.language);
+        renderAll();
+    }
+    window.addEventListener('load', initializeApp);
+</script>
+</body>
+</html>
