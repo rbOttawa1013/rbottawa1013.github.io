@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperCard Simulator (Enhanced)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Retro Theme inspired by HyperCard */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #c0c0c0;
+            color: #000000;
+            overscroll-behavior: none;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .main-app-area {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .hc-window {
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            box-shadow: 5px 5px 0px #000000;
+            width: 512px; /* Classic HyperCard width */
+            height: 342px; /* Classic HyperCard height */
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hc-card-area {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #ffffff; /* Default card background */
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+        
+        .hc-toolbar {
+            background-color: #e0e0e0;
+            border-bottom: 2px solid #000000;
+            padding: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            font-size: 16px;
+        }
+
+        .hc-button, .hc-toolbar button, .hc-modal button {
+            font-family: 'VT323', monospace;
+            background-color: #ffffff;
+            border: 1px solid #000000;
+            padding: 2px 8px;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #888888;
+            text-align: center;
+            font-size: 16px;
+            user-select: none;
+        }
+        .hc-button:disabled, .hc-toolbar button:disabled {
+            background-color: #d0d0d0;
+            color: #777777;
+            cursor: not-allowed;
+            box-shadow: 1px 1px 0px #555555;
+        }
+        .hc-button:not(:disabled):active, 
+        .hc-toolbar button:not(:disabled):active, 
+        .hc-modal button:not(:disabled):active {
+            background-color: #000000;
+            color: #ffffff;
+            box-shadow: none;
+            transform: translate(1px, 1px);
+        }
+        
+        .hc-element {
+            position: absolute;
+            border: 1px dashed transparent;
+            cursor: grab;
+            user-select: none;
+        }
+        
+        .hc-element.selected {
+            border: 1px dashed #0000ff;
+            z-index: 100;
+        }
+        
+        .hc-element-button {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+            box-shadow: 2px 2px 0px #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hc-element-button:active {
+             background-color: #000;
+             color: #fff;
+        }
+
+        .hc-element-field {
+            background-color: #ffffff;
+            border: 1px solid #000;
+            padding: 5px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .hc-element-field[contenteditable="true"] {
+            outline: 1px solid #333;
+            user-select: text;
+        }
+
+        .hc-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 10px;
+        }
+        .hc-modal-content {
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            padding: 20px;
+            box-shadow: 5px 5px 0px #000000;
+            min-width: 300px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .hc-modal textarea {
+            width: 100%;
+            min-height: 150px;
+            border: 1px solid #000;
+            padding: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .hc-modal input[type="text"], .hc-modal input[type="number"], .hc-modal input[type="color"] {
+            width: 100%;
+            border: 1px solid #000;
+            padding: 5px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+         .hc-modal input[type="color"] {
+            height: 40px; /* Make color picker taller */
+         }
+        .hc-status-bar {
+            font-size: 14px;
+            padding: 2px 5px;
+            background-color: #ddd;
+            border-top: 1px solid #000;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .properties-panel {
+            position: fixed; 
+            top: 100px; 
+            right: 10px;
+            width: 250px;
+            background-color: #e0e0e0;
+            border: 1px solid #000;
+            box-shadow: 3px 3px 0px #888;
+            padding: 10px;
+            z-index: 500;
+            max-height: calc(100vh - 120px); /* Adjust for toolbar */
+            overflow-y: auto;
+        }
+        .properties-panel h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+        }
+        .properties-panel label {
+            display: block;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .properties-panel input, .properties-panel textarea, .properties-panel select {
+            width: 100%;
+            padding: 3px;
+            border: 1px solid #555;
+            margin-top: 3px;
+            font-size: 14px;
+        }
+         .properties-panel textarea {
+            min-height: 80px;
+            font-family: 'Courier New', Courier, monospace;
+         }
+
+        .stack-list-item {
+            padding: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .stack-list-item:hover {
+            background-color: #eee;
+        }
+        .stack-list-item.loading {
+            background-color: #e0e0e0;
+            font-style: italic;
+        }
+        
+        .hc-element-tooltip {
+            position: absolute;
+            background-color: black;
+            color: white;
+            padding: 2px 5px;
+            font-size: 10px;
+            border-radius: 3px;
+            bottom: -18px; 
+            left: 0;
+            white-space: nowrap;
+            visibility: hidden; 
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 101;
+        }
+        .hc-element:hover .hc-element-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .script-help-content {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 60vh;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .script-help-content strong { font-weight: bold; color: #333; }
+        .script-help-content em { font-style: italic; color: #555; }
+        .script-help-content code { background-color: #eee; padding: 1px 3px; border-radius: 3px;}
+
+    </style>
+</head>
+<body>
+    <div class="main-app-area">
+        <div id="app-container" class="p-2 md:p-4">
+            <!-- Toolbar -->
+            <div id="toolbar" class="hc-toolbar mb-2">
+                <button id="btnNewStack">New Stack</button>
+                <button id="btnSaveStack">Save Stack</button>
+                <button id="btnLoadStack">Load Stacks</button>
+                <button id="btnCreateDemo">Demo Cards</button>
+                <span class="mx-1 border-l border-black h-6"></span>
+                <button id="btnNewCard">New Card</button>
+                <button id="btnPrevCard">&lt; Prev</button>
+                <button id="btnNextCard">Next &gt;</button>
+                <button id="btnDeleteCard">Delete Card</button>
+                <span class="mx-1 border-l border-black h-6"></span>
+                <button id="btnNewButton">Add Button</button>
+                <button id="btnNewField">Add Field</button>
+                <span class="mx-1 border-l border-black h-6"></span>
+                <label class="inline-flex items-center">
+                    <input type="checkbox" id="chkEditBackground" class="form-checkbox h-4 w-4 text-black border-black mr-1">
+                    Edit Bkgnd
+                </label>
+                <span class="mx-1 border-l border-black h-6"></span>
+                <button id="btnRunMode" class="bg-green-300">Run Mode</button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- HyperCard Window -->
+                <div id="hypercard-window" class="hc-window">
+                    <div id="card-area" class="hc-card-area">
+                        <!-- Dynamic content will be rendered here -->
+                    </div>
+                    <div id="status-bar" class="hc-status-bar">Card 1 of 1</div>
+                </div>
+
+                <!-- Properties Panel -->
+                <div id="properties-panel" class="properties-panel hidden">
+                    <h3>Properties</h3>
+                    <div id="properties-content">
+                        <p>Select an element or card/background to see its properties.</p>
+                    </div>
+                    <button id="btnDeleteElement" class="hc-button mt-4 bg-red-400 text-white w-full hidden">Delete Selected Element</button>
+                </div>
+            </div>
+
+            <!-- User ID Display -->
+            <div id="user-info" class="mt-4 p-2 border border-black bg-gray-200 text-sm">
+                User ID: <span id="userIdDisplay">Not signed in</span> | App ID: <span id="appIdDisplay">N/A</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Editor Modal -->
+    <div id="scriptEditorModal" class="hc-modal hidden">
+        <div class="hc-modal-content w-full md:w-1/2 lg:w-2/3">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold mb-4">Script Editor</h2>
+                <button id="btnScriptHelp" class="hc-button text-sm mb-4">Scripting Help</button>
+            </div>
+            <p class="text-sm mb-2">Editing script for: <strong id="scriptEditorElementName"></strong></p>
+            <textarea id="scriptEditorTextarea"></textarea>
+            <div class="flex justify-end gap-2 mt-2">
+                <button id="btnApplyScript" class="hc-button">Apply</button>
+                <button id="btnCloseScriptEditor" class="hc-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripting Help Modal -->
+    <div id="scriptHelpModal" class="hc-modal hidden">
+        <div class="hc-modal-content w-full md:w-2/3 lg:w-1/2">
+            <h2 class="text-xl font-bold mb-4">HyperTalk-like Scripting Help</h2>
+            <div id="scriptHelpContent" class="script-help-content">
+                <p><strong>Event Handlers:</strong> Scripts are typically placed inside event handlers.</p>
+                <p><code>on mouseUp</code><br>
+                &nbsp;&nbsp;<code>-- your commands here</code><br>
+                <code>end mouseUp</code></p>
+                <hr class="my-2 border-black">
+                <p><strong>Navigation:</strong></p>
+                <ul>
+                    <li><code>go to next card</code></li>
+                    <li><code>go to prev card</code> <em>(or previous)</em></li>
+                    <li><code>go to first card</code></li>
+                    <li><code>go to last card</code></li>
+                    <li><code>go to card "Card Name"</code></li>
+                    <li><code>go to card id "card-id-string"</code></li>
+                </ul>
+                <hr class="my-2 border-black">
+                <p><strong>Text Manipulation:</strong></p>
+                <ul>
+                    <li><code>put "some text" into field "FieldNameOrID"</code></li>
+                    <li><code>put field "SourceField" into field "TargetField"</code> <em>(SourceField not fully supported yet, use 'it' or literal text)</em></li>
+                    <li><code>put it into field "FieldNameOrID"</code> <em>('it' holds result from 'ask' or 'answer')</em></li>
+                    <li><code>put "prefix " & it into field "FieldNameOrID"</code> <em>(Simple concatenation with 'it')</em></li>
+                </ul>
+                <hr class="my-2 border-black">
+                <p><strong>User Interaction (Dialogs):</strong></p>
+                <ul>
+                    <li><code>answer "Your message here."</code></li>
+                    <li><code>answer "Proceed?" with "Yes" or "No" or "Cancel"</code> <em>(Button text goes into 'it')</em></li>
+                    <li><code>ask "What is your name?"</code> <em>(User input goes into 'it')</em></li>
+                    <li><code>ask "Enter value:" with "Default"</code> <em>(User input or default goes into 'it')</em></li>
+                </ul>
+                 <hr class="my-2 border-black">
+                <p><strong>Element Visibility:</strong></p>
+                <ul>
+                    <li><code>show button "ButtonNameOrID"</code></li>
+                    <li><code>hide field "FieldNameOrID"</code></li>
+                    <li><em>(Applies to buttons and fields on current card or background)</em></li>
+                </ul>
+                 <hr class="my-2 border-black">
+                <p><strong>Comments:</strong></p>
+                <ul>
+                    <li><code>-- This is a comment</code></li>
+                </ul>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button id="btnCloseScriptHelp" class="hc-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Load Stack Modal -->
+    <div id="loadStackModal" class="hc-modal hidden">
+        <div class="hc-modal-content w-full md:w-1/2 lg:w-1/3">
+            <h2 class="text-xl font-bold mb-4">Load Stack</h2>
+            <div id="stackListContainer" class="max-h-60 overflow-y-auto mb-4">
+                <p>Loading stacks...</p>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button id="btnCloseLoadStack" class="hc-button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- General Purpose Modal (for answer/ask) -->
+    <div id="generalModal" class="hc-modal hidden">
+        <div class="hc-modal-content">
+            <h2 id="generalModalTitle" class="text-xl font-bold mb-4">Message</h2>
+            <p id="generalModalMessage" class="mb-4"></p>
+            <input type="text" id="generalModalInput" class="hidden w-full p-2 border border-black mb-4">
+            <div id="generalModalButtons" class="flex justify-end gap-2">
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration
+        // IMPORTANT: Firestore security rules should be configured on the Firebase console
+        // to ensure users can only access their own data (e.g., /artifacts/{appId}/users/{userId}/{...})
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO_PROJECT" }; // Fallback for local dev
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hypercard-simulator-rebuilt'; 
+
+        let app, auth, db;
+        let currentUserId = null;
+        let isAuthReady = false;
+        
+        // Store the 'it' variable for HyperTalk
+        let hyperTalkItVariable = "";
+
+        // --- App State ---
+        let state = {
+            currentStack: null, 
+            currentCardIndex: 0,
+            isEditingBackground: false,
+            selectedElementId: null,
+            isRunMode: true, 
+            draggedElement: null,
+            dragOffsetX: 0,
+            dragOffsetY: 0,
+        };
+
+        // --- DOM Elements ---
+        const cardArea = document.getElementById('card-area');
+        const statusBar = document.getElementById('status-bar');
+        const chkEditBackground = document.getElementById('chkEditBackground');
+        const scriptEditorModal = document.getElementById('scriptEditorModal');
+        const scriptEditorTextarea = document.getElementById('scriptEditorTextarea');
+        const scriptEditorElementName = document.getElementById('scriptEditorElementName');
+        const propertiesPanel = document.getElementById('properties-panel');
+        const propertiesContent = document.getElementById('properties-content');
+        const btnDeleteElement = document.getElementById('btnDeleteElement');
+        const btnRunMode = document.getElementById('btnRunMode');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const appIdDisplay = document.getElementById('appIdDisplay');
+        const loadStackModal = document.getElementById('loadStackModal');
+        const stackListContainer = document.getElementById('stackListContainer');
+        const generalModal = document.getElementById('generalModal');
+        const generalModalTitle = document.getElementById('generalModalTitle');
+        const generalModalMessage = document.getElementById('generalModalMessage');
+        const generalModalInput = document.getElementById('generalModalInput');
+        const generalModalButtons = document.getElementById('generalModalButtons');
+        const btnSaveStackEl = document.getElementById('btnSaveStack'); 
+        const scriptHelpModal = document.getElementById('scriptHelpModal');
+
+
+        // --- Helper Functions for Object Creation ---
+        function createDefaultBackground(id = crypto.randomUUID(), name = "Default Background") {
+            return {
+                id: id,
+                name: name,
+                script: "",
+                elements: [], 
+                backgroundColor: '#F0F0F0', 
+            };
+        }
+
+        function createDefaultCard(id = crypto.randomUUID(), backgroundId, cardNumber = 1) {
+            if (!backgroundId) {
+                console.error("createDefaultCard CRITICAL ERROR: called without a backgroundId!");
+            }
+            return {
+                id: id,
+                name: `Card ${cardNumber}`,
+                script: "",
+                elements: [], 
+                backgroundId: backgroundId,
+                backgroundColor: '#FFFFFF', 
+                isVisible: true, 
+            };
+        }
+
+        // --- Initialization ---
+        async function initializeAppCore() {
+            appIdDisplay.textContent = appId;
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                // setLogLevel('debug'); // Can be enabled for Firebase debugging if needed
+
+                await setPersistence(auth, browserLocalPersistence); 
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        userIdDisplay.textContent = currentUserId;
+                    } else {
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Anonymous sign-in error:", error);
+                            userIdDisplay.textContent = "Error signing in";
+                        }
+                    }
+                    isAuthReady = true;
+                    if (!state.currentStack) { 
+                        createNewStack(); 
+                    }
+                    updateUI();
+                });
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else if (!auth.currentUser) { 
+                    if (!auth.currentUser) await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                userIdDisplay.textContent = "Firebase Init Error";
+                if (!state.currentStack) {
+                    createNewStack(); 
+                }
+                 updateUI(); 
+            }
+            
+            setupEventListeners();
+            updateUI(); 
+        }
+
+
+        // --- Stack Structure ---
+        function createNewStack(name = "Untitled Stack") {
+            const defaultBackgroundId = crypto.randomUUID();
+            const firstCardId = crypto.randomUUID();
+            
+            state.currentStack = {
+                id: null, 
+                name: name,
+                cards: [createDefaultCard(firstCardId, defaultBackgroundId, 1)],
+                backgrounds: [createDefaultBackground(defaultBackgroundId)],
+                defaultCardWidth: 512,
+                defaultCardHeight: 342,
+                nextElementId: 1, 
+            };
+            state.currentCardIndex = 0;
+            state.selectedElementId = null;
+            state.isEditingBackground = false; 
+            chkEditBackground.checked = false;
+            updateUI();
+        }
+
+        // --- Rendering ---
+        function renderApp() {
+            if (!state.currentStack) {
+                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Stack data is missing. Try creating a new stack.</p>';
+                 statusBar.textContent = "Error: No Stack";
+                 updateToolbarAvailability();
+                 return;
+            }
+            if (!Array.isArray(state.currentStack.cards)) {
+                 state.currentStack.cards = []; 
+                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Card data corrupted. Please create a new stack.</p>';
+                 statusBar.textContent = "Error: Card Data Corrupt";
+                 updateToolbarAvailability();
+                 return;
+            }
+             if (!Array.isArray(state.currentStack.backgrounds)) {
+                state.currentStack.backgrounds = []; 
+            }
+
+
+            if (state.currentStack.cards.length === 0) {
+                cardArea.innerHTML = '<p class="p-4 text-center">Stack is empty. Create a new card.</p>';
+                statusBar.textContent = `Stack: ${state.currentStack.name || "Untitled"} (0 cards)`;
+                if (propertiesPanel) propertiesPanel.classList.add('hidden');
+                updateToolbarAvailability(); 
+                return;
+            }
+            renderCurrentCard();
+            updateStatusBar();
+            updateToolbarAvailability();
+            renderPropertiesPanel();
+        }
+
+        function renderCurrentCard() {
+            cardArea.innerHTML = ''; 
+
+            if (!state.currentStack || !Array.isArray(state.currentStack.cards)) {
+                cardArea.innerHTML = '<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Stack data invalid. Cannot render card.</p>';
+                return;
+            }
+            if (state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) {
+                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card index ${state.currentCardIndex} is out of bounds (Total cards: ${state.currentStack.cards.length}).</p>`;
+                 return;
+            }
+
+            const card = state.currentStack.cards[state.currentCardIndex];
+            if (!card || typeof card !== 'object') { 
+                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card data at index ${state.currentCardIndex} is missing or invalid.</p>`;
+                return;
+            }
+            if (!Array.isArray(card.elements)) {
+                card.elements = [];
+            }
+
+            if (!card.backgroundId) {
+                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card "${card.name}" is missing background information.</p>`;
+                return;
+            }
+             if (!Array.isArray(state.currentStack.backgrounds)) {
+                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Background data corrupted.</p>`;
+                return;
+            }
+
+            const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
+            if (!background) {
+                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Background for card "${card.name}" not found.</p>`;
+                 return; 
+            }
+             if (!Array.isArray(background.elements)) {
+                background.elements = [];
+            }
+
+            if (state.isEditingBackground && background) {
+                cardArea.style.backgroundColor = background.backgroundColor || '#F0F0F0';
+            } else if (card) { 
+                cardArea.style.backgroundColor = card.backgroundColor || '#FFFFFF';
+            }
+            
+            let contentRenderedOnCard = false;
+
+            if (background) {
+                background.elements.forEach(element => { 
+                    if (element.isVisible !== false) { 
+                        const elDom = renderElement(element, cardArea, true);
+                        if (elDom) contentRenderedOnCard = true;
+                        if(elDom && state.isEditingBackground) {
+                            elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
+                        } else if (elDom) {
+                            elDom.style.pointerEvents = 'auto'; 
+                        }
+                    }
+                });
+            }  
+
+            card.elements.forEach(element => { 
+                 if (element.isVisible !== false) { 
+                    const elDom = renderElement(element, cardArea, false);
+                    if (elDom) contentRenderedOnCard = true;
+                    if(elDom && !state.isEditingBackground) {
+                        elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
+                    } else if (elDom) {
+                        elDom.style.pointerEvents = 'none'; 
+                    }
+                }
+            });
+
+            if (!contentRenderedOnCard && !state.isEditingBackground) { 
+                const emptyMsg = document.createElement('p');
+                emptyMsg.textContent = '(This card is currently empty)';
+                emptyMsg.style.textAlign = 'center';
+                emptyMsg.style.color = '#888';
+                emptyMsg.style.fontSize = '14px';
+                emptyMsg.style.fontStyle = 'italic';
+                emptyMsg.style.position = 'absolute'; 
+                emptyMsg.style.top = '50%';
+                emptyMsg.style.left = '50%';
+                emptyMsg.style.transform = 'translate(-50%, -50%)'; 
+                emptyMsg.style.width = '100%'; 
+                cardArea.appendChild(emptyMsg);
+            }
+        }
+
+        function renderElement(element, parentDom, isBackgroundElement) {
+            if (element.isVisible === false) { 
+                return null; 
+            }
+
+            const el = document.createElement('div');
+            el.id = `el-${element.id}`;
+            el.className = 'hc-element';
+            if (element.id === state.selectedElementId && (state.isEditingBackground === isBackgroundElement)) {
+                el.classList.add('selected');
+            }
+            
+            element.rect = element.rect || {x:10, y:10, width:100, height:30}; 
+
+            el.style.left = `${element.rect.x}px`; 
+            el.style.top = `${element.rect.y}px`;
+            el.style.width = `${element.rect.width}px`;
+            el.style.height = `${element.rect.height}px`;
+            
+            if (!state.isRunMode) {
+                const tooltip = document.createElement('span');
+                tooltip.className = 'hc-element-tooltip';
+                tooltip.textContent = `${element.type} (ID: ${element.id.substring(0,4)})`;
+                el.appendChild(tooltip);
+            }
+
+            if (element.type === 'button') {
+                el.classList.add('hc-element-button');
+                el.textContent = element.text || "Button";
+                if (element.style) { 
+                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
+                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
+                    if(element.style.color) el.style.color = element.style.color;
+                    if(element.style.backgroundColor) el.style.backgroundColor = element.style.backgroundColor;
+                }
+            } else if (element.type === 'field') {
+                el.classList.add('hc-element-field');
+                el.textContent = element.content || "";
+                if (!state.isRunMode && (state.isEditingBackground === isBackgroundElement)) {
+                    el.contentEditable = "true";
+                    el.addEventListener('blur', (e) => {
+                         if (element.content !== e.target.textContent) {
+                            element.content = e.target.textContent;
+                         }
+                    });
+                } else {
+                    el.contentEditable = "false";
+                }
+                if (element.style) { 
+                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
+                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
+                    if(element.style.color) el.style.color = element.style.color;
+                }
+            }
+            
+            if (state.isRunMode) { 
+                 el.addEventListener('click', (e) => { 
+                    e.stopPropagation();
+                    executeHyperTalk(element.script, { element, isBackgroundElement });
+                 });
+            } else { 
+                el.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    if (state.isEditingBackground === isBackgroundElement) { 
+                        state.selectedElementId = element.id;
+                        state.draggedElement = element;
+                        const rect = el.getBoundingClientRect();
+                        state.dragOffsetX = e.clientX - rect.left;
+                        state.dragOffsetY = e.clientY - rect.top;
+                        renderApp(); 
+                    }
+                });
+                 el.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    if (state.isEditingBackground === isBackgroundElement) {
+                        openScriptEditor(element);
+                    }
+                 });
+            }
+            parentDom.appendChild(el);
+            return el;
+        }
+        
+        function updateStatusBar() {
+            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0) {
+                statusBar.textContent = "No Stack / Empty";
+                return;
+            }
+            const cardCount = state.currentStack.cards.length;
+            const currentCardNum = (state.currentCardIndex >= 0 && state.currentCardIndex < cardCount) ? state.currentCardIndex + 1 : "?";
+
+            let mode = state.isRunMode ? "Run Mode" : "Edit Mode";
+            if (!state.isRunMode) {
+                mode += state.isEditingBackground ? " (Background)" : " (Card)";
+            }
+            const stackName = state.currentStack.name || "Untitled Stack";
+            statusBar.textContent = `Card ${currentCardNum} of ${cardCount} | Stack: ${stackName} | ${mode}`;
+        }
+
+        function updateToolbarAvailability() {
+            const hasStack = !!state.currentStack;
+            const hasCards = hasStack && Array.isArray(state.currentStack.cards) && state.currentStack.cards.length > 0;
+            
+            document.getElementById('btnSaveStack').disabled = !hasStack || !currentUserId || btnSaveStackEl.textContent === "Saving..."; 
+            document.getElementById('btnLoadStack').disabled = !currentUserId; 
+            document.getElementById('btnNewCard').disabled = !hasStack; 
+            document.getElementById('btnDeleteCard').disabled = !hasCards || state.currentStack.cards.length <=1; 
+            document.getElementById('btnPrevCard').disabled = !hasCards || state.currentCardIndex === 0;
+            document.getElementById('btnNextCard').disabled = !hasCards || state.currentCardIndex >= state.currentStack.cards.length - 1;
+            document.getElementById('btnNewButton').disabled = !hasCards || state.isRunMode; 
+            document.getElementById('btnNewField').disabled = !hasCards || state.isRunMode; 
+            document.getElementById('chkEditBackground').disabled = !hasCards || state.isRunMode; 
+        }
+
+        function updateUI() {
+            renderApp(); 
+        }
+
+        // --- Element Manipulation ---
+        function getActiveLayerElements() {
+            if (!state.currentStack) return null; 
+            if (state.isEditingBackground) {
+                 if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
+                const card = state.currentStack.cards[state.currentCardIndex];
+                if (!card || !Array.isArray(state.currentStack.backgrounds)) return null;
+                const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
+                 if (!background) return null;
+                return background.elements || []; 
+            } else {
+                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
+                const card = state.currentStack.cards[state.currentCardIndex];
+                if (!card) return null;
+                return card.elements || []; 
+            }
+        }
+
+        function findElementByNameOrId(nameOrId) {
+            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
+            const currentCard = state.currentStack.cards[state.currentCardIndex];
+            if (!currentCard) return null;
+
+            let foundElement = (currentCard.elements || []).find(el => el.id === nameOrId || el.name === nameOrId);
+            if (foundElement) return foundElement;
+
+            if (currentCard.backgroundId && Array.isArray(state.currentStack.backgrounds)) {
+                const background = state.currentStack.backgrounds.find(bg => bg.id === currentCard.backgroundId);
+                if (background && Array.isArray(background.elements)) {
+                    foundElement = background.elements.find(el => el.id === nameOrId || el.name === nameOrId);
+                    if (foundElement) return foundElement;
+                }
+            }
+            return null;
+        }
+
+
+        function addElement(type) {
+            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0 || state.currentCardIndex === -1) {
+                showAnswerDialog("Please select or create a card first before adding elements.");
+                return;
+            }
+            if (state.isRunMode) {
+                showAnswerDialog("Switch to Edit Mode to add elements.");
+                return;
+            }
+
+            const activeElements = getActiveLayerElements();
+            if (!activeElements) { 
+                showAnswerDialog("Error: Could not find the active layer (card/background) to add the element. Ensure a card is selected and has a background.");
+                return;
+            }
+            
+            const elementName = `${type} ${state.currentStack.nextElementId++}`;
+            const newElement = {
+                id: crypto.randomUUID(),
+                type: type,
+                name: elementName,
+                rect: { x: 50, y: 50, width: (type === 'button' ? 100 : 150), height: (type === 'button' ? 30 : 50) },
+                text: (type === 'button' ? "New Button" : undefined),
+                content: (type === 'field' ? "New Field" : undefined),
+                script: `on mouseUp\n  -- ${type} script for ${elementName}\nend mouseUp`,
+                style: {}, 
+                isVisible: true, 
+            };
+
+            activeElements.push(newElement);
+            state.selectedElementId = newElement.id; 
+            updateUI();
+        }
+        
+        function deleteSelectedElement() {
+            if (!state.selectedElementId || !state.currentStack) return;
+
+            let elementsList;
+            let parentObject; 
+
+            if (state.isEditingBackground) {
+                if (!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
+                const card = state.currentStack.cards[state.currentCardIndex];
+                if (!card || !Array.isArray(state.currentStack.backgrounds)) return;
+                parentObject = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
+                if (parentObject) elementsList = parentObject.elements;
+            } else {
+                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
+                parentObject = state.currentStack.cards[state.currentCardIndex];
+                if (parentObject) elementsList = parentObject.elements;
+            }
+
+            if (elementsList && Array.isArray(elementsList) && parentObject) {
+                const index = elementsList.findIndex(el => el.id === state.selectedElementId);
+                if (index > -1) {
+                    elementsList.splice(index, 1);
+                    state.selectedElementId = null;
+                    updateUI();
+                }
+            }
+        }
+
+
+        // --- Properties Panel ---
+        function renderPropertiesPanel() {
+            if (state.isRunMode || !state.currentStack || !state.currentStack.cards || state.currentStack.cards.length === 0) {
+                propertiesPanel.classList.add('hidden');
+                return;
+            }
+
+            propertiesContent.innerHTML = ''; // Clear previous
+            btnDeleteElement.classList.add('hidden'); // Hide delete button by default
+
+            const currentCardForProps = state.currentStack.cards[state.currentCardIndex];
+            const currentBackgroundForProps = currentCardForProps ? state.currentStack.backgrounds.find(b => b.id === currentCardForProps.backgroundId) : null;
+
+            if (state.selectedElementId) { // Element is selected
+                const elements = getActiveLayerElements();
+                const element = elements ? elements.find(el => el.id === state.selectedElementId) : null;
+
+                if (element) {
+                    propertiesPanel.classList.remove('hidden');
+                    btnDeleteElement.classList.remove('hidden');
+                    let html = `<h3>Element Properties</h3>
+                        <div><label>ID: <input type="text" value="${element.id}" readonly class="bg-gray-100"></label></div>
+                        <div><label>Name: <input type="text" id="propName" value="${element.name || ''}"></label></div>
+                        <div><label>X: <input type="number" id="propX" value="${element.rect?.x || 10}"></label></div>
+                        <div><label>Y: <input type="number" id="propY" value="${element.rect?.y || 10}"></label></div>
+                        <div><label>Width: <input type="number" id="propWidth" value="${element.rect?.width || 100}"></label></div>
+                        <div><label>Height: <input type="number" id="propHeight" value="${element.rect?.height || 30}"></label></div>
+                    `;
+                    if (element.type === 'button') {
+                        html += `<div><label>Text: <input type="text" id="propButtonText" value="${element.text || ''}"></label></div>`;
+                    } else if (element.type === 'field') {
+                        html += `<div><label>Content: <textarea id="propFieldContent">${element.content || ''}</textarea></label></div>`;
+                    }
+                    html += `<h4 class="mt-3 mb-1 font-semibold text-sm">Basic Styling:</h4>
+                             <div><label>Font Size (px): <input type="number" id="propStyleFontSize" value="${element.style?.fontSize || '16'}"></label></div>
+                             <div><label>Text Color: <input type="color" id="propStyleColor" value="${element.style?.color || '#000000'}"></label></div>`;
+                    if (element.type === 'button') {
+                        html += `<div><label>Background Color: <input type="color" id="propStyleBgColor" value="${element.style?.backgroundColor || '#f0f0f0'}"></label></div>`;
+                    }
+                    html += `<button id="btnEditScriptFromProps" class="hc-button w-full mt-3">Edit Script</button>`;
+                    propertiesContent.innerHTML = html;
+                    
+                    element.rect = element.rect || {x:10, y:10, width:100, height:30};
+                    document.getElementById('propName').addEventListener('change', (e) => { element.name = e.target.value; updateUI(); });
+                    document.getElementById('propX').addEventListener('change', (e) => { element.rect.x = parseInt(e.target.value) || 10; updateUI(); });
+                    document.getElementById('propY').addEventListener('change', (e) => { element.rect.y = parseInt(e.target.value) || 10; updateUI(); });
+                    document.getElementById('propWidth').addEventListener('change', (e) => { element.rect.width = parseInt(e.target.value) || 100; updateUI(); });
+                    document.getElementById('propHeight').addEventListener('change', (e) => { element.rect.height = parseInt(e.target.value) || 30; updateUI(); });
+                    if (element.type === 'button') {
+                        document.getElementById('propButtonText').addEventListener('change', (e) => { element.text = e.target.value; updateUI(); });
+                    } else if (element.type === 'field') {
+                        document.getElementById('propFieldContent').addEventListener('change', (e) => { element.content = e.target.value; updateUI(); });
+                    }
+                    element.style = element.style || {}; 
+                    document.getElementById('propStyleFontSize').addEventListener('change', (e) => { element.style.fontSize = parseInt(e.target.value) || 16; updateUI(); });
+                    document.getElementById('propStyleColor').addEventListener('change', (e) => { element.style.color = e.target.value; updateUI(); });
+                    if (element.type === 'button') {
+                        document.getElementById('propStyleBgColor').addEventListener('change', (e) => { element.style.backgroundColor = e.target.value; updateUI(); });
+                    }
+                    document.getElementById('btnEditScriptFromProps').addEventListener('click', () => openScriptEditor(element));
+                } else { 
+                    propertiesPanel.classList.add('hidden');
+                    state.selectedElementId = null; 
+                }
+            } else if (!state.isRunMode && currentCardForProps) { // No element selected, show Card/Background properties
+                propertiesPanel.classList.remove('hidden');
+                let targetObject = state.isEditingBackground ? currentBackgroundForProps : currentCardForProps;
+                let objectType = state.isEditingBackground ? "Background" : "Card";
+
+                if (targetObject) {
+                    let html = `<h3>${objectType} Properties</h3>
+                        <div><label>ID: <input type="text" value="${targetObject.id}" readonly class="bg-gray-100"></label></div>
+                        <div><label>Name: <input type="text" id="propObjectName" value="${targetObject.name || ''}"></label></div>
+                        <div><label>Background Color: <input type="color" id="propObjectBgColor" value="${targetObject.backgroundColor || (objectType === 'Card' ? '#FFFFFF' : '#F0F0F0')}"></label></div>
+                        <button id="btnEditObjectScript" class="hc-button w-full mt-3">Edit ${objectType} Script</button>
+                    `;
+                    propertiesContent.innerHTML = html;
+
+                    document.getElementById('propObjectName').addEventListener('change', (e) => { targetObject.name = e.target.value; updateUI(); });
+                    document.getElementById('propObjectBgColor').addEventListener('change', (e) => { targetObject.backgroundColor = e.target.value; updateUI(); });
+                    document.getElementById('btnEditObjectScript').addEventListener('click', () => openScriptEditor(targetObject));
+                } else {
+                    propertiesContent.innerHTML = `<p>Select an element, or switch layers to edit ${objectType === "Card" ? "Background" : "Card"} properties.</p>`;
+                }
+            } else { // Run mode or no card
+                propertiesPanel.classList.add('hidden');
+            }
+        }
+
+
+        // --- Scripting ---
+        let currentEditingElement = null; 
+
+        function openScriptEditor(objectWithScript) { 
+            if (!objectWithScript) {
+                console.warn("openScriptEditor: No object provided.");
+                return;
+            }
+            currentEditingElement = objectWithScript; 
+            const objectType = objectWithScript.type ? objectWithScript.type : (state.currentStack.cards.includes(objectWithScript) ? "Card" : "Background");
+            scriptEditorElementName.textContent = `${objectWithScript.name || objectType} (ID: ${objectWithScript.id.substring(0,4)})`;
+            scriptEditorTextarea.value = objectWithScript.script || "";
+            scriptEditorModal.classList.remove('hidden');
+            scriptEditorTextarea.focus();
+        }
+
+        function applyScript() {
+            if (currentEditingElement) {
+                currentEditingElement.script = scriptEditorTextarea.value;
+            }
+            closeScriptEditor();
+        }
+
+        function closeScriptEditor() {
+            scriptEditorModal.classList.add('hidden');
+            currentEditingElement = null;
+        }
+
+        function executeHyperTalk(script, context) {
+            if (!script || !state.isRunMode) return;
+            
+            const lines = script.split('\n').map(line => line.trim());
+            let inMouseUpHandler = false; 
+
+            for (const line of lines) {
+                if (line.toLowerCase().startsWith('on mouseup')) {
+                    inMouseUpHandler = true;
+                    continue;
+                }
+                if (line.toLowerCase() === 'end mouseup') {
+                    inMouseUpHandler = false;
+                    continue;
+                }
+
+                if (inMouseUpHandler) {
+                    // Regex for 'go' command. Catches:
+                    //   go next [card]
+                    //   go prev[ious] [card]
+                    //   go first [card]
+                    //   go last [card]
+                    //   go card "Name" / go card id "id"
+                    const goCmd = line.match(/^go\s+(?:to\s+)?((?:next|previous|prev|first|last)(?:\s+card)?|card(?:\s+(?:id\s+|"|')?([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?)?)$/i);
+                    const putCmd = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i); 
+                    const answerCmd = line.match(/^answer\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?(?:\s+or\s+"(.*?)")?(?:\s+or\s+"(.*?)")?)?/i);
+                    const askCmd = line.match(/^ask\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?)?/i);
+                    const showHideCmd = line.match(/^(show|hide)\s+(?:card\s+button|button|card\s+field|field)\s+(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i);
+
+
+                    if (goCmd) {
+                        let commandArgument = goCmd[1].toLowerCase(); 
+                        let cardNameOrIdFromRegex = goCmd[2]; 
+
+                        let actionType;
+                        let specificCardTarget = null;
+
+                        if (commandArgument.startsWith("next")) actionType = "next";
+                        else if (commandArgument.startsWith("prev")) actionType = "previous";
+                        else if (commandArgument.startsWith("first")) actionType = "first";
+                        else if (commandArgument.startsWith("last")) actionType = "last";
+                        else if (commandArgument.startsWith("card") && cardNameOrIdFromRegex) {
+                            actionType = "card_specific";
+                            specificCardTarget = cardNameOrIdFromRegex;
+                        } else if (commandArgument.startsWith("card") && !cardNameOrIdFromRegex) {
+                             showAnswerDialog(`'go to card' needs a card name or ID.`);
+                             return; 
+                        } else {
+                             showAnswerDialog(`Unknown 'go' command structure: ${line}`);
+                             return;
+                        }
+
+                        // Perform navigation
+                        if (actionType === 'next') {
+                            if (state.currentStack.cards && state.currentCardIndex < state.currentStack.cards.length - 1) state.currentCardIndex++;
+                        } else if (actionType === 'previous') {
+                            if (state.currentCardIndex > 0) state.currentCardIndex--;
+                        } else if (actionType === 'first') {
+                            state.currentCardIndex = 0;
+                        } else if (actionType === 'last' && state.currentStack.cards) {
+                            state.currentCardIndex = state.currentStack.cards.length - 1;
+                        } else if (actionType === 'card_specific' && specificCardTarget) {
+                            const foundIndex = state.currentStack.cards.findIndex(c => c.id === specificCardTarget || c.name === specificCardTarget);
+                            if (foundIndex !== -1) state.currentCardIndex = foundIndex;
+                            else {
+                                showAnswerDialog(`Card "${specificCardTarget}" not found.`);
+                            }
+                        }
+                        state.selectedElementId = null; 
+                        updateUI();
+                    } else if (putCmd) {
+                        let valueToPut = putCmd[1];
+                        const targetFieldIdOrName = putCmd[2];
+                        
+                        if (valueToPut.toLowerCase() === 'it') { 
+                            valueToPut = hyperTalkItVariable;
+                        } else if (valueToPut.includes('& it')) { 
+                            valueToPut = valueToPut.replace(/&\s*it\b/gi, hyperTalkItVariable);
+                        } else if (valueToPut.startsWith('"') && valueToPut.endsWith('"')) { 
+                            valueToPut = valueToPut.substring(1, valueToPut.length - 1);
+                        }
+                        
+                        const targetField = findElementByNameOrId(targetFieldIdOrName);
+                        if (targetField && targetField.type === 'field') {
+                            targetField.content = valueToPut;
+                            updateUI(); 
+                        } else {
+                            showAnswerDialog(`Field "${targetFieldIdOrName}" not found to put value.`);
+                        }
+                    } else if (answerCmd) {
+                        const message = answerCmd[1];
+                        const buttons = [answerCmd[2], answerCmd[3], answerCmd[4]].filter(Boolean);
+                        showAnswerDialog(message, buttons.length > 0 ? buttons : ["OK"])
+                            .then(response => { hyperTalkItVariable = response || ""; }); 
+                    } else if (askCmd) {
+                        const question = askCmd[1];
+                        const defaultValue = askCmd[2] || "";
+                        showAskDialog(question, defaultValue)
+                             .then(userInput => {
+                                hyperTalkItVariable = userInput !== null ? userInput : ""; 
+                             });
+                    } else if (showHideCmd) {
+                        const action = showHideCmd[1].toLowerCase(); 
+                        const targetElementNameOrId = showHideCmd[2];
+                        const elementToToggle = findElementByNameOrId(targetElementNameOrId);
+                        if (elementToToggle) {
+                            elementToToggle.isVisible = (action === "show");
+                            updateUI();
+                        } else {
+                            showAnswerDialog(`Element "${targetElementNameOrId}" not found.`);
+                        }
+                    }
+                     else if (line && !line.startsWith('--')) { 
+                        showAnswerDialog(`Unknown command in script: ${line}`);
+                    }
+                }
+            }
+        }
+
+        // --- Dialogs (Answer/Ask) ---
+        let generalModalResolve = null;
+
+        function showAnswerDialog(message, buttons = ["OK"]) {
+            generalModalTitle.textContent = "Alert";
+            generalModalMessage.textContent = message;
+            generalModalInput.classList.add('hidden');
+            generalModalButtons.innerHTML = '';
+            buttons.forEach(btnText => {
+                const button = document.createElement('button');
+                button.className = 'hc-button';
+                button.textContent = btnText;
+                button.onclick = () => {
+                    generalModal.classList.add('hidden');
+                    if(generalModalResolve) generalModalResolve(btnText);
+                };
+                generalModalButtons.appendChild(button);
+            });
+            generalModal.classList.remove('hidden');
+            return new Promise(resolve => { generalModalResolve = resolve; });
+        }
+
+        function showAskDialog(prompt, defaultValue = "") { 
+            generalModalTitle.textContent = "Question";
+            generalModalMessage.textContent = prompt;
+            generalModalInput.classList.remove('hidden');
+            generalModalInput.value = defaultValue;
+            generalModalButtons.innerHTML = '';
+            
+            return new Promise(resolve => {
+                generalModalResolve = resolve; 
+
+                const okButton = document.createElement('button');
+                okButton.className = 'hc-button';
+                okButton.textContent = "OK";
+                okButton.onclick = () => {
+                    generalModal.classList.add('hidden');
+                    resolve(generalModalInput.value);
+                };
+                generalModalButtons.appendChild(okButton);
+
+                const cancelButton = document.createElement('button');
+                cancelButton.className = 'hc-button';
+                cancelButton.textContent = "Cancel";
+                cancelButton.onclick = () => {
+                    generalModal.classList.add('hidden');
+                    resolve(null); 
+                };
+                generalModalButtons.appendChild(cancelButton);
+                
+                generalModal.classList.remove('hidden');
+                generalModalInput.focus();
+            });
+        }
+
+
+        // --- Firebase Operations ---
+        async function saveCurrentStack() {
+            if (!currentUserId || !state.currentStack) {
+                showAnswerDialog("Cannot save: Not signed in or no stack loaded.");
+                return;
+            }
+
+            if ((!state.currentStack.id && state.currentStack.name === "Untitled Stack") || 
+                !state.currentStack.name || state.currentStack.name.trim() === "") {
+                
+                const promptText = (!state.currentStack.id && state.currentStack.name === "Untitled Stack") 
+                                   ? "Enter a name for this new stack:" 
+                                   : "Enter stack name:";
+                const currentNameSuggestion = (state.currentStack.name === "Untitled Stack" && !state.currentStack.id) 
+                                              ? "" 
+                                              : state.currentStack.name || "Untitled Stack";
+                const newName = await showAskDialog(promptText, currentNameSuggestion);
+                
+                if (newName && newName.trim() !== "") {
+                    state.currentStack.name = newName.trim();
+                } else if (!state.currentStack.name || state.currentStack.name.trim() === "") { 
+                    showAnswerDialog("Save cancelled: Stack name cannot be empty.");
+                    updateStatusBar(); 
+                    return;
+                }
+            }
+
+            const stackData = { ...state.currentStack, userId: currentUserId, updatedAt: serverTimestamp() };
+            
+            const originalButtonText = btnSaveStackEl.textContent;
+            btnSaveStackEl.textContent = "Saving...";
+            btnSaveStackEl.disabled = true;
+
+            try {
+                let stackRef;
+                if (state.currentStack.id) { 
+                    stackRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${state.currentStack.id}`);
+                    await setDoc(stackRef, stackData, { merge: true }); 
+                    showAnswerDialog(`Stack "${state.currentStack.name}" updated successfully!`);
+                } else { 
+                    stackData.createdAt = serverTimestamp();
+                    const collectionRef = collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`);
+                    const newDocRef = await addDoc(collectionRef, stackData);
+                    state.currentStack.id = newDocRef.id; 
+                    showAnswerDialog(`Stack "${state.currentStack.name}" saved successfully with ID: ${newDocRef.id}`);
+                }
+            } catch (error) {
+                console.error("Error saving stack to Firestore:", error);
+                let userMessage = "Error saving stack. Please try again.";
+                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to save stack. Check Firestore rules.";
+                else if (error.code === 'unavailable') userMessage = "Error: Network unavailable. Please check your connection and try again.";
+                showAnswerDialog(userMessage);
+            } finally {
+                btnSaveStackEl.textContent = originalButtonText;
+                updateToolbarAvailability(); 
+            }
+            updateUI(); 
+        }
+
+        async function listAndLoadStacks() {
+            if (!currentUserId) {
+                 showAnswerDialog("Cannot load stacks: Not signed in.");
+                return;
+            }
+            loadStackModal.classList.remove('hidden');
+            stackListContainer.innerHTML = '<p>Loading your stacks...</p>';
+
+            try {
+                const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    stackListContainer.innerHTML = '<p>No stacks found. Create and save one first!</p>';
+                    return;
+                }
+                
+                stackListContainer.innerHTML = ''; 
+                querySnapshot.forEach((docSnap) => {
+                    const stack = docSnap.data();
+                    const listItem = document.createElement('div');
+                    listItem.className = 'stack-list-item p-2 border-b cursor-pointer hover:bg-gray-100';
+                    listItem.textContent = `${stack.name || 'Untitled Stack'} (ID: ${docSnap.id.substring(0,8)}...)`;
+                    listItem.onclick = async () => {
+                        listItem.textContent = "Loading selected stack..."; 
+                        listItem.classList.add("loading");
+                        try {
+                            await loadStackFromFirestore(docSnap.id);
+                        } catch (loadError) {
+                             // Error already shown by loadStackFromFirestore
+                        } finally {
+                            loadStackModal.classList.add('hidden'); 
+                        }
+                    };
+                    stackListContainer.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error("Error fetching stacks from Firestore:", error);
+                 let userMessage = "Error fetching stack list.";
+                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to list stacks.";
+                stackListContainer.innerHTML = `<p class="text-red-500">${userMessage}</p>`;
+            }
+        }
+        
+        async function loadStackFromFirestore(stackId) {
+            if (!currentUserId) {
+                throw new Error("Not signed in, cannot load stack."); 
+            }
+            
+            const defaultRect = { x: 10, y: 10, width: 100, height: 30 };
+
+            try {
+                const stackDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${stackId}`);
+                const docSnap = await getDoc(stackDocRef);
+
+                if (docSnap.exists()) {
+                    const loadedStackData = docSnap.data();
+                    state.currentStack = { id: docSnap.id, ...loadedStackData };
+                    
+                    state.currentStack.cards = Array.isArray(state.currentStack.cards) ? state.currentStack.cards : [];
+                    state.currentStack.backgrounds = Array.isArray(state.currentStack.backgrounds) ? state.currentStack.backgrounds : [];
+                    state.currentStack.nextElementId = state.currentStack.nextElementId || 1;
+
+                    let defaultBgForLoadId;
+                    if (state.currentStack.backgrounds.length === 0) {
+                        const newDefaultBg = createDefaultBackground();
+                        state.currentStack.backgrounds.push(newDefaultBg);
+                        defaultBgForLoadId = newDefaultBg.id;
+                    } else {
+                        state.currentStack.backgrounds.forEach(bg => {
+                            bg.elements = Array.isArray(bg.elements) ? bg.elements : [];
+                            bg.elements.forEach(el => { 
+                                if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
+                                    el.rect = { ...defaultRect };
+                                }
+                                el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
+                            });
+                        });
+                        defaultBgForLoadId = state.currentStack.backgrounds[0].id; 
+                    }
+
+                    state.currentStack.cards.forEach((card, index) => {
+                        card.elements = Array.isArray(card.elements) ? card.elements : [];
+                        card.elements.forEach(el => { 
+                            if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
+                                el.rect = { ...defaultRect };
+                            }
+                             el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
+                        });
+                        card.backgroundColor = card.backgroundColor || '#FFFFFF';
+                        const bgExists = state.currentStack.backgrounds.some(bg => bg.id === card.backgroundId);
+                        if (!card.backgroundId || !bgExists) {
+                            card.backgroundId = defaultBgForLoadId;
+                        }
+                    });                    
+
+                    state.currentCardIndex = state.currentStack.cards.length > 0 ? 0 : -1; 
+                    state.selectedElementId = null;
+                    state.isEditingBackground = false;
+                    chkEditBackground.checked = false;
+                    showAnswerDialog(`Stack "${state.currentStack.name || 'Untitled Stack'}" loaded.`);
+                    updateUI();
+                } else {
+                    showAnswerDialog("Error: Stack not found.");
+                     throw new Error(`Stack not found: ${stackId}`);
+                }
+            } catch (error) {
+                console.error("Error loading stack from Firestore (detailed):", error);
+                let userMessage = "Error loading stack data.";
+                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to load stack.";
+                else if (error.message.includes("Stack not found")) userMessage = error.message; 
+                showAnswerDialog(userMessage);
+                throw error; 
+            }
+        }
+
+         // --- Demo Stack Content ---
+        function createDemoStack() {
+            showAnswerDialog("This will replace the current stack with demo content. Proceed?", ["Create Demo", "Cancel"])
+                .then(response => {
+                    if (response === "Create Demo") {
+                        createNewStack("Demo Stack"); // Creates a basic stack with 1 card and 1 bg
+
+                        const bgId = state.currentStack.backgrounds[0].id;
+
+                        // Card 1: Navigation and Simple Put
+                        state.currentStack.cards[0].name = "Welcome Card";
+                        state.currentStack.cards[0].elements.push({
+                            id: crypto.randomUUID(), type: 'field', name: 'WelcomeField',
+                            rect: { x: 20, y: 20, width: 472, height: 60 },
+                            content: "Welcome to the HyperCard Demo!\nClick the button below to go to the next card.",
+                            isVisible: true, script: ""
+                        });
+                        state.currentStack.cards[0].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'NextButton1',
+                            rect: { x: 200, y: 100, width: 112, height: 30 },
+                            text: "Next Card", isVisible: true,
+                            script: "on mouseUp\n  go to next card\nend mouseUp"
+                        });
+
+                        // Card 2: Dialogs and Text Manipulation
+                        const card2Id = crypto.randomUUID();
+                        state.currentStack.cards.push(createDefaultCard(card2Id, bgId, 2));
+                        state.currentStack.cards[1].name = "Interaction Card";
+                        state.currentStack.cards[1].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'AnswerButton',
+                            rect: { x: 50, y: 50, width: 120, height: 30 },
+                            text: "Test Answer", isVisible: true,
+                            script: 'on mouseUp\n  answer "This is an answer dialog." with "OK" or "Great!"\n  put it into field "ResultField"\nend mouseUp'
+                        });
+                        state.currentStack.cards[1].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'AskButton',
+                            rect: { x: 50, y: 100, width: 120, height: 30 },
+                            text: "Test Ask", isVisible: true,
+                            script: 'on mouseUp\n  ask "What is your favorite color?" with "Blue"\n  put "You chose: " & it into field "ResultField"\nend mouseUp'
+                        });
+                        state.currentStack.cards[1].elements.push({
+                            id: crypto.randomUUID(), type: 'field', name: 'ResultField',
+                            rect: { x: 200, y: 50, width: 262, height: 80 },
+                            content: "Results will appear here...", isVisible: true, script: ""
+                        });
+                         state.currentStack.cards[1].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'NextButton2',
+                            rect: { x: 200, y: 150, width: 112, height: 30 },
+                            text: "Next Card", isVisible: true,
+                            script: "on mouseUp\n  go to next card\nend mouseUp"
+                        });
+
+
+                        // Card 3: Show/Hide and Navigation
+                        const card3Id = crypto.randomUUID();
+                        state.currentStack.cards.push(createDefaultCard(card3Id, bgId, 3));
+                        state.currentStack.cards[2].name = "Visibility Card";
+                        const targetElementId = crypto.randomUUID(); // Generate a unique ID for the field to be shown/hidden
+                        state.currentStack.cards[2].elements.push({
+                            id: targetElementId, type: 'field', name: 'SecretField', // Give it a name for easier scripting if preferred, but ID is more robust
+                            rect: { x: 150, y: 100, width: 200, height: 50 },
+                            content: "This is a secret field!", isVisible: true, script: ""
+                        });
+                        state.currentStack.cards[2].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'ShowButton',
+                            rect: { x: 50, y: 50, width: 120, height: 30 },
+                            text: "Show Secret", isVisible: true,
+                            script: `on mouseUp\n  show field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
+                        });
+                        state.currentStack.cards[2].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'HideButton',
+                            rect: { x: 200, y: 50, width: 120, height: 30 },
+                            text: "Hide Secret", isVisible: true,
+                            script: `on mouseUp\n  hide field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
+                        });
+                        state.currentStack.cards[2].elements.push({
+                            id: crypto.randomUUID(), type: 'button', name: 'BackButton',
+                            rect: { x: 150, y: 180, width: 200, height: 30 },
+                            text: "Go to Welcome Card", isVisible: true,
+                            script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp'
+                        });
+                        
+                        state.currentCardIndex = 0; // Start at the first demo card
+                        updateUI();
+                        showAnswerDialog("Demo stack created with 3 cards!");
+                    }
+                });
+        }
+
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            document.getElementById('btnNewStack').addEventListener('click', () => {
+                showAnswerDialog("Create new stack? Unsaved changes to the current stack will be lost.", ["Create New", "Cancel"])
+                    .then(response => { if (response === "Create New") createNewStack(); });
+            });
+            btnSaveStackEl.addEventListener('click', saveCurrentStack); 
+            document.getElementById('btnLoadStack').addEventListener('click', listAndLoadStacks);
+            document.getElementById('btnCreateDemo').addEventListener('click', createDemoStack);
+            
+            document.getElementById('btnNewCard').addEventListener('click', () => {
+                if (!state.currentStack) {
+                    showAnswerDialog("No stack loaded. Please create or load a stack first.");
+                    return;
+                }
+                if (!Array.isArray(state.currentStack.cards)) state.currentStack.cards = [];
+                if (!Array.isArray(state.currentStack.backgrounds)) state.currentStack.backgrounds = [];
+
+                let backgroundToUseId;
+                if (state.currentStack.backgrounds.length === 0) {
+                    const newBg = createDefaultBackground(); 
+                    state.currentStack.backgrounds.push(newBg);
+                    backgroundToUseId = newBg.id;
+                } else {
+                    if (!state.currentStack.backgrounds[0] || !state.currentStack.backgrounds[0].id) {
+                        const newBg = createDefaultBackground();
+                        state.currentStack.backgrounds[0] = newBg; 
+                        backgroundToUseId = newBg.id;
+                    } else {
+                        backgroundToUseId = state.currentStack.backgrounds[0].id; 
+                    }
+                }
+                
+                const newCardNumber = state.currentStack.cards.length + 1;
+                const newCard = createDefaultCard(crypto.randomUUID(), backgroundToUseId, newCardNumber); 
+                state.currentStack.cards.push(newCard);
+                state.currentCardIndex = state.currentStack.cards.length - 1; 
+                state.selectedElementId = null; 
+                updateUI();
+            });
+
+            document.getElementById('btnDeleteCard').addEventListener('click', () => {
+                if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length <= 1) {
+                    showAnswerDialog("Cannot delete the last card in a stack.");
+                    return;
+                }
+                showAnswerDialog("Delete current card?", ["Delete", "Cancel"])
+                    .then(response => {
+                        if (response === "Delete") {
+                            state.currentStack.cards.splice(state.currentCardIndex, 1);
+                            if (state.currentCardIndex >= state.currentStack.cards.length) {
+                                state.currentCardIndex = state.currentStack.cards.length - 1;
+                            }
+                            if (state.currentStack.cards.length === 0) state.currentCardIndex = -1; 
+                            else if (state.currentCardIndex < 0 && state.currentStack.cards.length > 0) state.currentCardIndex = 0; 
+                            state.selectedElementId = null;
+                            updateUI();
+                        }
+                    });
+
+            });
+            document.getElementById('btnPrevCard').addEventListener('click', () => {
+                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex > 0) {
+                    state.currentCardIndex--;
+                    state.selectedElementId = null;
+                    updateUI();
+                }
+            });
+            document.getElementById('btnNextCard').addEventListener('click', () => {
+                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex < state.currentStack.cards.length - 1) {
+                    state.currentCardIndex++;
+                     state.selectedElementId = null;
+                    updateUI();
+                }
+            });
+
+            document.getElementById('btnNewButton').addEventListener('click', () => addElement('button'));
+            document.getElementById('btnNewField').addEventListener('click', () => addElement('field'));
+            
+            chkEditBackground.addEventListener('change', (e) => {
+                if (state.isRunMode) {
+                    e.target.checked = state.isEditingBackground; 
+                    showAnswerDialog("Switch to Edit Mode to change layers.");
+                    return;
+                }
+                state.isEditingBackground = e.target.checked;
+                state.selectedElementId = null; 
+                updateUI();
+            });
+
+            btnRunMode.addEventListener('click', () => {
+                state.isRunMode = !state.isRunMode;
+                state.selectedElementId = null; 
+                btnRunMode.textContent = state.isRunMode ? "Edit Mode" : "Run Mode";
+                btnRunMode.classList.toggle('bg-green-300', state.isRunMode);
+                btnRunMode.classList.toggle('bg-yellow-300', !state.isRunMode);
+                if (state.isRunMode) {
+                    propertiesPanel.classList.add('hidden');
+                } else {
+                    // Update properties panel for current card/bg if no element selected
+                    renderPropertiesPanel(); 
+                }
+                updateUI(); 
+            });
+
+            document.getElementById('btnApplyScript').addEventListener('click', applyScript);
+            document.getElementById('btnCloseScriptEditor').addEventListener('click', closeScriptEditor);
+            document.getElementById('btnScriptHelp').addEventListener('click', () => scriptHelpModal.classList.remove('hidden'));
+            document.getElementById('btnCloseScriptHelp').addEventListener('click', () => scriptHelpModal.classList.add('hidden'));
+
+
+            if (btnDeleteElement) {
+                btnDeleteElement.addEventListener('click', () => {
+                    if (state.selectedElementId) {
+                         showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
+                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
+                    } else {
+                        showAnswerDialog("No element selected to delete.");
+                    }
+                });
+            }
+            
+            document.getElementById('btnCloseLoadStack').addEventListener('click', () => {
+                loadStackModal.classList.add('hidden');
+            });
+
+            cardArea.addEventListener('mousedown', (e) => { // Clear selection if clicking on card area itself (not an element)
+                 if (!state.isRunMode && e.target === cardArea) {
+                    state.selectedElementId = null;
+                    renderPropertiesPanel(); // To show card/bg properties
+                 }
+            });
+
+            cardArea.addEventListener('mousemove', (e) => {
+                if (!state.draggedElement || state.isRunMode) return;
+                e.preventDefault();
+                const parentRect = cardArea.getBoundingClientRect();
+                let newX = e.clientX - parentRect.left - state.dragOffsetX;
+                let newY = e.clientY - parentRect.top - state.dragOffsetY;
+                state.draggedElement.rect.x = newX;
+                state.draggedElement.rect.y = newY;
+                const elDom = document.getElementById(`el-${state.draggedElement.id}`);
+                if (elDom) {
+                    elDom.style.left = `${newX}px`;
+                    elDom.style.top = `${newY}px`;
+                }
+                if (!propertiesPanel.classList.contains('hidden') && state.selectedElementId === state.draggedElement.id) {
+                    const propXInput = document.getElementById('propX');
+                    const propYInput = document.getElementById('propY');
+                    if (propXInput) propXInput.value = Math.round(newX);
+                    if (propYInput) propYInput.value = Math.round(newY);
+                }
+            });
+
+            document.addEventListener('mouseup', (e) => { 
+                if (state.draggedElement) {
+                    state.draggedElement.rect.x = Math.round(state.draggedElement.rect.x);
+                    state.draggedElement.rect.y = Math.round(state.draggedElement.rect.y);
+                    state.draggedElement = null;
+                    renderPropertiesPanel(); 
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; 
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (!state.isRunMode && state.selectedElementId) {
+                        e.preventDefault();
+                        showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
+                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
+                    }
+                }
+            });
+        }
+
+        // --- Start the app ---
+        initializeAppCore();
+
+    </script>
+</body>
+</html>
