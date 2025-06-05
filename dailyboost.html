@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feel Better Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Full viewport height */
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+        .container {
+            background-color: #ffffff; /* White background for the card */
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            padding: 2.5rem; /* p-10 */
+            max-width: 90%; /* max-w-lg for responsiveness */
+            width: 100%; /* Full width within max-width */
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* space-y-6 equivalent */
+        }
+        .button {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600; /* font-semibold */
+            cursor: pointer;
+            transition: background-color 0.3s ease; /* Smooth hover effect */
+            border: none;
+            width: 100%; /* Full width button */
+        }
+        .button:hover:not(:disabled) {
+            background-color: #4338ca; /* indigo-700 on hover */
+        }
+        .button:disabled {
+            background-color: #9ca3af; /* gray-400 when disabled */
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #ef4444; /* red-500 for error messages */
+        }
+        .affirmation-box {
+            background-color: #e0f2fe; /* light blue */
+            border-radius: 0.75rem; /* rounded-lg */
+            padding: 1.5rem; /* p-6 */
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 500; /* font-medium */
+            color: #1e40af; /* dark blue */
+            min-height: 80px; /* Ensures consistent height to prevent CLS */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.4; /* Improve readability */
+        }
+        .score-box {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap; /* Allows items to wrap on smaller screens */
+            gap: 1rem; /* Space between score items */
+        }
+        .score-item {
+            background-color: #ecfdf5; /* light green */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            flex: 1; /* Allows items to grow and shrink */
+            min-width: 150px; /* Minimum width for each item */
+            text-align: center;
+        }
+        .score-item p {
+            color: #6b7280; /* gray-600 */
+        }
+        .score-item span {
+            font-size: 1.5rem; /* Larger font for the actual score */
+            font-weight: 700;
+            color: #047857; /* dark green */
+            display: block; /* Makes the span a block element for margin */
+            margin-top: 0.5rem;
+        }
+        .user-id-display {
+            font-size: 0.875rem; /* text-sm */
+            color: #6b7280; /* gray-500 */
+            word-break: break-all; /* Ensures long IDs don't overflow */
+            margin-top: 1rem;
+        }
+        .language-switcher {
+            display: flex;
+            justify-content: flex-end; /* Align to the right */
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .lang-button {
+            background-color: #e2e8f0; /* slate-200 */
+            color: #475569; /* slate-700 */
+            padding: 0.375rem 0.75rem; /* py-1.5 px-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border: none;
+        }
+        .lang-button.active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+        }
+        .lang-button:hover:not(.active) {
+            background-color: #cbd5e1; /* slate-300 */
+        }
+
+        /* Time Limit Slider Styles */
+        .time-limit-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            align-items: center;
+        }
+        .time-limit-container label {
+            font-size: 0.9rem;
+            color: #475569;
+            font-weight: 500;
+        }
+        .time-limit-container input[type="range"] {
+            width: 80%; /* Adjust width for slider */
+            -webkit-appearance: none;
+            height: 8px;
+            background: #d1d5db; /* gray-300 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        .time-limit-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5; /* indigo-600 */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .time-limit-container input[type="range"]::-webkit-slider-thumb:hover {
+            background: #4338ca; /* indigo-700 */
+        }
+        .time-limit-container #timeLimitDisplay {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e40af; /* dark blue */
+        }
+
+        /* Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden; /* Hidden by default */
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .modal-buttons button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease;
+        }
+        .modal-confirm {
+            background-color: #dc2626; /* red-600 */
+            color: white;
+        }
+        .modal-confirm:hover {
+            background-color: #b91c1c; /* red-700 */
+        }
+        .modal-cancel {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #374151; /* gray-700 */
+        }
+        .modal-cancel:hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="language-switcher">
+            <button id="langEn" class="lang-button active" data-lang="en">EN</button>
+            <button id="langFr" class="lang-button" data-lang="fr">FR</button>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800" data-translate-key="title">Your Daily Boost</h1>
+        <div id="affirmationBox" class="affirmation-box" data-translate-key="initialAffirmation">Click the button to get a boost!</div>
+        <div class="score-box">
+            <div class="score-item">
+                <p data-translate-key="lastNumberLabel">Last Number</p>
+                <span id="lastNumberDisplay">-</span>
+            </div>
+            <div class="score-item">
+                <p data-translate-key="highScoreLabel">High Score</p>
+                <span id="highScoreDisplay">-</span>
+            </div>
+        </div>
+        <button id="boostButton" class="button" data-translate-key="getBoostButton">Get Your Boost!</button>
+        <button id="resetButton" class="button !bg-red-500 hover:!bg-red-600" data-translate-key="resetButton">Reset My Score</button>
+
+        <div id="limitSliderContainer" class="time-limit-container">
+            <label for="timeLimitSlider" data-translate-key="timeLimitLabel">Next boost interval (seconds):</label>
+            <input type="range" id="timeLimitSlider" min="0" max="600" value="60">
+            <span id="timeLimitDisplay"></span>
+        </div>
+
+        <div id="message" class="message text-red-500"></div>
+        <div id="countdown" class="text-gray-700 text-lg"></div>
+        <div id="userIdDisplay" class="user-id-display" data-translate-key="userIdPrefix"></div>
+    </div>
+
+    <!-- Confirmation Modal HTML -->
+    <div id="confirmationModal" class="modal-overlay">
+        <div class="modal-content">
+            <p id="modalMessage" class="text-lg font-semibold text-gray-800" data-translate-key="resetConfirmation"></p>
+            <div class="modal-buttons">
+                <button id="modalConfirm" class="modal-confirm" data-translate-key="modalConfirm"></button>
+                <button id="modalCancel" class="modal-cancel" data-translate-key="modalCancel"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import necessary Firebase modules from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment for Firebase configuration
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Firebase App and Service instances
+        let app;
+        let db;
+        let auth;
+        let userId = null; // Stores the current user's ID
+
+        // Get references to DOM elements
+        const affirmationBox = document.getElementById('affirmationBox');
+        const lastNumberDisplay = document.getElementById('lastNumberDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const boostButton = document.getElementById('boostButton');
+        const resetButton = document.getElementById('resetButton');
+        const messageDiv = document.getElementById('message');
+        const countdownDiv = document.getElementById('countdown');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+
+        // Language switcher elements
+        const langEnButton = document.getElementById('langEn');
+        const langFrButton = document.getElementById('langFr');
+
+        // Confirmation Modal elements
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmButton = document.getElementById('modalConfirm');
+        const modalCancelButton = document.getElementById('modalCancel');
+
+        // Time limit slider elements
+        const timeLimitSlider = document.getElementById('timeLimitSlider');
+        const timeLimitDisplay = document.getElementById('timeLimitDisplay');
+
+        // Game State variables
+        let lastClickTime = 0; // Timestamp (milliseconds) of the last successful click
+        let highScore = 0; // The user's highest score
+        let countdownInterval = null; // Interval ID for the countdown timer
+        let currentLanguage = 'en'; // Default language
+        let hourlyLimitSeconds = 60; // Default to 60 seconds (1 minute) for the booster interval
+
+        // Translations object for all UI text
+        const translations = {
+            en: {
+                title: "Your Daily Boost",
+                initialAffirmation: "Click the button to get a boost!",
+                lastNumberLabel: "Last Number",
+                highScoreLabel: "High Score",
+                getBoostButton: "Get Your Boost!",
+                resetButton: "Reset My Score",
+                secretPatternActivated: "Secret pattern activated! You got a bonus!",
+                hourlyLimitMessage: "You can only click once per interval! Please wait.",
+                generatingBoost: "Generating your boost...",
+                newHighScore: "New high score! 🎉",
+                firebaseSetupError: "Error: Firebase setup incomplete. Please check console for details.",
+                firebaseConnectionError: (msg) => `Error: Could not connect to the game. (${msg})`,
+                noUserSignedIn: "No user signed in.",
+                signingIn: "Signing in...",
+                signingInPleaseWait: "Please wait, signing in to the game...",
+                userDataLoadError: "Error loading your game data. Please refresh.",
+                scoreSaveError: (msg) => `Error saving your score. (${msg})`,
+                countdownPrefix: "Next boost in: ",
+                countdownUnits: { m: 'm', s: 's' }, // Removed 'h' as max is 10 mins
+                userIdPrefix: "Your User ID: ",
+                resetConfirmation: "Are you sure you want to reset your score and click time? This cannot be undone.",
+                modalConfirm: "Yes, Reset",
+                modalCancel: "No, Cancel",
+                resetSuccess: "Score and time reset!",
+                resetCancelled: "Reset cancelled.",
+                timeLimitLabel: "Next boost interval (seconds):",
+                secondsUnit: "s",
+                numberPrefix: "Your number: ",
+                affirmations: [
+                    "You've got this!",
+                    "A warm sunny day on the beach awaits you.",
+                    "The smell of rain on concrete... refreshing.",
+                    "You are doing great, keep going!",
+                    "Believe in yourself, you are stronger than you think.",
+                    "Every small step forward is progress.",
+                    "You are capable of amazing things.",
+                    "Today is a new opportunity to shine.",
+                    "Your persistence will pay off.",
+                    "Embrace the journey, enjoy the moment.",
+                    "You are worthy of all good things.",
+                    "Let your unique light shine brightly.",
+                    "Challenges are opportunities for growth.",
+                    "You are surrounded by good energy.",
+                    "Find joy in the little things.",
+                    "Keep an open mind and a kind heart.",
+                    "Your kindness makes a difference.",
+                    "Take a deep breath and find your calm.",
+                    "You are exactly where you need to be.",
+                    "The world is better with you in it."
+                ]
+            },
+            fr: {
+                title: "Votre Dose Quotidienne",
+                initialAffirmation: "Cliquez sur le bouton pour obtenir un coup de pouce !",
+                lastNumberLabel: "Dernier Nombre",
+                highScoreLabel: "Meilleur Score",
+                getBoostButton: "Obtenez Votre Coup de Pouce !",
+                resetButton: "Réinitialiser Mon Score",
+                secretPatternActivated: "Motif secret activé ! Vous avez obtenu un bonus !",
+                hourlyLimitMessage: "Vous ne pouvez cliquer qu'une fois par intervalle ! Veuillez patienter.",
+                generatingBoost: "Génération de votre coup de pouce...",
+                newHighScore: "Nouveau meilleur score ! 🎉",
+                firebaseSetupError: "Erreur : Configuration Firebase incomplète. Veuillez consulter la console pour les détails.",
+                firebaseConnectionError: (msg) => `Erreur : Impossible de se connecter au jeu. (${msg})`,
+                noUserSignedIn: "Aucun utilisateur connecté.",
+                signingIn: "Connexion en cours...",
+                signingInPleaseWait: "Veuillez patienter, connexion au jeu en cours...",
+                userDataLoadError: "Erreur lors du chargement de vos données de jeu. Veuillez rafraîchir.",
+                scoreSaveError: (msg) => `Erreur lors de l'enregistrement de votre score. (${msg})`,
+                countdownPrefix: "Prochain coup de pouce dans : ",
+                countdownUnits: { m: 'min', s: 's' }, // French units
+                userIdPrefix: "Votre ID Utilisateur : ",
+                resetConfirmation: "Êtes-vous sûr de vouloir réinitialiser votre score et l'heure du dernier clic ? Cette action est irréversible.",
+                modalConfirm: "Oui, Réinitialiser",
+                modalCancel: "Non, Annuler",
+                resetSuccess: "Score et heure réinitialisés !",
+                resetCancelled: "Réinitialisation annulée.",
+                timeLimitLabel: "Intervalle du prochain coup de pouce (secondes) :",
+                secondsUnit: "s",
+                numberPrefix: "Votre numéro : ",
+                affirmations: [
+                    "Vous y arriverez !",
+                    "Une chaude journée ensoleillée à la plage vous attend.",
+                    "L'odeur de la pluie sur le béton... rafraîchissant.",
+                    "Vous faites un excellent travail, continuez comme ça !",
+                    "Croyez en vous, vous êtes plus fort que vous ne le pensez.",
+                    "Chaque petit pas en avant est un progrès.",
+                    "Vous êtes capable de choses incroyables.",
+                    "Aujourd'hui est une nouvelle opportunité de briller.",
+                    "Votre persévérance portera ses fruits.",
+                    "Embrassez le voyage, profitez du moment.",
+                    "Vous êtes digne de toutes les bonnes choses.",
+                    "Laissez votre lumière unique briller de mille feux.",
+                    "Les défis sont des opportunités de croissance.",
+                    "Vous êtes entouré de bonne énergie.",
+                    "Trouvez la joie dans les petites choses.",
+                    "Gardez l'esprit ouvert et un cœur bienveillant.",
+                    "Votre gentillesse fait la différence.",
+                    "Prenez une grande respiration et trouvez votre calme.",
+                    "Vous êtes exactement là où vous devez être.",
+                    "Le monde est meilleur avec vous."
+                ]
+            }
+        };
+
+        /**
+         * Updates the text content of all translatable elements based on the currentLanguage.
+         */
+        function updateTextContent() {
+            const elements = document.querySelectorAll('[data-translate-key]');
+            elements.forEach(el => {
+                const key = el.getAttribute('data-translate-key');
+                if (translations[currentLanguage] && translations[currentLanguage][key]) {
+                    if (typeof translations[currentLanguage][key] === 'function') {
+                        // For functions, just set a placeholder or initial value,
+                        // dynamic content is handled where the message is set.
+                        el.textContent = "";
+                    } else if (key === 'userIdPrefix') {
+                        el.textContent = translations[currentLanguage][key] + (userId || '');
+                    }
+                    else {
+                        el.textContent = translations[currentLanguage][key];
+                    }
+                }
+            });
+
+            // Handle specific dynamic updates
+            // Initial affirmation box
+            if (!affirmationBox.textContent || affirmationBox.textContent.includes("Click the button") || affirmationBox.textContent.includes("Cliquez sur le bouton")) {
+                 affirmationBox.textContent = translations[currentLanguage].initialAffirmation;
+            }
+            // Time limit display
+            timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`;
+
+            // Update language button active state
+            langEnButton.classList.toggle('active', currentLanguage === 'en');
+            langFrButton.classList.toggle('active', currentLanguage === 'fr');
+
+            // Re-update countdown text to ensure language is applied correctly
+            updateButtonState();
+        }
+
+        /**
+         * Initializes Firebase app, authentication, and Firestore.
+         * Handles signing in the user (either with a custom token or anonymously).
+         * Sets up an authentication state change listener to load user data.
+         */
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing. Cannot initialize Firebase.");
+                    messageDiv.textContent = translations[currentLanguage].firebaseSetupError;
+                    boostButton.disabled = true;
+                    resetButton.disabled = true;
+                    timeLimitSlider.disabled = true;
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = `${translations[currentLanguage].userIdPrefix}${userId}`;
+                        console.log("Authenticated with userId:", userId);
+                        loadUserData();
+                        startCountdownTimer();
+                    } else {
+                        console.log("No user signed in.");
+                        userId = null;
+                        userIdDisplay.textContent = translations[currentLanguage].signingIn;
+                        messageDiv.textContent = translations[currentLanguage].signingInPleaseWait;
+                        boostButton.disabled = true;
+                        resetButton.disabled = true;
+                        timeLimitSlider.disabled = true;
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase or during authentication:", error);
+                messageDiv.textContent = translations[currentLanguage].firebaseConnectionError(error.message);
+                boostButton.disabled = true;
+                resetButton.disabled = true;
+                timeLimitSlider.disabled = true;
+            }
+        }
+
+        /**
+         * Returns the Firestore document reference for the current user's game data.
+         * @returns {object|null} Firestore DocumentReference or null if db/userId not ready.
+         */
+        function getUserDocumentRef() {
+            if (!db || !userId) {
+                console.error("Firestore DB or userId not available for document reference.");
+                return null;
+            }
+            return doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'userStats');
+        }
+
+        /**
+         * Loads user game data from Firestore and sets up a real-time listener (onSnapshot).
+         * Updates local state (highScore, lastClickTime, lastNumber, hourlyLimitSeconds) and UI.
+         */
+        async function loadUserData() {
+            const userDocRef = getUserDocumentRef();
+            if (!userDocRef) return;
+
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    highScore = data.highScore || 0;
+                    lastClickTime = data.lastClickTime || 0;
+                    hourlyLimitSeconds = data.hourlyLimitSeconds !== undefined ? data.hourlyLimitSeconds : 60; // Load or default
+
+                    highScoreDisplay.textContent = highScore;
+                    lastNumberDisplay.textContent = data.lastNumber !== undefined ? data.lastNumber : '-';
+                    timeLimitSlider.value = hourlyLimitSeconds; // Update slider position
+                    timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`; // Update slider display
+
+                    console.log("User data loaded/updated:", data);
+                    updateButtonState();
+                    boostButton.disabled = false;
+                    resetButton.disabled = false;
+                    timeLimitSlider.disabled = false; // Enable slider
+                } else {
+                    console.log("No user data found, initializing new record.");
+                    setDoc(userDocRef, {
+                        highScore: 0,
+                        lastClickTime: 0,
+                        lastNumber: '-',
+                        hourlyLimitSeconds: 60 // Initialize default value
+                    }).catch(e => console.error("Error setting initial user data:", e));
+                    updateButtonState();
+                    boostButton.disabled = false;
+                    resetButton.disabled = false;
+                    timeLimitSlider.disabled = false;
+                }
+            }, (error) => {
+                console.error("Error listening to user data:", error);
+                messageDiv.textContent = translations[currentLanguage].userDataLoadError;
+                boostButton.disabled = true;
+                resetButton.disabled = true;
+                timeLimitSlider.disabled = true;
+            });
+        }
+
+        /**
+         * Saves the current game state (high score, last click time, last number, hourlyLimitSeconds) to Firestore.
+         * @param {number} newHighScore The high score to save.
+         * @param {number|string} currentNumber The last number generated.
+         */
+        async function saveUserData(newHighScore, currentNumber) {
+            const userDocRef = getUserDocumentRef();
+            if (!userDocRef) return;
+
+            try {
+                await setDoc(userDocRef, {
+                    highScore: newHighScore,
+                    lastClickTime: Date.now(),
+                    lastNumber: currentNumber,
+                    hourlyLimitSeconds: hourlyLimitSeconds // Save current setting
+                }, { merge: true }); // Use merge to avoid overwriting other fields if they exist
+                console.log("User data saved successfully.");
+                lastClickTime = Date.now();
+                updateButtonState();
+            } catch (error) {
+                console.error("Error saving user data:", error);
+                messageDiv.textContent = translations[currentLanguage].scoreSaveError(error.message);
+            }
+        }
+
+        /**
+         * Resets the user's high score and last click time in Firestore.
+         */
+        async function resetGameData() {
+            const userDocRef = getUserDocumentRef();
+            if (!userDocRef) {
+                messageDiv.textContent = translations[currentLanguage].firebaseConnectionError("User not authenticated.");
+                return;
+            }
+
+            modalMessage.textContent = translations[currentLanguage].resetConfirmation;
+            confirmationModal.classList.add('show');
+
+            return new Promise((resolve) => {
+                const handleConfirm = async () => {
+                    confirmationModal.classList.remove('show');
+                    try {
+                        await setDoc(userDocRef, {
+                            highScore: 0,
+                            lastClickTime: 0,
+                            lastNumber: '-'
+                        }, { merge: true }); // Merge to preserve hourlyLimitSeconds
+
+                        highScore = 0;
+                        lastClickTime = 0;
+                        lastNumberDisplay.textContent = '-';
+                        highScoreDisplay.textContent = '0';
+                        updateButtonState();
+                        messageDiv.textContent = translations[currentLanguage].resetSuccess;
+                        console.log("Game data reset successfully.");
+                        resolve(true);
+                    } catch (error) {
+                        console.error("Error resetting game data:", error);
+                        messageDiv.textContent = translations[currentLanguage].scoreSaveError(error.message);
+                        resolve(false);
+                    }
+                    modalConfirmButton.removeEventListener('click', handleConfirm);
+                    modalCancelButton.removeEventListener('click', handleCancel);
+                };
+
+                const handleCancel = () => {
+                    confirmationModal.classList.remove('show');
+                    messageDiv.textContent = translations[currentLanguage].resetCancelled;
+                    console.log("Game reset cancelled.");
+                    resolve(false);
+                    modalConfirmButton.removeEventListener('click', handleConfirm);
+                    modalCancelButton.removeEventListener('click', handleCancel);
+                };
+
+                modalConfirmButton.addEventListener('click', handleConfirm);
+                modalCancelButton.addEventListener('click', handleCancel);
+            });
+        }
+
+        /**
+         * Generates a random number between 1 and 1000 with a bias towards lower numbers.
+         * Higher numbers (closer to 1000) are less probable.
+         * Includes a simulated "secret pattern" bonus.
+         * @returns {number} The generated game number.
+         */
+        function generateWeightedRandomNumber() {
+            const skewFactor = 3;
+            let random = Math.random();
+            let skewedRandom = Math.pow(random, skewFactor);
+            let number = Math.floor(skewedRandom * 999) + 1;
+
+            const now = new Date();
+            if (now.getMinutes() === 0 && now.getSeconds() >= 0 && now.getSeconds() <= 5) {
+                const bonus = Math.floor(Math.random() * 50) + 50;
+                number = Math.min(1000, number + bonus);
+                console.log("Secret pattern activated! Bonus applied.");
+                messageDiv.textContent = translations[currentLanguage].secretPatternActivated;
+            } else {
+                 messageDiv.textContent = "";
+            }
+            return number;
+        }
+
+        /**
+         * Returns a random affirmation from the predefined list for the current language.
+         * @returns {string} A positive affirmation.
+         */
+        function getRandomAffirmation() {
+            const affirmations = translations[currentLanguage].affirmations;
+            const randomIndex = Math.floor(Math.random() * affirmations.length);
+            return affirmations[randomIndex];
+        }
+
+        /**
+         * Updates the state of the boost button (enabled/disabled) and the countdown timer display.
+         */
+        function updateButtonState() {
+            const now = Date.now();
+            const limitMillis = hourlyLimitSeconds * 1000;
+            const timeElapsed = now - lastClickTime;
+            const canClick = timeElapsed >= limitMillis;
+
+            if (hourlyLimitSeconds === 0) { // If limit is 0, always allow click
+                boostButton.disabled = false;
+                boostButton.textContent = translations[currentLanguage].getBoostButton;
+                countdownDiv.textContent = "";
+                return;
+            }
+
+            if (canClick) {
+                boostButton.disabled = false;
+                boostButton.textContent = translations[currentLanguage].getBoostButton;
+                countdownDiv.textContent = "";
+            } else {
+                boostButton.disabled = true;
+                const timeRemaining = limitMillis - timeElapsed;
+                const minutes = Math.floor(timeRemaining / (1000 * 60));
+                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+                const units = translations[currentLanguage].countdownUnits;
+                countdownDiv.textContent = `${translations[currentLanguage].countdownPrefix}${minutes}${units.m} ${seconds}${units.s}`;
+            }
+        }
+
+        /**
+         * Starts or restarts the interval for updating the countdown timer.
+         */
+        function startCountdownTimer() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            countdownInterval = setInterval(updateButtonState, 1000);
+        }
+
+        // --- Event Listeners ---
+
+        // Boost Button Listener
+        boostButton.addEventListener('click', async () => {
+            if (boostButton.disabled) {
+                messageDiv.textContent = translations[currentLanguage].hourlyLimitMessage;
+                return;
+            }
+
+            const now = Date.now();
+            const limitMillis = hourlyLimitSeconds * 1000;
+            const timeElapsed = now - lastClickTime;
+
+            if (hourlyLimitSeconds !== 0 && timeElapsed < limitMillis) {
+                messageDiv.textContent = translations[currentLanguage].hourlyLimitMessage;
+                updateButtonState();
+                return;
+            }
+
+            messageDiv.textContent = translations[currentLanguage].generatingBoost;
+            boostButton.disabled = true;
+
+            const affirmation = getRandomAffirmation();
+            const newNumber = generateWeightedRandomNumber();
+
+            // Use the dedicated numberPrefix for display
+            affirmationBox.textContent = `${affirmation} ${translations[currentLanguage].numberPrefix}${newNumber}`;
+            lastNumberDisplay.textContent = newNumber;
+
+            let updatedHighScore = highScore;
+            if (newNumber > highScore) {
+                updatedHighScore = newNumber;
+                highScoreDisplay.textContent = updatedHighScore;
+                messageDiv.textContent = translations[currentLanguage].newHighScore;
+            } else {
+                messageDiv.textContent = "";
+            }
+
+            await saveUserData(updatedHighScore, newNumber);
+            updateButtonState();
+
+            console.log(`Boost clicked. Number: ${newNumber}, High Score: ${updatedHighScore}`);
+        });
+
+        // Reset Button Listener
+        resetButton.addEventListener('click', resetGameData);
+
+        // Language Switcher Listeners
+        langEnButton.addEventListener('click', () => {
+            currentLanguage = 'en';
+            updateTextContent();
+        });
+
+        langFrButton.addEventListener('click', () => {
+            currentLanguage = 'fr';
+            updateTextContent();
+        });
+
+        // Time Limit Slider Listener
+        timeLimitSlider.addEventListener('input', async () => {
+            hourlyLimitSeconds = parseInt(timeLimitSlider.value);
+            timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`;
+            await saveUserData(highScore, lastNumberDisplay.textContent === '-' ? '' : parseInt(lastNumberDisplay.textContent)); // Save the new limit setting
+            updateButtonState(); // Immediately reflect new limit on countdown
+        });
+
+
+        // --- Initial Load Action ---
+        window.onload = () => {
+            initializeFirebase();
+            updateTextContent();
+        };
+    </script>
+</body>
+</html>
