@@ -1,0 +1,2164 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptography App with JSON Export</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom styles for focus rings and transitions */
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.45); /* Equivalent to focus:ring-indigo-500 */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 md:p-10 w-full max-w-3xl border border-gray-200">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-gray-800 mb-8">
+            Comprehensive Cryptography App
+        </h1>
+
+        <div class="mb-6">
+            <label for="inputText" class="block text-gray-700 text-sm font-medium mb-2">
+                Input Text:
+            </label>
+            <textarea
+                id="inputText"
+                rows="6"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 resize-y"
+                placeholder="Enter text to encrypt or decrypt..."
+            ></textarea>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-medium mb-2">
+                Operation:
+            </label>
+            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                <label class="inline-flex items-center">
+                    <input type="radio" name="operation" value="encrypt" class="form-radio h-5 w-5 text-blue-600" checked>
+                    <span class="ml-2 text-gray-700">Encrypt</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="operation" value="decrypt" class="form-radio h-5 w-5 text-blue-600">
+                    <span class="ml-2 text-gray-700">Decrypt</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label for="algorithmSelect" class="block text-gray-700 text-sm font-medium mb-2">
+                Algorithm:
+            </label>
+            <select
+                id="algorithmSelect"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+            >
+                <option value="caesar">Caesar Cipher</option>
+                <option value="vigenere">Vigenere Cipher</option>
+                <option value="rot13">ROT13 Cipher</option>
+                <option value="atbash">Atbash Cipher</option>
+                <option value="reverse">Reverse Cipher</option>
+                <option value="simpleSubstitution">Simple Substitution Cipher</option>
+                <option value="keyword">Keyword Cipher</option>
+                <option value="railFence">Rail Fence Cipher</option>
+                <option value="playfair">Playfair Cipher</option>
+                <option value="affine">Affine Cipher</option>
+                <option value="baconian">Baconian Cipher</option>
+                <option value="gronsfeld">Gronsfeld Cipher</option>
+                <option value="polybius">Polybius Square Cipher</option>
+                <option value="columnarTransposition">Columnar Transposition Cipher</option>
+                <option value="autokey">Autokey Cipher</option>
+                <option value="beaufort">Beaufort Cipher</option>
+                <option value="porta">Porta Cipher</option>
+                <option value="hill">Hill Cipher</option>
+                <option value="fourSquare">Four-Square Cipher</option>
+                <option value="adfgvx">ADFGVX Cipher</option>
+                <option value="runningKey">Running Key Cipher</option>
+                <option value="homophonic">Homophonic Substitution Cipher</option>
+            </select>
+        </div>
+
+        <div id="parametersContainer" class="mb-6">
+            <label for="parametersInput" class="block text-gray-700 text-sm font-medium mb-2">
+                Parameter:
+            </label>
+            <input
+                type="text"
+                id="parametersInput"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                placeholder="Enter parameter (e.g., shift, key, alphabet)"
+            />
+            <p id="parameterHint" class="text-xs text-gray-500 mt-1">
+                (Hint will appear here based on selected algorithm)
+            </p>
+            <button
+                id="prefillButton"
+                class="mt-2 px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300"
+            >
+                Prefill Parameter
+            </button>
+        </div>
+
+        <div id="descriptionSection" class="bg-blue-50 p-4 rounded-lg border border-blue-200 text-gray-700 text-sm mb-6">
+            <p id="cipherDescription">
+                Select an algorithm to see its description.
+            </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+            <button
+                id="processButton"
+                class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
+            >
+                Process
+            </button>
+            <button
+                id="clearButton"
+                class="w-full sm:w-auto px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
+            >
+                Clear
+            </button>
+            <button
+                id="exportButton"
+                class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105"
+            >
+                Export as JSON
+            </button>
+        </div>
+
+        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline ml-2" id="errorText"></span>
+        </div>
+
+        <div class="mt-6">
+            <label for="outputText" class="block text-gray-700 text-sm font-medium mb-2">
+                Output Text:
+            </label>
+            <textarea
+                id="outputText"
+                rows="6"
+                class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none resize-y"
+                readonly
+            ></textarea>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const inputText = document.getElementById('inputText');
+        const operationRadios = document.querySelectorAll('input[name="operation"]');
+        const algorithmSelect = document.getElementById('algorithmSelect');
+        const parametersContainer = document.getElementById('parametersContainer');
+        const parametersInput = document.getElementById('parametersInput');
+        const parameterHint = document.getElementById('parameterHint');
+        const prefillButton = document.getElementById('prefillButton');
+        const cipherDescription = document.getElementById('cipherDescription');
+        const processButton = document.getElementById('processButton');
+        const clearButton = document.getElementById('clearButton');
+        const exportButton = document.getElementById('exportButton'); // New export button
+        const outputText = document.getElementById('outputText');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const COPRIME_TO_26 = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25];
+
+        // Baconian Cipher mapping (A-Z to 5-bit A/B sequences)
+        const BACONIAN_MAP = {
+            'A': 'AAAAA', 'B': 'AAAAB', 'C': 'AAABA', 'D': 'AAABB', 'E': 'AABAA',
+            'F': 'AABAB', 'G': 'AABBA', 'H': 'AABBB', 'I': 'ABAAA', 'J': 'ABAAB', // J is often treated as I
+            'K': 'ABABA', 'L': 'ABABB', 'M': 'ABBAA', 'N': 'ABBAB', 'O': 'ABBBA',
+            'P': 'ABBBB', 'Q': 'BAAAA', 'R': 'BAAAB', 'S': 'BAABA', 'T': 'BAABB',
+            'U': 'BABAA', 'V': 'BABAB', 'W': 'BABBA', 'X': 'BABBB', 'Y': 'BBAAA',
+            'Z': 'BBAAB'
+        };
+        // Reverse Baconian Map for decryption
+        const REVERSE_BACONIAN_MAP = Object.fromEntries(
+            Object.entries(BACONIAN_MAP).map(([key, value]) => [value, key])
+        );
+
+        // Porta Cipher Table (fixed reciprocal alphabets)
+        const PORTA_TABLE = {
+            'A': 'NOPQRSTUVWXYZABCDEFGHIJKLM',
+            'B': 'NOPQRSTUVWXYZABCDEFGHIJKLM',
+            'C': 'OPQRSTUVWXYZABCDEFGHIJKLMN',
+            'D': 'OPQRSTUVWXYZABCDEFGHIJKLMN',
+            'E': 'PQRSTUVWXYZABCDEFGHIJKLMNO',
+            'F': 'PQRSTUVWXYZABCDEFGHIJKLMNO',
+            'G': 'QRSTUVWXYZABCDEFGHIJKLMNPQ',
+            'H': 'QRSTUVWXYZABCDEFGHIJKLMNPQ',
+            'I': 'RSTUVWXYZABCDEFGHIJKLMNPQR',
+            'J': 'RSTUVWXYZABCDEFGHIJKLMNPQR',
+            'K': 'STUVWXYZABCDEFGHIJKLMNPQRS',
+            'L': 'STUVWXYZABCDEFGHIJKLMNPQRS',
+            'M': 'TUVWXYZABCDEFGHIJKLMNPQRST',
+            'N': 'TUVWXYZABCDEFGHIJKLMNPQRST'
+        };
+
+        // ADFGVX Square (fixed for this cipher)
+        const ADFGVX_SQUARE_KEY_CHARS = 'PHQGMEAYLNOCABTSIFXWVUDZKBRCJ'; // 36 unique chars (A-Z, 0-9)
+        const ADFGVX_SQUARE_COORDS = 'ADFGVX';
+
+        // Homophonic Cipher Mapping (simplified for demonstration)
+        // More common letters have more homophones.
+        const HOMOPHONE_MAP_ENCRYPT = {
+            'A': ['01', '02'], 'B': ['03'], 'C': ['04'], 'D': ['05'], 'E': ['06', '07', '08', '09', '10'],
+            'F': ['11'], 'G': ['12'], 'H': ['13'], 'I': ['14', '15'], 'J': ['16'], 'K': ['17'],
+            'L': ['18'], 'M': ['19'], 'N': ['20', '21'], 'O': ['22', '23'], 'P': ['24'], 'Q': ['25'],
+            'R': ['26', '27'], 'S': ['28', '29'], 'T': ['30', '31', '32'], 'U': ['33'], 'V': ['34'],
+            'W': ['35'], 'X': ['36'], 'Y': ['37'], 'Z': ['38']
+        };
+        const HOMOPHONE_MAP_DECRYPT = {};
+        for (const letter in HOMOPHONE_MAP_ENCRYPT) {
+            HOMOPHONE_MAP_ENCRYPT[letter].forEach(code => {
+                HOMOPHONE_MAP_DECRYPT[code] = letter;
+            });
+        }
+
+
+        // Cipher Descriptions
+        const CIPHER_DESCRIPTIONS = {
+            'caesar': "One of the earliest and simplest ciphers, attributed to Julius Caesar. It's a substitution cipher where each letter in the plaintext is replaced by a letter some fixed number of positions down the alphabet. The 'shift' is the secret key, making it easy to implement but also easy to break.",
+            'vigenere': "A polyalphabetic substitution cipher invented by Giovan Battista Bellaso, though often misattributed to Blaise de Vigenère. It uses a keyword to determine multiple Caesar shifts, making it significantly more secure than a simple Caesar cipher by obscuring letter frequencies. Each letter of the plaintext is shifted by a different amount determined by the corresponding letter of the keyword.",
+            'rot13': "A specific case of the Caesar cipher where the shift is 13. It's primarily used for obscuring text in online forums, not for serious encryption, as it offers no real security. The beauty of ROT13 is that applying it twice returns the original text.",
+            'atbash': "An ancient Hebrew cipher that dates back to biblical times. It's a simple monoalphabetic substitution cipher where the first letter of the alphabet is replaced by the last, the second by the second to last, and so on. Like ROT13, it's its own inverse and offers very little security.",
+            'reverse': "A basic transposition cipher where the order of the plaintext letters is simply reversed. While extremely easy to implement, it provides minimal security and is mostly used for recreational purposes or as a component in more complex ciphers. It does not use a key.",
+            'simpleSubstitution': "This is a broad category of ciphers where each letter of the plaintext is replaced by a different, fixed letter of the ciphertext alphabet. It's a monoalphabetic cipher, meaning the substitution is constant throughout the message. The key is a complete scrambled alphabet, making it more secure than Caesar but still vulnerable to frequency analysis.",
+            'keyword': "A type of monoalphabetic substitution cipher where the substitution alphabet is generated from a keyword. The unique letters of the keyword come first, followed by the remaining letters of the standard alphabet in their usual order. This makes generating a substitution alphabet easier than a completely random one.",
+            'railFence': "A transposition cipher that gets its name from the way the plaintext is written out. Letters are written downwards and diagonally on successive 'rails' of an imaginary fence. The ciphertext is then read off row by row, effectively scrambling the order of the letters. The number of rails is the key.",
+            'playfair': "The first literal digraphic cipher, invented by Charles Wheatstone in 1854 but named after Lord Playfair. It encrypts pairs of letters (digraphs) instead of single letters, making frequency analysis more difficult. A 5x5 key square, generated from a keyword, is used for substitution rules based on the letters' positions in the square.",
+            'affine': "A type of monoalphabetic substitution cipher that uses a mathematical function for encryption and decryption. Each letter is assigned a numerical value (A=0, B=1, ...), and the ciphertext is derived using the formula $C = (aP + b) \pmod{26}$, where 'a' and 'b' are the keys. For decryption, 'a' must be coprime to 26.",
+            'baconian': "Invented by Francis Bacon in the 17th century, this cipher is a method of steganography rather than traditional cryptography. Each letter of the plaintext is encoded as a unique sequence of five 'A's and 'B's. It's often used to hide secret messages within seemingly innocent text by varying the font or style of letters.",
+            'gronsfeld': "Similar to the Vigenere cipher, but instead of an alphabetic key, it uses a numerical key. Each digit in the key represents a shift amount for the corresponding plaintext letter. This makes it a polyalphabetic substitution cipher that is still vulnerable to attacks if the key is short.",
+            'polybius': "An ancient cipher invented by the Greek historian Polybius. It maps each letter of the alphabet to a pair of numbers representing its row and column in a 5x5 grid (often combining I/J). It's primarily used as a component in more complex ciphers rather than as a standalone encryption method.",
+            'columnarTransposition': "A classical transposition cipher that rearranges the letters of the plaintext without changing them. The plaintext is written into a grid row by row, and then the columns are reordered based on a keyword. The ciphertext is then read column by column according to the sorted keyword.",
+            'autokey': "An improvement over the Vigenere cipher, where the key stream is generated from an initial keyword followed by the plaintext itself. This makes the key stream much longer and less repetitive than a repeating Vigenere key, increasing its security against frequency analysis.",
+            'beaufort': "A reciprocal polyalphabetic substitution cipher, meaning the same algorithm is used for both encryption and decryption. It's similar to the Vigenere cipher but uses a different mathematical operation for shifting. It was invented by Sir Francis Beaufort.",
+            'porta': "Another polyalphabetic substitution cipher, invented by Giovanni Battista della Porta. It uses a fixed set of 13 reciprocal alphabets. The key letter determines which of these alphabets is used for substitution, and like Beaufort, it is reciprocal, so encryption and decryption use the same process.",
+            'hill': "Invented by Lester S. Hill in 1929, this is a polygraphic substitution cipher based on linear algebra. It encrypts blocks of letters using matrix multiplication with a numerical key. Its strength comes from obscuring letter frequencies and relationships between pairs or triplets of letters, making it much harder to break than earlier ciphers.",
+            'fourSquare': "An extension of the Playfair cipher, the Four-Square cipher was designed to be more secure by using four 5x5 key squares instead of one. It encrypts digraphs (pairs of letters) by looking up the first letter in one square and the second in another, then finding their corresponding ciphertext letters in two other squares. This increases its resistance to frequency analysis.",
+            'adfgvx': "A highly complex cipher used by the German army during World War I, invented by Colonel Fritz Nebel. It combines a polybius square substitution with a columnar transposition. The name comes from the six possible coordinates used for the ciphertext letters (A, D, F, G, V, X). It was considered very strong for its time and challenging to break.",
+            'runningKey': "Also known as a stream cipher when using a truly random key, this polyalphabetic cipher uses a very long, non-repeating key (often derived from a book or text). Each plaintext letter is shifted by a corresponding key letter. If the key is genuinely random and used only once (a One-Time Pad), it is theoretically unbreakable, but practical implementation is difficult.",
+            'homophonic': "A substitution cipher designed to defeat frequency analysis, a common cryptanalysis technique. Instead of a one-to-one mapping, common plaintext letters are assigned multiple ciphertext symbols (homophones). This spreads out the frequency of common letters across various symbols, making it harder to identify patterns and deduce the original message."
+        };
+
+        /**
+         * Displays an error message to the user.
+         * @param {string} message - The error message to display.
+         */
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        /**
+         * Hides the error message.
+         */
+        function hideError() {
+            errorMessage.classList.add('hidden');
+            errorText.textContent = '';
+        }
+
+        /**
+         * Helper function to normalize text to uppercase and remove non-alphabetic characters.
+         * @param {string} text - The input text.
+         * @returns {string} Normalized text.
+         */
+        function normalizeText(text) {
+            return text.toUpperCase().replace(/[^A-Z]/g, '');
+        }
+
+        /**
+         * Calculates the modular multiplicative inverse of 'a' modulo 'm'.
+         * Used for Affine cipher decryption.
+         * @param {number} a - The number.
+         * @param {number} m - The modulus.
+         * @returns {number} The modular inverse, or -1 if it doesn't exist.
+         */
+        function modInverse(a, m) {
+            for (let x = 1; x < m; x++) {
+                if (((a % m) * (x % m)) % m === 1) {
+                    return x;
+                }
+            }
+            return -1; // Inverse does not exist
+        }
+
+        /* --- Existing Ciphers (functions remain the same) --- */
+
+        /**
+         * Encrypts text using the Caesar cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {number} shift - The shift value.
+         * @returns {string} The encrypted text.
+         */
+        function encryptCaesar(text, shift) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if (char >= 65 && char <= 90) { // Uppercase letters (A-Z)
+                    result += String.fromCharCode(((char - 65 + shift) % 26) + 65);
+                } else if (char >= 97 && char <= 122) { // Lowercase letters (a-z)
+                    result += String.fromCharCode(((char - 97 + shift) % 26) + 97);
+                } else {
+                    result += text[i]; // Non-alphabetic characters remain unchanged
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using the Caesar cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {number} shift - The shift value.
+         * @returns {string} The decrypted text.
+         */
+        function decryptCaesar(text, shift) {
+            return encryptCaesar(text, (26 - (shift % 26)) % 26);
+        }
+
+        /**
+         * Encrypts text using the Vigenere cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The key word.
+         * @returns {string} The encrypted text.
+         */
+        function encryptVigenere(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) return '';
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let keyChar = cleanKey.charCodeAt(keyIndex % cleanKey.length);
+                    let shift = keyChar - 65;
+                    result += String.fromCharCode(((char - base + shift) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using the Vigenere cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key - The key word.
+         * @returns {string} The decrypted text.
+         */
+        function decryptVigenere(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) return '';
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let keyChar = cleanKey.charCodeAt(keyIndex % cleanKey.length);
+                    let shift = keyChar - 65;
+                    result += String.fromCharCode(((char - base - shift + 26) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts/Decrypts text using ROT13 cipher.
+         * @param {string} text - The text to process.
+         * @returns {string} The processed text.
+         */
+        function rot13(text) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if (char >= 65 && char <= 90) { // Uppercase letters
+                    result += String.fromCharCode(((char - 65 + 13) % 26) + 65);
+                } else if (char >= 97 && char <= 122) { // Lowercase letters
+                    result += String.fromCharCode(((char - 97 + 13) % 26) + 97);
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts/Decrypts text using Atbash cipher.
+         * @param {string} text - The text to process.
+         * @returns {string} The processed text.
+         */
+        function atbash(text) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if (char >= 65 && char <= 90) { // Uppercase letters
+                    result += String.fromCharCode(90 - (char - 65));
+                } else if (char >= 97 && char <= 122) { // Lowercase letters
+                    result += String.fromCharCode(122 - (char - 97));
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts/Decrypts text by reversing it.
+         * @param {string} text - The text to process.
+         * @returns {string} The reversed text.
+         */
+        function reverseCipher(text) {
+            return text.split('').reverse().join('');
+        }
+
+        /**
+         * Generates a substitution map from a given alphabet.
+         * @param {string} subAlphabet - The 26-character unique substitution alphabet.
+         * @returns {Object} An object mapping original chars to substituted chars.
+         */
+        function createSubstitutionMap(subAlphabet) {
+            const map = {};
+            for (let i = 0; i < ALPHABET.length; i++) {
+                map[ALPHABET[i]] = subAlphabet[i];
+            }
+            return map;
+        }
+
+        /**
+         * Generates a reverse substitution map.
+         * @param {string} subAlphabet - The 26-character unique substitution alphabet.
+         * @returns {Object} An object mapping substituted chars back to original chars.
+         */
+        function createReverseSubstitutionMap(subAlphabet) {
+            const map = {};
+            for (let i = 0; i < ALPHABET.length; i++) {
+                map[subAlphabet[i]] = ALPHABET[i];
+            }
+            return map;
+        }
+
+        /**
+         * Processes text using a simple substitution cipher.
+         * @param {string} text - The text to process.
+         * @param {Object} map - The substitution map.
+         * @returns {string} The processed text.
+         */
+        function processSimpleSubstitution(text, map) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                let upperChar = char.toUpperCase();
+                if (map[upperChar]) {
+                    result += (char === upperChar) ? map[upperChar] : map[upperChar].toLowerCase();
+                } else {
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Simple Substitution Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} subAlphabet - The 26-character unique substitution alphabet.
+         * @returns {string} The encrypted text.
+         */
+        function encryptSimpleSubstitution(text, subAlphabet) {
+            const map = createSubstitutionMap(subAlphabet);
+            return processSimpleSubstitution(text, map);
+        }
+
+        /**
+         * Decrypts text using Simple Substitution Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} subAlphabet - The 26-character unique substitution alphabet.
+         * @returns {string} The decrypted text.
+         */
+        function decryptSimpleSubstitution(text, subAlphabet) {
+            const reverseMap = createReverseSubstitutionMap(subAlphabet);
+            return processSimpleSubstitution(text, reverseMap);
+        }
+
+        /**
+         * Generates the keyword alphabet.
+         * @param {string} keyword - The keyword.
+         * @returns {string} The 26-character unique keyword alphabet.
+         */
+        function generateKeywordAlphabet(keyword) {
+            const cleanKeyword = normalizeText(keyword);
+            let uniqueChars = '';
+            for (let i = 0; i < cleanKeyword.length; i++) {
+                if (!uniqueChars.includes(cleanKeyword[i])) {
+                    uniqueChars += cleanKeyword[i];
+                }
+            }
+            let remainingChars = '';
+            for (let i = 0; i < ALPHABET.length; i++) {
+                if (!uniqueChars.includes(ALPHABET[i])) {
+                    remainingChars += ALPHABET[i];
+                }
+            }
+            return uniqueChars + remainingChars;
+        }
+
+        /**
+         * Encrypts text using Keyword Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} keyword - The keyword.
+         * @returns {string} The encrypted text.
+         */
+        function encryptKeyword(text, keyword) {
+            const keywordAlphabet = generateKeywordAlphabet(keyword);
+            const map = createSubstitutionMap(keywordAlphabet);
+            return processSimpleSubstitution(text, map);
+        }
+
+        /**
+         * Decrypts text using Keyword Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} keyword - The keyword.
+         * @returns {string} The decrypted text.
+         */
+        function decryptKeyword(text, keyword) {
+            const keywordAlphabet = generateKeywordAlphabet(keyword);
+            const reverseMap = createReverseSubstitutionMap(keywordAlphabet);
+            return processSimpleSubstitution(text, reverseMap);
+        }
+
+        /**
+         * Encrypts text using Rail Fence Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {number} rails - The number of rails.
+         * @returns {string} The encrypted text.
+         */
+        function encryptRailFence(text, rails) {
+            if (rails <= 1 || text.length <= 1) return text;
+
+            const fence = Array.from({ length: rails }, () => []);
+            let rail = 0;
+            let direction = 1; // 1 for down, -1 for up
+
+            for (let i = 0; i < text.length; i++) {
+                fence[rail].push(text[i]);
+                rail += direction;
+                if (rail === rails - 1 || rail === 0) {
+                    direction *= -1;
+                }
+            }
+            return fence.map(r => r.join('')).join('');
+        }
+
+        /**
+         * Decrypts text using Rail Fence Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {number} rails - The number of rails.
+         * @returns {string} The decrypted text.
+         */
+        function decryptRailFence(text, rails) {
+            if (rails <= 1 || text.length <= 1) return text;
+
+            const fence = Array.from({ length: rails }, () => []);
+            const textLength = text.length;
+            const railLengths = Array(rails).fill(0);
+
+            // First, determine the length of each rail
+            let rail = 0;
+            let direction = 1;
+            for (let i = 0; i < textLength; i++) {
+                railLengths[rail]++;
+                rail += direction;
+                if (rail === rails - 1 || rail === 0) {
+                    direction *= -1;
+                }
+            }
+
+            // Fill the fence with characters from the ciphertext
+            let charIndex = 0;
+            for (let i = 0; i < rails; i++) {
+                for (let j = 0; j < railLengths[i]; j++) {
+                    fence[i].push(text[charIndex++]);
+                }
+            }
+
+            // Reconstruct the plaintext by reading in zigzag
+            let result = '';
+            rail = 0;
+            direction = 1;
+            const railPointers = Array(rails).fill(0); // To keep track of current char in each rail
+
+            for (let i = 0; i < textLength; i++) {
+                result += fence[rail][railPointers[rail]++];
+                rail += direction;
+                if (rail === rails - 1 || rail === 0) {
+                    direction *= -1;
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Generates the Playfair 5x5 key square.
+         * Treats 'J' as 'I'.
+         * @param {string} key - The keyword.
+         * @returns {string[][]} The 5x5 key square.
+         */
+        function generatePlayfairSquare(key) {
+            let cleanKey = (key + ALPHABET).toUpperCase().replace(/J/g, 'I');
+            let square = [];
+            let seen = new Set();
+            let count = 0;
+
+            for (let i = 0; i < cleanKey.length; i++) {
+                const char = cleanKey[i];
+                if (char >= 'A' && char <= 'Z' && !seen.has(char)) {
+                    square.push(char);
+                    seen.add(char);
+                    count++;
+                    if (count === 25) break;
+                }
+            }
+
+            const matrix = [];
+            for (let i = 0; i < 5; i++) {
+                matrix.push(square.slice(i * 5, (i + 1) * 5));
+            }
+            return matrix;
+        }
+
+        /**
+         * Finds the position (row, col) of a character in the Playfair square.
+         * @param {string} char - The character to find.
+         * @param {string[][]} square - The Playfair key square.
+         * @returns {number[]} [row, col] or null if not found.
+         */
+        function findCharPosition(char, square) {
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    if (square[r][c] === char) {
+                        return [r, c];
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Encrypts text using Playfair Cipher.
+         * Handles 'J' as 'I', adds 'X' for double letters and odd length.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The keyword.
+         * @returns {string} The encrypted text.
+         */
+        function encryptPlayfair(text, key) {
+            const square = generatePlayfairSquare(key);
+            let cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+            let processedText = '';
+
+            // Prepare digraphs: handle double letters and odd length
+            for (let i = 0; i < cleanText.length; i++) {
+                processedText += cleanText[i];
+                if (i + 1 < cleanText.length) {
+                    if (cleanText[i] === cleanText[i + 1]) {
+                        processedText += 'X'; // Add filler for double letters
+                    }
+                }
+            }
+            if (processedText.length % 2 !== 0) {
+                processedText += 'X'; // Add filler for odd length
+            }
+
+            let result = '';
+            for (let i = 0; i < processedText.length; i += 2) {
+                const char1 = processedText[i];
+                const char2 = processedText[i + 1];
+
+                const [r1, c1] = findCharPosition(char1, square);
+                const [r2, c2] = findCharPosition(char2, square);
+
+                if (r1 === r2) { // Same row
+                    result += square[r1][(c1 + 1) % 5];
+                    result += square[r2][(c2 + 1) % 5];
+                } else if (c1 === c2) { // Same column
+                    result += square[(r1 + 1) % 5][c1];
+                    result += square[(r2 + 1) % 5][c2];
+                } else { // Rectangle
+                    result += square[r1][c2];
+                    result += square[r2][c1];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Playfair Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key - The keyword.
+         * @returns {string} The decrypted text.
+         */
+        function decryptPlayfair(text, key) {
+            const square = generatePlayfairSquare(key);
+            let cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+
+            if (cleanText.length % 2 !== 0) {
+                showError('Playfair decryption requires an even number of alphabetic characters.');
+                return '';
+            }
+
+            let result = '';
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const char1 = cleanText[i];
+                const char2 = cleanText[i + 1];
+
+                const [r1, c1] = findCharPosition(char1, square);
+                const [r2, c2] = findCharPosition(char2, square);
+
+                if (r1 === r2) { // Same row
+                    result += square[r1][(c1 - 1 + 5) % 5];
+                    result += square[r2][(c2 - 1 + 5) % 5];
+                } else if (c1 === c2) { // Same column
+                    result += square[(r1 - 1 + 5) % 5][c1];
+                    result += square[(r2 - 1 + 5) % 5][c2];
+                } else { // Rectangle
+                    result += square[r1][c2];
+                    result += square[r2][c1];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Affine Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {number} a - Multiplier (coprime to 26).
+         * @param {number} b - Shift.
+         * @returns {string} The encrypted text.
+         */
+        function encryptAffine(text, a, b) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if (char >= 65 && char <= 90) { // Uppercase
+                    result += String.fromCharCode(((a * (char - 65) + b) % 26) + 65);
+                } else if (char >= 97 && char <= 122) { // Lowercase
+                    result += String.fromCharCode(((a * (char - 97) + b) % 26) + 97);
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Affine Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {number} a - Multiplier (coprime to 26).
+         * @param {number} b - Shift.
+         * @returns {string} The decrypted text.
+         */
+        function decryptAffine(text, a, b) {
+            const a_inv = modInverse(a, 26);
+            if (a_inv === -1) {
+                return '';
+            }
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if (char >= 65 && char <= 90) { // Uppercase
+                    result += String.fromCharCode(((a_inv * ((char - 65 - b + 26) % 26)) % 26) + 65);
+                } else if (char >= 97 && char <= 122) { // Lowercase
+                    result += String.fromCharCode(((a_inv * ((char - 97 - b + 26) % 26)) % 26) + 97);
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Baconian Cipher.
+         * @param {string} text - The text to encrypt.
+         * @returns {string} The encrypted text (A/B sequences).
+         */
+        function encryptBaconian(text) {
+            let result = '';
+            const cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, ''); // Treat J as I, remove non-alpha
+            for (let i = 0; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                if (BACONIAN_MAP[char]) {
+                    result += BACONIAN_MAP[char];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Baconian Cipher.
+         * @param {string} text - The text to decrypt (A/B sequences).
+         * @returns {string} The decrypted text.
+         */
+        function decryptBaconian(text) {
+            let result = '';
+            const cleanText = text.toUpperCase().replace(/[^AB]/g, ''); // Only allow A and B characters
+
+            if (cleanText.length % 5 !== 0) {
+                showError('Baconian decryption requires text composed of A/B sequences in multiples of 5.');
+                return '';
+            }
+
+            for (let i = 0; i < cleanText.length; i += 5) {
+                const fiveBitSequence = cleanText.substring(i, i + 5);
+                if (REVERSE_BACONIAN_MAP[fiveBitSequence]) {
+                    result += REVERSE_BACONIAN_MAP[fiveBitSequence];
+                } else {
+                    showError(`Invalid Baconian sequence found: ${fiveBitSequence}. Decryption halted.`);
+                    return ''; // Stop decryption on invalid sequence
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Gronsfeld Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The numerical key (e.g., "123").
+         * @returns {string} The encrypted text.
+         */
+        function encryptGronsfeld(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = key.replace(/[^0-9]/g, ''); // Only digits
+
+            if (cleanKey.length === 0) return '';
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let shift = parseInt(cleanKey[keyIndex % cleanKey.length], 10);
+                    result += String.fromCharCode(((char - base + shift) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Gronsfeld Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key - The numerical key (e.g., "123").
+         * @returns {string} The decrypted text.
+         */
+        function decryptGronsfeld(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = key.replace(/[^0-9]/g, ''); // Only digits
+
+            if (cleanKey.length === 0) return '';
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let shift = parseInt(cleanKey[keyIndex % cleanKey.length], 10);
+                    result += String.fromCharCode(((char - base - shift + 26) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Generates a Polybius 5x5 key square (I/J combined).
+         * @param {string} key - The keyword.
+         * @returns {string[][]} The 5x5 key square.
+         */
+        function generatePolybiusSquare(key) {
+            let cleanKey = (key + ALPHABET).toUpperCase().replace(/J/g, 'I');
+            let square = [];
+            let seen = new Set();
+            let count = 0;
+
+            for (let i = 0; i < cleanKey.length; i++) {
+                const char = cleanKey[i];
+                if (char >= 'A' && char <= 'Z' && !seen.has(char)) {
+                    square.push(char);
+                    seen.add(char);
+                    count++;
+                    if (count === 25) break;
+                }
+            }
+
+            const matrix = [];
+            for (let i = 0; i < 5; i++) {
+                matrix.push(square.slice(i * 5, (i + 1) * 5));
+            }
+            return matrix;
+        }
+
+        /**
+         * Encrypts text using Polybius Square Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The keyword for the square.
+         * @returns {string} The encrypted text (pairs of digits).
+         */
+        function encryptPolybius(text, key) {
+            const square = generatePolybiusSquare(key);
+            let result = '';
+            const cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+
+            for (let i = 0; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                const [r, c] = findCharPosition(char, square);
+                if (r !== null && c !== null) {
+                    result += `${r + 1}${c + 1}`; // 1-indexed coordinates
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Polybius Square Cipher.
+         * @param {string} text - The text to decrypt (pairs of digits).
+         * @param {string} key - The keyword for the square.
+         * @returns {string} The decrypted text.
+         */
+        function decryptPolybius(text, key) {
+            const square = generatePolybiusSquare(key);
+            let result = '';
+            const cleanText = text.replace(/[^0-9]/g, ''); // Only digits
+
+            if (cleanText.length % 2 !== 0) {
+                showError('Polybius decryption requires an even number of digits.');
+                return '';
+            }
+
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const row = parseInt(cleanText[i], 10) - 1;
+                const col = parseInt(cleanText[i + 1], 10) - 1;
+
+                if (row >= 0 && row < 5 && col >= 0 && col < 5) {
+                    result += square[row][col];
+                } else {
+                    showError(`Invalid Polybius coordinates: ${cleanText[i]}${cleanText[i+1]}. Decryption halted.`);
+                    return '';
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Columnar Transposition Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The keyword.
+         * @returns {string} The encrypted text.
+         */
+        function encryptColumnar(text, key) {
+            const cleanText = text.toUpperCase().replace(/[^A-Z]/g, '');
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Columnar Transposition requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            const numCols = cleanKey.length;
+            const numRows = Math.ceil(cleanText.length / numCols);
+            const grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+
+            let textIndex = 0;
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    if (textIndex < cleanText.length) {
+                        grid[r][c] = cleanText[textIndex++];
+                    } else {
+                        grid[r][c] = 'X'; // Pad with X if needed
+                    }
+                }
+            }
+
+            // Create sorted key order
+            const sortedKey = cleanKey.split('').map((char, index) => ({ char, index }))
+                                .sort((a, b) => a.char.localeCompare(b.char) || a.index - b.index);
+
+            let result = '';
+            for (const { index: originalColIndex } of sortedKey) {
+                for (let r = 0; r < numRows; r++) {
+                    result += grid[r][originalColIndex];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Columnar Transposition Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key - The keyword.
+         * @returns {string} The decrypted text.
+         */
+        function decryptColumnar(text, key) {
+            const cleanText = text.toUpperCase().replace(/[^A-Z]/g, '');
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Columnar Transposition requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            const numCols = cleanKey.length;
+            const numRows = Math.ceil(cleanText.length / numCols);
+            const grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+
+            // Create sorted key order and map to original column indices
+            const sortedKey = cleanKey.split('').map((char, index) => ({ char, originalIndex: index }))
+                                .sort((a, b) => a.char.localeCompare(b.char) || a.originalIndex - b.originalIndex);
+
+            // Calculate lengths of columns
+            const colLengths = Array(numCols).fill(numRows);
+            const remainder = cleanText.length % numCols;
+            if (remainder !== 0) {
+                // Adjust lengths for columns that are not full due to padding
+                for (let i = remainder; i < numCols; i++) {
+                    colLengths[sortedKey[i].originalIndex]--;
+                }
+            }
+
+
+            let textIndex = 0;
+            for (const { originalIndex: colToFill } of sortedKey) {
+                for (let r = 0; r < colLengths[colToFill]; r++) {
+                    grid[r][colToFill] = cleanText[textIndex++];
+                }
+            }
+
+            let result = '';
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    result += grid[r][c];
+                }
+            }
+            return result.replace(/X+$/, ''); // Remove padding 'X's from the end
+        }
+
+        /**
+         * Encrypts text using Autokey Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} initialKey - The initial key word.
+         * @returns {string} The encrypted text.
+         */
+        function encryptAutokey(text, initialKey) {
+            let result = '';
+            const cleanInitialKey = normalizeText(initialKey);
+            const cleanText = text.toUpperCase();
+
+            if (cleanInitialKey.length === 0) {
+                showError('Autokey cipher requires a non-empty alphabetic initial key.');
+                return '';
+            }
+
+            let keyStreamIndex = 0;
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+
+                    let keyChar;
+                    if (keyStreamIndex < cleanInitialKey.length) {
+                        keyChar = cleanInitialKey.charCodeAt(keyStreamIndex);
+                    } else {
+                        let plaintextCharForAutokey = '';
+                        let tempIndex = i - 1;
+                        while(tempIndex >= 0 && !((text.charCodeAt(tempIndex) >= 65 && text.charCodeAt(tempIndex) <= 90) || (text.charCodeAt(tempIndex) >= 97 && text.charCodeAt(tempIndex) <= 122))) {
+                            tempIndex--;
+                        }
+                        if (tempIndex >= 0) {
+                            plaintextCharForAutokey = text[tempIndex];
+                        } else {
+                            plaintextCharForAutokey = 'A';
+                        }
+                        keyChar = plaintextCharForAutokey.toUpperCase().charCodeAt(0);
+                    }
+
+                    let shift = keyChar - 65;
+                    result += String.fromCharCode(((char - base + shift) % 26) + base);
+                    keyStreamIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Autokey Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} initialKey - The initial key word.
+         * @returns {string} The decrypted text.
+         */
+        function decryptAutokey(text, initialKey) {
+            let result = '';
+            const cleanInitialKey = normalizeText(initialKey);
+
+            if (cleanInitialKey.length === 0) {
+                showError('Autokey cipher requires a non-empty alphabetic initial key.');
+                return '';
+            }
+
+            let keyStreamIndex = 0;
+            let decryptedAlphaChars = [];
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+
+                    let keyChar;
+                    if (keyStreamIndex < cleanInitialKey.length) {
+                        keyChar = cleanInitialKey.charCodeAt(keyStreamIndex);
+                    } else {
+                        keyChar = decryptedAlphaChars[keyStreamIndex - cleanInitialKey.length].charCodeAt(0);
+                    }
+
+                    let shift = keyChar - 65;
+                    let decryptedVal = (char - base - shift + 26) % 26;
+                    let decryptedChar = String.fromCharCode(decryptedVal + base);
+                    result += decryptedChar;
+                    decryptedAlphaChars.push(decryptedChar.toUpperCase());
+                    keyStreamIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts/Decrypts text using Beaufort Cipher.
+         * It's a reciprocal cipher, so encrypt and decrypt use the same logic.
+         * @param {string} text - The text to process.
+         * @param {string} key - The key word.
+         * @returns {string} The processed text.
+         */
+        function beaufort(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Beaufort cipher requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let keyChar = cleanKey.charCodeAt(keyIndex % cleanKey.length);
+
+                    // Beaufort formula: C = (K - P) mod 26
+                    // P = (K - C) mod 26
+                    let P_val = char - base; // Plaintext/Ciphertext value (0-25)
+                    let K_val = keyChar - 65; // Key value (0-25)
+
+                    let encryptedVal = (K_val - P_val + 26) % 26; // Add 26 to ensure positive result
+                    result += String.fromCharCode(encryptedVal + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts/Decrypts text using Porta Cipher.
+         * It's a reciprocal polyalphabetic cipher.
+         * @param {string} text - The text to process.
+         * @param {string} key - The key word.
+         * @returns {string} The processed text.
+         */
+        function porta(text, key) {
+            let result = '';
+            let keyIndex = 0;
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Porta cipher requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+
+                    let keyChar = cleanKey[keyIndex % cleanKey.length];
+                    let keyCharForTable = String.fromCharCode(65 + Math.floor((keyChar.charCodeAt(0) - 65) / 2));
+                    let alphabetRow = PORTA_TABLE[keyCharForTable];
+
+                    let charIndex = char - base;
+                    let newChar = alphabetRow.charCodeAt(charIndex);
+
+                    result += (isUpperCase) ? String.fromCharCode(newChar) : String.fromCharCode(newChar).toLowerCase();
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+
+        /**
+         * Multiplies a 2x2 matrix by a 2x1 vector (modulo 26).
+         * @param {number[][]} matrix - The 2x2 matrix.
+         * @param {number[]} vector - The 2x1 vector.
+         * @returns {number[]} The resulting 2x1 vector.
+         */
+        function multiplyMatrixVector(matrix, vector) {
+            return [
+                (matrix[0][0] * vector[0] + matrix[0][1] * vector[1]) % 26,
+                (matrix[1][0] * vector[0] + matrix[1][1] * vector[1]) % 26
+            ];
+        }
+
+        /**
+         * Calculates the inverse of a 2x2 matrix modulo 26.
+         * @param {number[][]} matrix - The 2x2 matrix.
+         * @returns {number[][]} The inverse matrix, or null if not invertible.
+         */
+        function inverseMatrix2x2(matrix) {
+            const det = (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
+            const detMod26 = (det % 26 + 26) % 26;
+
+            const detInverse = modInverse(detMod26, 26);
+            if (detInverse === -1) {
+                return null;
+            }
+
+            const adjugate = [
+                [matrix[1][1], -matrix[0][1]],
+                [-matrix[1][0], matrix[0][0]]
+            ];
+
+            const inverse = [
+                [(adjugate[0][0] * detInverse) % 26, (adjugate[0][1] * detInverse) % 26],
+                [(adjugate[1][0] * detInverse) % 26, (adjugate[1][1] * detInverse) % 26]
+            ];
+
+            for (let r = 0; r < 2; r++) {
+                for (let c = 0; c < 2; c++) {
+                    inverse[r][c] = (inverse[r][c] + 26) % 26;
+                }
+            }
+            return inverse;
+        }
+
+        /**
+         * Encrypts text using Hill Cipher (2x2 matrix).
+         * @param {string} text - The text to encrypt.
+         * @param {number[][]} keyMatrix - The 2x2 key matrix.
+         * @returns {string} The encrypted text.
+         */
+        function encryptHill(text, keyMatrix) {
+            let cleanText = text.toUpperCase().replace(/[^A-Z]/g, '');
+            if (cleanText.length % 2 !== 0) {
+                cleanText += 'X';
+            }
+            let result = '';
+
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const p1 = cleanText.charCodeAt(i) - 65;
+                const p2 = cleanText.charCodeAt(i + 1) - 65;
+                const plaintextVector = [p1, p2];
+
+                const ciphertextVector = multiplyMatrixVector(keyMatrix, plaintextVector);
+                result += String.fromCharCode(ciphertextVector[0] + 65);
+                result += String.fromCharCode(ciphertextVector[1] + 65);
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Hill Cipher (2x2 matrix).
+         * @param {string} text - The text to decrypt.
+         * @param {number[][]} keyMatrix - The 2x2 key matrix.
+         * @returns {string} The decrypted text.
+         */
+        function decryptHill(text, keyMatrix) {
+            let cleanText = text.toUpperCase().replace(/[^A-Z]/g, '');
+            if (cleanText.length % 2 !== 0) {
+                showError('Hill cipher decryption requires an even number of alphabetic characters.');
+                return '';
+            }
+
+            const inverseKeyMatrix = inverseMatrix2x2(keyMatrix);
+            if (!inverseKeyMatrix) {
+                showError('The provided Hill cipher key matrix is not invertible modulo 26.');
+                return '';
+            }
+
+            let result = '';
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const c1 = cleanText.charCodeAt(i) - 65;
+                const c2 = cleanText.charCodeAt(i + 1) - 65;
+                const ciphertextVector = [c1, c2];
+
+                const plaintextVector = multiplyMatrixVector(inverseKeyMatrix, ciphertextVector);
+                result += String.fromCharCode(plaintextVector[0] + 65);
+                result += String.fromCharCode(plaintextVector[1] + 65);
+            }
+            return result;
+        }
+
+        /**
+         * Generates a 5x5 Playfair-like square from a key.
+         * @param {string} key - The keyword.
+         * @returns {string[][]} The 5x5 square.
+         */
+        function generateSquare(key) {
+            let cleanKey = (key + ALPHABET).toUpperCase().replace(/J/g, 'I');
+            let squareChars = [];
+            let seen = new Set();
+            for (let i = 0; i < cleanKey.length; i++) {
+                const char = cleanKey[i];
+                if (char >= 'A' && char <= 'Z' && !seen.has(char)) {
+                    squareChars.push(char);
+                    seen.add(char);
+                }
+            }
+            const matrix = [];
+            for (let i = 0; i < 5; i++) {
+                matrix.push(squareChars.slice(i * 5, (i + 1) * 5));
+            }
+            return matrix;
+        }
+
+        /**
+         * Encrypts text using Four-Square Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key1 - Keyword for top-left/bottom-right squares.
+         * @param {string} key2 - Keyword for top-right/bottom-left squares.
+         * @returns {string} The encrypted text.
+         */
+        function encryptFourSquare(text, key1, key2) {
+            const squareTL = generateSquare(key1);
+            const squareBR = generateSquare(key1);
+            const squareTR = generateSquare(key2);
+            const squareBL = generateSquare(key2);
+
+            const squarePlain1 = generateSquare('');
+            const squarePlain2 = generateSquare('');
+
+            let cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+            if (cleanText.length % 2 !== 0) {
+                cleanText += 'X';
+            }
+
+            let result = '';
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const char1 = cleanText[i];
+                const char2 = cleanText[i + 1];
+
+                const [r1, c1] = findCharPosition(char1, squarePlain1);
+                const [r2, c2] = findCharPosition(char2, squarePlain2);
+
+                result += squareTR[r1][c2];
+                result += squareBL[r2][c1];
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Four-Square Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key1 - Keyword for top-left/bottom-right squares.
+         * @param {string} key2 - Keyword for top-right/bottom-left squares.
+         * @returns {string} The decrypted text.
+         */
+        function decryptFourSquare(text, key1, key2) {
+            const squareTL = generateSquare(key1);
+            const squareBR = generateSquare(key1);
+            const squareTR = generateSquare(key2);
+            const squareBL = generateSquare(key2);
+
+            const squarePlain1 = generateSquare('');
+            const squarePlain2 = generateSquare('');
+
+            let cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+            if (cleanText.length % 2 !== 0) {
+                showError('Four-Square decryption requires an even number of alphabetic characters.');
+                return '';
+            }
+
+            let result = '';
+            for (let i = 0; i < cleanText.length; i += 2) {
+                const char1 = cleanText[i];
+                const char2 = cleanText[i + 1];
+
+                const [r1, c1] = findCharPosition(char1, squareTR);
+                const [r2, c2] = findCharPosition(char2, squareBL);
+
+                result += squarePlain1[r1][c2];
+                result += squarePlain2[r2][c1];
+            }
+            return result;
+        }
+
+        /**
+         * Generates the ADFGVX 6x6 square.
+         * @param {string} key - The keyword for the square.
+         * @returns {string[][]} The 6x6 square.
+         */
+        function generateADFGVXSquare(key) {
+            const alphabetExtended = ALPHABET + '0123456789';
+            let cleanKey = (key + alphabetExtended).toUpperCase().replace(/J/g, 'I');
+            let squareChars = [];
+            let seen = new Set();
+            for (let i = 0; i < cleanKey.length; i++) {
+                const char = cleanKey[i];
+                if (!seen.has(char) && alphabetExtended.includes(char)) {
+                    squareChars.push(char);
+                    seen.add(char);
+                }
+            }
+            const matrix = [];
+            for (let i = 0; i < 6; i++) {
+                matrix.push(squareChars.slice(i * 6, (i + 1) * 6));
+            }
+            return matrix;
+        }
+
+        /**
+         * Finds the coordinates (ADFGVX) of a character in the ADFGVX square.
+         * @param {string} char - The character to find.
+         * @param {string[][]} square - The 6x6 square.
+         * @returns {string} The two-character coordinate (e.g., 'AF', 'DX').
+         */
+        function findADFGVXCoords(char, square) {
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 6; c++) {
+                    if (square[r][c] === char) {
+                        return ADFGVX_SQUARE_COORDS[r] + ADFGVX_SQUARE_COORDS[c];
+                    }
+                }
+            }
+            return '';
+        }
+
+        /**
+         * Finds the character at given ADFGVX coordinates.
+         * @param {string} coord1 - First coordinate char (A,D,F,G,V,X).
+         * @param {string} coord2 - Second coordinate char (A,D,F,G,V,X).
+         * @param {string[][]} square - The 6x6 square.
+         * @returns {string} The character.
+         */
+        function findADFGVXChar(coord1, coord2, square) {
+            const r = ADFGVX_SQUARE_COORDS.indexOf(coord1);
+            const c = ADFGVX_SQUARE_COORDS.indexOf(coord2);
+            if (r !== -1 && c !== -1) {
+                return square[r][c];
+            }
+            return '';
+        }
+
+
+        /**
+         * Encrypts text using ADFGVX Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} squareKey - Keyword for the substitution square.
+         * @param {string} columnarKey - Keyword for columnar transposition.
+         * @returns {string} The encrypted text.
+         */
+        function encryptADFGVX(text, squareKey, columnarKey) {
+            const square = generateADFGVXSquare(squareKey);
+            const cleanText = text.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z0-9]/g, '');
+
+            // Step 1: Polybius Square Substitution
+            let substitutedText = '';
+            for (let i = 0; i < cleanText.length; i++) {
+                substitutedText += findADFGVXCoords(cleanText[i], square);
+            }
+
+            // Step 2: Columnar Transposition
+            const cleanColumnarKey = normalizeText(columnarKey);
+            if (cleanColumnarKey.length === 0) {
+                showError('ADFGVX columnar key cannot be empty.');
+                return '';
+            }
+
+            const numCols = cleanColumnarKey.length;
+            const numRows = Math.ceil(substitutedText.length / numCols);
+            const grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+
+            let textIndex = 0;
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    if (textIndex < substitutedText.length) {
+                        grid[r][c] = substitutedText[textIndex++];
+                    } else {
+                        grid[r][c] = 'X';
+                    }
+                }
+            }
+
+            const sortedKey = cleanColumnarKey.split('').map((char, index) => ({ char, index }))
+                                .sort((a, b) => a.char.localeCompare(b.char) || a.index - b.index);
+
+            let result = '';
+            for (const { index: originalColIndex } of sortedKey) {
+                for (let r = 0; r < numRows; r++) {
+                    result += grid[r][originalColIndex];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using ADFGVX Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} squareKey - Keyword for the substitution square.
+         * @param {string} columnarKey - Keyword for columnar transposition.
+         * @returns {string} The decrypted text.
+         */
+        function decryptADFGVX(text, squareKey, columnarKey) {
+            const square = generateADFGVXSquare(squareKey);
+            const cleanCiphertext = text.toUpperCase().replace(/[^ADFGVX]/g, '');
+
+            if (cleanCiphertext.length % 2 !== 0) {
+                showError('ADFGVX ciphertext must have an even number of ADFGVX characters.');
+                return '';
+            }
+
+            const cleanColumnarKey = normalizeText(columnarKey);
+            if (cleanColumnarKey.length === 0) {
+                showError('ADFGVX columnar key cannot be empty.');
+                return '';
+            }
+
+            // Step 1: Reverse Columnar Transposition
+            const numCols = cleanColumnarKey.length;
+            const numRows = Math.ceil(cleanCiphertext.length / numCols);
+            const grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+
+            const sortedKey = cleanColumnarKey.split('').map((char, index) => ({ char, originalIndex: index }))
+                                .sort((a, b) => a.char.localeCompare(b.char) || a.originalIndex - b.originalIndex);
+
+            const colLengths = Array(numCols).fill(numRows);
+            const remainder = cleanCiphertext.length % numCols;
+            if (remainder !== 0) {
+                for (let i = remainder; i < numCols; i++) {
+                    colLengths[sortedKey[i].originalIndex]--;
+                }
+            }
+
+            let textIndex = 0;
+            for (const { originalIndex: colToFill } of sortedKey) {
+                for (let r = 0; r < colLengths[colToFill]; r++) {
+                    grid[r][colToFill] = cleanCiphertext[textIndex++];
+                }
+            }
+
+            let transposedText = '';
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    transposedText += grid[r][c];
+                }
+            }
+            transposedText = transposedText.replace(/X+$/, '');
+
+            // Step 2: Polybius Square Reverse Substitution
+            let result = '';
+            for (let i = 0; i < transposedText.length; i += 2) {
+                const coord1 = transposedText[i];
+                const coord2 = transposedText[i + 1];
+                result += findADFGVXChar(coord1, coord2, square);
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Running Key Cipher.
+         * @param {string} text - The text to encrypt.
+         * @param {string} key - The running key (can be shorter than text, will repeat).
+         * @returns {string} The encrypted text.
+         */
+        function encryptRunningKey(text, key) {
+            let result = '';
+            const cleanText = text.toUpperCase();
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Running Key cipher requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            let keyIndex = 0;
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let keyChar = cleanKey.charCodeAt(keyIndex % cleanKey.length);
+                    let shift = keyChar - 65;
+                    result += String.fromCharCode(((char - base + shift) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Decrypts text using Running Key Cipher.
+         * @param {string} text - The text to decrypt.
+         * @param {string} key - The running key (must be the same as used for encryption).
+         * @returns {string} The decrypted text.
+         */
+        function decryptRunningKey(text, key) {
+            let result = '';
+            const cleanText = text.toUpperCase();
+            const cleanKey = normalizeText(key);
+
+            if (cleanKey.length === 0) {
+                showError('Running Key cipher requires a non-empty alphabetic key.');
+                return '';
+            }
+
+            let keyIndex = 0;
+            for (let i = 0; i < text.length; i++) {
+                let char = text.charCodeAt(i);
+                if ((char >= 65 && char <= 90) || (char >= 97 && char <= 122)) {
+                    let isUpperCase = (char >= 65 && char <= 90);
+                    let base = isUpperCase ? 65 : 97;
+                    let keyChar = cleanKey.charCodeAt(keyIndex % cleanKey.length);
+                    let shift = keyChar - 65;
+                    result += String.fromCharCode(((char - base - shift + 26) % 26) + base);
+                    keyIndex++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Encrypts text using Homophonic Substitution Cipher.
+         * @param {string} text - The text to encrypt.
+         * @returns {string} The encrypted text (sequence of 2-digit numbers).
+         */
+        function encryptHomophonic(text) {
+            let result = '';
+            const cleanText = text.toUpperCase().replace(/[^A-Z]/g, '');
+
+            for (let i = 0; i < cleanText.length; i++) {
+                const char = cleanText[i];
+                if (HOMOPHONE_MAP_ENCRYPT[char]) {
+                    const homophones = HOMOPHONE_MAP_ENCRYPT[char];
+                    const randomHomophone = homophones[Math.floor(Math.random() * homophones.length)];
+                    result += randomHomophone + ' ';
+                }
+            }
+            return result.trim();
+        }
+
+        /**
+         * Decrypts text using Homophonic Substitution Cipher.
+         * @param {string} text - The text to decrypt (sequence of 2-digit numbers).
+         * @returns {string} The decrypted text.
+         */
+        function decryptHomophonic(text) {
+            let result = '';
+            const codes = text.split(' ').filter(code => code.length === 2 && /^\d{2}$/.test(code));
+
+            for (let i = 0; i < codes.length; i++) {
+                const code = codes[i];
+                if (HOMOPHONE_MAP_DECRYPT[code]) {
+                    result += HOMOPHONE_MAP_DECRYPT[code];
+                } else {
+                    showError(`Invalid homophonic code found: ${code}. Decryption halted.`);
+                    return '';
+                }
+            }
+            return result;
+        }
+
+
+        /**
+         * Toggles the visibility and required status of the parameter input and prefill button.
+         */
+        function toggleParameterInput() {
+            const algorithm = algorithmSelect.value;
+            const requiresParameter = [
+                'caesar', 'vigenere', 'simpleSubstitution', 'keyword',
+                'railFence', 'playfair', 'affine', 'gronsfeld',
+                'polybius', 'columnarTransposition', 'autokey', 'beaufort', 'porta',
+                'hill', 'fourSquare', 'adfgvx', 'runningKey'
+            ].includes(algorithm);
+
+            if (requiresParameter) {
+                parametersContainer.classList.remove('hidden');
+                parametersInput.removeAttribute('disabled');
+                prefillButton.removeAttribute('disabled');
+            } else {
+                parametersContainer.classList.add('hidden');
+                parametersInput.setAttribute('disabled', 'true');
+                parametersInput.value = '';
+                prefillButton.setAttribute('disabled', 'true');
+            }
+            updateParameterHintAndDescription();
+        }
+
+        /**
+         * Updates the parameter hint and cipher description based on the selected algorithm.
+         */
+        function updateParameterHintAndDescription() {
+            const algorithm = algorithmSelect.value;
+            // Update hint
+            switch (algorithm) {
+                case 'caesar':
+                    parameterHint.textContent = 'Shift Number (e.g., 3)';
+                    break;
+                case 'vigenere':
+                    parameterHint.textContent = 'Key Word (e.g., "SECRET")';
+                    break;
+                case 'rot13':
+                case 'atbash':
+                case 'reverse':
+                case 'baconian':
+                case 'homophonic':
+                    parameterHint.textContent = 'No parameter needed for this algorithm.';
+                    break;
+                case 'simpleSubstitution':
+                    parameterHint.textContent = '26-character unique alphabetic string (e.g., "ZYXWVUTSRQPONMLKJIHGFEDCBA")';
+                    break;
+                case 'keyword':
+                    parameterHint.textContent = 'Key Word (e.g., "CIPHER")';
+                    break;
+                case 'railFence':
+                    parameterHint.textContent = 'Number of Rails (integer, e.g., 3)';
+                    break;
+                case 'playfair':
+                    parameterHint.textContent = 'Key Word (e.g., "MONARCHY"). J is treated as I. Text is padded with X.';
+                    break;
+                case 'affine':
+                    parameterHint.textContent = 'Two numbers: "a,b" (e.g., "5,8"). "a" must be coprime to 26.';
+                    break;
+                case 'gronsfeld':
+                    parameterHint.textContent = 'Numerical Key (e.g., "12345")';
+                    break;
+                case 'polybius':
+                    parameterHint.textContent = 'Key Word for 5x5 square (e.g., "CIPHER"). J is treated as I.';
+                    break;
+                case 'columnarTransposition':
+                    parameterHint.textContent = 'Key Word (e.g., "ZEBRAS"). Spaces and non-alpha chars removed.';
+                    break;
+                case 'autokey':
+                    parameterHint.textContent = 'Initial Key Word (e.g., "KEY"). Plaintext extends the key.';
+                    break;
+                case 'beaufort':
+                    parameterHint.textContent = 'Key Word (e.g., "SECRET"). This cipher is reciprocal.';
+                    break;
+                case 'porta':
+                    parameterHint.textContent = 'Key Word (e.g., "PORTA"). This cipher is reciprocal.';
+                    break;
+                case 'hill':
+                    parameterHint.textContent = 'Four numbers for 2x2 matrix: "a,b,c,d" (e.g., "5,17,4,15"). Determinant must be coprime to 26.';
+                    break;
+                case 'fourSquare':
+                    parameterHint.textContent = 'Two keywords separated by comma: "key1,key2" (e.g., "MONARCHY,EXAMPLE"). J is treated as I.';
+                    break;
+                case 'adfgvx':
+                    parameterHint.textContent = 'Two keywords separated by comma: "squareKey,columnarKey" (e.g., "SQUAREKEY,COLUMNARKEY"). J is I, 0-9 included.';
+                    break;
+                case 'runningKey':
+                    parameterHint.textContent = 'Running Key (long text, e.g., a book passage). Key repeats if shorter than text.';
+                    break;
+                default:
+                    parameterHint.textContent = '';
+            }
+
+            // Update description
+            cipherDescription.textContent = CIPHER_DESCRIPTIONS[algorithm] || 'Select an algorithm to see its description.';
+        }
+
+        /**
+         * Generates a random alphabetic string of a given length.
+         * @param {number} length - The desired length of the string.
+         * @returns {string} A random alphabetic string.
+         */
+        function generateRandomAlphaString(length) {
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+            }
+            return result;
+        }
+
+        /**
+         * Shuffles a string randomly.
+         * @param {string} str - The string to shuffle.
+         * @returns {string} The shuffled string.
+         */
+        function shuffleString(str) {
+            let array = str.split('');
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+            return array.join('');
+        }
+
+        /**
+         * Prefills the parameter input with a random valid value based on the selected algorithm.
+         */
+        function prefillParameters() {
+            const algorithm = algorithmSelect.value;
+            let randomParam = '';
+
+            switch (algorithm) {
+                case 'caesar':
+                    randomParam = (Math.floor(Math.random() * 25) + 1).toString(); // 1 to 25
+                    break;
+                case 'vigenere':
+                case 'keyword':
+                case 'playfair':
+                case 'polybius':
+                case 'columnarTransposition':
+                case 'autokey':
+                case 'beaufort':
+                case 'porta':
+                    randomParam = generateRandomAlphaString(Math.floor(Math.random() * 6) + 5); // 5 to 10 letters
+                    break;
+                case 'simpleSubstitution':
+                    randomParam = shuffleString(ALPHABET);
+                    break;
+                case 'railFence':
+                    const maxRails = Math.min(10, inputText.value.length > 0 ? Math.floor(inputText.value.length / 2) : 5);
+                    randomParam = (Math.floor(Math.random() * (maxRails - 1)) + 2).toString(); // 2 to maxRails
+                    break;
+                case 'affine':
+                    const a = COPRIME_TO_26[Math.floor(Math.random() * COPRIME_TO_26.length)];
+                    const b = Math.floor(Math.random() * 26); // 0 to 25
+                    randomParam = `${a},${b}`;
+                    break;
+                case 'gronsfeld':
+                    let numKey = '';
+                    for (let i = 0; i < (Math.floor(Math.random() * 6) + 5); i++) { // 5 to 10 digits
+                        numKey += Math.floor(Math.random() * 10).toString();
+                    }
+                    randomParam = numKey;
+                    break;
+                case 'hill':
+                    let hillA, hillB, hillC, hillD;
+                    let det;
+                    do {
+                        hillA = Math.floor(Math.random() * 26);
+                        hillB = Math.floor(Math.random() * 26);
+                        hillC = Math.floor(Math.random() * 26);
+                        hillD = Math.floor(Math.random() * 26);
+                        det = (hillA * hillD - hillB * hillC);
+                        det = (det % 26 + 26) % 26;
+                    } while (modInverse(det, 26) === -1);
+                    randomParam = `${hillA},${hillB},${hillC},${hillD}`;
+                    break;
+                case 'fourSquare':
+                    const key1 = generateRandomAlphaString(Math.floor(Math.random() * 4) + 3);
+                    const key2 = generateRandomAlphaString(Math.floor(Math.random() * 4) + 3);
+                    randomParam = `${key1},${key2}`;
+                    break;
+                case 'adfgvx':
+                    const adfgvxSquareKey = generateRandomAlphaString(Math.floor(Math.random() * 6) + 5);
+                    const adfgvxColumnarKey = generateRandomAlphaString(Math.floor(Math.random() * 6) + 5);
+                    randomParam = `${adfgvxSquareKey},${adfgvxColumnarKey}`;
+                    break;
+                case 'runningKey':
+                    randomParam = generateRandomAlphaString(Math.floor(Math.random() * 50) + 50);
+                    break;
+                case 'rot13':
+                case 'atbash':
+                case 'reverse':
+                case 'baconian':
+                case 'homophonic':
+                    showError('This algorithm does not require a parameter.');
+                    return;
+                default:
+                    showError('Cannot prefill parameter for the selected algorithm.');
+                    return;
+            }
+            parametersInput.value = randomParam;
+            hideError();
+        }
+
+
+        /**
+         * Processes the input text based on selected operation and algorithm.
+         */
+        function processText() {
+            hideError();
+            const text = inputText.value;
+            const operation = document.querySelector('input[name="operation"]:checked').value;
+            const algorithm = algorithmSelect.value;
+            const parameters = parametersInput.value.trim();
+            let output = '';
+
+            if (!text) {
+                showError('Please enter some text to process.');
+                return;
+            }
+
+            try {
+                switch (algorithm) {
+                    case 'caesar':
+                        const shift = parseInt(parameters, 10);
+                        if (isNaN(shift)) {
+                            showError('For Caesar cipher, the parameter must be a number (shift value).');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptCaesar(text, shift) : decryptCaesar(text, shift);
+                        break;
+                    case 'vigenere':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Vigenere cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptVigenere(text, parameters) : decryptVigenere(text, parameters);
+                        break;
+                    case 'rot13':
+                        output = rot13(text);
+                        break;
+                    case 'atbash':
+                        output = atbash(text);
+                        break;
+                    case 'reverse':
+                        output = reverseCipher(text);
+                        break;
+                    case 'simpleSubstitution':
+                        const subAlphabet = normalizeText(parameters);
+                        if (subAlphabet.length !== 26 || new Set(subAlphabet.split('')).size !== 26) {
+                            showError('For Simple Substitution, the parameter must be a 26-character unique alphabetic string (e.g., "ZYXWVUTSRQPONMLKJIHGFEDCBA").');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptSimpleSubstitution(text, subAlphabet) : decryptSimpleSubstitution(text, subAlphabet);
+                        break;
+                    case 'keyword':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Keyword cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptKeyword(text, parameters) : decryptKeyword(text, parameters);
+                        break;
+                    case 'railFence':
+                        const rails = parseInt(parameters, 10);
+                        if (isNaN(rails) || rails < 2) {
+                            showError('For Rail Fence cipher, the parameter must be a number of rails (at least 2).');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptRailFence(text, rails) : decryptRailFence(text, rails);
+                        break;
+                    case 'playfair':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Playfair cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptPlayfair(text, parameters) : decryptPlayfair(text, parameters);
+                        break;
+                    case 'affine':
+                        const affineParams = parameters.split(',').map(p => parseInt(p.trim(), 10));
+                        if (affineParams.length !== 2 || isNaN(affineParams[0]) || isNaN(affineParams[1])) {
+                            showError('For Affine cipher, the parameter must be two numbers separated by a comma (e.g., "5,8").');
+                            return;
+                        }
+                        const a = affineParams[0];
+                        const b = affineParams[1];
+                        if (modInverse(a, 26) === -1) {
+                             showError(`For Affine cipher, 'a' (${a}) must be coprime to 26 (e.g., 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25).`);
+                             return;
+                        }
+                        output = (operation === 'encrypt') ? encryptAffine(text, a, b) : decryptAffine(text, a, b);
+                        break;
+                    case 'baconian':
+                        output = (operation === 'encrypt') ? encryptBaconian(text) : decryptBaconian(text);
+                        break;
+                    case 'gronsfeld':
+                        if (!parameters || !/^[0-9]+$/.test(parameters)) {
+                            showError('For Gronsfeld cipher, the parameter must be a numerical key (digits only).');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptGronsfeld(text, parameters) : decryptGronsfeld(text, parameters);
+                        break;
+                    case 'polybius':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Polybius Square cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptPolybius(text, parameters) : decryptPolybius(text, parameters);
+                        break;
+                    case 'columnarTransposition':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Columnar Transposition cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptColumnar(text, parameters) : decryptColumnar(text, parameters);
+                        break;
+                    case 'autokey':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Autokey cipher, the parameter must be an alphabetic initial key word.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptAutokey(text, parameters) : decryptAutokey(text, parameters);
+                        break;
+                    case 'beaufort':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Beaufort cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = beaufort(text, parameters); // Beaufort is reciprocal
+                        break;
+                    case 'porta':
+                        if (!parameters || !/^[a-zA-Z]+$/.test(parameters)) {
+                            showError('For Porta cipher, the parameter must be an alphabetic key word.');
+                            return;
+                        }
+                        output = porta(text, parameters); // Porta is reciprocal
+                        break;
+                    case 'hill':
+                        const hillParams = parameters.split(',').map(p => parseInt(p.trim(), 10));
+                        if (hillParams.length !== 4 || hillParams.some(isNaN)) {
+                            showError('For Hill cipher, the parameter must be four numbers separated by commas (e.g., "5,17,4,15").');
+                            return;
+                        }
+                        const hillKeyMatrix = [
+                            [hillParams[0], hillParams[1]],
+                            [hillParams[2], hillParams[3]]
+                        ];
+                        const det = (hillKeyMatrix[0][0] * hillKeyMatrix[1][1] - hillKeyMatrix[0][1] * hillKeyMatrix[1][0]);
+                        const detMod26 = (det % 26 + 26) % 26;
+                        if (modInverse(detMod26, 26) === -1) {
+                            showError(`The determinant of the Hill cipher key matrix (${detMod26}) is not coprime to 26. Please choose a different key.`);
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptHill(text, hillKeyMatrix) : decryptHill(text, hillKeyMatrix);
+                        break;
+                    case 'fourSquare':
+                        const fourSquareKeys = parameters.split(',').map(k => k.trim());
+                        if (fourSquareKeys.length !== 2 || !/^[a-zA-Z]+$/.test(fourSquareKeys[0]) || !/^[a-zA-Z]+$/.test(fourSquareKeys[1])) {
+                            showError('For Four-Square cipher, the parameter must be two alphabetic keywords separated by a comma (e.g., "MONARCHY,EXAMPLE").');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptFourSquare(text, fourSquareKeys[0], fourSquareKeys[1]) : decryptFourSquare(text, fourSquareKeys[0], fourSquareKeys[1]);
+                        break;
+                    case 'adfgvx':
+                        const adfgvxKeys = parameters.split(',').map(k => k.trim());
+                        if (adfgvxKeys.length !== 2 || !/^[a-zA-Z0-9]+$/.test(adfgvxKeys[0]) || !/^[a-zA-Z]+$/.test(adfgvxKeys[1])) { // Square key can have digits
+                            showError('For ADFGVX cipher, the parameter must be two keywords separated by a comma (e.g., "SQUAREKEY,COLUMNARKEY"). Square key can have letters and digits, columnar key only letters.');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptADFGVX(text, adfgvxKeys[0], adfgvxKeys[1]) : decryptADFGVX(text, adfgvxKeys[0], adfgvxKeys[1]);
+                        break;
+                    case 'runningKey':
+                        if (!parameters || !/^[a-zA-Z\s]+$/.test(parameters)) {
+                            showError('For Running Key cipher, the parameter must be an alphabetic running key (text).');
+                            return;
+                        }
+                        output = (operation === 'encrypt') ? encryptRunningKey(text, parameters) : decryptRunningKey(text, parameters);
+                        break;
+                    case 'homophonic':
+                        output = (operation === 'encrypt') ? encryptHomophonic(text) : decryptHomophonic(text);
+                        break;
+                    default:
+                        showError('Please select a valid algorithm.');
+                        return;
+                }
+            } catch (e) {
+                console.error('Error during cryptographic operation:', e);
+                showError('An unexpected error occurred during processing. Please check your inputs and try again.');
+            }
+
+            outputText.value = output;
+        }
+
+        /**
+         * Clears all input and output fields.
+         */
+        function clearFields() {
+            inputText.value = '';
+            parametersInput.value = '';
+            outputText.value = '';
+            hideError();
+            document.querySelector('input[name="operation"][value="encrypt"]').checked = true; // Reset to encrypt
+            algorithmSelect.value = 'caesar'; // Reset to Caesar
+            toggleParameterInput(); // Update visibility, hint, and description
+        }
+
+        /**
+         * Exports the current state of the app as a JSON file.
+         */
+        function exportAsJson() {
+            const data = {
+                inputText: inputText.value,
+                outputText: outputText.value,
+                operation: document.querySelector('input[name="operation"]:checked').value,
+                algorithm: algorithmSelect.value,
+                parameter: parametersInput.value // Keep parameter as string for export
+            };
+
+            const jsonString = JSON.stringify(data, null, 2); // Pretty print JSON
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `crypto_result_${algorithmSelect.value}_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url); // Clean up the URL object
+        }
+
+        // Event Listeners
+        processButton.addEventListener('click', processText);
+        clearButton.addEventListener('click', clearFields);
+        algorithmSelect.addEventListener('change', toggleParameterInput);
+        prefillButton.addEventListener('click', prefillParameters);
+        exportButton.addEventListener('click', exportAsJson); // New event listener for export button
+
+        // Initial setup
+        clearFields();
+    </script>
+</body>
+</html>
