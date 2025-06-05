@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abacus App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Scientific Color Palette & Layout Adjustments */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f7fa; /* Very light cool gray */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: auto; /* Allow scrolling if content is too large */
+        }
+        .abacus-frame {
+            background-color: #1c2833; /* Deep charcoal blue */
+            border: 10px solid #111a20; /* Even darker for border */
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem; /* Space between beams */
+            position: relative;
+            max-width: 90vw; /* Responsive width */
+            max-height: 90vh; /* Responsive height */
+            box-sizing: border-box;
+        }
+        .rod-container {
+            display: flex;
+            flex-direction: column; /* Beads stack vertically */
+            align-items: center;
+            justify-content: space-between;
+            height: 100%; /* Fill parent height */
+            position: relative;
+            padding: 0 0.5rem; /* Padding for rods */
+        }
+        .rod {
+            background-color: #c7d0d8; /* Sleek light gray */
+            width: 8px; /* Thin rod */
+            height: calc(100% - 2rem); /* Adjust height for beads */
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 4px;
+            top: 1rem; /* Adjust position */
+        }
+        .beam {
+            background-color: #8da4b7; /* Muted cool gray */
+            height: 20px; /* Thickness of the beam */
+            width: 100%;
+            border-radius: 10px;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+        .bead {
+            width: 2.5rem; /* Larger beads */
+            height: 2.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: top 0.2s ease-in-out, background-color 0.1s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 5;
+            user-select: none; /* Prevent text selection */
+        }
+        /* Top beads (Heaven beads) */
+        .bead.heaven {
+            background-color: #00bcd4; /* Cyan/aqua blue */
+        }
+        /* Bottom beads (Earth beads) */
+        .bead.earth {
+            background-color: #2196f3; /* Bright, professional blue */
+        }
+
+        /* Adjusted top/bottom for beads based on their "moved" state */
+        .bead.heaven.moved {
+            top: calc(50% + 0.5rem); /* Move heaven bead down past the beam */
+        }
+        .bead.heaven:not(.moved) {
+            top: 0.5rem; /* Heaven bead at the top */
+        }
+
+        .bead.earth.moved:nth-child(2) { /* First earth bead (index 0) */
+            top: calc(50% - 2.5rem - 0.5rem); /* Move up */
+        }
+        .bead.earth.moved:nth-child(3) { /* Second earth bead (index 1) */
+            top: calc(50% - 2 * 2.5rem - 0.5rem); /* Move up */
+        }
+        .bead.earth.moved:nth-child(4) { /* Third earth bead (index 2) */
+            top: calc(50% - 3 * 2.5rem - 0.5rem); /* Move up */
+        }
+        .bead.earth.moved:nth-child(5) { /* Fourth earth bead (index 3) */
+            top: calc(50% - 4 * 2.5rem - 0.5rem); /* Move up */
+        }
+
+        .bead.earth:nth-child(2):not(.moved) {
+            bottom: 0.5rem; /* First earth bead at the bottom */
+        }
+        .bead.earth:nth-child(3):not(.moved) {
+            bottom: calc(0.5rem + 1 * 2.5rem);
+        }
+        .bead.earth:nth-child(4):not(.moved) {
+            bottom: calc(0.5rem + 2 * 2.5rem);
+        }
+        .bead.earth:nth-child(5):not(.moved) {
+            bottom: calc(0.5rem + 3 * 2.5rem);
+        }
+
+        /* Container for rods, making them flex across the width */
+        .rods-container {
+            display: flex;
+            height: 100%; /* Fill the height of the frame */
+            flex-grow: 1; /* Allow rods to grow */
+            justify-content: space-around;
+            gap: 1rem; /* Space between rod columns */
+            position: relative;
+            padding-bottom: 30px; /* Add space for digits at the bottom */
+        }
+
+        /* Styles for the new digit display below each rod */
+        .rod-digit-display {
+            position: absolute;
+            bottom: -25px; /* Position below the rods */
+            font-size: 0.9rem;
+            color: #d4e0eb; /* Light gray for text, contrasting with dark frame */
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Modal for custom alerts */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .modal-button {
+            background-color: #2196f3; /* Matching professional blue */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            font-weight: bold;
+        }
+        .modal-button:hover {
+            background-color: #1565c0; /* Darker blue on hover */
+        }
+
+
+        /* Small screen adjustments */
+        @media (max-width: 640px) {
+            .abacus-frame {
+                padding: 1rem;
+                border-radius: 1rem;
+                gap: 0.5rem;
+            }
+            .bead {
+                width: 2rem;
+                height: 2rem;
+            }
+            .rod {
+                width: 6px;
+            }
+            .rods-container {
+                gap: 0.5rem;
+            }
+            .rod-digit-display {
+                font-size: 0.8rem;
+                bottom: -20px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100">
+    <div class="flex flex-col items-center p-4">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-8 text-center drop-shadow-lg">Interactive Abacus</h1>
+
+        <div class="bg-white p-8 rounded-2xl shadow-xl mb-8 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <label for="numberInput" class="text-lg font-semibold text-gray-700">Enter Number:</label>
+                <input type="number" id="numberInput" placeholder="e.g., 12345"
+                       class="flex-grow ml-4 p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-lg">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button id="setButton"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg
+                               transition duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+                    Set Abacus
+                </button>
+                <button id="addButton"
+                        class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg
+                               transition duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+                    Add to Abacus
+                </button>
+                <button id="subtractButton"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg
+                               transition duration-300 ease-in-out transform hover:scale-105 active:scale-95 col-span-2">
+                    Subtract from Abacus
+                </button>
+            </div>
+            <div class="mt-6 text-center">
+                <span class="text-2xl font-bold text-gray-800">Current Value: </span>
+                <span id="currentValue" class="text-3xl font-extrabold text-blue-800">0</span>
+            </div>
+        </div>
+
+        <!-- Increased height of abacusFrame to accommodate digit displays -->
+        <div id="abacusFrame" class="abacus-frame w-[calc(100vw-4rem)] md:w-[800px] h-[calc(100vh-180px)] md:h-[420px]">
+            <div class="rods-container">
+                <!-- Rods will be dynamically generated here by JavaScript -->
+            </div>
+            <div class="beam"></div>
+        </div>
+
+        <button id="clearButton"
+                class="mt-8 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg
+                       transition duration-300 ease-in-out transform hover:scale-105 active:scale-95">
+            Clear Abacus
+        </button>
+
+    </div>
+
+    <script>
+        // DOM elements
+        const abacusFrame = document.getElementById('abacusFrame');
+        const rodsContainer = abacusFrame.querySelector('.rods-container');
+        const currentValueSpan = document.getElementById('currentValue');
+        const numberInput = document.getElementById('numberInput');
+        const setButton = document.getElementById('setButton');
+        const addButton = document.getElementById('addButton');
+        const subtractButton = document.getElementById('subtractButton');
+        const clearButton = document.getElementById('clearButton');
+
+        // Configuration
+        const NUM_RODS = 13; // Number of rods on the abacus
+        const BEAD_HEIGHT_REM = 2.5; // Height of a bead in rem (matches CSS)
+        const GAP_REM = 0.5; // Gap between beads and beam, and between beads
+
+        // Abacus state
+        // Each element in `abacusState` represents a rod.
+        // For each rod:
+        // [0] Heaven bead: 0 = up (value 0), 1 = down (value 5)
+        // [1-4] Earth beads: 0 = up (value 0), 1 = down (value 1)
+        let abacusState = Array(NUM_RODS).fill(null).map(() => ({
+            heaven: 0, // 0 means bead is at the top (unmoved), 1 means bead is moved down
+            earth: [0, 0, 0, 0] // 0 means bead is at the bottom (unmoved), 1 means bead is moved up
+        }));
+
+        /**
+         * Displays a custom modal message instead of `alert()`.
+         * @param {string} message The message to display.
+         */
+        function showMessage(message) {
+            const existingModal = document.getElementById('customMessageModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'customMessageModal';
+            modalOverlay.className = 'modal-overlay';
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+
+            const messageParagraph = document.createElement('p');
+            messageParagraph.textContent = message;
+            messageParagraph.className = 'text-lg font-medium text-gray-800';
+
+            const okButton = document.createElement('button');
+            okButton.textContent = 'OK';
+            okButton.className = 'modal-button';
+            okButton.onclick = () => modalOverlay.remove();
+
+            modalContent.appendChild(messageParagraph);
+            modalContent.appendChild(okButton);
+            modalOverlay.appendChild(modalContent);
+            document.body.appendChild(modalOverlay);
+        }
+
+        /**
+         * Renders the abacus beads based on the current `abacusState`.
+         */
+        function renderAbacus() {
+            rodsContainer.innerHTML = ''; // Clear existing rods
+            abacusState.forEach((rodState, rodIndex) => {
+                const rodContainer = document.createElement('div');
+                rodContainer.className = 'rod-container';
+
+                const rodElement = document.createElement('div');
+                rodElement.className = 'rod';
+                rodContainer.appendChild(rodElement);
+
+                // Create Heaven Bead
+                const heavenBead = document.createElement('div');
+                heavenBead.className = `bead heaven ${rodState.heaven === 1 ? 'moved' : ''}`;
+                heavenBead.dataset.rodIndex = rodIndex;
+                heavenBead.dataset.beadType = 'heaven';
+                rodContainer.appendChild(heavenBead);
+
+                // Create Earth Beads
+                for (let i = 0; i < 4; i++) {
+                    const earthBead = document.createElement('div');
+                    // Add index to class for specific positioning in CSS
+                    earthBead.className = `bead earth bead-${i} ${rodState.earth[i] === 1 ? 'moved' : ''}`;
+                    earthBead.dataset.rodIndex = rodIndex;
+                    earthBead.dataset.beadType = 'earth';
+                    earthBead.dataset.beadIndex = i; // Store index to identify which earth bead
+                    rodContainer.appendChild(earthBead);
+                }
+
+                // Create and append the digit display for this rod
+                const digitDisplay = document.createElement('div');
+                digitDisplay.className = 'rod-digit-display';
+                digitDisplay.textContent = '0'; // Initial display, will be updated by updateRodDigitsDisplay
+                rodContainer.appendChild(digitDisplay);
+
+                rodsContainer.appendChild(rodContainer);
+            });
+            updateBeadPositions();
+            updateCurrentValueDisplay();
+            updateRodDigitsDisplay(); // Call to update individual rod digits
+        }
+
+        /**
+         * Calculates the current value represented on the abacus.
+         * @returns {number} The total value.
+         */
+        function calculateCurrentValue() {
+            let totalValue = 0;
+            // Iterate from right to left (least significant digit to most significant)
+            for (let i = 0; i < NUM_RODS; i++) {
+                const rodState = abacusState[NUM_RODS - 1 - i]; // Read rods from right to left
+                let rodValue = 0;
+
+                // Heaven bead contributes 5 if moved
+                if (rodState.heaven === 1) {
+                    rodValue += 5;
+                }
+
+                // Earth beads contribute 1 each if moved
+                rodState.earth.forEach(beadMoved => {
+                    if (beadMoved === 1) {
+                        rodValue += 1;
+                    }
+                });
+                totalValue += rodValue * Math.pow(10, i);
+            }
+            return totalValue;
+        }
+
+        /**
+         * Updates the displayed current value.
+         */
+        function updateCurrentValueDisplay() {
+            currentValueSpan.textContent = calculateCurrentValue();
+        }
+
+        /**
+         * Calculates the value of a single rod.
+         * @param {object} rodState The state of a single rod (heaven and earth beads).
+         * @returns {number} The value represented by that rod.
+         */
+        function getRodValue(rodState) {
+            let value = 0;
+            if (rodState.heaven === 1) {
+                value += 5;
+            }
+            rodState.earth.forEach(beadMoved => {
+                if (beadMoved === 1) {
+                    value += 1;
+                }
+            });
+            return value;
+        }
+
+        /**
+         * Updates the digit displayed below each rod.
+         */
+        function updateRodDigitsDisplay() {
+            document.querySelectorAll('.rod-container').forEach((rodContainer, visualRodIndex) => {
+                // `visualRodIndex` goes from 0 (leftmost) to NUM_RODS-1 (rightmost).
+                const rodState = abacusState[visualRodIndex];
+                const rodValue = getRodValue(rodState);
+
+                const digitDisplay = rodContainer.querySelector('.rod-digit-display');
+                if (digitDisplay) {
+                    digitDisplay.textContent = rodValue;
+                }
+            });
+        }
+
+
+        /**
+         * Adjusts the CSS 'top' or 'bottom' properties for beads dynamically.
+         * This ensures beads are positioned correctly based on their 'moved' state and rod height.
+         */
+        function updateBeadPositions() {
+            document.querySelectorAll('.rod-container').forEach((rodContainer, rodIndex) => {
+                const rodHeight = rodContainer.clientHeight;
+                const beadHeightPx = parseFloat(getComputedStyle(document.documentElement).fontSize) * BEAD_HEIGHT_REM; // Convert rem to px
+
+                // Heaven bead
+                const heavenBead = rodContainer.querySelector('.bead.heaven');
+                if (heavenBead) {
+                    if (abacusState[rodIndex].heaven === 1) {
+                        // Bead is moved (down)
+                        heavenBead.style.top = `calc(50% + ${GAP_REM}rem)`;
+                    } else {
+                        // Bead is unmoved (up)
+                        heavenBead.style.top = `${GAP_REM}rem`;
+                    }
+                }
+
+                // Earth beads
+                const earthBeads = Array.from(rodContainer.querySelectorAll('.bead.earth'));
+                earthBeads.forEach((bead, beadArrIndex) => {
+                    if (abacusState[rodIndex].earth[beadArrIndex] === 1) {
+                        // Bead is moved (up)
+                        bead.style.bottom = `calc(50% + ${GAP_REM}rem + ${beadArrIndex * (BEAD_HEIGHT_REM + GAP_REM * 0.5)}rem)`;
+                    } else {
+                        // Bead is unmoved (down)
+                        bead.style.bottom = `${GAP_REM}rem + ${beadArrIndex * (BEAD_HEIGHT_REM + GAP_REM * 0.5)}rem`;
+                    }
+                });
+            });
+        }
+
+
+        /**
+         * Handles bead clicks to move them and update the abacus state.
+         * @param {Event} event The click event.
+         */
+        function handleBeadClick(event) {
+            const bead = event.target;
+            // Ensure click is on a bead, not other parts of the rod-container
+            if (!bead.classList.contains('bead')) return;
+
+            const rodIndex = parseInt(bead.dataset.rodIndex);
+            const beadType = bead.dataset.beadType;
+
+            if (beadType === 'heaven') {
+                abacusState[rodIndex].heaven = 1 - abacusState[rodIndex].heaven; // Toggle state
+            } else if (beadType === 'earth') {
+                const beadIndex = parseInt(bead.dataset.beadIndex);
+                abacusState[rodIndex].earth[beadIndex] = 1 - abacusState[rodIndex].earth[beadIndex]; // Toggle state
+            }
+            renderAbacus(); // Re-render to reflect changes
+        }
+
+        /**
+         * Sets the abacus to display a specific number.
+         * @param {number} num The number to set.
+         */
+        function setAbacusToNumber(num) {
+            // Validate input
+            if (isNaN(num) || num < 0 || num > Math.pow(10, NUM_RODS) * 10 - 1) {
+                showMessage('Please enter a valid non-negative number within the abacus capacity (up to 13 digits).');
+                return;
+            }
+
+            // Clear the abacus first
+            abacusState = Array(NUM_RODS).fill(null).map(() => ({
+                heaven: 0,
+                earth: [0, 0, 0, 0]
+            }));
+
+            let tempNum = num;
+            // Iterate from right to left (least significant digit to most significant)
+            for (let i = 0; i < NUM_RODS && tempNum > 0; i++) {
+                const rodIndex = NUM_RODS - 1 - i; // Work on rods from right to left
+                let digit = tempNum % 10;
+                tempNum = Math.floor(tempNum / 10);
+
+                // Set heaven bead
+                if (digit >= 5) {
+                    abacusState[rodIndex].heaven = 1;
+                    digit -= 5;
+                }
+
+                // Set earth beads
+                for (let j = 0; j < digit; j++) {
+                    abacusState[rodIndex].earth[j] = 1;
+                }
+            }
+            renderAbacus();
+        }
+
+        /**
+         * Adds a number to the current abacus value.
+         * Handles carrying over.
+         * @param {number} numToAdd The number to add.
+         */
+        function addToAbacus(numToAdd) {
+            const currentVal = calculateCurrentValue();
+            const newVal = currentVal + numToAdd;
+            // Check if new value exceeds abacus capacity
+            if (newVal > Math.pow(10, NUM_RODS) * 10 - 1) {
+                showMessage('The number to add would exceed the abacus capacity.');
+                return;
+            }
+            setAbacusToNumber(newVal); // Reuse set function for simplicity
+        }
+
+        /**
+         * Subtracts a number from the current abacus value.
+         * Handles borrowing.
+         * @param {number} numToSubtract The number to subtract.
+         */
+        function subtractFromAbacus(numToSubtract) {
+            const currentVal = calculateCurrentValue();
+            const newVal = currentVal - numToSubtract;
+            if (newVal < 0) {
+                showMessage('Cannot subtract, result would be negative.');
+                return;
+            }
+            setAbacusToNumber(newVal); // Reuse set function for simplicity
+        }
+
+        // Event Listeners
+        rodsContainer.addEventListener('click', handleBeadClick);
+
+        setButton.addEventListener('click', () => {
+            const num = parseInt(numberInput.value);
+            setAbacusToNumber(num);
+        });
+
+        addButton.addEventListener('click', () => {
+            const num = parseInt(numberInput.value);
+            if (!isNaN(num)) {
+                addToAbacus(num);
+            } else {
+                showMessage('Please enter a number to add.');
+            }
+        });
+
+        subtractButton.addEventListener('click', () => {
+            const num = parseInt(numberInput.value);
+            if (!isNaN(num)) {
+                subtractFromAbacus(num);
+            } else {
+                showMessage('Please enter a number to subtract.');
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            setAbacusToNumber(0); // Set to 0 to clear
+        });
+
+        // Initial render
+        renderAbacus();
+        window.addEventListener('resize', updateBeadPositions); // Adjust bead positions on resize
+        window.addEventListener('resize', updateRodDigitsDisplay); // Adjust digit positions on resize
+    </script>
+</body>
+</html>
