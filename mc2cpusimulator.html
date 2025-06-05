@@ -1,1 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC-2 CPU Simulator (v3 - Debugger)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+        .register, .memory-cell, .alu-component, .bus-line {
+            border: 1px solid #ccc; padding: 8px; margin: 4px; border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace; min-height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.3s ease, border-color 0.3s ease; word-break: break-all;
+        }
+        .cpu-component-label { font-size: 0.75rem; color: #666; text-align: center; margin-bottom: 2px; }
+        .active-read { background-color: #e6f7ff; border-color: #91d5ff; }
+        .active-write { background-color: #fffbe6; border-color: #ffe58f; }
+        .alu-active { background-color: #f6ffed; border-color: #b7eb8f; }
+        .console {
+            height: 120px; border: 1px solid #ccc; padding: 8px; overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace; background-color: #f9f9f9; border-radius: 4px;
+        }
+        textarea.code-editor {
+            width: 100%; height: 180px; border: 1px solid #ccc; padding: 8px;
+            font-family: 'Courier New', Courier, monospace; font-size: 0.9em; border-radius: 4px;
+        }
+        .bus-container { display: flex; flex-direction: column; align-items: center; margin: 10px 0; }
+        .bus-line { width: 80%; height: 10px; background-color: #e0e0e0; margin: 2px 0; border: 1px solid #bdbdbd; }
+        
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%;
+            transform: translateX(-50%) translateY(-5px); background-color: #333; color: white;
+            padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; white-space: nowrap; z-index: 100;
+        }
+        [data-tooltip] { position: relative; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); }
+        .modal-close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .modal-close-button:hover, .modal-close-button:focus { color: black; text-decoration: none; }
+
+        #programViewDebugEl {
+            height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 5px;
+            font-family: 'Courier New', Courier, monospace; font-size: 0.9em; background-color: #fff;
+            border-radius: 4px;
+        }
+        .program-line { padding: 2px 5px; cursor: pointer; display: flex; align-items: center; }
+        .program-line:hover { background-color: #f0f0f0; }
+        .program-line.current-pc { background-color: #a0e9ff; font-weight: bold; }
+        .breakpoint-indicator {
+            width: 10px; height: 10px; border-radius: 50%; background-color: red;
+            margin-right: 8px; display: inline-block;
+        }
+        .line-address { color: #888; margin-right: 10px; min-width: 40px; display: inline-block; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-2 md:p-4 max-w-screen-xl">
+        <header class="bg-white shadow-md rounded-lg p-3 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h1 class="text-xl md:text-2xl font-bold text-blue-600">MC-2 CPU Simulator</h1>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button id="resetCpuBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-md text-sm" data-tooltip="Reset CPU State & Memory">Reset</button>
+                    <button id="startPauseCpuBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded-md text-sm" data-tooltip="Start/Pause/Resume Execution">Start</button>
+                    <button id="stepMicroOpBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-md text-sm" data-tooltip="Execute Next Micro-Op">Step µOp</button>
+                    <button id="stepInstructionBtn" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-3 rounded-md text-sm" data-tooltip="Execute Next Assembly Instruction">Step Instr</button>
+                    <button id="demoLoadBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-3 rounded-md text-sm" data-tooltip="Load Demo Program">Demo</button>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2 border-t pt-2">
+                 <input type="file" id="importMicrocodeEl" accept=".txt,.mc" class="hidden">
+                 <button onclick="DOM_ELEMENTS.importMicrocodeEl.click()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded-md text-xs" data-tooltip="Import Microcode File">Import µCode</button>
+                 <button id="exportMicrocodeBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded-md text-xs" data-tooltip="Export Microcode">Export µCode</button>
+                 <input type="file" id="importProgramEl" accept=".txt,.asm,.m2obj" class="hidden">
+                 <button onclick="DOM_ELEMENTS.importProgramEl.click()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded-md text-xs" data-tooltip="Import Assembly Program">Import Program</button>
+                 <button id="exportProgramBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded-md text-xs" data-tooltip="Export Program">Export Program</button>
+                 <button id="clearBreakpointsBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-2 rounded-md text-xs" data-tooltip="Clear All Breakpoints">Clear Breakpoints</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <!-- Left Column: CPU State & I/O -->
+            <section class="lg:col-span-1 bg-white shadow-md rounded-lg p-3 space-y-3">
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1 text-gray-700">CPU Core</h2>
+                <div> <!-- Registers -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Registers</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><div class="cpu-component-label">PC</div><div id="regPC" class="register">0000</div></div>
+                        <div><div class="cpu-component-label">AC</div><div id="regAC" class="register">0000</div></div>
+                        <div><div class="cpu-component-label">IR</div><div id="regIR" class="register">0000</div></div>
+                        <div><div class="cpu-component-label">MAR</div><div id="regMAR" class="register">0000</div></div>
+                        <div><div class="cpu-component-label">MDR</div><div id="regMDR" class="register">0000</div></div>
+                        <div><div class="cpu-component-label">Status (Z C O V)</div>
+                            <div id="regStatus" class="register flex justify-around">
+                                <span id="flagZ">Z:0</span> <span id="flagC">C:0</span> <span id="flagO">O:0</span> <span id="flagV">V:0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div> <!-- ALU & Buses -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">ALU & Buses</h3>
+                    <div class="flex justify-center items-center"><div id="aluEl" class="alu-component w-1/2">ALU</div></div>
+                    <div class="text-xs text-center mt-1" id="aluOperationDisplayEl">Op: IDLE</div>
+                    <div class="bus-container mt-2">
+                        <div class="cpu-component-label">Address Bus</div><div id="addressBusEl" class="bus-line"></div>
+                        <div class="cpu-component-label mt-2">Data Bus</div><div id="dataBusEl" class="bus-line"></div>
+                    </div>
+                </div>
+                 <div><!-- Micro-Op Display -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Current Micro-Op</h3>
+                    <div id="controlSignalsEl" class="text-xs p-2 bg-gray-50 rounded border min-h-[40px]">Idle</div>
+                </div>
+                 <div><!-- I/O Consoles -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">I/O</h3>
+                    <div class="cpu-component-label">Input Console</div>
+                    <input type="text" id="inputConsoleEl" class="w-full p-1 border border-gray-300 rounded-md text-sm mb-1" placeholder="Enter input & press 'Send'">
+                    <button id="sendInputBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-md text-xs mb-2">Send Input</button>
+                    <div class="cpu-component-label">Output Console</div>
+                    <div id="outputConsoleEl" class="console bg-black text-green-400"></div>
+                </div>
+            </section>
+
+            <!-- Middle Column: Editors & Debugger -->
+            <section class="lg:col-span-1 bg-white shadow-md rounded-lg p-3 space-y-3">
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1 text-gray-700">Code & Debugging</h2>
+                <div><!-- Program View / Debugger -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Program View (Click line to toggle breakpoint)</h3>
+                    <div id="programViewDebugEl">
+                        <!-- Program lines will be rendered here by JS -->
+                    </div>
+                </div>
+                <div><!-- Memory -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Memory (RAM - First 16)</h3>
+                    <div id="memoryViewEl" class="grid grid-cols-4 gap-1 text-xs"></div>
+                </div>
+                <div> <!-- Status Log -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Status / Debug Log</h3>
+                    <div id="statusConsoleEl" class="console h-20 text-sm">Simulator Idle.</div>
+                </div>
+            </section>
+            
+            <!-- Right Column: Code Editors -->
+            <section class="lg:col-span-1 bg-white shadow-md rounded-lg p-3 space-y-3">
+                <h2 class="text-lg font-semibold mb-2 border-b pb-1 text-gray-700">Editors</h2>
+                <div><!-- Microcode Editor -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Microcode Editor</h3>
+                    <textarea id="microcodeEditorEl" class="code-editor" spellcheck="false">// Default MC-2 Microcode
+FETCH1: TRUE -> NOP; NOP; NOP; PC_TO_MAR; FETCH2
+FETCH2: TRUE -> NOP; MEM_READ; NOP; NOP; FETCH3
+FETCH3: TRUE -> NOP; NOP; MDR_TO_IR; NOP; DECODE_INSTR
+
+LOAD_A1: TRUE -> NOP; NOP; NOP; IR_ADDR_TO_MAR; LOAD_A2
+LOAD_A2: TRUE -> NOP; MEM_READ; NOP; NOP; LOAD_A3
+LOAD_A3: TRUE -> NOP; NOP; MDR_TO_AC; NOP; FETCH1
+
+STORE_A1: TRUE -> NOP; NOP; NOP; IR_ADDR_TO_MAR; STORE_A2
+STORE_A2: TRUE -> NOP; NOP; AC_TO_MDR; NOP; STORE_A3
+STORE_A3: TRUE -> MEM_WRITE; NOP; NOP; NOP; FETCH1
+
+ADD_A1: TRUE -> NOP; NOP; NOP; IR_ADDR_TO_MAR; ADD_A2
+ADD_A2: TRUE -> NOP; MEM_READ; NOP; NOP; ADD_A3
+ADD_A3: TRUE -> ADD_MDR_TO_AC; NOP; NOP; NOP; FETCH1
+
+INP_A1: TRUE -> NOP; NOP; INPUT_TO_AC; NOP; FETCH1
+OUT_A1: TRUE -> NOP; NOP; AC_TO_OUTPUT; NOP; FETCH1
+HLT_A1: TRUE -> HALT; NOP; NOP; NOP; HLT_A1
+JMP_A1: TRUE -> NOP; NOP; IR_ADDR_TO_PC; NOP; FETCH1
+
+JZ_A1: IF_Z_TRUE -> NOP; NOP; IR_ADDR_TO_PC; NOP; FETCH1
+JZ_A2: IF_Z_FALSE -> NOP; NOP; NOP; NOP; FETCH1
+                    </textarea>
+                </div>
+                <div><!-- Assembly Editor -->
+                    <h3 class="text-md font-medium text-gray-600 mb-1">Assembly / Machine Code Editor</h3>
+                    <textarea id="programEditorEl" class="code-editor" spellcheck="false">// Demo Program
+LOAD 14
+ADD 15
+STORE 16
+OUT
+HLT
+                    </textarea>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="messageModalEl" class="modal"><div class="modal-content"><span class="modal-close-button" onclick="UI_MODULE.closeModal()">&times;</span><p id="modalMessageTextEl"></p></div></div>
+
+    <script>
+        // --- Configuration ---
+        const CPU_CONFIG = {
+            MEMORY_SIZE: 256,
+            OPCODES: { HLT: 0, LOAD: 1, STORE: 2, ADD: 3, INP: 4, OUT: 5, JMP: 6, JZ: 7 },
+            OPCODE_NAMES: {}
+        };
+        CPU_CONFIG.OPCODE_NAMES = Object.fromEntries(Object.entries(CPU_CONFIG.OPCODES).map(([name, code]) => [code, name]));
+
+        // --- DOM Elements Cache ---
+        const DOM_ELEMENTS = {
+            regPC: document.getElementById('regPC'), regAC: document.getElementById('regAC'),
+            regIR: document.getElementById('regIR'), regMAR: document.getElementById('regMAR'),
+            regMDR: document.getElementById('regMDR'), flagZ: document.getElementById('flagZ'),
+            flagC: document.getElementById('flagC'), flagO: document.getElementById('flagO'),
+            flagV: document.getElementById('flagV'), aluEl: document.getElementById('aluEl'),
+            aluOperationDisplayEl: document.getElementById('aluOperationDisplayEl'),
+            memoryViewEl: document.getElementById('memoryViewEl'),
+            inputConsoleEl: document.getElementById('inputConsoleEl'),
+            outputConsoleEl: document.getElementById('outputConsoleEl'),
+            microcodeEditorEl: document.getElementById('microcodeEditorEl'),
+            programEditorEl: document.getElementById('programEditorEl'),
+            programViewDebugEl: document.getElementById('programViewDebugEl'),
+            statusConsoleEl: document.getElementById('statusConsoleEl'),
+            controlSignalsEl: document.getElementById('controlSignalsEl'),
+            resetCpuBtn: document.getElementById('resetCpuBtn'),
+            startPauseCpuBtn: document.getElementById('startPauseCpuBtn'),
+            stepMicroOpBtn: document.getElementById('stepMicroOpBtn'), // Renamed from stepCpuBtn
+            stepInstructionBtn: document.getElementById('stepInstructionBtn'), // New
+            clearBreakpointsBtn: document.getElementById('clearBreakpointsBtn'), // New
+            demoLoadBtn: document.getElementById('demoLoadBtn'),
+            sendInputBtn: document.getElementById('sendInputBtn'),
+            importMicrocodeEl: document.getElementById('importMicrocodeEl'),
+            exportMicrocodeBtn: document.getElementById('exportMicrocodeBtn'),
+            importProgramEl: document.getElementById('importProgramEl'),
+            exportProgramBtn: document.getElementById('exportProgramBtn'),
+            addressBusEl: document.getElementById('addressBusEl'), dataBusEl: document.getElementById('dataBusEl'),
+            messageModalEl: document.getElementById('messageModalEl'), modalMessageTextEl: document.getElementById('modalMessageTextEl'),
+        };
+
+        // --- CPU State ---
+        const CPU_STATE = {
+            PC: 0, AC: 0, IR: 0, MAR: 0, MDR: 0,
+            STATUS: { Z: 0, C: 0, O: 0, V: 0 },
+            MEMORY: new Array(CPU_CONFIG.MEMORY_SIZE).fill(0),
+            microcode: {}, program: [], // program stores { address, instructionWord, originalLine }
+            breakpoints: new Set(), // Stores memory addresses of breakpoints
+            programViewLines: [], // Stores { address, text, element } for program view UI
+            running: false, haltExecution: false, isPausedForInput: false,
+            isSteppingInstruction: false, // For single assembly instruction step
+            cycleCount: 0, currentMicroOpLabel: 'FETCH1',
+            // currentMicroOpIndex: 0, // Not strictly needed if one line per label
+        };
+
+        // --- IO Module ---
+        const IO_MODULE = { 
+            inputBuffer: [],
+            handleSendInput: () => {
+                const inputVal = DOM_ELEMENTS.inputConsoleEl.value.trim();
+                if (inputVal !== "") {
+                    IO_MODULE.inputBuffer.push(inputVal);
+                    UI_MODULE.logStatus(`Input '${inputVal}' added to buffer.`);
+                    DOM_ELEMENTS.inputConsoleEl.value = "";
+                    if (CPU_STATE.isPausedForInput) {
+                        CPU_STATE.isPausedForInput = false;
+                        CPU_STATE.running = true; // Set running before calling startPauseCpu for resume
+                        SIMULATOR_CORE.startPauseCpu(); 
+                    }
+                } else { UI_MODULE.logStatus("No input provided."); }
+            }
+        };
+
+        // --- UI Module ---
+        const UI_MODULE = { 
+            formatHex: (value, length = 4) => value.toString(16).toUpperCase().padStart(length, '0'),
+            formatBinary: (value, length = 16) => value.toString(2).padStart(length, '0'),
+            logStatus: (message) => {
+                console.log(message); // Keep console log for debugging
+                DOM_ELEMENTS.statusConsoleEl.textContent = `[Cycle ${CPU_STATE.cycleCount}] ${message}`;
+            },
+            logOutput: (message) => {
+                const line = document.createElement('div'); line.textContent = message;
+                DOM_ELEMENTS.outputConsoleEl.appendChild(line);
+                DOM_ELEMENTS.outputConsoleEl.scrollTop = DOM_ELEMENTS.outputConsoleEl.scrollHeight;
+            },
+            showModal: (message) => {
+                DOM_ELEMENTS.modalMessageTextEl.textContent = message;
+                DOM_ELEMENTS.messageModalEl.style.display = "block";
+            },
+            closeModal: () => { DOM_ELEMENTS.messageModalEl.style.display = "none"; },
+            animateComponent: (element, type = 'read', duration = 300) => {
+                if (!element) return;
+                let c = type === 'read' ? 'active-read' : type === 'write' ? 'active-write' : type === 'alu' ? 'alu-active' : '';
+                if (c) { element.classList.add(c); setTimeout(() => element.classList.remove(c), duration); }
+            },
+            animateBus: (busEl, duration = 300) => { if(busEl){ busEl.classList.add('active-read'); setTimeout(()=>busEl.classList.remove('active-read'),duration);}},
+            updateAll: () => {
+                DOM_ELEMENTS.regPC.textContent = UI_MODULE.formatHex(CPU_STATE.PC);
+                DOM_ELEMENTS.regAC.textContent = UI_MODULE.formatHex(CPU_STATE.AC);
+                DOM_ELEMENTS.regIR.textContent = UI_MODULE.formatBinary(CPU_STATE.IR);
+                DOM_ELEMENTS.regMAR.textContent = UI_MODULE.formatHex(CPU_STATE.MAR);
+                DOM_ELEMENTS.regMDR.textContent = UI_MODULE.formatHex(CPU_STATE.MDR);
+                DOM_ELEMENTS.flagZ.textContent = `Z:${CPU_STATE.STATUS.Z}`;
+                DOM_ELEMENTS.flagC.textContent = `C:${CPU_STATE.STATUS.C}`;
+                DOM_ELEMENTS.flagO.textContent = `O:${CPU_STATE.STATUS.O}`;
+                DOM_ELEMENTS.flagV.textContent = `V:${CPU_STATE.STATUS.V}`;
+                UI_MODULE.updateMemoryView();
+                UI_MODULE.updateProgramViewDebug(); // Update debugger view
+            },
+            initializeMemoryView: () => { 
+                DOM_ELEMENTS.memoryViewEl.innerHTML = '';
+                for (let i = 0; i < 16; i++) { 
+                    const cellContainer = document.createElement('div');
+                    cellContainer.className = 'memory-cell p-1 text-center'; cellContainer.id = `mem-${i}`;
+                    const addrLabel = document.createElement('div');
+                    addrLabel.className = 'cpu-component-label text-xs'; addrLabel.textContent = `M[${UI_MODULE.formatHex(i,2)}]`;
+                    const valDisplay = document.createElement('div');
+                    valDisplay.className = 'mem-val'; valDisplay.textContent = UI_MODULE.formatHex(CPU_STATE.MEMORY[i]);
+                    cellContainer.appendChild(addrLabel); cellContainer.appendChild(valDisplay);
+                    DOM_ELEMENTS.memoryViewEl.appendChild(cellContainer);
+                }
+            },
+            updateMemoryView: () => {
+                for (let i = 0; i < 16; i++) {
+                    const cell = document.getElementById(`mem-${i}`);
+                    if (cell) cell.querySelector('.mem-val').textContent = UI_MODULE.formatHex(CPU_STATE.MEMORY[i]);
+                }
+            },
+            renderProgramViewDebug: () => {
+                DOM_ELEMENTS.programViewDebugEl.innerHTML = '';
+                CPU_STATE.programViewLines = []; // Clear previous lines cache
+                CPU_STATE.program.forEach(instr => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'program-line';
+                    lineDiv.dataset.address = instr.address; // Store address for toggling breakpoint
+
+                    const bpIndicator = document.createElement('span');
+                    bpIndicator.className = 'breakpoint-indicator';
+                    // bpIndicator.style.visibility = CPU_STATE.breakpoints.has(instr.address) ? 'visible' : 'hidden';
+
+                    const addrSpan = document.createElement('span');
+                    addrSpan.className = 'line-address';
+                    addrSpan.textContent = `0x${UI_MODULE.formatHex(instr.address, 3)}:`;
+                    
+                    const instrText = document.createElement('span');
+                    instrText.textContent = instr.originalLine;
+
+                    lineDiv.appendChild(bpIndicator);
+                    lineDiv.appendChild(addrSpan);
+                    lineDiv.appendChild(instrText);
+                    
+                    lineDiv.addEventListener('click', () => SIMULATOR_CORE.toggleBreakpoint(instr.address));
+                    DOM_ELEMENTS.programViewDebugEl.appendChild(lineDiv);
+                    CPU_STATE.programViewLines.push({ address: instr.address, element: lineDiv, bpElement: bpIndicator });
+                });
+                UI_MODULE.updateProgramViewDebug(); // To highlight current PC and BPs
+            },
+            updateProgramViewDebug: () => {
+                CPU_STATE.programViewLines.forEach(lineInfo => {
+                    lineInfo.element.classList.remove('current-pc');
+                    if (lineInfo.address === CPU_STATE.PC && !CPU_STATE.haltExecution) {
+                        lineInfo.element.classList.add('current-pc');
+                        // Scroll into view if needed and element is present
+                        if (lineInfo.element.offsetParent !== null) { // Check if visible
+                           const isOutOfView = lineInfo.element.offsetTop < DOM_ELEMENTS.programViewDebugEl.scrollTop ||
+                                          lineInfo.element.offsetTop + lineInfo.element.offsetHeight > DOM_ELEMENTS.programViewDebugEl.scrollTop + DOM_ELEMENTS.programViewDebugEl.offsetHeight;
+                            if(isOutOfView) lineInfo.element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }
+                    lineInfo.bpElement.style.visibility = CPU_STATE.breakpoints.has(lineInfo.address) ? 'visible' : 'hidden';
+                });
+            }
+        };
+
+        // --- Microcode Module ---
+        const MICROCODE_MODULE = { 
+            parse: () => { 
+                const lines = DOM_ELEMENTS.microcodeEditorEl.value.split('\n');
+                CPU_STATE.microcode = {};
+                // Regex: LABEL: [IF_CONDITION ->] ALU_OP; MEM_OP; REG_XFER_IN; REG_XFER_OUT; NEXT_LABEL
+                const microOpRegex = /^([A-Z0-9_]+):\s*(?:(IF_[A-Z0-9_]+)\s*->\s*)?([^;]+);\s*([^;]+);\s*([^;]+);\s*([^;]+);\s*([A-Z0-9_]+|DECODE_INSTR)\s*$/;
+                lines.forEach(line => {
+                    line = line.trim(); if (line.startsWith('//') || line === '') return;
+                    const match = line.match(microOpRegex);
+                    if (match) {
+                        CPU_STATE.microcode[match[1]] = { // Assuming one micro-op definition per label
+                            condition: match[2] || 'TRUE', aluOp: match[3].trim(), memOp: match[4].trim(),
+                            regXferIn: match[5].trim(), regXferOut: match[6].trim(), // Order was regXferIn then regXferOut
+                            nextLabel: match[7].trim(), originalLine: line 
+                        };
+                    } else { UI_MODULE.logStatus(`Warning: Invalid microcode line: ${line}`); }
+                });
+                if (Object.keys(CPU_STATE.microcode).length > 0) UI_MODULE.logStatus("Microcode parsed.");
+                else UI_MODULE.logStatus("Microcode parsing failed.");
+            },
+            executeCurrentOp: () => {
+                if (CPU_STATE.haltExecution || CPU_STATE.isPausedForInput) {
+                    SIMULATOR_CORE.updateRunStateUI(false, CPU_STATE.isPausedForInput);
+                    return;
+                }
+
+                // Breakpoint Check: Only at the very start of a FETCH1 cycle (beginning of an instruction)
+                // And not if we are in the middle of a "Step Instruction"
+                if (CPU_STATE.currentMicroOpLabel === 'FETCH1' && CPU_STATE.breakpoints.has(CPU_STATE.PC) && !CPU_STATE.isSteppingInstruction) {
+                    UI_MODULE.logStatus(`Breakpoint hit at 0x${UI_MODULE.formatHex(CPU_STATE.PC)}.`);
+                    CPU_STATE.running = false; // Stop continuous run
+                    SIMULATOR_CORE.updateRunStateUI(false); // Update button to "Start" or "Resume"
+                    UI_MODULE.updateAll(); // Ensure UI is current
+                    return; // Stop further micro-op execution
+                }
+
+                const uOp = CPU_STATE.microcode[CPU_STATE.currentMicroOpLabel];
+                if (!uOp) {
+                    UI_MODULE.logStatus(`Error: Micro-op label "${CPU_STATE.currentMicroOpLabel}" not found.`);
+                    CPU_STATE.haltExecution = true; SIMULATOR_CORE.updateRunStateUI(false); return;
+                }
+
+                // Shorten log for cleaner output during run
+                UI_MODULE.logStatus(`µOp: ${CPU_STATE.currentMicroOpLabel} -> ${uOp.originalLine.length > 60 ? uOp.originalLine.substring(0,60)+'...' : uOp.originalLine}`);
+                DOM_ELEMENTS.controlSignalsEl.textContent = uOp.originalLine;
+                UI_MODULE.animateComponent(DOM_ELEMENTS.controlSignalsEl, 'read', 100);
+
+                let conditionMet = false;
+                switch (uOp.condition) {
+                    case 'TRUE': conditionMet = true; break;
+                    case 'IF_Z_TRUE': conditionMet = (CPU_STATE.STATUS.Z === 1); break;
+                    case 'IF_Z_FALSE': conditionMet = (CPU_STATE.STATUS.Z === 0); break;
+                    case 'IF_C_TRUE': conditionMet = (CPU_STATE.STATUS.C === 1); break;
+                    default: conditionMet = true; UI_MODULE.logStatus(`Warn: Unknown µCondition '${uOp.condition}', assuming TRUE.`);
+                }
+
+                if (conditionMet) {
+                    MICROCODE_MODULE._handleRegXferOut(uOp.regXferOut);
+                    MICROCODE_MODULE._handleMemOp(uOp.memOp);
+                    MICROCODE_MODULE._handleAluOp(uOp.aluOp);
+                    if (CPU_STATE.isPausedForInput) { SIMULATOR_CORE.updateRunStateUI(false, true); return; } // Paused for input
+                    MICROCODE_MODULE._handleRegXferIn(uOp.regXferIn);
+                } else { UI_MODULE.logStatus(`µCond ${uOp.condition} NOT met. Next: ${uOp.nextLabel}.`);}
+
+                let previousMicroOpLabelForStepCheck = CPU_STATE.currentMicroOpLabel; // Store before updating
+                if (uOp.nextLabel === 'DECODE_INSTR') {
+                    MICROCODE_MODULE._decodeInstruction();
+                } else {
+                    CPU_STATE.currentMicroOpLabel = uOp.nextLabel;
+                }
+
+                CPU_STATE.cycleCount++;
+                UI_MODULE.updateAll(); // Update UI after micro-op
+
+                // Step Instruction Logic: Stop if this micro-op sequence has completed an instruction
+                // This means the *next* micro-op is FETCH1, and we weren't *just* in FETCH1 (or a similar start-of-fetch marker)
+                if (CPU_STATE.isSteppingInstruction && CPU_STATE.currentMicroOpLabel === 'FETCH1' && !previousMicroOpLabelForStepCheck.startsWith('FETCH')) {
+                    CPU_STATE.running = false; // Stop the temporary run for step instruction
+                    CPU_STATE.isSteppingInstruction = false; 
+                    SIMULATOR_CORE.updateRunStateUI(false); // Update button to "Start"
+                    UI_MODULE.logStatus("Instruction step complete.");
+                    return; // Stop further micro-op execution
+                }
+                
+                if (CPU_STATE.running && !CPU_STATE.haltExecution && !CPU_STATE.isPausedForInput) {
+                    setTimeout(MICROCODE_MODULE.executeCurrentOp, 100); // Simulation speed
+                } else if (CPU_STATE.haltExecution) {
+                    UI_MODULE.logStatus("Execution Halted by micro-op or error.");
+                    SIMULATOR_CORE.updateRunStateUI(false);
+                }
+            },
+            _handleRegXferOut: (op) => { 
+                switch (op) {
+                    case 'PC_TO_MAR': CPU_STATE.MAR = CPU_STATE.PC; UI_MODULE.animateComponent(DOM_ELEMENTS.regPC, 'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regMAR, 'write'); UI_MODULE.animateBus(DOM_ELEMENTS.addressBusEl); break;
+                    case 'AC_TO_MDR': CPU_STATE.MDR = CPU_STATE.AC; UI_MODULE.animateComponent(DOM_ELEMENTS.regAC, 'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regMDR, 'write'); UI_MODULE.animateBus(DOM_ELEMENTS.dataBusEl); break;
+                    case 'IR_ADDR_TO_MAR': CPU_STATE.MAR = CPU_STATE.IR & 0x0FFF; UI_MODULE.animateComponent(DOM_ELEMENTS.regIR, 'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regMAR, 'write'); UI_MODULE.animateBus(DOM_ELEMENTS.addressBusEl); break;
+                    case 'NOP': break; default: if (op !== 'NOP') UI_MODULE.logStatus(`Unknown regXferOut: ${op}`);
+                }
+            },
+            _handleMemOp: (op) => { 
+                const memAddrElement = document.getElementById(`mem-${CPU_STATE.MAR}`);
+                switch (op) {
+                    case 'MEM_READ':
+                        if (CPU_STATE.MAR >= 0 && CPU_STATE.MAR < CPU_CONFIG.MEMORY_SIZE) {
+                            CPU_STATE.MDR = CPU_STATE.MEMORY[CPU_STATE.MAR];
+                            // UI_MODULE.logStatus(`MEM_READ: M[${UI_MODULE.formatHex(CPU_STATE.MAR)}] (${UI_MODULE.formatHex(CPU_STATE.MEMORY[CPU_STATE.MAR])}) -> MDR (${UI_MODULE.formatHex(CPU_STATE.MDR)})`);
+                            UI_MODULE.animateComponent(memAddrElement, 'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regMDR, 'write'); UI_MODULE.animateBus(DOM_ELEMENTS.dataBusEl);
+                        } else { UI_MODULE.logStatus(`Err: MemRead OOB @${UI_MODULE.formatHex(CPU_STATE.MAR)}`); CPU_STATE.haltExecution = true; }
+                        break;
+                    case 'MEM_WRITE':
+                        if (CPU_STATE.MAR >= 0 && CPU_STATE.MAR < CPU_CONFIG.MEMORY_SIZE) {
+                            CPU_STATE.MEMORY[CPU_STATE.MAR] = CPU_STATE.MDR;
+                            // UI_MODULE.logStatus(`MEM_WRITE: MDR (${UI_MODULE.formatHex(CPU_STATE.MDR)}) -> M[${UI_MODULE.formatHex(CPU_STATE.MAR)}]`);
+                            UI_MODULE.animateComponent(DOM_ELEMENTS.regMDR, 'read'); UI_MODULE.animateComponent(memAddrElement, 'write'); UI_MODULE.animateBus(DOM_ELEMENTS.dataBusEl);
+                        } else { UI_MODULE.logStatus(`Err: MemWrite OOB @${UI_MODULE.formatHex(CPU_STATE.MAR)}`); CPU_STATE.haltExecution = true; }
+                        break;
+                    case 'NOP': break; default: if (op !== 'NOP') UI_MODULE.logStatus(`Unknown memOp: ${op}`);
+                }
+            },
+            _handleAluOp: (op) => { 
+                let prevAC = CPU_STATE.AC; CPU_STATE.STATUS.Z = 0; CPU_STATE.STATUS.C = 0; CPU_STATE.STATUS.O = 0;
+                switch (op) {
+                    case 'ADD_MDR_TO_AC':
+                        let sum = prevAC + CPU_STATE.MDR; CPU_STATE.AC = sum & 0xFFFF;
+                        CPU_STATE.STATUS.Z = (CPU_STATE.AC === 0) ? 1 : 0;
+                        CPU_STATE.STATUS.C = (sum > 0xFFFF) ? 1 : 0;
+                        const signA = (prevAC >> 15); const signB = (CPU_STATE.MDR >> 15); const signRes = (CPU_STATE.AC >> 15);
+                        if (signA === signB && signA !== signRes) CPU_STATE.STATUS.O = 1; // Simplified signed overflow
+                        DOM_ELEMENTS.aluOperationDisplayEl.textContent = `Op: ADD (${UI_MODULE.formatHex(CPU_STATE.MDR)})`;
+                        UI_MODULE.animateComponent(DOM_ELEMENTS.aluEl,'alu'); UI_MODULE.animateComponent(DOM_ELEMENTS.regAC,'write');
+                        break;
+                    case 'INC_PC': CPU_STATE.PC = (CPU_STATE.PC + 1) & 0xFFFF; DOM_ELEMENTS.aluOperationDisplayEl.textContent = `Op: INC_PC`; UI_MODULE.animateComponent(DOM_ELEMENTS.aluEl, 'alu'); UI_MODULE.animateComponent(DOM_ELEMENTS.regPC, 'write'); break;
+                    case 'HALT': CPU_STATE.haltExecution = true; DOM_ELEMENTS.aluOperationDisplayEl.textContent = `Op: HALT`; UI_MODULE.animateComponent(DOM_ELEMENTS.aluEl, 'alu'); break;
+                    case 'NOP': DOM_ELEMENTS.aluOperationDisplayEl.textContent = `Op: IDLE`; break;
+                    default: if(op !== 'NOP') UI_MODULE.logStatus(`Unknown aluOp: ${op}`);
+                }
+            },
+            _handleRegXferIn: (op) => { 
+                 switch (op) {
+                    case 'MDR_TO_IR': CPU_STATE.IR = CPU_STATE.MDR; UI_MODULE.animateComponent(DOM_ELEMENTS.regMDR,'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regIR,'write'); UI_MODULE.animateBus(DOM_ELEMENTS.dataBusEl); break;
+                    case 'MDR_TO_AC': CPU_STATE.AC = CPU_STATE.MDR; UI_MODULE.animateComponent(DOM_ELEMENTS.regMDR,'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regAC,'write'); UI_MODULE.animateBus(DOM_ELEMENTS.dataBusEl); break;
+                    case 'INPUT_TO_AC':
+                        if (IO_MODULE.inputBuffer.length > 0) {
+                            const valStr = IO_MODULE.inputBuffer.shift(); const val = parseInt(valStr);
+                            if (!isNaN(val)) { CPU_STATE.AC = val & 0xFFFF; UI_MODULE.logStatus(`INPUT: Read ${UI_MODULE.formatHex(CPU_STATE.AC)} from '${valStr}'`); UI_MODULE.animateComponent(DOM_ELEMENTS.regAC,'write'); }
+                            else { UI_MODULE.logStatus(`Error: Invalid input '${valStr}'`); }
+                        } else {
+                            UI_MODULE.logStatus("Input requested, buffer empty. Pausing.");
+                            CPU_STATE.isPausedForInput = true; SIMULATOR_CORE.updateRunStateUI(false, true); // isWaitingForInput = true
+                            UI_MODULE.showModal("Program needs input. Enter value, 'Send Input', then 'Resume'.");
+                        }
+                        break;
+                    case 'AC_TO_OUTPUT': UI_MODULE.logOutput(CPU_STATE.AC.toString() + ` (0x${UI_MODULE.formatHex(CPU_STATE.AC)})`); UI_MODULE.animateComponent(DOM_ELEMENTS.regAC,'read'); break;
+                    case 'IR_ADDR_TO_PC': CPU_STATE.PC = CPU_STATE.IR & 0x0FFF; UI_MODULE.logStatus(`JUMP: PC -> ${UI_MODULE.formatHex(CPU_STATE.PC)}`); UI_MODULE.animateComponent(DOM_ELEMENTS.regIR,'read'); UI_MODULE.animateComponent(DOM_ELEMENTS.regPC,'write'); break;
+                    case 'NOP': break; default: if (op !== 'NOP') UI_MODULE.logStatus(`Unknown regXferIn: ${op}`);
+                }
+            },
+            _decodeInstruction: () => { 
+                const opcode = (CPU_STATE.IR >> 12) & 0xF; const operand = CPU_STATE.IR & 0x0FFF;
+                UI_MODULE.logStatus(`DECODE: Op ${UI_MODULE.formatBinary(opcode,4)} (${CPU_CONFIG.OPCODE_NAMES[opcode]||'UNK'}), Adr ${UI_MODULE.formatHex(operand,3)}`);
+                switch (opcode) {
+                    case CPU_CONFIG.OPCODES.HLT: CPU_STATE.currentMicroOpLabel = 'HLT_A1'; break;
+                    case CPU_CONFIG.OPCODES.LOAD: CPU_STATE.currentMicroOpLabel = 'LOAD_A1'; break;
+                    case CPU_CONFIG.OPCODES.STORE: CPU_STATE.currentMicroOpLabel = 'STORE_A1'; break;
+                    case CPU_CONFIG.OPCODES.ADD: CPU_STATE.currentMicroOpLabel = 'ADD_A1'; break;
+                    case CPU_CONFIG.OPCODES.INP: CPU_STATE.currentMicroOpLabel = 'INP_A1'; break;
+                    case CPU_CONFIG.OPCODES.OUT: CPU_STATE.currentMicroOpLabel = 'OUT_A1'; break;
+                    case CPU_CONFIG.OPCODES.JMP: CPU_STATE.currentMicroOpLabel = 'JMP_A1'; break;
+                    case CPU_CONFIG.OPCODES.JZ: CPU_STATE.currentMicroOpLabel = (CPU_STATE.STATUS.Z === 1) ? 'JZ_A1' : 'JZ_A2'; break;
+                    default: UI_MODULE.logStatus(`Err: Unknown opcode ${opcode}. Halting.`); CPU_STATE.haltExecution = true; CPU_STATE.currentMicroOpLabel = 'FETCH1';
+                }
+            }
+        };
+
+        // --- Program Module ---
+        const PROGRAM_MODULE = { 
+            load: (programString) => {
+                CPU_STATE.program = []; const lines = programString.split('\n'); let currentAddress = 0;
+                lines.forEach((line, index) => {
+                    line = line.trim().toUpperCase(); if (line.startsWith('//') || line === '') return;
+                    const parts = line.split(/\s+/); let opcodeName = parts[0];
+                    let operandVal = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+                    if (CPU_CONFIG.OPCODES.hasOwnProperty(opcodeName)) {
+                        const opcode = CPU_CONFIG.OPCODES[opcodeName];
+                        const instructionWord = ((opcode & 0xF) << 12) | (operandVal & 0xFFF);
+                        if(currentAddress < CPU_CONFIG.MEMORY_SIZE) CPU_STATE.MEMORY[currentAddress] = instructionWord;
+                        CPU_STATE.program.push({ address: currentAddress, instructionWord: instructionWord, originalLine: line });
+                        currentAddress++;
+                    } else { // Try parsing as raw hex
+                        try { const iw = parseInt(line,16); if(!isNaN(iw) && iw>=0 && iw<=0xFFFF){ if(currentAddress < CPU_CONFIG.MEMORY_SIZE) CPU_STATE.MEMORY[currentAddress]=iw; CPU_STATE.program.push({address:currentAddress,instructionWord:iw,originalLine:`0x${UI_MODULE.formatHex(iw)}`});currentAddress++;}}
+                        catch(e){UI_MODULE.logStatus(`Warn: Invalid prog line ${index+1}: ${line}`);}
+                    }
+                });
+                if(CPU_STATE.program.length>0){CPU_STATE.PC=CPU_STATE.program[0].address; UI_MODULE.logStatus("Program loaded. PC -> "+UI_MODULE.formatHex(CPU_STATE.PC));}
+                else{UI_MODULE.logStatus("No valid program instructions found.");}
+                UI_MODULE.renderProgramViewDebug(); // Render program for debugger
+                UI_MODULE.updateAll();
+            }
+        };
+
+        // --- File Module ---
+        const FILE_MODULE = { 
+            handleUpload: (event, type) => {
+                const file = event.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (type === 'microcode') { DOM_ELEMENTS.microcodeEditorEl.value = e.target.result; MICROCODE_MODULE.parse(); UI_MODULE.logStatus(`µCode file '${file.name}' loaded.`); }
+                    else if (type === 'program') { DOM_ELEMENTS.programEditorEl.value = e.target.result; SIMULATOR_CORE.resetCpu(); PROGRAM_MODULE.load(e.target.result); UI_MODULE.logStatus(`Program file '${file.name}' loaded.`);} // Reset CPU state before loading new program
+                }; reader.readAsText(file); event.target.value = null; // Reset file input to allow same file upload again
+            },
+            export: (content, filename, contentType) => { 
+                const blob = new Blob([content],{type:contentType}); const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a);
+                a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); UI_MODULE.logStatus(`Exported to ${filename}`);
+            }
+        };
+
+        // --- Simulator Core ---
+        const SIMULATOR_CORE = { 
+            resetCpu: () => {
+                CPU_STATE.PC = 0; CPU_STATE.AC = 0; CPU_STATE.IR = 0; CPU_STATE.MAR = 0; CPU_STATE.MDR = 0;
+                CPU_STATE.STATUS = { Z: 0, C: 0, O: 0, V: 0 }; CPU_STATE.MEMORY.fill(0);
+                CPU_STATE.program = []; CPU_STATE.breakpoints.clear(); CPU_STATE.programViewLines = [];
+                CPU_STATE.haltExecution = false; CPU_STATE.running = false; CPU_STATE.isPausedForInput = false; CPU_STATE.isSteppingInstruction = false;
+                CPU_STATE.cycleCount = 0; CPU_STATE.currentMicroOpLabel = 'FETCH1';
+                IO_MODULE.inputBuffer = []; DOM_ELEMENTS.inputConsoleEl.value = ''; DOM_ELEMENTS.outputConsoleEl.innerHTML = '';
+                DOM_ELEMENTS.programViewDebugEl.innerHTML = '<div class="p-4 text-gray-500">Load a program to view.</div>'; // Placeholder
+                MICROCODE_MODULE.parse(); SIMULATOR_CORE.updateRunStateUI(false);
+                UI_MODULE.initializeMemoryView(); UI_MODULE.updateAll(); // This will call updateProgramViewDebug
+                UI_MODULE.logStatus('CPU Reset.');
+            },
+            updateRunStateUI: (isRunning, isWaitingForInput = false) => {
+                CPU_STATE.running = isRunning; // Ensure CPU_STATE.running is accurate
+                if (isWaitingForInput) {
+                    DOM_ELEMENTS.startPauseCpuBtn.textContent = 'Resume';
+                    DOM_ELEMENTS.startPauseCpuBtn.className = 'bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded-md text-sm';
+                } else if (isRunning) {
+                    DOM_ELEMENTS.startPauseCpuBtn.textContent = 'Pause';
+                    DOM_ELEMENTS.startPauseCpuBtn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-3 rounded-md text-sm';
+                } else { // Paused or Halted or Initial state
+                    DOM_ELEMENTS.startPauseCpuBtn.textContent = 'Start';
+                    DOM_ELEMENTS.startPauseCpuBtn.className = 'bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded-md text-sm';
+                }
+            },
+            stepMicroOp: () => {
+                if (CPU_STATE.haltExecution) { UI_MODULE.logStatus("Halted. Reset CPU."); return; }
+                CPU_STATE.running = false; CPU_STATE.isPausedForInput = false; CPU_STATE.isSteppingInstruction = false; // Ensure these are reset
+                SIMULATOR_CORE.updateRunStateUI(false);
+                MICROCODE_MODULE.executeCurrentOp();
+            },
+            stepInstruction: () => {
+                if (CPU_STATE.haltExecution) { UI_MODULE.logStatus("Halted. Reset CPU."); return; }
+                if (CPU_STATE.isPausedForInput) { UI_MODULE.showModal("Cannot step instruction while waiting for input. Send input and resume first."); return; }
+                
+                CPU_STATE.running = true; // Set to true to allow micro-ops to run through one instruction
+                CPU_STATE.isSteppingInstruction = true;
+                SIMULATOR_CORE.updateRunStateUI(true); // Show "Pause" during the step
+                UI_MODULE.updateAll(); // Update PC highlight before starting
+                MICROCODE_MODULE.executeCurrentOp(); // Start the sequence of micro-ops
+            },
+            startPauseCpu: () => { // This is "Continue All" or Start/Pause/Resume
+                if (CPU_STATE.haltExecution) { UI_MODULE.logStatus("Halted. Reset CPU."); return; }
+                if (CPU_STATE.program.length === 0 && CPU_STATE.currentMicroOpLabel === 'FETCH1') {
+                    UI_MODULE.showModal("No program loaded."); return;
+                }
+
+                if (CPU_STATE.isPausedForInput) { // Trying to resume after input
+                    if (IO_MODULE.inputBuffer.length > 0) {
+                        CPU_STATE.isPausedForInput = false; 
+                        CPU_STATE.running = true; // Now actually run
+                        UI_MODULE.logStatus("Resuming CPU after input.");
+                        SIMULATOR_CORE.updateRunStateUI(true);
+                        MICROCODE_MODULE.executeCurrentOp(); 
+                    } else { UI_MODULE.showModal("Still waiting for input. Send input, then 'Resume'.");}
+                    return;
+                }
+                
+                CPU_STATE.running = !CPU_STATE.running;
+                CPU_STATE.isSteppingInstruction = false; // Any continuous run cancels step instruction mode
+                SIMULATOR_CORE.updateRunStateUI(CPU_STATE.running);
+                if (CPU_STATE.running) {
+                    UI_MODULE.logStatus("CPU Running (Continue All).");
+                    MICROCODE_MODULE.executeCurrentOp();
+                } else { UI_MODULE.logStatus("CPU Paused."); }
+            },
+            toggleBreakpoint: (address) => {
+                if (CPU_STATE.breakpoints.has(address)) {
+                    CPU_STATE.breakpoints.delete(address);
+                    UI_MODULE.logStatus(`Breakpoint removed at 0x${UI_MODULE.formatHex(address)}.`);
+                } else {
+                    CPU_STATE.breakpoints.add(address);
+                    UI_MODULE.logStatus(`Breakpoint set at 0x${UI_MODULE.formatHex(address)}.`);
+                }
+                UI_MODULE.updateProgramViewDebug(); // Refresh visuals
+            },
+            clearAllBreakpoints: () => {
+                CPU_STATE.breakpoints.clear();
+                UI_MODULE.logStatus("All breakpoints cleared.");
+                UI_MODULE.updateProgramViewDebug();
+            },
+            loadDemo: () => { 
+                SIMULATOR_CORE.resetCpu();
+                if (Object.keys(CPU_STATE.microcode).length === 0) { UI_MODULE.showModal("Default microcode error."); return; }
+                const demoProgram = `// Demo Program
+LOAD 14    // AC = M[14] (Input, e.g., 10)
+ADD 15     // AC = AC + M[15] (Value 5)
+STORE 16   // M[16] = AC (Result)
+OUT        // Output AC
+HLT        // Halt`;
+                DOM_ELEMENTS.programEditorEl.value = demoProgram;
+                PROGRAM_MODULE.load(demoProgram); // This will call renderProgramViewDebug
+                CPU_STATE.MEMORY[14] = 10; CPU_STATE.MEMORY[15] = 5; // Pre-load demo values
+                UI_MODULE.logStatus(`Demo values: M[14]=${CPU_STATE.MEMORY[14]}, M[15]=${CPU_STATE.MEMORY[15]}`);
+                // UI_MODULE.renderProgramViewDebug(); // Already called by PROGRAM_MODULE.load
+                UI_MODULE.updateAll(); // Refresh UI with demo data
+                UI_MODULE.logStatus("Demo loaded. Ready.");
+                UI_MODULE.showModal("Demo loaded! Adds M[14] (10) and M[15] (5). Click lines in 'Program View' to set breakpoints.");
+            },
+            initializeEventListeners: () => {
+                DOM_ELEMENTS.resetCpuBtn.addEventListener('click', SIMULATOR_CORE.resetCpu);
+                DOM_ELEMENTS.startPauseCpuBtn.addEventListener('click', SIMULATOR_CORE.startPauseCpu);
+                DOM_ELEMENTS.stepMicroOpBtn.addEventListener('click', SIMULATOR_CORE.stepMicroOp);
+                DOM_ELEMENTS.stepInstructionBtn.addEventListener('click', SIMULATOR_CORE.stepInstruction);
+                DOM_ELEMENTS.clearBreakpointsBtn.addEventListener('click', SIMULATOR_CORE.clearAllBreakpoints);
+                DOM_ELEMENTS.demoLoadBtn.addEventListener('click', SIMULATOR_CORE.loadDemo);
+                DOM_ELEMENTS.sendInputBtn.addEventListener('click', IO_MODULE.handleSendInput);
+                DOM_ELEMENTS.inputConsoleEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') IO_MODULE.handleSendInput(); });
+                DOM_ELEMENTS.importMicrocodeEl.addEventListener('change', (e) => FILE_MODULE.handleUpload(e, 'microcode'));
+                DOM_ELEMENTS.exportMicrocodeBtn.addEventListener('click', () => FILE_MODULE.export(DOM_ELEMENTS.microcodeEditorEl.value, 'mc2_microcode.txt', 'text/plain'));
+                DOM_ELEMENTS.importProgramEl.addEventListener('change', (e) => FILE_MODULE.handleUpload(e, 'program'));
+                DOM_ELEMENTS.exportProgramBtn.addEventListener('click', () => FILE_MODULE.export(DOM_ELEMENTS.programEditorEl.value, 'mc2_program.txt', 'text/plain'));
+                window.addEventListener('click', (event) => { if (event.target == DOM_ELEMENTS.messageModalEl) UI_MODULE.closeModal(); });
+            },
+            init: () => { SIMULATOR_CORE.initializeEventListeners(); SIMULATOR_CORE.resetCpu(); UI_MODULE.logStatus("MC-2 CPU Simulator Initialized (v3). Ready."); }
+        };
+        window.onload = SIMULATOR_CORE.init;
+    </script>
+</body>
+</html>
 
