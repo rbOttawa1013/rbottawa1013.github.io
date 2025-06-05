@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Spacewar! Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #000000;
+            color: #00FF00;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 1rem; 
+            overflow-x: hidden;
+        }
+        #gameCanvas {
+            background-color: #0a0a0a;
+            border: 2px solid #00FF00;
+            box-shadow: 0 0 15px #00FF00;
+            border-radius: 8px;
+            display: block;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem; 
+            width: 100%;
+            max-width: 640px; 
+        }
+        .controls-info, .player-status, .game-settings {
+            background-color: rgba(0, 20, 0, 0.85);
+            border: 1px solid #008000;
+            padding: 8px 12px; 
+            border-radius: 8px;
+            font-size: 0.85em; 
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .player-status {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap; 
+        }
+        .player-info {
+            width: 48%;
+            min-width: 280px; 
+            margin-bottom: 5px;
+        }
+        .player-info p {
+            margin-bottom: 2px; 
+            min-height: 1.2em; 
+        }
+        h1 {
+            font-size: 1.8em; margin-bottom: 0.5rem;
+        }
+        h2, h3 {
+            text-align: center;
+            color: #33FF33;
+            text-shadow: 0 0 5px #00FF00;
+            font-size: 1.1em;
+            margin-top: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+        h3 { font-size: 1em; }
+        button, select {
+            background-color: #003300;
+            color: #00FF00;
+            border: 1px solid #00FF00;
+            padding: 6px 12px; 
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        button:hover, select:hover {
+            background-color: #005500;
+            box-shadow: 0 0 10px #00FF00;
+        }
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .instructions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px 15px; 
+        }
+        .instructions-grid strong { color: #66FF66; }
+        .modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.75);
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background-color: #051005; margin: auto; padding: 20px;
+            border: 2px solid #00FF00; border-radius: 10px;
+            width: 80%; max-width: 400px; text-align: center;
+            box-shadow: 0 0 20px #00FF00;
+        }
+        .modal-content h2 { margin-top: 0; }
+        label { margin-right: 5px; }
+        .settings-row {
+            display: flex;
+            justify-content: space-around; 
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .settings-row > div { margin: 5px; } 
+        .ai-status-comment {
+            color: #88FF88; 
+            font-style: italic;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Enhanced Retro Spacewar</h1>
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-settings">
+            <h2>Game Settings</h2>
+            <div class="settings-row">
+                <div>
+                    <label for="gameMode">Mode:</label>
+                    <select id="gameMode">
+                        <option value="hvh">Human vs Human</option>
+                        <option value="hva">Human vs AI</option>
+                        <option value="ava">AI vs AI</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="aiSkill">AI Skill (0-10):</label>
+                    <select id="aiSkill">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="startButton">Start Game</button>
+                <button id="resetButton">Reset Match</button>
+            </div>
+        </div>
+
+        <div id="playerStatus" class="player-status">
+            <div class="player-info" id="player1InfoArea">
+                <h3 id="player1Title">Player 1 (Wedge)</h3>
+                <p>Score: <span id="score1">0</span></p>
+                <p>Fuel: <span id="fuel1">100</span>%</p>
+                <p>Torpedoes: <span id="torpedoes1">10</span></p>
+                <p>Hyperspace Jumps: <span id="hyperspace1">0</span> (Risk: <span id="risk1">0</span>%)</p>
+                <p class="ai-status-comment">AI Status: <span id="aiStatus1">N/A</span></p>
+            </div>
+            <div class="player-info" id="player2InfoArea">
+                <h3 id="player2Title">Player 2 (Needle)</h3>
+                <p>Score: <span id="score2">0</span></p>
+                <p>Fuel: <span id="fuel2">100</span>%</p>
+                <p>Torpedoes: <span id="torpedoes2">10</span></p>
+                <p>Hyperspace Jumps: <span id="hyperspace2">0</span> (Risk: <span id="risk2">0</span>%)</p>
+                <p class="ai-status-comment">AI Status: <span id="aiStatus2">N/A</span></p>
+            </div>
+        </div>
+
+        <div class="controls-info">
+            <h2>Controls (Player 1 / Player 2 or Human Player)</h2>
+            <div class="instructions-grid">
+                <div><strong>P1 (Wedge):</strong> W,A,S,D,Q (Hyperspace)</div>
+                <div><strong>P2 (Needle):</strong> Arrows, Right Shift (Hyperspace)</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Game Over</h2>
+            <p id="modalMessage">Player X Wins!</p>
+            <button id="modalCloseButton">New Match</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const ui = {
+            player1: {
+                title: document.getElementById('player1Title'),
+                score: document.getElementById('score1'),
+                fuel: document.getElementById('fuel1'),
+                torpedoes: document.getElementById('torpedoes1'),
+                hyperspace: document.getElementById('hyperspace1'),
+                risk: document.getElementById('risk1'),
+                aiStatus: document.getElementById('aiStatus1'), 
+            },
+            player2: {
+                title: document.getElementById('player2Title'),
+                score: document.getElementById('score2'),
+                fuel: document.getElementById('fuel2'),
+                torpedoes: document.getElementById('torpedoes2'),
+                hyperspace: document.getElementById('hyperspace2'),
+                risk: document.getElementById('risk2'),
+                aiStatus: document.getElementById('aiStatus2'), 
+            },
+            startButton: document.getElementById('startButton'),
+            resetButton: document.getElementById('resetButton'),
+            gameModeSelect: document.getElementById('gameMode'),
+            aiSkillSelect: document.getElementById('aiSkill'), 
+            messageModal: document.getElementById('messageModal'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalMessage: document.getElementById('modalMessage'),
+            modalCloseButton: document.getElementById('modalCloseButton'),
+        };
+
+        if (ui.aiSkillSelect) {
+            let skillOptionsHTML = "";
+            for (let i = 0; i <= 10; i++) {
+                skillOptionsHTML += `<option value="${i}">${i}</option>`;
+            }
+            ui.aiSkillSelect.innerHTML = skillOptionsHTML;
+        }
+
+        let gameWidth = 600;
+        let gameHeight = 400;
+        canvas.width = gameWidth;
+        canvas.height = gameHeight;
+
+        const SHIP_SIZE = 20;
+        const SHIP_THRUST_POWER = 0.07;
+        const SHIP_TURN_SPEED = 0.07;
+        const TORPEDO_SPEED = 4;
+        const MAX_TORPEDOES_PLAYER = 10;
+        const TORPEDO_COOLDOWN = 30; 
+        const MAX_FUEL = 2000;
+        const FUEL_CONSUMPTION_THRUST = 2;
+        const FUEL_CONSUMPTION_HYPERSPACE = 200;
+        const GRAVITY_STRENGTH = 0.008;
+        const STAR_RADIUS = 20;
+        const HYPERSPACE_BASE_RISK = 0.1;
+        const HYPERSPACE_RISK_INCREMENT = 0.1;
+        const FRICTION = 0.995;
+        const STARFIELD_STARS = 100;
+        const AI_UPDATE_INTERVAL = 8; 
+        const FIRE_ARC_BASE = 0.15; 
+        const FIRE_ARC_SKILL_MODIFIER = 0.7; 
+
+        let player1, player2;
+        let star;
+        let torpedoes = [];
+        let particles = [];
+        let keys = {};
+        let gameRunning = false;
+        let starfield = [];
+        let scores = { player1: 0, player2: 0 };
+        let currentGameMode = 'hvh';
+        let currentAISkill = 5; 
+        let frameCount = 0;
+
+        function degToRad(d) { return d * Math.PI / 180; }
+        function randomRange(min, max) { return Math.random() * (max - min) + min; }
+        function distance(x1, y1, x2, y2) {
+            const dx = x1 - x2;
+            const dy = y1 - y2;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        function angleToTarget(x1, y1, x2, y2) {
+            return Math.atan2(y2 - y1, x2 - x1);
+        }
+        function shortestAngleDist(a0, a1) {
+            let max = Math.PI * 2;
+            let da = (a1 - a0) % max;
+            return 2 * da % max - da;
+        }
+
+        class Star {
+            constructor(x, y, radius) {
+                this.x = x; this.y = y; this.radius = radius;
+                this.color = '#FFFF00';
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                const pulseRadius = this.radius + Math.sin(Date.now() * 0.002) * 3;
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        class Ship {
+            constructor(x, y, angle, color, type = "wedge", isAI = false, aiSkill = 0) {
+                this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+                this.angle = angle; this.color = color; this.type = type;
+                this.thrusting = false; this.alive = true;
+                this.fuel = MAX_FUEL; this.torpedoCount = MAX_TORPEDOES_PLAYER;
+                this.torpedoCooldownTimer = 0; this.hyperspaceJumps = 0;
+                this.collisionRadius = SHIP_SIZE / 2;
+                this.isAI = isAI; this.aiSkill = aiSkill;
+                this.aiTargetAngle = this.angle; 
+                this.aiDecisionTimer = 0;
+                this.statusComment = "Standby"; 
+                this.aiStrategyMode = "NEUTRAL"; 
+            }
+
+            rotate(direction) {
+                if (!this.alive) return;
+                this.angle += SHIP_TURN_SPEED * direction;
+                this.angle = (this.angle + Math.PI * 2) % (Math.PI * 2);
+            }
+
+            thrust() {
+                if (!this.alive || this.fuel <= 0) {
+                    this.thrusting = false; return;
+                }
+                this.vx += Math.cos(this.angle) * SHIP_THRUST_POWER;
+                this.vy += Math.sin(this.angle) * SHIP_THRUST_POWER;
+                this.fuel -= FUEL_CONSUMPTION_THRUST;
+                if (this.fuel < 0) this.fuel = 0;
+                this.thrusting = true;
+            }
+
+            stopThrust() { this.thrusting = false; }
+
+            fireTorpedo() {
+                if (!this.alive || this.torpedoCount <= 0 || this.torpedoCooldownTimer > 0) return;
+                const torpedoX = this.x + Math.cos(this.angle) * (SHIP_SIZE / 1.5);
+                const torpedoY = this.y + Math.sin(this.angle) * (SHIP_SIZE / 1.5);
+                const torpedoVX = Math.cos(this.angle) * TORPEDO_SPEED + this.vx * 0.3;
+                const torpedoVY = Math.sin(this.angle) * TORPEDO_SPEED + this.vy * 0.3;
+                torpedoes.push(new Torpedo(torpedoX, torpedoY, torpedoVX, torpedoVY, this.color, this));
+                this.torpedoCount--;
+                this.torpedoCooldownTimer = TORPEDO_COOLDOWN;
+            }
+
+            hyperspace() {
+                if (!this.alive || this.fuel < FUEL_CONSUMPTION_HYPERSPACE) return;
+                this.fuel -= FUEL_CONSUMPTION_HYPERSPACE;
+                this.hyperspaceJumps++;
+                const risk = HYPERSPACE_BASE_RISK + (this.hyperspaceJumps - 1) * HYPERSPACE_RISK_INCREMENT;
+                if (Math.random() < Math.max(0, risk)) { 
+                    this.explode();
+                } else {
+                    this.statusComment = "Hyperspace successful!";
+                    this.x = randomRange(SHIP_SIZE, gameWidth - SHIP_SIZE);
+                    this.y = randomRange(SHIP_SIZE, gameHeight - SHIP_SIZE);
+                    this.vx = randomRange(-0.5, 0.5); this.vy = randomRange(-0.5, 0.5);
+                }
+            }
+
+            explode() {
+                this.alive = false;
+                this.statusComment = "Ship Destroyed!";
+                for (let i = 0; i < 15; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+
+            update() {
+                if (!this.alive) return;
+
+                if (this.isAI && gameRunning) {
+                    this.aiDecisionTimer--;
+                    if (this.aiDecisionTimer <= 0) {
+                        this.aiControl();
+                        this.aiDecisionTimer = AI_UPDATE_INTERVAL + Math.floor(randomRange(-1,1) * (10-this.aiSkill)/3); 
+                    }
+                    const angleDiff = shortestAngleDist(this.angle, this.aiTargetAngle);
+                    if (Math.abs(angleDiff) > SHIP_TURN_SPEED * 0.5) { 
+                        this.rotate(Math.sign(angleDiff));
+                    } else if (Math.abs(angleDiff) > 0.01) { 
+                         this.angle = this.aiTargetAngle;
+                    }
+                }
+
+                const dxStar = star.x - this.x;
+                const dyStar = star.y - this.y;
+                const distSqStar = dxStar * dxStar + dyStar * dyStar;
+                const distStar = Math.sqrt(distSqStar);
+
+                if (distStar > 0.1) {
+                    const force = GRAVITY_STRENGTH / (distSqStar / (star.radius * 100) + 1);
+                    this.vx += (dxStar / distStar) * force;
+                    this.vy += (dyStar / distStar) * force;
+                }
+
+                this.vx *= FRICTION; this.vy *= FRICTION;
+                this.x += this.vx; this.y += this.vy;
+
+                if (this.x < -SHIP_SIZE / 2) this.x = gameWidth + SHIP_SIZE / 2;
+                if (this.x > gameWidth + SHIP_SIZE / 2) this.x = -SHIP_SIZE / 2;
+                if (this.y < -SHIP_SIZE / 2) this.y = gameHeight + SHIP_SIZE / 2;
+                if (this.y > gameHeight + SHIP_SIZE / 2) this.y = -SHIP_SIZE / 2;
+
+                if (this.torpedoCooldownTimer > 0) this.torpedoCooldownTimer--;
+            }
+            
+            aiControl() {
+                if (!this.alive) return;
+            
+                const opponent = (this === player1) ? player2 : player1;
+                const skillFactor = this.aiSkill / 10;
+                this.statusComment = "Analyzing..."; 
+
+                if (!opponent || !opponent.alive) {
+                    this.statusComment = "Target lost. Patrolling.";
+                    this.stopThrust(); 
+                    if(Math.random() < 0.03 * (1.5 - skillFactor)) this.aiTargetAngle = (this.aiTargetAngle + randomRange(-0.3, 0.3)) % (2*Math.PI);
+                    return;
+                }
+            
+                // --- 1. Situational Analysis ---
+                const fuelRatio = this.fuel / MAX_FUEL;
+                const torpedoRatio = this.torpedoCount / MAX_TORPEDOES_PLAYER;
+                let selfStrengthFactor = (fuelRatio * 0.55 + torpedoRatio * 0.45) * (0.7 + skillFactor * 0.3); 
+
+                const distToStar = distance(this.x, this.y, star.x, star.y);
+                const starDangerContribution = Math.max(0, 1 - distToStar / (STAR_RADIUS + SHIP_SIZE * (1.5 + skillFactor * 2.5)));
+
+                let incomingTorpedoThreat = 0;
+                torpedoes.forEach(t => {
+                    if (!t.active || t.owner === this) return;
+                    const dtt = distance(this.x, this.y, t.x, t.y);
+                    if (dtt < SHIP_SIZE * (4 + skillFactor * 3)) { 
+                        const angleToIt = angleToTarget(this.x, this.y, t.x, t.y);
+                        const torpedoHeading = Math.atan2(t.vy, t.vx);
+                         if (Math.abs(shortestAngleDist(angleToIt, torpedoHeading + Math.PI)) < Math.PI / (2.4 - skillFactor * 0.6)) { 
+                            incomingTorpedoThreat += (1 / (dtt / (SHIP_SIZE*1.2) + 1)) * (0.6 + skillFactor * 0.6);
+                         }
+                    }
+                });
+                const overallDangerFactor = Math.min(1, starDangerContribution * 1.2 + incomingTorpedoThreat); 
+
+                // --- Determine Base Strategy Mode ---
+                let baseStrategy = "NEUTRAL";
+                if (overallDangerFactor > (0.55 - skillFactor * 0.20) || selfStrengthFactor < (0.25 - skillFactor * 0.15)) {
+                    baseStrategy = "DEFENSIVE";
+                } else if (selfStrengthFactor > (0.7 + skillFactor * 0.15) && overallDangerFactor < (0.3 - skillFactor * 0.15)) {
+                    baseStrategy = "AGGRESSIVE";
+                }
+                
+                // --- Chance to adopt RANDOM strategy ---
+                let chanceOfRandom = 0.05 + (1 - skillFactor) * 0.15; 
+                if (baseStrategy === "DEFENSIVE" && overallDangerFactor > 0.7) chanceOfRandom *= 0.3; 
+                if (baseStrategy === "AGGRESSIVE" && selfStrengthFactor > 0.85) chanceOfRandom *= 0.5; 
+
+                if (Math.random() < chanceOfRandom) {
+                    this.aiStrategyMode = "RANDOM";
+                } else {
+                    this.aiStrategyMode = baseStrategy;
+                }
+                
+                // --- Determine Effective Strategy for this turn ---
+                let effectiveStrategy = this.aiStrategyMode;
+                let randomSubStrategy = "";
+                if (this.aiStrategyMode === "RANDOM") {
+                    const randStratRoll = Math.random();
+                    if (randStratRoll < 0.33) effectiveStrategy = "AGGRESSIVE";
+                    else if (randStratRoll < 0.66) effectiveStrategy = "DEFENSIVE";
+                    else effectiveStrategy = "NEUTRAL";
+                    randomSubStrategy = `(->${effectiveStrategy})`;
+                }
+                this.statusComment = `${this.aiStrategyMode}${randomSubStrategy}: `;
+
+
+                // --- 2. Action Selection based on Effective Strategy ---
+                let shouldThrust = false;
+                let currentTargetAngle = this.angle; 
+                let shouldFire = false;
+                let shouldUseHyperspace = false;
+            
+                const distToOpponent = distance(this.x, this.y, opponent.x, opponent.y);
+                let angleToOpp = angleToTarget(this.x, this.y, opponent.x, opponent.y);
+            
+                if (skillFactor > 0.05) { 
+                    const leadTimeFactor = 0.02 + skillFactor * 0.98; 
+                    const timeToImpactApprox = distToOpponent / (TORPEDO_SPEED + Math.abs(this.vx) + 0.05); 
+                    const predictedOppX = opponent.x + opponent.vx * timeToImpactApprox * leadTimeFactor;
+                    const predictedOppY = opponent.y + opponent.vy * timeToImpactApprox * leadTimeFactor;
+                    angleToOpp = angleToTarget(this.x, this.y, predictedOppX, predictedOppY);
+                }
+                currentTargetAngle = angleToOpp;
+            
+                if (skillFactor < 0.99) { 
+                    currentTargetAngle += randomRange(-0.35, 0.35) * (1 - skillFactor); 
+                }
+            
+                const aimAngleDifference = shortestAngleDist(this.angle, currentTargetAngle);
+                const absoluteAimAngleDifference = Math.abs(aimAngleDifference);
+                
+                let fireProbability = 0.05 + skillFactor * 0.85;
+                if (effectiveStrategy === "AGGRESSIVE") fireProbability *= (1.15 + skillFactor * 0.25);
+                else if (effectiveStrategy === "DEFENSIVE") fireProbability *= (0.25 - skillFactor * 0.2);
+
+                if (this.torpedoCount <= MAX_TORPEDOES_PLAYER * 0.2) { 
+                    fireProbability *= (0.05 + skillFactor * 0.45); 
+                    this.statusComment += "Low ammo. ";
+                }
+
+                if (absoluteAimAngleDifference < (FIRE_ARC_BASE + (1 - skillFactor) * FIRE_ARC_SKILL_MODIFIER * 1.1) && 
+                    distToOpponent < gameWidth * (effectiveStrategy === "AGGRESSIVE" ? (0.45 + skillFactor * 0.45) : (0.35 + skillFactor * 0.35)) && 
+                    distToOpponent > SHIP_SIZE * 1.1 && 
+                    this.torpedoCount > 0 && this.torpedoCooldownTimer <= 0) {
+                    if (Math.random() < fireProbability && fireProbability > 0.005) { 
+                        shouldFire = true;
+                        this.statusComment += "Firing! ";
+                    } else if (absoluteAimAngleDifference < FIRE_ARC_BASE * (0.3 + skillFactor * 0.3)) { 
+                         this.statusComment += "Aiming. ";
+                    }
+                }
+            
+                const starEvasionAngle = angleToTarget(star.x, star.y, this.x, this.y);
+                const dangerZoneStarEffective = STAR_RADIUS + SHIP_SIZE * (0.8 + skillFactor * 3.8); 
+
+                if (distToStar < dangerZoneStarEffective) { 
+                    currentTargetAngle = starEvasionAngle + randomRange(-0.1, 0.1) * (1 - skillFactor); 
+                    shouldThrust = true;
+                    this.statusComment += "Star Evasion! ";
+                } else { 
+                    let preferredMinDist, preferredMaxDist;
+                    if (effectiveStrategy === "AGGRESSIVE") {
+                        preferredMinDist = gameWidth * (0.04 + skillFactor * 0.06);
+                        preferredMaxDist = gameWidth * (0.12 + skillFactor * 0.18);
+                        this.statusComment += "Pressing. ";
+                    } else if (effectiveStrategy === "DEFENSIVE") {
+                        preferredMinDist = gameWidth * (0.22 + skillFactor * 0.12);
+                        preferredMaxDist = gameWidth * (0.40 + skillFactor * 0.15);
+                        this.statusComment += "Defensive Stance. ";
+                    } else { // NEUTRAL
+                        preferredMinDist = gameWidth * (0.08 + skillFactor * 0.1);
+                        preferredMaxDist = gameWidth * (0.28 + skillFactor * 0.2);
+                        this.statusComment += "Engaging. ";
+                    }
+
+                    if (distToOpponent > preferredMaxDist) { 
+                        currentTargetAngle = angleToOpp; 
+                        shouldThrust = (Math.random() < (0.35 + skillFactor * 0.60));
+                    } else if (distToOpponent < preferredMinDist) { 
+                        currentTargetAngle = angleToOpp + Math.PI + randomRange(-0.2, 0.2) * (1-skillFactor); 
+                        shouldThrust = (Math.random() < (0.25 + skillFactor * 0.55));
+                    } else { 
+                        if (effectiveStrategy === "AGGRESSIVE" || (absoluteAimAngleDifference < 0.45 && effectiveStrategy === "NEUTRAL")) {
+                             currentTargetAngle = angleToOpp; 
+                             shouldThrust = (Math.random() < (0.05 + skillFactor * 0.40)); 
+                        } else if (effectiveStrategy === "DEFENSIVE") {
+                             currentTargetAngle = angleToOpp + Math.PI / 2.5 * (Math.random() > 0.5 ? 1: -1) ; 
+                             shouldThrust = (Math.random() < (0.05 + skillFactor * 0.25));
+                        }
+                    }
+                }
+            
+                let wantsToEvadeTorpedo = false;
+                let bestEvasionAngle = currentTargetAngle; 
+                torpedoes.forEach(t => {
+                     if (!t.active || t.owner === this) return;
+                    const distToTorpedo = distance(this.x, this.y, t.x, t.y);
+                    if (distToTorpedo < SHIP_SIZE * (2.0 + skillFactor * 5.5)) { 
+                        const angleToIncomingTorpedo = angleToTarget(this.x, this.y, t.x, t.y);
+                        const torpedoTravelAngle = Math.atan2(t.vy, t.vx);
+                        if (Math.abs(shortestAngleDist(angleToIncomingTorpedo, torpedoTravelAngle + Math.PI)) < Math.PI / (2.0 - skillFactor * 0.5)) { 
+                            if (Math.random() < (0.30 + skillFactor * 0.65)) { 
+                                bestEvasionAngle = angleToIncomingTorpedo + (Math.PI / 2) * (Math.random() > 0.5 ? 1 : -1); 
+                                wantsToEvadeTorpedo = true;
+                                shouldThrust = true; 
+                                this.statusComment = "Evading Torpedo! ";
+                            }
+                        }
+                    }
+                });
+                if (wantsToEvadeTorpedo) {
+                    currentTargetAngle = bestEvasionAngle;
+                }
+                this.aiTargetAngle = currentTargetAngle; 
+
+                let hyperspaceDesire = overallDangerFactor * (0.7 + skillFactor * 0.3); 
+                const fuelPressure = Math.max(0, (0.20 - fuelRatio) / 0.20) * (0.4 + skillFactor*0.4) ; 
+                hyperspaceDesire += fuelPressure;
+
+                if (this.torpedoCount === 0 && distToOpponent < gameWidth * 0.22 && opponent.torpedoCount > 2) { 
+                    hyperspaceDesire += 0.35 * skillFactor;
+                }
+                
+                let hyperspaceRiskAppetite = (0.75 - skillFactor * 0.45); 
+                let hyperspaceProbabilityFactor = (0.01 + skillFactor * 0.20);
+
+                if(effectiveStrategy === "DEFENSIVE") {
+                    hyperspaceDesire *= 1.25;
+                    hyperspaceRiskAppetite *= 1.15; 
+                    hyperspaceProbabilityFactor *= 1.4;
+                } else if (effectiveStrategy === "AGGRESSIVE") {
+                    hyperspaceDesire *= 0.65;
+                    hyperspaceRiskAppetite *= 0.75; 
+                    hyperspaceProbabilityFactor *= 0.55;
+                }
+                
+                const currentHyperspaceRiskValue = HYPERSPACE_BASE_RISK + (this.hyperspaceJumps) * HYPERSPACE_RISK_INCREMENT;
+                if (hyperspaceDesire > (0.70 - skillFactor * 0.35) &&
+                    this.fuel >= FUEL_CONSUMPTION_HYPERSPACE &&
+                    currentHyperspaceRiskValue < hyperspaceRiskAppetite &&
+                    Math.random() < hyperspaceProbabilityFactor) {
+                    shouldUseHyperspace = true;
+                    this.statusComment += "Hyperspace Jump! ";
+                }
+
+                if (!shouldThrust && !shouldFire && !shouldUseHyperspace && Math.abs(shortestAngleDist(this.angle, this.aiTargetAngle)) < 0.25) {
+                    if (Math.random() < (0.10 / (skillFactor + 0.4))) { 
+                        this.aiTargetAngle = (this.aiTargetAngle + randomRange(-0.8, 0.8)) % (2*Math.PI) ; 
+                        if(!this.statusComment.includes("Evading") && !this.statusComment.includes("Star")) this.statusComment += "Scanning... ";
+                        if (Math.random() < (0.02 + (1-skillFactor)*0.12) ) {
+                            shouldThrust = true; 
+                        }
+                    } else if (this.statusComment.endsWith(": ") ) { 
+                        this.statusComment += "Holding Position.";
+                    }
+                }
+            
+                if (shouldThrust && this.fuel > FUEL_CONSUMPTION_THRUST) { 
+                    this.thrust();
+                } else {
+                    this.stopThrust(); 
+                }
+                if (shouldFire) this.fireTorpedo();
+                if (shouldUseHyperspace) this.hyperspace();
+                
+                if (this.statusComment.endsWith(": ") ) { 
+                    this.statusComment += "Idle.";
+                }
+            }
+
+
+            draw() {
+                if (!this.alive) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                if (this.type === "wedge") {
+                    ctx.moveTo(SHIP_SIZE / 2, 0);
+                    ctx.lineTo(-SHIP_SIZE / 2, -SHIP_SIZE / 3);
+                    ctx.lineTo(-SHIP_SIZE / 4, 0);
+                    ctx.lineTo(-SHIP_SIZE / 2, SHIP_SIZE / 3);
+                } else { // Needle
+                    ctx.moveTo(SHIP_SIZE / 2, 0);
+                    ctx.lineTo(-SHIP_SIZE / 2, -SHIP_SIZE / 4);
+                    ctx.lineTo(-SHIP_SIZE / 3, 0);
+                    ctx.lineTo(-SHIP_SIZE / 2, SHIP_SIZE / 4);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                if (this.thrusting) {
+                    ctx.fillStyle = (Math.random() > 0.5) ? '#FFA500' : '#FFD700';
+                    ctx.beginPath();
+                    const flameLength = SHIP_SIZE * (0.6 + Math.random() * 0.4);
+                    if (this.type === "wedge") {
+                        ctx.moveTo(-SHIP_SIZE / 3, 0);
+                        ctx.lineTo(-flameLength, SHIP_SIZE / 8);
+                        ctx.lineTo(-flameLength, -SHIP_SIZE / 8);
+                    } else {
+                         ctx.moveTo(-SHIP_SIZE / 2.5, 0);
+                         ctx.lineTo(-flameLength, SHIP_SIZE / 10);
+                         ctx.lineTo(-flameLength, -SHIP_SIZE / 10);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Torpedo {
+            constructor(x, y, vx, vy, color, owner) {
+                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+                this.color = color; this.owner = owner;
+                this.radius = 3; this.active = true; this.lifetime = 120;
+            }
+            update() {
+                if (!this.active) return;
+                this.x += this.vx; this.y += this.vy;
+                this.lifetime--;
+                if (this.lifetime <= 0) this.active = false;
+                if (this.x < 0) this.x = gameWidth; if (this.x > gameWidth) this.x = 0;
+                if (this.y < 0) this.y = gameHeight; if (this.y > gameHeight) this.y = 0;
+            }
+            draw() {
+                if (!this.active) return;
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = randomRange(-2, 2); this.vy = randomRange(-2, 2);
+                this.color = color; this.radius = randomRange(1, 3);
+                this.active = true; this.lifetime = 30 + Math.random() * 30; this.alpha = 1;
+            }
+            update() {
+                if (!this.active) return;
+                this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.95; this.vy *= 0.95;
+                this.lifetime--; this.alpha = this.lifetime / 60;
+                if (this.lifetime <= 0) this.active = false;
+            }
+            draw() {
+                if (!this.active) return;
+                ctx.save(); ctx.globalAlpha = this.alpha > 0 ? this.alpha : 0;
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initStarfield() {
+            starfield = [];
+            for (let i = 0; i < STARFIELD_STARS; i++) {
+                starfield.push({
+                    x: Math.random() * gameWidth, y: Math.random() * gameHeight,
+                    size: Math.random() * 1.5 + 0.5, opacity: Math.random() * 0.5 + 0.3
+                });
+            }
+        }
+        
+        function drawStarfield() {
+            starfield.forEach(s => {
+                ctx.fillStyle = `rgba(200, 200, 255, ${s.opacity})`;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        function resetMatchState(fullResetScores = false) {
+            currentGameMode = ui.gameModeSelect.value;
+            currentAISkill = parseInt(ui.aiSkillSelect.value); 
+
+            let p1IsAI = false;
+            let p2IsAI = false;
+
+            if (currentGameMode === 'hva') {
+                p2IsAI = true;
+                ui.player1.title.textContent = "Player 1 (Wedge)";
+                ui.player2.title.textContent = "AI Player (Needle)";
+            } else if (currentGameMode === 'ava') {
+                p1IsAI = true;
+                p2IsAI = true;
+                ui.player1.title.textContent = "AI Player 1 (Wedge)";
+                ui.player2.title.textContent = "AI Player 2 (Needle)";
+            } else { 
+                ui.player1.title.textContent = "Player 1 (Wedge)";
+                ui.player2.title.textContent = "Player 2 (Needle)";
+            }
+            
+            // Ships now start at random orientations
+            player1 = new Ship(gameWidth / 4, gameHeight / 2, randomRange(0, Math.PI * 2), '#00FF00', "wedge", p1IsAI, currentAISkill);
+            player2 = new Ship(gameWidth * 3 / 4, gameHeight / 2, randomRange(0, Math.PI * 2), '#FF00FF', "needle", p2IsAI, currentAISkill);
+            
+            star = new Star(gameWidth / 2, gameHeight / 2, STAR_RADIUS);
+            torpedoes = [];
+            particles = [];
+            keys = {};
+            frameCount = 0;
+
+            if (fullResetScores) {
+                scores.player1 = 0;
+                scores.player2 = 0;
+            }
+            updateUI(); 
+        }
+
+        function startGame() {
+            resetMatchState(true); 
+            gameRunning = true;
+            ui.messageModal.style.display = "none";
+            if (starfield.length === 0) initStarfield(); 
+        }
+        
+        function resetCurrentMatch() {
+            if (!player1 && !player2) { 
+                 startGame(); 
+                 return;
+            }
+            resetMatchState(false); 
+            gameRunning = true;
+            ui.messageModal.style.display = "none";
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toUpperCase()] = true;
+            if (["ARROWUP", "ARROWDOWN", "ARROWLEFT", "ARROWRIGHT", " "].includes(e.key.toUpperCase())) e.preventDefault();
+            if (e.key === "Shift" && e.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT) keys['SHIFT_RIGHT'] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toUpperCase()] = false;
+            if (e.key === "Shift" && e.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT) keys['SHIFT_RIGHT'] = false;
+        });
+
+        function handleHumanInput() {
+            if (player1 && player1.alive && !player1.isAI) {
+                if (keys['W']) player1.thrust(); else player1.stopThrust();
+                if (keys['A']) player1.rotate(-1);
+                if (keys['D']) player1.rotate(1);
+                if (keys['S']) player1.fireTorpedo();
+                if (keys['Q']) { player1.hyperspace(); keys['Q'] = false; }
+            }
+            if (player2 && player2.alive && !player2.isAI) {
+                if (keys['ARROWUP']) player2.thrust(); else player2.stopThrust();
+                if (keys['ARROWLEFT']) player2.rotate(-1);
+                if (keys['ARROWRIGHT']) player2.rotate(1);
+                if (keys['ARROWDOWN']) player2.fireTorpedo();
+                if (keys['SHIFT_RIGHT']) { player2.hyperspace(); keys['SHIFT_RIGHT'] = false; }
+            }
+        }
+
+        function checkCollisions() {
+            if (!player1 || !player2) return; 
+
+            torpedoes.forEach((torpedo) => {
+                if (!torpedo.active) return;
+                [player1, player2].forEach((ship) => {
+                    if (!ship.alive || ship === torpedo.owner) return;
+                    if (distance(torpedo.x, torpedo.y, ship.x, ship.y) < ship.collisionRadius + torpedo.radius) {
+                        ship.explode();
+                        torpedo.active = false;
+                        if (torpedo.owner === player1) scores.player1++; else scores.player2++;
+                        checkGameOver();
+                    }
+                });
+            });
+
+            [player1, player2].forEach(ship => {
+                if (!ship.alive) return;
+                if (distance(ship.x, ship.y, star.x, star.y) < ship.collisionRadius + star.radius) {
+                    ship.explode();
+                    if (ship === player1 && player2.alive) scores.player2++;
+                    if (ship === player2 && player1.alive) scores.player1++;
+                    checkGameOver();
+                }
+            });
+
+            if (player1.alive && player2.alive) {
+                if (distance(player1.x, player1.y, player2.x, player2.y) < player1.collisionRadius + player2.collisionRadius) {
+                    player1.explode(); player2.explode();
+                    checkGameOver("Mutual Destruction!");
+                }
+            }
+        }
+        
+        function showModal(title, message) {
+            ui.modalTitle.textContent = title;
+            ui.modalMessage.textContent = message;
+            ui.messageModal.style.display = "flex";
+        }
+
+        function checkGameOver(customMessage = "") {
+            if (!gameRunning || !player1 || !player2) return;
+
+            let winnerMessage = customMessage;
+            if (!player1.alive && !player2.alive && !winnerMessage) {
+                winnerMessage = "It's a draw! Both ships destroyed.";
+            } else if (!player1.alive && player2.alive && !winnerMessage) {
+                winnerMessage = `${ui.player2.title.textContent} Wins!`;
+            } else if (player1.alive && !player2.alive && !winnerMessage) {
+                winnerMessage = `${ui.player1.title.textContent} Wins!`;
+            }
+
+            if (winnerMessage) {
+                gameRunning = false;
+                showModal("Match Over", winnerMessage);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            if (!player1 || !player2) { 
+                if(ui.player1.aiStatus) ui.player1.aiStatus.textContent = "N/A";
+                if(ui.player2.aiStatus) ui.player2.aiStatus.textContent = "N/A";
+                return;
+            }
+
+            const p1FuelPercent = Math.max(0, Math.floor(player1.fuel / (MAX_FUEL / 100)));
+            const p1RiskPercent = Math.floor(Math.min(100, Math.max(0, (HYPERSPACE_BASE_RISK + (player1.hyperspaceJumps > 0 ? player1.hyperspaceJumps - 1 : 0) * HYPERSPACE_RISK_INCREMENT) * 100)));
+            ui.player1.score.textContent = scores.player1;
+            ui.player1.fuel.textContent = `${p1FuelPercent}%`;
+            ui.player1.torpedoes.textContent = player1.torpedoCount;
+            ui.player1.hyperspace.textContent = player1.hyperspaceJumps;
+            ui.player1.risk.textContent = `${p1RiskPercent}%`;
+            ui.player1.aiStatus.textContent = player1.isAI ? (player1.alive ? player1.statusComment : "Destroyed") : "Human";
+
+
+            const p2FuelPercent = Math.max(0, Math.floor(player2.fuel / (MAX_FUEL / 100)));
+            const p2RiskPercent = Math.floor(Math.min(100, Math.max(0, (HYPERSPACE_BASE_RISK + (player2.hyperspaceJumps > 0 ? player2.hyperspaceJumps - 1 : 0) * HYPERSPACE_RISK_INCREMENT) * 100)));
+            ui.player2.score.textContent = scores.player2;
+            ui.player2.fuel.textContent = `${p2FuelPercent}%`;
+            ui.player2.torpedoes.textContent = player2.torpedoCount;
+            ui.player2.hyperspace.textContent = player2.hyperspaceJumps;
+            ui.player2.risk.textContent = `${p2RiskPercent}%`;
+            ui.player2.aiStatus.textContent = player2.isAI ? (player2.alive ? player2.statusComment : "Destroyed") : "Human";
+        }
+
+        function gameLoop() {
+            frameCount++;
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, gameWidth, gameHeight);
+            drawStarfield();
+
+            if (gameRunning && player1 && player2) {
+                handleHumanInput(); 
+                player1.update();
+                player2.update();
+                torpedoes.forEach(t => t.update());
+                torpedoes = torpedoes.filter(t => t.active);
+                particles.forEach(p => p.update());
+                particles = particles.filter(p => p.active);
+                checkCollisions();
+            }
+            
+            if (player1 && player2) updateUI(); 
+
+            if (star) star.draw();
+            if (player1) player1.draw();
+            if (player2) player2.draw();
+            torpedoes.forEach(t => t.draw());
+            particles.forEach(p => p.draw());
+
+            if (!gameRunning && (!player1 || !player2)) { 
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '30px "Courier New", Courier, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('Select Mode & Press Start', gameWidth / 2, gameHeight / 2);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        ui.startButton.addEventListener('click', startGame);
+        ui.resetButton.addEventListener('click', resetCurrentMatch);
+        ui.modalCloseButton.addEventListener('click', () => {
+            ui.messageModal.style.display = "none";
+            startGame(); 
+        });
+        
+        ui.aiSkillSelect.addEventListener('change', () => {
+            currentAISkill = parseInt(ui.aiSkillSelect.value); 
+            if (player1 && player1.isAI && player1.alive) player1.aiSkill = currentAISkill; 
+            if (player2 && player2.isAI && player2.alive) player2.aiSkill = currentAISkill; 
+        });
+         ui.gameModeSelect.addEventListener('change', () => {
+        });
+
+        initStarfield();
+        if (ui.aiSkillSelect) { 
+            ui.aiSkillSelect.value = currentAISkill.toString();
+        }
+        resetMatchState(true); 
+        gameRunning = false; 
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
