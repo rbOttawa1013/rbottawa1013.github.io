@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scientific Slide Ruler</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom styles for the slide ruler components */
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F0F9FF; /* Light blue background */
+      color: #334155; /* Darker text for contrast */
+    }
+    .scientific-scale {
+      position: relative;
+      height: 40px;
+      width: 100%;
+      background: white;
+      border: 1px solid #94A3B8; /* Subtle border */
+      border-radius: 4px;
+      overflow: hidden; /* Hide anything outside the scale */
+      margin-top: 8px;
+    }
+    /* Styles for major ticks on the ruler */
+    .tick-major {
+      position: absolute;
+      height: 10px;
+      width: 1px;
+      background: #64748B; /* Darker gray for major ticks */
+      top: 0;
+    }
+    /* Styles for minor ticks on the ruler */
+    .tick-minor {
+      position: absolute;
+      height: 5px;
+      width: 1px;
+      background: #94A3B8; /* Lighter gray for minor ticks */
+      top: 0;
+    }
+    /* Styles for labels on major ticks */
+    .tick-label {
+      position: absolute;
+      top: 12px; /* Position below the tick */
+      font-size: 10px;
+      color: #64748B;
+      transform: translateX(-50%); /* Center the label horizontally */
+      white-space: nowrap; /* Prevent labels from wrapping */
+    }
+    /* Styles for the movable indicator line */
+    .indicator {
+      position: absolute;
+      height: 100%;
+      width: 2px;
+      background: #0EA5E9; /* Bright blue for the indicator */
+      z-index: 10; /* Ensure indicator is on top */
+    }
+    /* Styles for the numerical value displayed above the indicator */
+    .value-display {
+      position: absolute;
+      top: -20px; /* Position above the scale */
+      font-size: 12px;
+      color: #0EA5E9;
+      transform: translateX(-50%); /* Center the value horizontally */
+      white-space: nowrap; /* Prevent value from wrapping */
+    }
+    /* Styles for the slider thumb (cross-browser compatibility) */
+    input[type="range"]::-webkit-slider-thumb {
+      background: #0EA5E9;
+      border-radius: 50%;
+      height: 20px;
+      width: 20px;
+      cursor: grab; /* Indicate it's draggable */
+      -webkit-appearance: none; /* Remove default styling */
+      margin-top: -8px; /* Adjust vertical position */
+    }
+    input[type="range"]::-moz-range-thumb {
+      background: #0EA5E9;
+      border-radius: 50%;
+      height: 20px;
+      width: 20px;
+      cursor: grab;
+    }
+    input[type="range"]::-ms-thumb {
+      background: #0EA5E9;
+      border-radius: 50%;
+      height: 20px;
+      width: 20px;
+      cursor: grab;
+    }
+    /* Styles for the slider track */
+    input[type="range"]::-webkit-slider-runnable-track {
+        background: #CBD5E1; /* Light gray track */
+        border-radius: 4px;
+        height: 4px;
+    }
+    input[type="range"]::-moz-range-track {
+        background: #CBD5E1;
+        border-radius: 4px;
+        height: 4px;
+    }
+    input[type="range"]::-ms-track {
+        background: #CBD5E1;
+        border-radius: 4px;
+        height: 4px;
+    }
+  </style>
+  <!-- MathJax for rendering LaTeX mathematical expressions -->
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+  </script>
+  <script>
+    // Configure MathJax to process LaTeX enclosed in single dollar signs ($...$) for inline math
+    // and double dollar signs ($$...$$) for display math.
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      },
+      // Ensure MathJax processes the content after it's loaded and ready
+      startup: {
+        ready: () => {
+          console.log('MathJax is loaded, and ready to process math!');
+          MathJax.startup.defaultReady();
+        }
+      }
+    };
+  </script>
+</head>
+<body class="p-6">
+  <div class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-gray-200">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Interactive Scientific Ruler</h1>
+    
+    <!-- Input Section: Contains the slider and number input field -->
+    <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <label for="slider" class="block text-lg font-medium text-gray-700 mb-3">Adjust Input Value:</label>
+      <input id="slider" type="range" min="0" max="360" step="0.1" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+      <div class="flex justify-between items-center mt-3">
+        <span class="text-sm text-gray-600">Min: 0</span>
+        <input id="numberInput" type="number" min="0" max="360" step="0.1" value="0" class="w-32 p-2 border border-gray-300 rounded-md text-center text-lg font-semibold">
+        <span class="text-sm text-gray-600">Max: 360</span>
+      </div>
+    </div>
+
+    <!-- Output Scales Section: Displays various scientific scales -->
+    <div class="space-y-6">
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Current Value (Degrees)</label>
+        <div id="scale-current" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Log Base 10 ($\text{log}_{10}(\text{x})$)</label>
+        <div id="scale-log" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Square ($\text{x}^2$)</label>
+        <div id="scale-square" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Square Root ($\sqrt{\text{x}}$)</label>
+        <div id="scale-sqrt" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Sine ($\sin(\text{x})$)</label>
+        <div id="scale-sin" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Cosine ($\cos(\text{x})$)</label>
+        <div id="scale-cos" class="scientific-scale"></div>
+      </div>
+      <div>
+        <label class="block text-lg font-medium text-gray-700 mb-2">Tangent ($\tan(\text{x})$)</label>
+        <div id="scale-tan" class="scientific-scale"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Get references to the slider, number input, and all scale elements
+    const slider = document.getElementById('slider');
+    const numberInput = document.getElementById('numberInput');
+    const scales = {
+      current: document.getElementById('scale-current'),
+      log: document.getElementById('scale-log'),
+      square: document.getElementById('scale-square'),
+      sqrt: document.getElementById('scale-sqrt'),
+      sin: document.getElementById('scale-sin'),
+      cos: document.getElementById('scale-cos'),
+      tan: document.getElementById('scale-tan')
+    };
+
+    /**
+     * Maps a value from one numerical range to another.
+     * @param {number} value - The value to map.
+     * @param {number} inMin - The minimum of the input range.
+     * @param {number} inMax - The maximum of the input range.
+     * @param {number} outMin - The minimum of the output range.
+     * @param {number} outMax - The maximum of the output range.
+     * @returns {number} The mapped value.
+     */
+    function mapValue(value, inMin, inMax, outMin, outMax) {
+      if (inMin === inMax) return outMin; // Avoid division by zero for fixed ranges
+      return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
+    }
+
+    /**
+     * Creates and updates a scientific scale ruler visually.
+     * @param {HTMLElement} scaleElement - The DOM element representing the scale.
+     * @param {number} minVal - The minimum numerical value for this scale.
+     * @param {number} maxVal - The maximum numerical value for this scale.
+     * @param {number} majorTickInterval - The interval between major ticks on the scale.
+     * @param {number|string} valueToDisplay - The specific calculated value to mark on this scale.
+     */
+    function createScale(scaleElement, minVal, maxVal, majorTickInterval, valueToDisplay) {
+      scaleElement.innerHTML = ''; // Clear existing ticks and indicator
+
+      // Add major ticks and their numerical labels
+      for (let i = 0; i <= (maxVal - minVal) / majorTickInterval; i++) {
+        const value = minVal + i * majorTickInterval;
+        // Calculate position as a percentage of the scale's width
+        const percentage = mapValue(value, minVal, maxVal, 0, 100);
+
+        // Create and position major tick
+        const majorTick = document.createElement('div');
+        majorTick.className = 'tick-major';
+        majorTick.style.left = `${percentage}%`;
+        scaleElement.appendChild(majorTick);
+
+        // Create and position tick label
+        const tickLabel = document.createElement('span');
+        tickLabel.className = 'tick-label';
+        // Format labels for readability (e.g., fewer decimals for larger numbers)
+        tickLabel.textContent = value.toFixed(value < 100 && value > -100 ? 1 : 0);
+        tickLabel.style.left = `${percentage}%`;
+        scaleElement.appendChild(tickLabel);
+
+        // Add minor ticks between major ticks (5 subdivisions per major interval)
+        if (i < (maxVal - minVal) / majorTickInterval) {
+          for (let j = 1; j < 5; j++) { // 4 minor ticks to create 5 segments
+            const minorValue = value + (majorTickInterval / 5) * j;
+            const minorPercentage = mapValue(minorValue, minVal, maxVal, 0, 100);
+            const minorTick = document.createElement('div');
+            minorTick.className = 'tick-minor';
+            minorTick.style.left = `${minorPercentage}%`;
+            scaleElement.appendChild(minorTick);
+          }
+        }
+      }
+
+      // Add the indicator and its value display
+      if (valueToDisplay !== 'undefined' && !isNaN(valueToDisplay)) {
+        // Calculate the indicator's position based on the value within its scale's range
+        const indicatorPercentage = mapValue(valueToDisplay, minVal, maxVal, 0, 100);
+
+        const indicator = document.createElement('div');
+        indicator.className = 'indicator';
+        // Clamp the indicator position to ensure it stays within the scale bounds
+        indicator.style.left = `${Math.min(Math.max(indicatorPercentage, 0), 100)}%`;
+        scaleElement.appendChild(indicator);
+
+        const valueDisplayElement = document.createElement('span');
+        valueDisplayElement.className = 'value-display';
+        // Display the calculated value with higher precision for scientific results
+        valueDisplayElement.textContent = valueToDisplay.toFixed(4);
+        valueDisplayElement.style.left = indicator.style.left;
+        scaleElement.appendChild(valueDisplayElement);
+      } else {
+        // If the value is undefined (e.g., log of zero, tan of 90 deg), display "undefined"
+        const valueDisplayElement = document.createElement('span');
+        valueDisplayElement.className = 'value-display';
+        valueDisplayElement.textContent = 'undefined';
+        valueDisplayElement.style.left = '50%'; // Center the "undefined" text
+        scaleElement.appendChild(valueDisplayElement);
+      }
+    }
+
+    /**
+     * Updates all scientific scales based on the current input value.
+     * @param {number} inputValue - The numerical value from the slider or number input.
+     */
+    function updateOutputs(inputValue) {
+      let value = parseFloat(inputValue);
+      if (isNaN(value)) value = 0; // Default to 0 if input is not a valid number
+      value = Math.min(Math.max(value, 0), 360); // Ensure value stays within 0-360 range
+
+      // Update the slider and number input to reflect the clamped value
+      slider.value = value;
+      numberInput.value = value;
+
+      // Calculate results for each scientific function
+      const results = {
+        current: value,
+        log: value <= 0 ? 'undefined' : Math.log10(value),
+        square: value * value,
+        sqrt: value < 0 ? 'undefined' : Math.sqrt(value),
+        // Convert degrees to radians for trigonometric functions
+        sin: Math.sin(value * Math.PI / 180),
+        cos: Math.cos(value * Math.PI / 180),
+        // Handle undefined tangent values at 90, 270 degrees etc.
+        tan: (Math.abs(value % 180) === 90) ? 'undefined' : Math.tan(value * Math.PI / 180)
+      };
+
+      // Render each scale with its specific range and calculated result
+      createScale(scales.current, 0, 360, 50, results.current); // Main input scale
+      createScale(scales.log, 0, Math.log10(360), 0.5, results.log); // Logarithmic scale
+      createScale(scales.square, 0, 360 * 360, 20000, results.square); // Square scale
+      createScale(scales.sqrt, 0, Math.sqrt(360), 5, results.sqrt); // Square Root scale
+      createScale(scales.sin, -1, 1, 0.2, results.sin); // Sine scale (range -1 to 1)
+      createScale(scales.cos, -1, 1, 0.2, results.cos); // Cosine scale (range -1 to 1)
+      // Tangent scale: bounded to a visible range as it approaches infinity
+      createScale(scales.tan, -50, 50, 10, results.tan); 
+    }
+
+    // Event listeners for input changes
+    slider.addEventListener('input', () => updateOutputs(slider.value));
+    numberInput.addEventListener('input', () => updateOutputs(numberInput.value));
+
+    // Initial update to set the scales to the default value (0)
+    updateOutputs(0); 
+  </script>
+</body>
+</html>
