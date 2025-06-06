@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WWI French Village (Day/Night Cycle)</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        #info {
+            position: absolute; top: 10px; width: 100%; text-align: center; z-index: 100;
+            color: #ffffff; background-color: rgba(0,0,0,0.4); padding: 8px; border-radius: 5px;
+            font-size: 14px; max-width: 90%; left: 50%; transform: translateX(-50%);
+        }
+        .ui-panel {
+            position: absolute; top: 50px; left: 10px; background-color: rgba(0,0,0,0.6);
+            padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 5px;
+        }
+        .ui-panel button {
+            background-color: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4);
+            padding: 8px 12px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s;
+        }
+        .ui-panel button:hover { background-color: rgba(255,255,255,0.4); }
+        .ui-panel button.active { background-color: rgba(135, 206, 250, 0.6); border: 1px solid rgba(135, 206, 250, 1); }
+        
+        #settings-button {
+            position: absolute; top: 10px; left: 10px; width: 32px; height: 32px;
+            background-color: rgba(0,0,0,0.5); border-radius: 50%; cursor: pointer; border: 1px solid #fff;
+            display: flex; align-items: center; justify-content: center; z-index: 101;
+        }
+        #settings-button svg { width: 20px; height: 20px; fill: white; }
+        
+        #settings-panel {
+            display: none; top: 50px; left: 10px; padding: 15px; min-width: 250px;
+            color: white; gap: 10px; z-index: 101;
+        }
+        .slider-container { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px;}
+        .slider-container label { font-size: 12px; display: flex; justify-content: space-between; }
+        .slider-container input[type="range"] { width: 100%; }
+        
+        #compass {
+            position: absolute; bottom: 20px; right: 20px; width: 80px; height: 80px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/><text x="40" y="18" font-family="sans-serif" font-size="14" fill="white" text-anchor="middle">N</text><text x="40" y="72" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">S</text><text x="12" y="45" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">W</text><text x="68" y="45" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">E</text></svg>');
+            background-size: contain;
+        }
+        #compass-needle {
+            position: absolute; width: 100%; height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><polygon points="40,10 45,40 40,70 35,40" style="fill:rgba(255,50,50,0.9);" /></svg>');
+            background-size: contain; transition: transform 0.2s linear;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="info">WWI Era French Village - Day/Night Cycle<br/>Click and drag to orbit, scroll to zoom.</div>
+    
+    <div id="settings-button">
+        <svg viewBox="0 0 24 24"><path d="M19.4,12c0-0.2,0-0.4,0-0.6c-0.1-0.9-0.4-1.7-0.8-2.5l1.5-1.5c0.2-0.2,0.2-0.5,0-0.7l-2.1-2.1c-0.2-0.2-0.5-0.2-0.7,0 l-2,1.5C14.4,5.4,13.6,5.1,12.8,5c-0.2,0-0.4,0-0.6,0s-0.4,0-0.6,0C10.7,5.1,9.9,5.4,9.1,5.8l-2-1.5c-0.2-0.2-0.5-0.2-0.7,0 L4.2,6.4c-0.2,0.2-0.2,0.5,0,0.7l1.5,1.5C5.3,9.5,5,10.3,4.8,11.2C4.8,11.4,4.8,11.6,4.8,11.8s0,0.4,0,0.6 c0.1,0.9,0.4,1.7,0.8,2.5l-1.5,1.5c-0.2,0.2-0.2,0.5,0,0.7l2.1,2.1c0.2,0.2,0.5,0.2,0.7,0l2-1.5c0.8,0.5,1.6,0.8,2.5,0.8 c0.2,0,0.4,0,0.6,0s0.4,0,0.6,0c0.9-0.1,1.7-0.4,2.5-0.8l2,1.5c0.2,0.2,0.5,0.2,0.7,0l2.1-2.1c0.2-0.2,0.2-0.5,0-0.7l-1.5-1.5 C19,14.5,19.3,13.7,19.4,12.8C19.4,12.6,19.4,12.4,19.4,12z M12,15.5c-1.9,0-3.5-1.6-3.5-3.5s1.6-3.5,3.5-3.5s3.5,1.6,3.5,3.5 S13.9,15.5,12,15.5z"/></svg>
+    </div>
+    
+    <div id="time-controls" class="ui-panel">
+        <button id="btn-dawn">Dawn</button>
+        <button id="btn-morning">Morning</button>
+        <button id="btn-day">Day</button>
+        <button id="btn-afternoon">Afternoon</button>
+        <button id="btn-evening">Evening</button>
+        <button id="btn-night">Night</button>
+    </div>
+
+    <div id="settings-panel" class="ui-panel">
+        <h4>World Settings</h4>
+        <div class="slider-container">
+            <label for="buildings">Buildings: <span id="buildings-value">15</span></label>
+            <input type="range" id="buildings" name="buildings" min="5" max="30" value="15">
+        </div>
+        <div class="slider-container">
+            <label for="deciduous">Deciduous Density: <span id="deciduous-value">60</span>%</label>
+            <input type="range" id="deciduous" name="deciduous" min="0" max="100" value="60">
+        </div>
+        <div class="slider-container">
+            <label for="pines">Pine Density: <span id="pines-value">25</span>%</label>
+            <input type="range" id="pines" name="pines" min="0" max="100" value="25">
+        </div>
+        <div class="slider-container">
+            <label for="bushes">Bush Density: <span id="bushes-value">15</span>%</label>
+            <input type="range" id="bushes" name="bushes" min="0" max="100" value="15">
+        </div>
+         <div class="slider-container">
+            <label for="cows">Cows: <span id="cows-value">2</span></label>
+            <input type="range" id="cows" name="cows" min="0" max="10" value="2">
+        </div>
+        <div class="slider-container">
+            <label for="goats">Goats: <span id="goats-value">2</span></label>
+            <input type="range" id="goats" name="goats" min="0" max="10" value="2">
+        </div>
+        <button id="regenerate-button">Regenerate World</button>
+    </div>
+
+    <div id="compass">
+        <div id="compass-needle"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+    <script type="module">
+
+        // =================================================================
+        // ANIMAL CLASS
+        // =================================================================
+        class Animal {
+            constructor(scene, model) {
+                this.scene = scene;
+                this.model = model;
+                this.model.position.set(
+                    (Math.random() - 0.5) * 200, 0, (Math.random() - 0.5) * 200
+                );
+                this.scene.add(this.model);
+
+                this.state = 'IDLE';
+                this.idleTime = Math.random() * 5 + 2;
+                this.speed = 0.5 + Math.random() * 0.5;
+                this.target = new THREE.Vector3();
+                this.walkCycle = 0;
+            }
+
+            update(delta, isNight) {
+                const wasSleeping = this.state === 'SLEEPING';
+                
+                if (isNight) {
+                    this.state = 'SLEEPING';
+                } else if (wasSleeping) {
+                    this.state = 'IDLE';
+                    this.idleTime = Math.random() * 3; // Wake up and wait a bit
+                }
+
+                if (this.state === 'IDLE') {
+                    this.idleTime -= delta;
+                    if (this.idleTime <= 0) {
+                        this.state = 'WALKING';
+                        this.target.set(
+                            this.model.position.x + (Math.random() - 0.5) * 50,
+                            0,
+                            this.model.position.z + (Math.random() - 0.5) * 50
+                        );
+                    }
+                } else if (this.state === 'WALKING') {
+                    const direction = this.target.clone().sub(this.model.position).normalize();
+                    const distance = this.model.position.distanceTo(this.target);
+
+                    if (distance < 1) {
+                        this.state = 'IDLE';
+                        this.idleTime = Math.random() * 5 + 2;
+                        this.walkCycle = 0;
+                    } else {
+                        this.model.position.add(direction.multiplyScalar(this.speed * delta));
+                        const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(
+                            new THREE.Vector3(0, 0, 1), direction
+                        );
+                        this.model.quaternion.slerp(targetQuaternion, 0.1);
+                        this.walkCycle += delta * 10;
+                    }
+                }
+                
+                // Animate legs and body
+                const legs = this.model.userData.legs;
+                const body = this.model.userData.body;
+                if(legs) {
+                    const angle = Math.sin(this.walkCycle) * 0.4;
+                    if(this.state === 'WALKING') {
+                        legs.frontLeft.rotation.x = angle; legs.frontRight.rotation.x = -angle;
+                        legs.backLeft.rotation.x = -angle; legs.backRight.rotation.x = angle;
+                        if(body) body.rotation.x = 0;
+                    } else if (this.state === 'SLEEPING') {
+                        if(body) body.rotation.x = Math.PI / 2; // Lie down
+                    } else {
+                         legs.frontLeft.rotation.x = 0; legs.frontRight.rotation.x = 0;
+                         legs.backLeft.rotation.x = 0; legs.backRight.rotation.x = 0;
+                         if(body) body.rotation.x = 0;
+                    }
+                }
+            }
+        }
+
+        // =================================================================
+        // ASSET FACTORY
+        // =================================================================
+        const AssetFactory = {
+            simplex: new SimplexNoise(),
+            
+            createAdvancedMaterial: function(type) {
+                const size = 512;
+                const colorCanvas = document.createElement('canvas');
+                colorCanvas.width = size; colorCanvas.height = size;
+                const colorCtx = colorCanvas.getContext('2d');
+                const bumpCanvas = document.createElement('canvas');
+                bumpCanvas.width = size; bumpCanvas.height = size;
+                const bumpCtx = bumpCanvas.getContext('2d');
+                bumpCtx.fillStyle = '#808080';
+                bumpCtx.fillRect(0,0,size,size);
+                if (type === 'stone') { colorCtx.fillStyle = '#C0C0C0'; colorCtx.fillRect(0, 0, size, size); for (let i = 0; i < 150; i++) { const x = Math.random() * size, y = Math.random() * size; const w = 40 + Math.random() * 60, h = 20 + Math.random() * 40; const c = 100 + Math.random() * 50; colorCtx.fillStyle = `rgb(${c},${c-5},${c-10})`; colorCtx.fillRect(x,y,w,h); bumpCtx.fillStyle = `rgb(${c+50},${c+50},${c+50})`; bumpCtx.fillRect(x,y,w,h); } } 
+                else if (type === 'stucco') { colorCtx.fillStyle = '#EAE0C8'; colorCtx.fillRect(0,0,size,size); for (let i=0; i<40000; i++) { const c = Math.floor(Math.random() * 20); const alpha = Math.random()*0.5; colorCtx.fillStyle = `rgba(${200+c}, ${190+c}, ${170+c}, ${alpha})`; const x = Math.random()*size, y = Math.random()*size; colorCtx.fillRect(x,y,2,2); bumpCtx.fillStyle = `rgba(255,255,255,${alpha/2})`; bumpCtx.fillRect(x,y,1,1); } }
+                else if (type === 'wood') { colorCtx.fillStyle = '#654321'; colorCtx.fillRect(0,0,size,size); for(let i=0; i<size; i+=4) { const c = 80 + Math.floor(this.simplex.noise2D(i*0.1, i*0.1) * 20); colorCtx.fillStyle = `rgb(${c}, ${c-20}, ${c-40})`; colorCtx.fillRect(i, 0, 2 + Math.random()*2, size); bumpCtx.fillStyle = `rgb(${c+40}, ${c+40}, ${c+40})`; bumpCtx.fillRect(i, 0, 1, size); } } 
+                const colorTexture = new THREE.CanvasTexture(colorCanvas);
+                colorTexture.wrapS = THREE.RepeatWrapping; colorTexture.wrapT = THREE.RepeatWrapping;
+                const bumpTexture = new THREE.CanvasTexture(bumpCanvas);
+                bumpTexture.wrapS = THREE.RepeatWrapping; bumpTexture.wrapT = THREE.RepeatWrapping;
+                return new THREE.MeshStandardMaterial({ map: colorTexture, bumpMap: bumpTexture, bumpScale: type === 'stucco' ? 0.2 : 0.4, roughness: 0.85, metalness: 0.1 });
+            },
+            
+            createWindow: function() {
+                const group = new THREE.Group();
+                const pane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), new THREE.MeshBasicMaterial({color: 0x111122}));
+                group.add(pane);
+                const woodMat = new THREE.MeshStandardMaterial({color: 0x5C4033});
+                const h1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 0.2), woodMat);
+                h1.position.y = 1.25; group.add(h1);
+                const h2 = h1.clone(); h2.position.y = -1.25; group.add(h2);
+                const v1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.7, 0.2), woodMat);
+                v1.position.x = 1.1; group.add(v1);
+                const v2 = v1.clone(); v2.position.x = -1.1; group.add(v2);
+                return group;
+            },
+
+            createHouse: function({ width, height, depth, material, woodMaterial, roofMaterial }) {
+                const group = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+                body.position.y = height / 2; body.castShadow = true; body.receiveShadow = true; group.add(body);
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(width * 0.75, height * 0.7, 4), roofMaterial);
+                roof.position.y = height + (height * 0.7) / 2; roof.rotation.y = Math.PI / 4; roof.castShadow = true; group.add(roof);
+                const door = new THREE.Mesh(new THREE.BoxGeometry(3, 6, 0.2), woodMaterial);
+                door.position.set(0, 3, depth / 2 + 0.1); group.add(door);
+                
+                // Add windows
+                const groundY = 3.5;
+                const topY = height - 4;
+                if(Math.random() > 0.3) { // Front window
+                    const win = this.createWindow();
+                    win.position.set(width/4, groundY, depth/2 + 0.1);
+                    group.add(win);
+                }
+                if(height > 12 && Math.random() > 0.3) {
+                    const win = this.createWindow();
+                    win.position.set(-width/4, topY, depth/2 + 0.1);
+                    group.add(win);
+                }
+
+                if (Math.random() < 0.5) {
+                    const lightType = Math.random() < 0.6 ? 'oil' : 'candle';
+                    const windowLight = new THREE.PointLight(0xffaa33, 0, 15, 2);
+                    windowLight.position.set(0, height / 2, depth / 2 - 2);
+                    windowLight.castShadow = false;
+                    windowLight.userData.isNightLight = true;
+                    windowLight.userData.lightType = lightType;
+                    windowLight.userData.baseIntensity = lightType === 'oil' ? 1.5 : 1.2;
+                    group.add(windowLight);
+                }
+                return group;
+            },
+            
+            createStreetLamp: function({ woodMaterial }) {
+                const group = new THREE.Group();
+                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 12, 8), woodMaterial);
+                post.castShadow = true; post.position.y = 6; group.add(post);
+                const arm = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 0.4), woodMaterial);
+                arm.position.set(1.5, 11, 0); group.add(arm);
+                const lampLight = new THREE.PointLight(0xffd8aa, 0, 25, 2);
+                lampLight.position.set(3, 10.5, 0); lampLight.castShadow = true;
+                lampLight.shadow.mapSize.width = 256; lampLight.shadow.mapSize.height = 256;
+                lampLight.userData.isNightLight = true; lampLight.userData.lightType = 'oil';
+                lampLight.userData.baseIntensity = 2.0; group.add(lampLight);
+                return group;
+            },
+
+            createDeciduousTree: function({ woodMaterial }) {
+                const group = new THREE.Group(); const trunkHeight = 10 + Math.random() * 15; const trunkRadius = 0.5 + Math.random() * 1; const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkRadius * 0.7, trunkRadius, trunkHeight, 10), woodMaterial); trunk.castShadow = true; trunk.position.y = trunkHeight / 2; group.add(trunk);
+                function addBranch(parent, level, numBranches) { if (level > 4) return; for (let i = 0; i < numBranches; i++) { const branchLength = trunkHeight * (0.4 - level * 0.08) * (0.8 + Math.random() * 0.4); const branchRadius = trunkRadius * (0.6 - level * 0.12); if (branchRadius < 0.1) continue; const branchPivot = new THREE.Object3D(); branchPivot.position.y = (level === 1) ? trunkHeight * (0.6 + Math.random() * 0.4) : parent.userData.length; const branch = new THREE.Mesh(new THREE.CylinderGeometry(branchRadius * 0.8, branchRadius, branchLength, 8), woodMaterial); branch.castShadow = true; branch.position.y = branchLength / 2; branchPivot.add(branch); branchPivot.userData.length = branchLength; branchPivot.rotation.x = (Math.PI / 4) + (Math.random() - 0.5) * (Math.PI / 3); branchPivot.rotation.z = (Math.random() - 0.5) * (Math.PI / 3); branchPivot.rotation.y = Math.random() * Math.PI * 2; (level === 1 ? group : parent).add(branchPivot); if (level >= 3) { for(let j=0; j<3; j++) { const foliageSize = 2 + Math.random() * 3; const foliageColor = new THREE.Color(0x228B22).offsetHSL( (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.1); const foliage = new THREE.Mesh(new THREE.IcosahedronGeometry(foliageSize, 0), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); foliage.castShadow = true; foliage.position.set( (Math.random()-0.5) * foliageSize, branchLength + (Math.random()-0.5) * foliageSize, (Math.random()-0.5) * foliageSize ); branch.add(foliage); } } addBranch(branch, level + 1, Math.floor(numBranches * 0.7)); } }
+                addBranch(trunk, 1, 3 + Math.floor(Math.random() * 3));
+                return group;
+            },
+
+            createPineTree: function({ woodMaterial }) {
+                const group = new THREE.Group(); const trunkHeight = 15 + Math.random() * 20; const trunkRadius = 0.6 + Math.random() * 0.8; const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkRadius * 0.7, trunkRadius, trunkHeight, 8), woodMaterial); trunk.position.y = trunkHeight/2; trunk.castShadow = true; group.add(trunk);
+                let currentHeight = trunkHeight;
+                for(let i=0; i<5; i++) { const foliageHeight = (6 + Math.random() * 6); const foliageRadius = (trunkHeight / 2.5) * (1 - i*0.15); if (foliageRadius < 1) continue; const foliageColor = new THREE.Color(0x1A4314).offsetHSL( (Math.random()-0.5)*0.05, 0, (Math.random()-0.5)*0.1); const foliage = new THREE.Mesh(new THREE.ConeGeometry(foliageRadius, foliageHeight, 12), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); foliage.position.y = currentHeight; foliage.castShadow = true; group.add(foliage); currentHeight -= foliageHeight * 0.6; }
+                return group;
+            },
+
+            createBush: function() {
+                const group = new THREE.Group(); const numClumps = 5 + Math.floor(Math.random() * 5);
+                for(let i=0; i<numClumps; i++) { const clumpSize = 2 + Math.random() * 3; const foliageColor = new THREE.Color(0x3B5323).offsetHSL( (Math.random()-0.5)*0.1, 0, (Math.random()-0.5)*0.2); const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(clumpSize, 0), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); clump.castShadow = true; clump.position.set((Math.random()-0.5) * clumpSize * 1.5, (Math.random()) * clumpSize * 0.5, (Math.random()-0.5) * clumpSize * 1.5); group.add(clump); }
+                return group;
+            },
+            
+            createCow: function() {
+                const group = new THREE.Group();
+                const white = new THREE.MeshStandardMaterial({color: 0xffffff});
+                const black = new THREE.MeshStandardMaterial({color: 0x111111});
+                const body = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 6), white);
+                body.position.y = 2;
+                group.userData.body = body; // For sleep animation
+                group.add(body);
+                for(let i=0; i<8; i++){ const splotch = new THREE.Mesh(new THREE.SphereGeometry(Math.random()*0.8+0.5), black); splotch.position.set((Math.random()-0.5)*4, (Math.random()-0.5)*2.5, (Math.random()-0.5)*6); body.add(splotch); }
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 2), white);
+                head.position.set(0, 2.8, 4);
+                group.add(head);
+                const snout = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), new THREE.MeshStandardMaterial({color: 0xffc0cb}));
+                snout.position.set(0, 2.5, 5.2);
+                group.add(snout);
+                const legFL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), white);
+                legFL.position.set(-1.5, 1, 2);
+                const legFR = legFL.clone(); legFR.position.x = 1.5;
+                const legBL = legFL.clone(); legBL.position.z = -2;
+                const legBR = legFR.clone(); legBR.position.z = -2;
+                group.add(legFL, legFR, legBL, legBR);
+                group.userData.legs = {frontLeft: legFL, frontRight: legFR, backLeft: legBL, backRight: legBR};
+                return group;
+            },
+            
+            createGoat: function() {
+                const group = new THREE.Group();
+                const grey = new THREE.MeshStandardMaterial({color: 0xaaaaaa});
+                const body = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.8, 4), grey);
+                body.position.y = 1.5;
+                group.userData.body = body; // For sleep animation
+                group.add(body);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), grey);
+                head.position.set(0, 2, 2.5);
+                group.add(head);
+                const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1, 8), grey);
+                hornL.position.set(-0.4, 2.8, 2.2); hornL.rotation.x = -0.5;
+                const hornR = hornL.clone(); hornR.position.x = 0.4;
+                group.add(hornL, hornR);
+                const legFL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.5, 0.3), grey);
+                legFL.position.set(-1, 0.75, 1.5);
+                const legFR = legFL.clone(); legFR.position.x = 1;
+                const legBL = legFL.clone(); legBL.position.z = -1.5;
+                const legBR = legFR.clone(); legBR.position.z = -1.5;
+                group.add(legFL, legFR, legBL, legBR);
+                group.userData.legs = {frontLeft: legFL, frontRight: legFR, backLeft: legBL, backRight: legBR};
+                return group;
+            }
+        };
+
+
+        // =================================================================
+        // ENVIRONMENT MANAGER
+        // =================================================================
+        class Environment {
+            constructor(scene) {
+                this.scene = scene;
+                this.currentTime = 0.35;
+                this.isNight = false;
+                this.simplex = new SimplexNoise();
+                this.init();
+            }
+
+            init() {
+                this.ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.7);
+                this.scene.add(this.ambientLight);
+                this.sunLight = new THREE.DirectionalLight(0xFFFFFF, 1.5);
+                this.sunLight.castShadow = true; this.sunLight.shadow.mapSize.set(4096, 4096);
+                this.sunLight.shadow.camera.top = 200; this.sunLight.shadow.camera.bottom = -200; this.sunLight.shadow.camera.left = -200; this.sunLight.shadow.camera.right = 200;
+                this.scene.add(this.sunLight);
+                this.moonLight = new THREE.DirectionalLight(0x8899AA, 0.2);
+                this.scene.add(this.moonLight);
+                const skyGeometry = new THREE.SphereGeometry(1000, 32, 15);
+                const skyMaterial = new THREE.ShaderMaterial({
+                    vertexShader: `varying vec3 vWorldPosition; void main() { vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+                    fragmentShader: `varying vec3 vWorldPosition; uniform vec3 topColor; uniform vec3 bottomColor; uniform float offset; uniform float exponent; void main() { float h = normalize( vWorldPosition + offset ).y; gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 ); }`,
+                    uniforms: { "topColor": { value: new THREE.Color(0x0077ff) }, "bottomColor": { value: new THREE.Color(0xADD8E6) }, "offset": { value: 33 }, "exponent": { value: 0.6 } }, side: THREE.BackSide
+                });
+                this.sky = new THREE.Mesh(skyGeometry, skyMaterial);
+                this.scene.add(this.sky);
+                const moonGeometry = new THREE.SphereGeometry(20, 32, 32);
+                const moonCanvas = document.createElement('canvas'); moonCanvas.width = 512; moonCanvas.height = 512; const moonCtx = moonCanvas.getContext('2d');
+                moonCtx.fillStyle = '#FFFFFF'; moonCtx.fillRect(0,0,512,512); moonCtx.fillStyle = '#DDDDDD'; moonCtx.beginPath(); moonCtx.arc(300, 200, 50, 0, Math.PI*2); moonCtx.fill(); moonCtx.fillStyle = '#AAAAAA'; moonCtx.beginPath(); moonCtx.arc(150, 150, 80, 0, Math.PI*2); moonCtx.fill();
+                this.moon = new THREE.Mesh(moonGeometry, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(moonCanvas), transparent: true, opacity: 0 }));
+                this.moon.renderOrder = -1;
+                this.scene.add(this.moon);
+                const starVertices = []; for (let i = 0; i < 10000; i++) { const x = THREE.MathUtils.randFloatSpread(2000); const y = THREE.MathUtils.randFloatSpread(2000); const z = THREE.MathUtils.randFloatSpread(2000); if(new THREE.Vector3(x,y,z).length() > 800) starVertices.push(x, y, z); }
+                const starGeometry = new THREE.BufferGeometry(); starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+                this.stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0 }));
+                this.scene.add(this.stars);
+            }
+
+            update(timeElapsed) {
+                const time = this.currentTime;
+                const sunAngle = time * Math.PI * 2;
+                this.sunLight.position.set(Math.cos(sunAngle) * 400, Math.sin(sunAngle) * 400, -200);
+                const moonAngle = sunAngle + Math.PI;
+                this.moon.position.set(Math.cos(moonAngle) * 400, Math.sin(moonAngle) * 400, 200);
+                this.moonLight.position.copy(this.moon.position);
+                const sunY = Math.sin(sunAngle);
+                const dayTop = new THREE.Color("#0077ff"), dayBottom = new THREE.Color("#ADD8E6"), duskTop = new THREE.Color("#ff8c00"), duskBottom = new THREE.Color("#ff4500"), nightTop = new THREE.Color("#000044"), nightBottom = new THREE.Color("#000022"), nightAmbient = new THREE.Color("#99aadd");
+                let horizonY = Math.max(0, sunY + 0.1); this.sky.material.uniforms.topColor.value.lerpColors(nightTop, dayTop, horizonY); this.sky.material.uniforms.bottomColor.value.lerpColors(nightBottom, dayBottom, horizonY);
+                if(sunY > 0 && sunY < 0.2) { let duskFactor = 1.0 - (sunY / 0.2); this.sky.material.uniforms.topColor.value.lerp(duskTop, duskFactor); this.sky.material.uniforms.bottomColor.value.lerp(duskBottom, duskFactor); }
+                this.sunLight.intensity = Math.max(0, sunY) * 2.0; this.sunLight.color.set(0xffffff).lerp(new THREE.Color(0xffd8b1), 1 - Math.max(0.1, sunY));
+                this.ambientLight.intensity = 0.2 + Math.max(0, sunY) * 0.6; this.ambientLight.color.lerpColors(nightAmbient, new THREE.Color(0xffffff), Math.max(0, sunY));
+                this.moonLight.intensity = Math.max(0, -sunY) * 0.4;
+                this.stars.material.opacity = Math.max(0, (-sunY - 0.2) * 2.0); this.moon.material.opacity = Math.max(0, (-sunY - 0.1) * 1.5);
+                this.sunLight.castShadow = sunY > 0.05;
+                this.isNight = sunY < 0.05;
+                this.scene.traverse((object) => {
+                    if (object.userData.isNightLight) {
+                        object.visible = this.isNight;
+                        if (this.isNight) {
+                            if (object.userData.lightType === 'candle') { object.intensity = object.userData.baseIntensity + this.simplex.noise2D(timeElapsed * 5, object.uuid) * 0.5; } else { object.intensity = object.userData.baseIntensity; }
+                        } else { object.intensity = 0; }
+                    }
+                });
+            }
+        }
+
+
+        // =================================================================
+        // WORLD BUILDER
+        // =================================================================
+        class World {
+            constructor(scene, assetFactory) {
+                this.scene = scene;
+                this.factory = assetFactory;
+                this.materials = {
+                    stone: this.factory.createAdvancedMaterial('stone'), stucco: this.factory.createAdvancedMaterial('stucco'),
+                    wood: this.factory.createAdvancedMaterial('wood'), roof: new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.8 }),
+                };
+                this.worldContainer = new THREE.Group();
+                this.scene.add(this.worldContainer);
+                this.animals = [];
+            }
+            
+            clear() { while(this.worldContainer.children.length > 0){ this.worldContainer.remove(this.worldContainer.children[0]); } this.animals = []; }
+
+            generate(settings) {
+                this.clear();
+                this.generateTerrain();
+                this.generateVillage(0, 0, settings.buildings);
+                this.generateVegetation(settings.vegetation);
+                this.generateAnimals(settings.animals);
+            }
+
+            generateTerrain() {
+                const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 100, 100), new THREE.MeshStandardMaterial({ color: 0x556B2F, roughness: 1.0 }));
+                ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+                this.worldContainer.add(ground);
+                const road = new THREE.Mesh(new THREE.PlaneGeometry(35, 2000), new THREE.MeshStandardMaterial({ color: 0x4B3621, roughness: 1.0 }));
+                road.rotation.x = -Math.PI/2; road.position.y = 0.05; road.receiveShadow = true;
+                this.worldContainer.add(road);
+            }
+
+            generateVillage(centerX, centerZ, numBuildings) {
+                const prefixes = ["Pont", "Roche", "Ville", "Beau", "Mont", "Chateau", "Ver", "Bas"]; const suffixes = ["fleury", "bois", "val", "mont", "neuf", "le-Roi", "lieu", "bourg"]; const villageName = prefixes[Math.floor(Math.random() * prefixes.length)] + suffixes[Math.floor(Math.random() * suffixes.length)]; const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10, 8), this.materials.wood); post.position.y = 5; post.castShadow = true; const signCanvas = document.createElement('canvas'); const signCtx = signCanvas.getContext('2d'); signCanvas.width=512; signCanvas.height=256; signCtx.fillStyle = '#D2B48C'; signCtx.fillRect(0,0,512,256); signCtx.fillStyle = '#5C4033'; signCtx.font = "bold 70px 'Times New Roman', serif"; signCtx.textAlign = 'center'; signCtx.textBaseline = 'middle'; signCtx.fillText(villageName, 256, 128); const signTexture = new THREE.CanvasTexture(signCanvas); const signMaterial = new THREE.MeshStandardMaterial({ map: signTexture }); const signBoard = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 0.5), signMaterial); signBoard.position.y = 8; signBoard.position.z = 0.5; const sign = new THREE.Group(); sign.add(post); sign.add(signBoard); sign.position.set(centerX + 60, 0, centerZ); this.worldContainer.add(sign);
+                const lampPositions = [[-20,10], [10, -15], [30, 25], [-15, -30], [0, 40], [40, 0]];
+                lampPositions.forEach(pos => { const lamp = this.factory.createStreetLamp({ woodMaterial: this.materials.wood }); lamp.position.set(centerX + pos[0], 0, centerZ + pos[1]); lamp.rotation.y = Math.random() * Math.PI * 2; this.worldContainer.add(lamp); });
+                for(let i = 0; i < numBuildings; i++) {
+                    const angle = (i / numBuildings) * Math.PI * 2 + (Math.random()-0.5) * 0.5;
+                    const radius = 25 + Math.random() * 40;
+                    const x = centerX + Math.cos(angle) * radius; const z = centerZ + Math.sin(angle) * radius;
+                    const house = this.factory.createHouse({ width: 12 + Math.random() * 8, height: 10 + Math.random() * 5, depth: 12 + Math.random() * 8, material: Math.random() > 0.5 ? this.materials.stone : this.materials.stucco, woodMaterial: this.materials.wood, roofMaterial: this.materials.roof, });
+                    house.position.set(x, 0, z); house.rotation.y = -angle + Math.PI/2 + (Math.random()-0.5);
+                    this.worldContainer.add(house);
+                }
+            }
+            
+            generateVegetation(vegSettings) {
+                for(let i=0; i < 40; i++) {
+                    const clusterX = (Math.random() - 0.5) * 1800;
+                    const clusterZ = (Math.random() - 0.5) * 1800;
+                    if (Math.sqrt(clusterX*clusterX + clusterZ*clusterZ) > 150) {
+                        this.createVegetationCluster(clusterX, clusterZ, 5 + Math.floor(Math.random()*10), 30 + Math.random() * 20, vegSettings);
+                    }
+                }
+            }
+            createVegetationCluster(centerX, centerZ, numItems, clusterRadius, vegSettings) {
+                 for (let i = 0; i < numItems; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * clusterRadius;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const z = centerZ + Math.sin(angle) * radius;
+                    let vegetation; 
+                    const type = Math.random();
+                    if (type < vegSettings.deciduous) vegetation = this.factory.createDeciduousTree({ woodMaterial: this.materials.wood });
+                    else if (type < vegSettings.deciduous + vegSettings.pines) vegetation = this.factory.createPineTree({ woodMaterial: this.materials.wood });
+                    else vegetation = this.factory.createBush();
+                    vegetation.position.set(x, 0, z);
+                    vegetation.rotation.y = Math.random() * Math.PI * 2;
+                    this.worldContainer.add(vegetation);
+                }
+            }
+            generateAnimals(animalSettings) {
+                for(let i=0; i<animalSettings.cows; i++) { const cowModel = this.factory.createCow(); this.animals.push(new Animal(this.worldContainer, cowModel)); }
+                for(let i=0; i<animalSettings.goats; i++) { const goatModel = this.factory.createGoat(); this.animals.push(new Animal(this.worldContainer, goatModel)); }
+            }
+            update(delta, isNight) { this.animals.forEach(animal => animal.update(delta, isNight)); }
+        }
+        
+        // =================================================================
+        // UI MANAGER
+        // =================================================================
+        class UIManager {
+            constructor(environment, world) {
+                this.environment = environment;
+                this.world = world;
+                this.camera = null;
+                this.compassNeedle = document.getElementById('compass-needle');
+                this.settingsPanel = document.getElementById('settings-panel');
+                this.timePresets = { dawn: 0.25, morning: 0.35, day: 0.5, afternoon: 0.65, evening: 0.76, night: 0.95 };
+                this.worldSettings = {
+                    buildings: 15,
+                    vegetation: { deciduous: 0.60, pines: 0.25, bushes: 0.15 },
+                    animals: { cows: 2, goats: 2 }
+                };
+                this.init();
+            }
+
+            init() {
+                Object.keys(this.timePresets).forEach(preset => {
+                    document.getElementById(`btn-${preset}`).addEventListener('click', () => {
+                        this.environment.currentTime = this.timePresets[preset];
+                        this.updateActiveButton();
+                    });
+                });
+                this.updateActiveButton();
+
+                document.getElementById('settings-button').addEventListener('click', () => {
+                    this.settingsPanel.style.display = this.settingsPanel.style.display === 'flex' ? 'none' : 'flex';
+                });
+                
+                document.getElementById('buildings').addEventListener('input', (e) => { this.worldSettings.buildings = parseInt(e.target.value); document.getElementById('buildings-value').textContent = e.target.value; });
+                document.getElementById('cows').addEventListener('input', (e) => { this.worldSettings.animals.cows = parseInt(e.target.value); document.getElementById('cows-value').textContent = e.target.value; });
+                document.getElementById('goats').addEventListener('input', (e) => { this.worldSettings.animals.goats = parseInt(e.target.value); document.getElementById('goats-value').textContent = e.target.value; });
+                document.getElementById('deciduous').addEventListener('input', (e) => this.normalizeVegetation('deciduous', e.target.value));
+                document.getElementById('pines').addEventListener('input', (e) => this.normalizeVegetation('pines', e.target.value));
+                document.getElementById('bushes').addEventListener('input', (e) => this.normalizeVegetation('bushes', e.target.value));
+
+                document.getElementById('regenerate-button').addEventListener('click', () => {
+                    this.world.generate(this.worldSettings);
+                    this.settingsPanel.style.display = 'none';
+                });
+            }
+            
+            normalizeVegetation(changed, value) { const sliders = { deciduous: document.getElementById('deciduous'), pines: document.getElementById('pines'), bushes: document.getElementById('bushes') }; const values = { deciduous: parseInt(sliders.deciduous.value), pines: parseInt(sliders.pines.value), bushes: parseInt(sliders.bushes.value) }; values[changed] = parseInt(value); let total = values.deciduous + values.pines + values.bushes; if (total === 0) { this.worldSettings.vegetation = { deciduous: 0.34, pines: 0.33, bushes: 0.33 }; } else { this.worldSettings.vegetation = { deciduous: values.deciduous / total, pines: values.pines / total, bushes: values.bushes / total }; } document.getElementById('deciduous-value').textContent = Math.round(this.worldSettings.vegetation.deciduous * 100); document.getElementById('pines-value').textContent = Math.round(this.worldSettings.vegetation.pines * 100); document.getElementById('bushes-value').textContent = Math.round(this.worldSettings.vegetation.bushes * 100); }
+            
+            updateActiveButton() { document.querySelectorAll('#time-controls button').forEach(btn => btn.classList.remove('active')); const closestPreset = Object.keys(this.timePresets).reduce((a, b) => Math.abs(this.timePresets[a] - this.environment.currentTime) < Math.abs(this.timePresets[b] - this.environment.currentTime) ? a : b); const activeBtn = document.getElementById(`btn-${closestPreset}`); if (activeBtn) activeBtn.classList.add('active'); }
+
+            update() {
+                if(this.camera) {
+                    const cameraDirection = new THREE.Vector3();
+                    this.camera.getWorldDirection(cameraDirection);
+                    const angle = Math.atan2(cameraDirection.x, cameraDirection.z);
+                    this.compassNeedle.style.transform = `rotate(${-angle}rad)`;
+                }
+            }
+        }
+
+
+        // =================================================================
+        // MAIN APP CLASS
+        // =================================================================
+        class App {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(70, 35, 100);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setPixelRatio(window.devicePixelRatio); this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
+                document.body.appendChild(this.renderer.domElement);
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true; this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 15; this.controls.maxDistance = 400;
+                this.controls.maxPolarAngle = Math.PI / 2.05;
+                this.clock = new THREE.Clock();
+                this.init();
+            }
+
+            init() {
+                this.environment = new Environment(this.scene);
+                this.world = new World(this.scene, AssetFactory);
+                this.ui = new UIManager(this.environment, this.world);
+                this.ui.camera = this.camera;
+                
+                this.world.generate(this.ui.worldSettings);
+                this.animate();
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+            }
+
+            onWindowResize() { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight); }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                const delta = this.clock.getDelta();
+                const timeElapsed = this.clock.getElapsedTime();
+                this.controls.update();
+                this.environment.update(timeElapsed);
+                this.world.update(delta, this.environment.isNight);
+                this.ui.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        new App();
+
+    </script>
+</body>
+</html>
