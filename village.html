@@ -38,6 +38,8 @@
         .slider-container label { font-size: 12px; display: flex; justify-content: space-between; }
         .slider-container input[type="range"] { width: 100%; }
         
+        .wind-controls { display: flex; justify-content: space-around; }
+
         #compass {
             position: absolute; bottom: 20px; right: 20px; width: 80px; height: 80px;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="38" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/><text x="40" y="18" font-family="sans-serif" font-size="14" fill="white" text-anchor="middle">N</text><text x="40" y="72" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">S</text><text x="12" y="45" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">W</text><text x="68" y="45" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">E</text></svg>');
@@ -71,6 +73,16 @@
 
     <div id="settings-panel" class="ui-panel">
         <h4>World Settings</h4>
+        <div class="slider-container">
+            <label>Wind Direction</label>
+            <div class="wind-controls">
+                <button id="wind-n">N</button> <button id="wind-e">E</button> <button id="wind-s">S</button> <button id="wind-w">W</button>
+            </div>
+        </div>
+        <div class="slider-container">
+            <label for="clouds">Cloud Density: <span id="clouds-value">20</span></label>
+            <input type="range" id="clouds" name="clouds" min="0" max="50" value="20">
+        </div>
         <div class="slider-container">
             <label for="buildings">Buildings: <span id="buildings-value">4</span></label>
             <input type="range" id="buildings" name="buildings" min="1" max="30" value="4">
@@ -108,67 +120,100 @@
     <script type="module">
 
         // =================================================================
-        // ANIMAL CLASS
+        // CHARACTER & ANIMAL CLASSES
         // =================================================================
-        class Animal {
-            constructor(scene, model) {
-                this.scene = scene;
-                this.model = model;
-                this.model.position.set((Math.random() - 0.5) * 200, 0, (Math.random() - 0.5) * 200);
+        class Character {
+            constructor(scene, model, speed) {
+                this.scene = scene; this.model = model; this.speed = speed;
                 this.scene.add(this.model);
-                this.state = 'IDLE';
-                this.idleTime = Math.random() * 5 + 2;
-                this.speed = 0.5 + Math.random() * 0.5;
-                this.target = new THREE.Vector3();
-                this.walkCycle = 0;
+                this.state = 'IDLE'; this.idleTime = Math.random() * 5 + 2;
+                this.target = new THREE.Vector3(); this.walkCycle = 0;
             }
 
             update(delta, isNight) {
                 const wasSleeping = this.state === 'SLEEPING';
-                if (isNight) { this.state = 'SLEEPING'; } 
+                if (isNight && this.state !== 'IDLE_IN_VILLAGE') { this.state = 'SLEEPING'; } 
                 else if (wasSleeping) { this.state = 'IDLE'; this.idleTime = Math.random() * 3; }
+                this._updateState(delta); this._animateModel();
+            }
 
+            _updateState(delta) {
+                if (this.state === 'WALKING') {
+                    const direction = this.target.clone().sub(this.model.position).normalize();
+                    const distance = this.model.position.distanceTo(this.target);
+                    if (distance < 1) { this._onTargetReached(); } 
+                    else {
+                        this.model.position.add(direction.multiplyScalar(this.speed * delta));
+                        const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+                        this.model.quaternion.slerp(targetQuaternion, 0.1); this.walkCycle += delta * 10;
+                    }
+                }
+            }
+
+            _animateModel() {
+                const legs = this.model.userData.legs; const body = this.model.userData.body;
+                if(body) {
+                    const angle = this.state === 'WALKING' ? Math.sin(this.walkCycle) * 0.4 : 0;
+                    if(legs) {
+                        legs.forEach((leg, index) => {
+                           leg.rotation.x = (index < 2) ? angle : -angle;
+                        });
+                    }
+                    body.rotation.x = this.state === 'SLEEPING' ? Math.PI / 2 : 0;
+                }
+            }
+        }
+
+        class Animal extends Character {
+             constructor(scene, model) {
+                super(scene, model, 0.5 + Math.random() * 0.5);
+                this.model.position.set((Math.random() - 0.5) * 200, 0, (Math.random() - 0.5) * 200);
+            }
+             _updateState(delta) {
                 if (this.state === 'IDLE') {
                     this.idleTime -= delta;
                     if (this.idleTime <= 0) {
                         this.state = 'WALKING';
                         this.target.set( this.model.position.x + (Math.random() - 0.5) * 50, 0, this.model.position.z + (Math.random() - 0.5) * 50);
                     }
-                } else if (this.state === 'WALKING') {
-                    const direction = this.target.clone().sub(this.model.position).normalize();
-                    const distance = this.model.position.distanceTo(this.target);
-                    if (distance < 1) {
-                        this.state = 'IDLE'; this.idleTime = Math.random() * 5 + 2; this.walkCycle = 0;
-                    } else {
-                        this.model.position.add(direction.multiplyScalar(this.speed * delta));
-                        const targetQuaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
-                        this.model.quaternion.slerp(targetQuaternion, 0.1);
-                        this.walkCycle += delta * 10;
-                    }
                 }
-                
-                const legs = this.model.userData.legs; const body = this.model.userData.body;
-                if(legs && body) {
-                    const angle = Math.sin(this.walkCycle) * 0.4;
-                    if(this.state === 'WALKING') {
-                        legs.frontLeft.rotation.x = angle; legs.frontRight.rotation.x = -angle; legs.backLeft.rotation.x = -angle; legs.backRight.rotation.x = angle; body.rotation.x = 0;
-                    } else if (this.state === 'SLEEPING') {
-                        body.rotation.x = Math.PI / 2; legs.frontLeft.rotation.x = 0; legs.frontRight.rotation.x = 0; legs.backLeft.rotation.x = 0; legs.backRight.rotation.x = 0;
-                    } else {
-                         legs.frontLeft.rotation.x = 0; legs.frontRight.rotation.x = 0; legs.backLeft.rotation.x = 0; legs.backRight.rotation.x = 0; body.rotation.x = 0;
-                    }
-                }
+                super._updateState(delta);
             }
+            _onTargetReached() { this.state = 'IDLE'; this.idleTime = Math.random() * 5 + 2; this.walkCycle = 0; }
         }
 
+        class Farmer extends Character {
+            constructor(scene, model, world) {
+                super(scene, model, 1.5);
+                this.world = world; this.state = 'IDLE_IN_VILLAGE';
+                this.model.position.set(20, 0, 20); this.villagePos = this.model.position.clone();
+            }
+
+            _updateState(delta) {
+                if (this.state === 'IDLE_IN_VILLAGE' || this.state === 'WORKING_AT_BUSH') {
+                    this.idleTime -= delta;
+                    if (this.idleTime <= 0) {
+                        if (this.state === 'IDLE_IN_VILLAGE') {
+                            const bush = this.world.getRandomBush();
+                            if (bush) { this.target.copy(bush.position); this.state = 'WALKING_TO_BUSH'; }
+                        } else { this.target.copy(this.villagePos); this.state = 'WALKING_TO_VILLAGE'; }
+                    }
+                }
+                super._updateState(delta);
+            }
+
+            _onTargetReached() {
+                if(this.state === 'WALKING_TO_BUSH') { this.state = 'WORKING_AT_BUSH'; this.idleTime = 5 + Math.random() * 5; } 
+                else if (this.state === 'WALKING_TO_VILLAGE') { this.state = 'IDLE_IN_VILLAGE'; this.idleTime = 5 + Math.random() * 5; }
+                this.walkCycle = 0;
+            }
+        }
+        
         // =================================================================
         // ASSET FACTORY
         // =================================================================
         class AssetFactory {
-            constructor() {
-                this.simplex = new SimplexNoise();
-            }
-            
+            constructor() { this.simplex = new SimplexNoise(); }
             createAdvancedMaterial(type) {
                 const size = 512;
                 const colorCanvas = document.createElement('canvas'); colorCanvas.width = size; colorCanvas.height = size;
@@ -185,24 +230,17 @@
                 bumpTexture.wrapS = THREE.RepeatWrapping; bumpTexture.wrapT = THREE.RepeatWrapping;
                 return new THREE.MeshStandardMaterial({ map: colorTexture, bumpMap: bumpTexture, bumpScale: type === 'stucco' ? 0.2 : 0.4, roughness: 0.85, metalness: 0.1 });
             }
-            
             createWindow() {
-                const group = new THREE.Group();
-                const pane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), new THREE.MeshBasicMaterial({color: 0x111122}));
-                group.add(pane);
-                const woodMat = new THREE.MeshStandardMaterial({color: 0x5C4033});
-                const h1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 0.2), woodMat);
-                h1.position.y = 1.25; group.add(h1);
+                const group = new THREE.Group(); const pane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5), new THREE.MeshBasicMaterial({color: 0x111122}));
+                group.add(pane); const woodMat = new THREE.MeshStandardMaterial({color: 0x5C4033});
+                const h1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 0.2), woodMat); h1.position.y = 1.25; group.add(h1);
                 const h2 = h1.clone(); h2.position.y = -1.25; group.add(h2);
-                const v1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.7, 0.2), woodMat);
-                v1.position.x = 1.1; group.add(v1);
+                const v1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.7, 0.2), woodMat); v1.position.x = 1.1; group.add(v1);
                 const v2 = v1.clone(); v2.position.x = -1.1; group.add(v2);
                 return group;
             }
-
             createHouse({ width, height, depth, material, woodMaterial, roofMaterial }) {
-                const group = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+                const group = new THREE.Group(); const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
                 body.position.y = height / 2; body.castShadow = true; body.receiveShadow = true; group.add(body);
                 const roof = new THREE.Mesh(new THREE.ConeGeometry(width * 0.75, height * 0.7, 4), roofMaterial);
                 roof.position.y = height + (height * 0.7) / 2; roof.rotation.y = Math.PI / 4; roof.castShadow = true; group.add(roof);
@@ -221,10 +259,8 @@
                 }
                 return group;
             }
-            
             createStreetLamp({ woodMaterial }) {
-                const group = new THREE.Group();
-                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 12, 8), woodMaterial);
+                const group = new THREE.Group(); const post = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 12, 8), woodMaterial);
                 post.castShadow = true; post.position.y = 6; group.add(post);
                 const arm = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 0.4), woodMaterial);
                 arm.position.set(1.5, 11, 0); group.add(arm);
@@ -235,30 +271,25 @@
                 lampLight.userData.baseIntensity = 2.0; group.add(lampLight);
                 return group;
             }
-
             createDeciduousTree({ woodMaterial }) {
                 const group = new THREE.Group(); const trunkHeight = 10 + Math.random() * 15; const trunkRadius = 0.5 + Math.random() * 1; const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkRadius * 0.7, trunkRadius, trunkHeight, 8), woodMaterial); trunk.castShadow = true; trunk.position.y = trunkHeight / 2; group.add(trunk);
                 function addBranch(parent, level, numBranches) { if (level > 4) return; for (let i = 0; i < numBranches; i++) { const branchLength = trunkHeight * (0.4 - level * 0.08) * (0.8 + Math.random() * 0.4); const branchRadius = trunkRadius * (0.6 - level * 0.12); if (branchRadius < 0.1) continue; const branchPivot = new THREE.Object3D(); branchPivot.position.y = (level === 1) ? trunkHeight * (0.6 + Math.random() * 0.4) : parent.userData.length; const branch = new THREE.Mesh(new THREE.CylinderGeometry(branchRadius * 0.8, branchRadius, branchLength, 6), woodMaterial); branch.castShadow = true; branch.position.y = branchLength / 2; branchPivot.add(branch); branchPivot.userData.length = branchLength; branchPivot.rotation.x = (Math.PI / 4) + (Math.random() - 0.5) * (Math.PI / 3); branchPivot.rotation.z = (Math.random() - 0.5) * (Math.PI / 3); branchPivot.rotation.y = Math.random() * Math.PI * 2; (level === 1 ? group : parent).add(branchPivot); if (level >= 3) { for(let j=0; j<3; j++) { const foliageSize = 2 + Math.random() * 3; const foliageColor = new THREE.Color(0x228B22).offsetHSL( (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.1, (Math.random()-0.5)*0.1); const foliage = new THREE.Mesh(new THREE.IcosahedronGeometry(foliageSize, 0), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); foliage.castShadow = true; foliage.position.set( (Math.random()-0.5) * foliageSize, branchLength + (Math.random()-0.5) * foliageSize, (Math.random()-0.5) * foliageSize ); branch.add(foliage); } } addBranch(branch, level + 1, Math.floor(numBranches * 0.7)); } }
                 addBranch(trunk, 1, 3 + Math.floor(Math.random() * 3));
                 return group;
             }
-
             createPineTree({ woodMaterial }) {
                 const group = new THREE.Group(); const trunkHeight = 15 + Math.random() * 20; const trunkRadius = 0.6 + Math.random() * 0.8; const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkRadius * 0.7, trunkRadius, trunkHeight, 8), woodMaterial); trunk.position.y = trunkHeight/2; trunk.castShadow = true; group.add(trunk);
                 let currentHeight = trunkHeight;
                 for(let i=0; i<5; i++) { const foliageHeight = (6 + Math.random() * 6); const foliageRadius = (trunkHeight / 2.5) * (1 - i*0.15); if (foliageRadius < 1) continue; const foliageColor = new THREE.Color(0x1A4314).offsetHSL( (Math.random()-0.5)*0.05, 0, (Math.random()-0.5)*0.1); const foliage = new THREE.Mesh(new THREE.ConeGeometry(foliageRadius, foliageHeight, 10), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); foliage.position.y = currentHeight; foliage.castShadow = true; group.add(foliage); currentHeight -= foliageHeight * 0.6; }
                 return group;
             }
-
             createBush() {
                 const group = new THREE.Group(); const numClumps = 5 + Math.floor(Math.random() * 5);
                 for(let i=0; i<numClumps; i++) { const clumpSize = 2 + Math.random() * 3; const foliageColor = new THREE.Color(0x3B5323).offsetHSL( (Math.random()-0.5)*0.1, 0, (Math.random()-0.5)*0.2); const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(clumpSize, 0), new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })); clump.castShadow = true; clump.position.set((Math.random()-0.5) * clumpSize * 1.5, (Math.random()) * clumpSize * 0.5, (Math.random()-0.5) * clumpSize * 1.5); group.add(clump); }
                 return group;
             }
-            
             createCow() {
-                const group = new THREE.Group();
-                const white = new THREE.MeshStandardMaterial({color: 0xffffff});
+                const group = new THREE.Group(); const white = new THREE.MeshStandardMaterial({color: 0xffffff});
                 const black = new THREE.MeshStandardMaterial({color: 0x111111});
                 const body = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 6), white);
                 body.position.y = 2; group.userData.body = body; group.add(body);
@@ -267,19 +298,14 @@
                 head.position.set(0, 2.8, 4); group.add(head);
                 const snout = new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 1), new THREE.MeshStandardMaterial({color: 0xffc0cb}));
                 snout.position.set(0, 2.5, 5.2); group.add(snout);
-                const legFL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), white);
-                legFL.position.set(-1.5, 1, 2);
-                const legFR = legFL.clone(); legFR.position.x = 1.5;
-                const legBL = legFL.clone(); legBL.position.z = -2;
+                const legFL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), white); legFL.position.set(-1.5, 1, 2);
+                const legFR = legFL.clone(); legFR.position.x = 1.5; const legBL = legFL.clone(); legBL.position.z = -2;
                 const legBR = legFR.clone(); legBR.position.z = -2;
-                group.add(legFL, legFR, legBL, legBR);
-                group.userData.legs = {frontLeft: legFL, frontRight: legFR, backLeft: legBL, backRight: legBR};
+                group.add(legFL, legFR, legBL, legBR); group.userData.legs = [legFL, legFR, legBL, legBR];
                 return group;
             }
-            
             createGoat() {
-                const group = new THREE.Group();
-                const grey = new THREE.MeshStandardMaterial({color: 0xaaaaaa});
+                const group = new THREE.Group(); const grey = new THREE.MeshStandardMaterial({color: 0xaaaaaa});
                 const body = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.8, 4), grey);
                 body.position.y = 1.5; group.userData.body = body; group.add(body);
                 const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), grey);
@@ -289,11 +315,26 @@
                 const hornR = hornL.clone(); hornR.position.x = 0.4; group.add(hornL, hornR);
                 const legFL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.5, 0.3), grey);
                 legFL.position.set(-1, 0.75, 1.5);
-                const legFR = legFL.clone(); legFR.position.x = 1;
-                const legBL = legFL.clone(); legBL.position.z = -1.5;
+                const legFR = legFL.clone(); legFR.position.x = 1; const legBL = legFL.clone(); legBL.position.z = -1.5;
                 const legBR = legFR.clone(); legBR.position.z = -1.5;
-                group.add(legFL, legFR, legBL, legBR);
-                group.userData.legs = {frontLeft: legFL, frontRight: legFR, backLeft: legBL, backRight: legBR};
+                group.add(legFL, legFR, legBL, legBR); group.userData.legs = [legFL, legFR, legBL, legBR];
+                return group;
+            }
+            createFarmer() {
+                const group = new THREE.Group();
+                const blue = new THREE.MeshStandardMaterial({color: 0x4466aa});
+                const brown = new THREE.MeshStandardMaterial({color: 0x8B4513});
+                const skin = new THREE.MeshStandardMaterial({color: 0xffdbac});
+                const woodMaterial = new THREE.MeshStandardMaterial({color: 0x5C4033});
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.8), blue); torso.position.y = 3; group.add(torso);
+                const legL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.2, 0.5), brown); legL.position.set(-0.4, 0.9, 0);
+                const legR = legL.clone(); legR.position.x = 0.4; group.add(legL, legR);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), skin); head.position.y = 4.5; group.add(head);
+                const hat = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.5, 8), brown); hat.position.y = 5; group.add(hat);
+                const pitchfork = new THREE.Group();
+                const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 6), woodMaterial);
+                handle.rotation.z = Math.PI / 2; handle.position.x = 1.5; handle.position.y = 3; pitchfork.add(handle);
+                group.add(pitchfork); group.userData.body = group; group.userData.legs = [legL, legR];
                 return group;
             }
         };
@@ -305,7 +346,8 @@
         class Environment {
             constructor(scene) {
                 this.scene = scene; this.currentTime = 0.35; this.isNight = false;
-                this.simplex = new SimplexNoise(); this.init();
+                this.simplex = new SimplexNoise(); this.clouds = []; this.wind = new THREE.Vector2(1, 0);
+                this.init();
             }
             init() {
                 this.ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.7); this.scene.add(this.ambientLight);
@@ -323,6 +365,22 @@
                 const starVertices = []; for (let i = 0; i < 10000; i++) { const x = THREE.MathUtils.randFloatSpread(2000); const y = THREE.MathUtils.randFloatSpread(2000); const z = THREE.MathUtils.randFloatSpread(2000); if(new THREE.Vector3(x,y,z).length() > 800) starVertices.push(x, y, z); }
                 const starGeometry = new THREE.BufferGeometry(); starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
                 this.stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, transparent: true, opacity: 0 })); this.scene.add(this.stars);
+                this.cloudContainer = new THREE.Group(); this.scene.add(this.cloudContainer);
+            }
+            generateClouds(density) {
+                while(this.cloudContainer.children.length > 0){ this.cloudContainer.remove(this.cloudContainer.children[0]); }
+                for(let i=0; i<density; i++) {
+                    const canvas = document.createElement('canvas'); const size = 256; canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const centerX = size / 2; const centerY = size / 2;
+                    for(let j=0; j<5; j++) {
+                        const gradient = ctx.createRadialGradient(centerX + (Math.random()-0.5)*100, centerY + (Math.random()-0.5)*100, 0, centerX, centerY, size/2 * (0.5+Math.random()*0.5)); 
+                        gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)'); gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.6)'); gradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); 
+                        ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2); ctx.fill();
+                    }
+                    const cloudMaterial = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.7 + Math.random() * 0.3, depthWrite: false });
+                    const cloudPlane = new THREE.Mesh(new THREE.PlaneGeometry(120 + Math.random()*150, 60 + Math.random()*75), cloudMaterial);
+                    cloudPlane.position.set((Math.random() - 0.5) * 1500, 100 + Math.random() * 50, (Math.random() - 0.5) * 1500);
+                    cloudPlane.rotation.x = Math.PI / 2; this.cloudContainer.add(cloudPlane);
+                }
             }
             update(timeElapsed) {
                 const time = this.currentTime; const sunAngle = time * Math.PI * 2;
@@ -337,6 +395,7 @@
                 this.moonLight.intensity = Math.max(0, -sunY) * 0.4;
                 this.stars.material.opacity = Math.max(0, (-sunY - 0.2) * 2.0); this.moon.material.opacity = Math.max(0, (-sunY - 0.1) * 1.5);
                 this.sunLight.castShadow = sunY > 0.05; this.isNight = sunY < 0.05;
+                this.cloudContainer.position.x += this.wind.x * 0.1; this.cloudContainer.position.z += this.wind.y * 0.1;
                 this.scene.traverse((object) => {
                     if (object.userData.isNightLight) {
                         object.visible = this.isNight;
@@ -356,16 +415,18 @@
             constructor(scene, assetFactory) {
                 this.scene = scene; this.factory = assetFactory;
                 this.materials = { stone: this.factory.createAdvancedMaterial('stone'), stucco: this.factory.createAdvancedMaterial('stucco'), wood: this.factory.createAdvancedMaterial('wood'), roof: new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.8 }), };
-                this.worldContainer = new THREE.Group(); this.scene.add(this.worldContainer); this.animals = [];
+                this.worldContainer = new THREE.Group(); this.scene.add(this.worldContainer);
+                this.characters = []; this.bushes = [];
             }
-            clear() { while(this.worldContainer.children.length > 0){ this.worldContainer.remove(this.worldContainer.children[0]); } this.animals = []; }
-            generate(settings) { this.clear(); this.generateTerrain(); this.generateVillage(0, 0, settings.buildings); this.generateVegetation(settings.vegetation); this.generateAnimals(settings.animals); }
+            clear() { while(this.worldContainer.children.length > 0){ this.worldContainer.remove(this.worldContainer.children[0]); } this.characters = []; this.bushes = []; }
+            generate(settings) { this.clear(); this.generateTerrain(); this.generateVillage(0, 0, settings.buildings); this.generateVegetation(settings.vegetation); this.generateCharacters(settings.animals); }
             generateTerrain() { const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000, 100, 100), new THREE.MeshStandardMaterial({ color: 0x556B2F, roughness: 1.0 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.worldContainer.add(ground); const road = new THREE.Mesh(new THREE.PlaneGeometry(35, 2000), new THREE.MeshStandardMaterial({ color: 0x4B3621, roughness: 1.0 })); road.rotation.x = -Math.PI/2; road.position.y = 0.05; road.receiveShadow = true; this.worldContainer.add(road); }
             generateVillage(centerX, centerZ, numBuildings) { const prefixes = ["Pont", "Roche", "Ville", "Beau", "Mont", "Chateau", "Ver", "Bas"]; const suffixes = ["fleury", "bois", "val", "mont", "neuf", "le-Roi", "lieu", "bourg"]; const villageName = prefixes[Math.floor(Math.random() * prefixes.length)] + suffixes[Math.floor(Math.random() * suffixes.length)]; const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10, 8), this.materials.wood); post.position.y = 5; post.castShadow = true; const signCanvas = document.createElement('canvas'); const signCtx = signCanvas.getContext('2d'); signCanvas.width=512; signCanvas.height=256; signCtx.fillStyle = '#D2B48C'; signCtx.fillRect(0,0,512,256); signCtx.fillStyle = '#5C4033'; signCtx.font = "bold 70px 'Times New Roman', serif"; signCtx.textAlign = 'center'; signCtx.textBaseline = 'middle'; signCtx.fillText(villageName, 256, 128); const signTexture = new THREE.CanvasTexture(signCanvas); const signMaterial = new THREE.MeshStandardMaterial({ map: signTexture }); const signBoard = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 0.5), signMaterial); signBoard.position.y = 8; signBoard.position.z = 0.5; const sign = new THREE.Group(); sign.add(post); sign.add(signBoard); sign.position.set(centerX + 60, 0, centerZ); this.worldContainer.add(sign); const lampPositions = [[-20,10], [10, -15], [30, 25], [-15, -30], [0, 40], [40, 0]]; lampPositions.forEach(pos => { const lamp = this.factory.createStreetLamp({ woodMaterial: this.materials.wood }); lamp.position.set(centerX + pos[0], 0, centerZ + pos[1]); lamp.rotation.y = Math.random() * Math.PI * 2; this.worldContainer.add(lamp); }); for(let i = 0; i < numBuildings; i++) { const angle = (i / numBuildings) * Math.PI * 2 + (Math.random()-0.5) * 0.5; const radius = 25 + Math.random() * 40; const x = centerX + Math.cos(angle) * radius; const z = centerZ + Math.sin(angle) * radius; const house = this.factory.createHouse({ width: 12 + Math.random() * 8, height: 10 + Math.random() * 5, depth: 12 + Math.random() * 8, material: Math.random() > 0.5 ? this.materials.stone : this.materials.stucco, woodMaterial: this.materials.wood, roofMaterial: this.materials.roof, }); house.position.set(x, 0, z); house.rotation.y = -angle + Math.PI/2 + (Math.random()-0.5); this.worldContainer.add(house); } }
             generateVegetation(vegSettings) { for(let i=0; i < 10; i++) { const clusterX = (Math.random() - 0.5) * 1800; const clusterZ = (Math.random() - 0.5) * 1800; if (Math.sqrt(clusterX*clusterX + clusterZ*clusterZ) > 150) { this.createVegetationCluster(clusterX, clusterZ, 5 + Math.floor(Math.random()*5), 30 + Math.random() * 20, vegSettings); } } }
-            createVegetationCluster(centerX, centerZ, numItems, clusterRadius, vegSettings) { for (let i = 0; i < numItems; i++) { const angle = Math.random() * Math.PI * 2; const radius = Math.random() * clusterRadius; const x = centerX + Math.cos(angle) * radius; const z = centerZ + Math.sin(angle) * radius; let vegetation; const type = Math.random(); if (type < vegSettings.deciduous) vegetation = this.factory.createDeciduousTree({ woodMaterial: this.materials.wood }); else if (type < vegSettings.deciduous + vegSettings.pines) vegetation = this.factory.createPineTree({ woodMaterial: this.materials.wood }); else vegetation = this.factory.createBush(); vegetation.position.set(x, 0, z); vegetation.rotation.y = Math.random() * Math.PI * 2; this.worldContainer.add(vegetation); } }
-            generateAnimals(animalSettings) { for(let i=0; i<animalSettings.cows; i++) { const cowModel = this.factory.createCow(); this.animals.push(new Animal(this.worldContainer, cowModel)); } for(let i=0; i<animalSettings.goats; i++) { const goatModel = this.factory.createGoat(); this.animals.push(new Animal(this.worldContainer, goatModel)); } }
-            update(delta, isNight) { this.animals.forEach(animal => animal.update(delta, isNight)); }
+            createVegetationCluster(centerX, centerZ, numItems, clusterRadius, vegSettings) { for (let i = 0; i < numItems; i++) { const angle = Math.random() * Math.PI * 2; const radius = Math.random() * clusterRadius; const x = centerX + Math.cos(angle) * radius; const z = centerZ + Math.sin(angle) * radius; let vegetation; const type = Math.random(); if (type < vegSettings.deciduous) { vegetation = this.factory.createDeciduousTree({ woodMaterial: this.materials.wood }); } else if (type < vegSettings.deciduous + vegSettings.pines) { vegetation = this.factory.createPineTree({ woodMaterial: this.materials.wood }); } else { vegetation = this.factory.createBush(); this.bushes.push(vegetation); } vegetation.position.set(x, 0, z); vegetation.rotation.y = Math.random() * Math.PI * 2; this.worldContainer.add(vegetation); } }
+            generateCharacters(animalSettings) { for(let i=0; i<animalSettings.cows; i++) { const cowModel = this.factory.createCow(); this.characters.push(new Animal(this.worldContainer, cowModel)); } for(let i=0; i<animalSettings.goats; i++) { const goatModel = this.factory.createGoat(); this.characters.push(new Animal(this.worldContainer, goatModel)); } const farmerModel = this.factory.createFarmer(); this.characters.push(new Farmer(this.worldContainer, farmerModel, this)); }
+            getRandomBush() { if (this.bushes.length === 0) return null; const index = Math.floor(Math.random() * this.bushes.length); return this.bushes[index]; }
+            update(delta, isNight) { this.characters.forEach(char => char.update(delta, isNight)); }
         }
         
         // =================================================================
@@ -374,10 +435,9 @@
         class UIManager {
             constructor(environment, world) {
                 this.environment = environment; this.world = world; this.camera = null;
-                this.compassNeedle = document.getElementById('compass-needle');
-                this.settingsPanel = document.getElementById('settings-panel');
+                this.compassNeedle = document.getElementById('compass-needle'); this.settingsPanel = document.getElementById('settings-panel');
                 this.timePresets = { dawn: 0.25, morning: 0.35, day: 0.5, afternoon: 0.65, evening: 0.76, night: 0.95 };
-                this.worldSettings = { buildings: 4, vegetation: { deciduous: 0.60, pines: 0.25, bushes: 0.15 }, animals: { cows: 2, goats: 2 } };
+                this.worldSettings = { buildings: 4, vegetation: { deciduous: 0.60, pines: 0.25, bushes: 0.15 }, animals: { cows: 2, goats: 2 }, clouds: 20 };
                 this.init();
             }
             init() {
@@ -387,10 +447,12 @@
                 document.getElementById('buildings').addEventListener('input', (e) => { this.worldSettings.buildings = parseInt(e.target.value); document.getElementById('buildings-value').textContent = e.target.value; });
                 document.getElementById('cows').addEventListener('input', (e) => { this.worldSettings.animals.cows = parseInt(e.target.value); document.getElementById('cows-value').textContent = e.target.value; });
                 document.getElementById('goats').addEventListener('input', (e) => { this.worldSettings.animals.goats = parseInt(e.target.value); document.getElementById('goats-value').textContent = e.target.value; });
+                document.getElementById('clouds').addEventListener('input', (e) => { this.worldSettings.clouds = parseInt(e.target.value); document.getElementById('clouds-value').textContent = e.target.value; });
                 document.getElementById('deciduous').addEventListener('input', (e) => this.normalizeVegetation('deciduous', e.target.value));
                 document.getElementById('pines').addEventListener('input', (e) => this.normalizeVegetation('pines', e.target.value));
                 document.getElementById('bushes').addEventListener('input', (e) => this.normalizeVegetation('bushes', e.target.value));
-                document.getElementById('regenerate-button').addEventListener('click', () => { this.world.generate(this.worldSettings); this.settingsPanel.style.display = 'none'; });
+                document.getElementById('regenerate-button').addEventListener('click', () => { this.world.generate(this.worldSettings); this.environment.generateClouds(this.worldSettings.clouds); this.settingsPanel.style.display = 'none'; });
+                document.getElementById('wind-n').addEventListener('click', () => { this.environment.wind.set(0, 1); }); document.getElementById('wind-e').addEventListener('click', () => { this.environment.wind.set(1, 0); }); document.getElementById('wind-s').addEventListener('click', () => { this.environment.wind.set(0, -1); }); document.getElementById('wind-w').addEventListener('click', () => { this.environment.wind.set(-1, 0); });
             }
             normalizeVegetation(changed, value) { const sliders = { deciduous: document.getElementById('deciduous'), pines: document.getElementById('pines'), bushes: document.getElementById('bushes') }; const values = { deciduous: parseInt(sliders.deciduous.value), pines: parseInt(sliders.pines.value), bushes: parseInt(sliders.bushes.value) }; values[changed] = parseInt(value); let total = values.deciduous + values.pines + values.bushes; if (total === 0) { this.worldSettings.vegetation = { deciduous: 0.34, pines: 0.33, bushes: 0.33 }; } else { this.worldSettings.vegetation = { deciduous: values.deciduous / total, pines: values.pines / total, bushes: values.bushes / total }; } document.getElementById('deciduous-value').textContent = Math.round(this.worldSettings.vegetation.deciduous * 100); document.getElementById('pines-value').textContent = Math.round(this.worldSettings.vegetation.pines * 100); document.getElementById('bushes-value').textContent = Math.round(this.worldSettings.vegetation.bushes * 100); }
             updateActiveButton() { document.querySelectorAll('#time-controls button').forEach(btn => btn.classList.remove('active')); const closestPreset = Object.keys(this.timePresets).reduce((a, b) => Math.abs(this.timePresets[a] - this.environment.currentTime) < Math.abs(this.timePresets[b] - this.environment.currentTime) ? a : b); const activeBtn = document.getElementById(`btn-${closestPreset}`); if (activeBtn) activeBtn.classList.add('active'); }
@@ -426,6 +488,7 @@
                 this.ui.camera = this.camera;
                 
                 this.world.generate(this.ui.worldSettings);
+                this.environment.generateClouds(this.ui.worldSettings.clouds);
                 this.animate();
                 window.addEventListener('resize', () => this.onWindowResize(), false);
             }
@@ -449,4 +512,3 @@
     </script>
 </body>
 </html>
-
