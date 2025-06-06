@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESDC Self-paced Web Accessibility Course - IT Accessibility office</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        /* Style for preformatted text to wrap correctly */
+        pre, code {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">ESDC Self-paced Web Accessibility Course</h1>
+            <p class="text-lg text-gray-600">IT Accessibility office</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md">
+            <!-- Tabs Navigation -->
+            <div class="border-b border-gray-200 overflow-x-auto">
+                <nav id="tabs" class="flex -mb-px">
+                    <!-- Tabs will be dynamically generated here -->
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tab-contents" class="p-6">
+                 <!-- Module content will be dynamically generated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modules = [
+            {
+                title: "Module 1: Introduction to Web Accessibility",
+                description: `Purpose: Explains the importance of making digital content usable for people with a wide range of disabilities (visual, auditory, physical, speech, cognitive, neurological).\nWCAG 2.1 Overview: Introduces conformance levels:\n- Level A: Basic requirements (e.g., keyboard accessibility).\n- Level AA: Enhanced requirements (e.g., color contrast, consistent navigation)—the legal standard in many regions.\n- Level AAA: Highest standards (e.g., sign language for video), often aspirational.\nLegal and Social Context: Highlights the legal necessity (ADA, AODA, EU directives) and the social benefits of inclusive design.`,
+                examples: [
+                    {
+                        topic: "Semantic vs. Non-Semantic HTML",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Using semantic HTML for landmarks -->\n<header>...</header>\n<main>...</main>\n<footer>...</footer>`,
+                            render: `<div class="border p-4 rounded-lg"><header class="border-b mb-2 pb-2 font-bold">Header</header><main class="mb-2">Main Content</main><footer class="border-t pt-2 text-sm">Footer</footer></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Using non-semantic divs -->\n<div>...</div>\n<div>...</div>\n<div>...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="border-b mb-2 pb-2 font-bold">Header</div><div class="mb-2">Main Content</div><div class="border-t pt-2 text-sm">Footer</div></div>`
+                        }
+                    },
+                    {
+                        topic: "ARIA Landmark Roles",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Adding a landmark role to a generic div -->\n<div role="main">...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div role="main" class="p-2 bg-green-100 border border-green-300">This div is identified as the main content area to assistive technologies.</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Generic div has no semantic meaning -->\n<div>...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="p-2 bg-red-100 border border-red-300">This div is just a generic container with no semantic meaning.</div></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 2: Content Structure",
+                description: `Semantic HTML: Stresses using headings (<h1>–<h6>), landmarks (<nav>, <main>, <footer>), and lists for clear structure.\nAccessibility Enhancements: Proper language settings (lang attribute), unique IDs, and logical content order ensure compatibility with assistive technologies.\nBest Practice: Use ARIA roles only when native HTML isn’t sufficient.`,
+                examples: [
+                    {
+                        topic: "Heading Hierarchy",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Proper heading hierarchy -->\n<h1>Level 1</h1>\n<h2>Level 2</h2>`,
+                            render: `<div class="border p-4 rounded-lg"><h1 class="text-2xl font-bold">Level 1 Heading</h1><h2 class="text-xl font-semibold">Level 2 Heading</h2></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Skipping heading levels -->\n<h1>Level 1</h1>\n<h3>Level 3</h3>`,
+                            render: `<div class="border p-4 rounded-lg"><h1 class="text-2xl font-bold">Level 1 Heading</h1><h3 class="text-lg font-medium">Level 3 Heading</h3></div>`
+                        }
+                    },
+                     {
+                        topic: "Labeling Regions with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Region is programmatically labeled by a heading -->\n<section aria-labelledby="section1-heading">\n  <h2 id="section1-heading">My Awesome Section</h2>\n  <p>Content...</p>\n</section>`,
+                            render: `<div class="border p-4 rounded-lg"><section class="p-2 bg-green-100 border border-green-300" aria-labelledby="s1h"><h2 id="s1h" class="font-bold">My Awesome Section</h2><p>Assistive tech knows this content belongs to the heading.</p></section></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Heading and content are not programmatically linked -->\n<div>\n  <h2>My Awesome Section</h2>\n  <p>Content...</p>\n</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="p-2 bg-red-100 border border-red-300"><h2 class="font-bold">My Awesome Section</h2><p>The relationship between the heading and this content is only visual.</p></div></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 3: Links and Navigation",
+                description: `Descriptive Links: Avoids vague text like “click here”; links must make sense out of context.\nKeyboard Navigation: Ensures logical tab order, visible focus indicators, and skip links for bypassing repetitive navigation.\nConsistency: Navigation should be consistent across all pages.`,
+                examples: [
+                    {
+                        topic: "Descriptive Link Text",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Link text describes its destination -->\n<a href="/annual-report.pdf">View the 2024 Annual Report</a>`,
+                            render: `<div class="border p-4 rounded-lg"><a href="#" class="text-blue-600 underline" onclick="event.preventDefault()">View the 2024 Annual Report</a></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Vague link text -->\n<a href="/annual-report.pdf">Click Here</a>`,
+                            render: `<div class="border p-4 rounded-lg"><a href="#" class="text-blue-600 underline" onclick="event.preventDefault()">Click Here</a></div>`
+                        }
+                    },
+                    {
+                        topic: "Indicating Current Page with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: aria-current clearly marks the active page -->\n<nav>\n  <a href="/home">Home</a>\n  <a href="/about" aria-current="page">About Us</a>\n</nav>`,
+                            render: `<div class="border p-4 rounded-lg"><nav class="flex gap-4"><a href="#" class="text-blue-600 underline" onclick="event.preventDefault()">Home</a><a href="#" class="text-blue-600 underline font-bold" aria-current="page" onclick="event.preventDefault()">About Us</a></nav></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Current page is only indicated by styling -->\n<nav>\n  <a href="/home">Home</a>\n  <a href="/about" class="active-link">About Us</a>\n</nav>`,
+                            render: `<div class="border p-4 rounded-lg"><nav class="flex gap-4"><a href="#" class="text-blue-600 underline" onclick="event.preventDefault()">Home</a><a href="#" class="text-blue-600 underline font-bold" onclick="event.preventDefault()">About Us</a></nav><small class="text-gray-500 block mt-2">Screen readers don't know "About Us" is the current page.</small></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 4: Tables",
+                description: `Data Tables Only: Use tables for data, not layout.\nAccessibility Features: Captions, headers (<th> with scope or headers), and summaries for complex tables.\nScreen Reader Support: Avoid merged cells unless necessary to maintain readability.`,
+                examples: [
+                    {
+                        topic: "Table Headers",
+                        accessibleExample: {
+                            code: `<!-- Accessible: <th> with scope attribute correctly associates headers and cells -->\n<th scope="col">...</th>\n<th scope="row">...</th>`,
+                            render: `<div class="border p-4 rounded-lg"><table class="w-full text-left border-collapse border"><caption>Sales</caption><thead><tr><th class="border p-2" scope="col">Month</th><th class="border p-2" scope="col">Amount</th></tr></thead><tbody><tr><th class="border p-2" scope="row">Jan</th><td class="border p-2">$1k</td></tr></tbody></table></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Using <td> for headers -->\n<td class="font-bold">...</td>`,
+                            render: `<div class="border p-4 rounded-lg"><table class="w-full text-left border-collapse border"><caption>Sales</caption><thead><tr><td class="border p-2 font-bold">Month</td><td class="border p-2 font-bold">Amount</td></tr></thead><tbody><tr><td class="border p-2 font-bold">Jan</td><td class="border p-2">$1k</td></tr></tbody></table></div>`
+                        }
+                    },
+                    {
+                        topic: "Complex Table Descriptions with ARIA",
+                         accessibleExample: {
+                            code: `<!-- Accessible: aria-describedby provides more context to a cell -->\n<td aria-describedby="note1">...</td>\n<p id="note1">Note: Sales are provisional.</p>`,
+                            render: `<div class="border p-4 rounded-lg"><table class="w-full text-left border-collapse border"><caption>Sales</caption><thead><tr><th class="border p-2" scope="col">Month</th><th class="border p-2" scope="col">Amount</th></tr></thead><tbody><tr><th class="border p-2" scope="row">Jan</th><td class="border p-2" aria-describedby="note1-demo">$1k*</td></tr></tbody></table><p id="note1-demo" class="text-sm mt-2">*Note: Sales are provisional.</p></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Footnote is not programmatically linked -->\n<td>...*</td>\n<p>*Note: Sales are provisional.</p>`,
+                            render: `<div class="border p-4 rounded-lg"><table class="w-full text-left border-collapse border"><caption>Sales</caption><thead><tr><th class="border p-2" scope="col">Month</th><th class="border p-2" scope="col">Amount</th></tr></thead><tbody><tr><th class="border p-2" scope="row">Jan</th><td class="border p-2">$1k*</td></tr></tbody></table><p class="text-sm mt-2">*Note: Sales are provisional.</p></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 5: Images",
+                description: `Alternative Text: All meaningful images must have concise, descriptive alt text.\nDecorative Images: Use empty alt="" so they’re ignored by assistive tech.\nComplex Images: Charts and graphs require longer descriptions or linked explanations.\nAccessible SVGs and Maps: Labeling and grouping for clarity.`,
+                examples: [
+                    {
+                        topic: "Alternative Text for Informative Images",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Alt text describes the image's content -->\n<img src="..." alt="A graph showing a 20% increase in quarterly sales.">`,
+                            render: `<div class="border p-4 rounded-lg flex items-center gap-4"><img src="https://placehold.co/80x80/e2e8f0/334155?text=Graph" alt="A graph showing a 20% increase in quarterly sales."><p>Screen readers will announce the alt text.</p></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Missing or unhelpful alt text -->\n<img src="..." alt="image">`,
+                            render: `<div class="border p-4 rounded-lg flex items-center gap-4"><img src="https://placehold.co/80x80/e2e8f0/334155?text=Graph" alt="image"><p>Unhelpful alt text provides no value.</p></div>`
+                        }
+                    },
+                    {
+                        topic: "Accessible SVGs with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: role='img' and aria-label make the SVG accessible -->\n<svg role="img" aria-label="Red warning triangle.">\n  <path ... />\n</svg>`,
+                            render: `<div class="border p-4 rounded-lg"><svg class="w-12 h-12 text-red-500" role="img" aria-label="Red warning triangle." fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-4a1 1 0 011-1h.008a1 1 0 011 1v3a1 1 0 01-2 0V9z" clip-rule="evenodd"></path></svg></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: SVG has no text alternative -->\n<svg>\n  <path ... />\n</svg>`,
+                            render: `<div class="border p-4 rounded-lg"><svg class="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.03-1.742 3.03H4.42c-1.532 0-2.492-1.696-1.742-3.03l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-4a1 1 0 011-1h.008a1 1 0 011 1v3a1 1 0 01-2 0V9z" clip-rule="evenodd"></path></svg><small class="text-gray-500 block">This icon is invisible to screen readers.</small></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 6: Forms",
+                description: `Labeling: Every form field must have a programmatically associated <label>.\nGrouping: Use <fieldset> and <legend> for related fields.\nError Handling: Clearly identify errors, suggest corrections, and ensure validation messages are accessible.\nInput Purpose: Use autocomplete for easier data entry and assistive tech support.`,
+                 examples: [
+                    {
+                        topic: "Form Field Labeling",
+                        accessibleExample: {
+                            code: `<!-- Accessible: <label> is programmatically linked to the input -->\n<label for="username">Username:</label>\n<input type="text" id="username">`,
+                            render: `<div class="border p-4 rounded-lg"><label for="user-demo" class="block mb-1">Username:</label><input type="text" id="user-demo" class="border rounded p-1 w-full"></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Label is only placed visually next to the input -->\nUsername: <input type="text">`,
+                            render: `<div class="border p-4 rounded-lg">Username: <input type="text" class="border rounded p-1"></div>`
+                        }
+                    },
+                    {
+                        topic: "Accessible Error Messages with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: aria-describedby links the error message to the input -->\n<input id="email" aria-describedby="email-error" aria-invalid="true">\n<div id="email-error">Invalid email address.</div>`,
+                            render: `<div class="border p-4 rounded-lg"><label for="email-demo" class="block mb-1">Email:</label><input id="email-demo" class="border-2 border-red-500 rounded p-1 w-full" aria-describedby="email-error-demo" aria-invalid="true"><div id="email-error-demo" class="text-red-600 text-sm mt-1">Invalid email address.</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: The error message is not linked to the input -->\n<input id="email">\n<div>Invalid email address.</div>`,
+                            render: `<div class="border p-4 rounded-lg"><label for="email-demo2" class="block mb-1">Email:</label><input id="email-demo2" class="border-2 border-red-500 rounded p-1 w-full"><div class="text-red-600 text-sm mt-1">Invalid email address.</div></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 7: Visual Design and Colour",
+                description: `Contrast Ratios: Minimum 4.5:1 for normal text (AA), 7:1 for AAA.\nNo Colour-Only Cues: Use text/icons along with color.\nSpacing and Proximity: Adequate spacing between labels and fields.\nAccessible CSS Content: Ensure icons and generated content are screen reader friendly.`,
+                examples: [
+                    {
+                        topic: "Text Contrast (WCAG 1.4.3)",
+                        accessibleExample: {
+                            code: `<!-- Accessible: High contrast (4.5:1+) -->\n<div style="color: #000; background: #FFF;">...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div style="background-color: white; color: black; padding: 10px;" class="border rounded">High contrast text</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Low contrast -->\n<div style="color: #888; background: #FFF;">...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div style="background-color: white; color: #888; padding: 10px;" class="border rounded">Low contrast text</div></div>`
+                        }
+                    },
+                     {
+                        topic: "Hiding Decorative Content with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Decorative icon is hidden from screen readers -->\n<i class="icon-star" aria-hidden="true"></i> <span>Rating</span>`,
+                            render: `<div class="border p-4 rounded-lg"><span class="text-yellow-500" aria-hidden="true">★</span> <span>Rating</span></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Decorative icon is announced by screen readers -->\n<i class="icon-star"></i> <span>Rating</span>`,
+                            render: `<div class="border p-4 rounded-lg"><span class="text-yellow-500">★</span> <span>Rating</span><small class="block text-gray-500 mt-2">A screen reader might announce "Black star" or "asterisk".</small></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 8: Zoom and Responsive Design",
+                description: `Zoom Support: Content must remain functional and readable up to 200% (or 400% for low vision users).\nOrientation Flexibility: Must support both portrait and landscape, crucial for users with mobility impairments or those using mounted devices.\nResponsive Layouts: Avoid horizontal scrolling; ensure all elements adapt to different devices.`,
+                examples: [
+                    {
+                        topic: "Content Reflow (WCAG 1.4.10)",
+                        accessibleExample: {
+                             code: `<!-- Accessible: Content wraps, preventing horizontal scrolling -->\n<p>This text reflows to fit the viewport.</p>`,
+                            render: `<div class="border p-4 rounded-lg"><p>This text reflows to fit the viewport. Resize your browser window to see it in action. No horizontal scrollbar will appear.</p></div>`
+                        },
+                        inaccessibleExample: {
+                             code: `<!-- Inaccessible: Content forces horizontal scrolling -->\n<p style="white-space: nowrap;">...</p>`,
+                            render: `<div class="border p-4 rounded-lg overflow-x-auto"><p style="white-space: nowrap;">This text does not wrap. On small screens, it requires horizontal scrolling, which is a failure of reflow.</p></div>`
+                        }
+                    },
+                    {
+                        topic: "Orientation Flexibility (WCAG 1.3.4)",
+                        accessibleExample: {
+                            code: `<!-- Accessible: The page layout works in both portrait and landscape mode. (No specific code, this is a design principle) -->`,
+                            render: `<div class="border p-4 rounded-lg"><p>This page is designed to be usable in both portrait and landscape orientations. If you are on a mobile device, try rotating it.</p></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: The page is locked to a specific orientation, or becomes unusable in one. (Often done via JS or app manifest) -->`,
+                            render: `<div class="border p-4 rounded-lg"><p>An inaccessible site might lock the orientation, making it impossible for users with mounted devices to view the content correctly.</p></div>`
+                        }
+                    }
+                ]
+            },
+             {
+                title: "Module 9: Multimedia (Audio, Video, Animation, Motion)",
+                description: `Captions and Transcripts: Required for videos and audio.\nAudio Descriptions: For video content with visual information.\nFlashing Content: Avoid or provide warnings to prevent seizures.\nMotion Control: Allow users to pause, stop, or hide moving content.`,
+                examples: [
+                    {
+                        topic: "Video Captions",
+                        accessibleExample: {
+                            code: `<!-- Accessible: <track> element provides captions -->\n<video>\n <track kind="captions" ...>\n</video>`,
+                            render: `<div class="border p-4 rounded-lg"><p class="font-semibold">Video with Captions</p><p>The &lt;track&gt; element makes video content accessible.</p></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: No captions provided -->\n<video>...</video>`,
+                            render: `<div class="border p-4 rounded-lg"><p class="font-semibold">Video without Captions</p><p>Without a text alternative, this content is inaccessible.</p></div>`
+                        }
+                    },
+                     {
+                        topic: "Accessible Custom Controls",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Button has a clear label and controls the video -->\n<button aria-label="Play video" aria-controls="video1">Play</button>`,
+                            render: `<div class="border p-4 rounded-lg"><button class="bg-blue-500 text-white font-bold py-2 px-4 rounded" aria-label="Play video" aria-controls="video-demo">Play</button><div id="video-demo" class="mt-2 text-gray-600">(Video player area)</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Icon-only button with no label -->\n<button>▶</button>`,
+                            render: `<div class="border p-4 rounded-lg"><button class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">▶</button><div class="mt-2 text-gray-600">(Video player area)</div><small class="block text-gray-500 mt-2">Screen readers may just announce "button" or "triangle".</small></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 10: Input Modalities",
+                description: `Keyboard Accessibility: All functionality must be available via keyboard.\nTouch Targets: Minimum size (24x24 CSS pixels in WCAG 2.2).\nDevice Independence: Support for mouse, touch, voice, and assistive devices.`,
+                examples: [
+                    {
+                        topic: "Keyboard Accessibility",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Native <button> is keyboard accessible by default -->\n<button>Click Me</button>`,
+                            render: `<div class="border p-4 rounded-lg"><button class="bg-blue-500 text-white font-bold py-2 px-4 rounded" onclick="this.textContent='Clicked!'">Click Me</button></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: <div> lacks keyboard activation -->\n<div onclick="...">Click Me</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="bg-gray-300 text-gray-800 py-2 px-4 rounded" onclick="this.textContent='Clicked!'">Click Me</div> <small class="block text-gray-500 mt-2">(This is not focusable or activatable with a keyboard.)</small></div>`
+                        }
+                    },
+                    {
+                        topic: "Indicating Popups with ARIA",
+                        accessibleExample: {
+                            code: `<!-- Accessible: aria-haspopup tells users this button opens a menu -->\n<button aria-haspopup="true" aria-expanded="false">User Menu</button>`,
+                            render: `<div class="border p-4 rounded-lg"><button class="bg-blue-500 text-white font-bold py-2 px-4 rounded" aria-haspopup="true" aria-expanded="false">User Menu</button></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: No indication that the button opens a menu -->\n<button>User Menu</button>`,
+                            render: `<div class="border p-4 rounded-lg"><button class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">User Menu</button><small class="block text-gray-500 mt-2">Users have no way of knowing this triggers a popup before clicking it.</small></div>`
+                        }
+                    }
+                ]
+            },
+             {
+                title: "Module 11: ARIA Live Regions and Time Limits",
+                description: `Dynamic Content: Use ARIA live regions for updates (e.g., notifications) so screen readers announce changes.\nTime Limits: Warn users before time expires and allow extensions.\nStatus Messages: Must be programmatically determinable for assistive tech.`,
+                examples: [
+                    {
+                        topic: "Time Limits (WCAG 2.2.1)",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Warns user before timeout and allows extension -->\n<div role="alert">Session expires in 1 minute.</div>\n<button>Extend Session</button>`,
+                            render: `<div class="border p-4 rounded-lg"><div role="alert" class="p-4 bg-yellow-100 text-yellow-800 rounded-lg">Your session will expire in 1 minute. <button class="ml-4 underline font-bold">Extend Session</button></div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: No warning before timeout -->\n<p>User is logged out without warning.</p>`,
+                            render: `<div class="border p-4 rounded-lg"><p class="p-4 bg-red-100 text-red-800 rounded-lg">User is logged out without warning.</p></div>`
+                        }
+                    },
+                    {
+                        topic: "Status vs. Alert Roles",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Using role='status' for polite announcements -->\n<div role="status" id="status-msg"></div>\n<button onclick="updateStatus()">Save</button>`,
+                            render: `<div class="border p-4 rounded-lg"><div id="status-demo" role="status" class="mb-2 p-2 border border-dashed min-h-[40px]"></div><button class="bg-blue-500 text-white font-bold py-2 px-4 rounded" onclick="document.getElementById('status-demo').textContent = 'Your changes were saved.'">Save</button><small class="block mt-2">Announced without interrupting the user.</small></div>`
+                        },
+                        inaccessibleExample: {
+                             code: `<!-- Inaccessible (misuse): Using role='alert' for non-urgent information -->\n<div role="alert" id="alert-msg"></div>\n<button onclick="updateAlert()">Save</button>`,
+                            render: `<div class="border p-4 rounded-lg"><div id="alert-demo" role="alert" class="mb-2 p-2 border border-dashed min-h-[40px]"></div><button class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded" onclick="document.getElementById('alert-demo').textContent = 'Your changes were saved.'">Save</button><small class="block mt-2">This is overly disruptive for a simple confirmation.</small></div>`
+                        }
+                    }
+                ]
+            },
+            {
+                title: "Module 12: ARIA Widgets",
+                description: `Custom Components: Guidance on building accessible widgets using ARIA roles, states, and properties. (Work in Progress)`,
+                examples: [
+                    {
+                        topic: "Custom Toggle Button",
+                        accessibleExample: {
+                            code: `<!-- Accessible: A custom button with role and aria-pressed state -->\n<div role="button" tabindex="0" aria-pressed="false">...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div role="button" tabindex="0" aria-pressed="false" class="bg-blue-500 text-white font-bold py-2 px-4 rounded inline-block focus:outline-none focus:ring-2 focus:ring-blue-400" onclick="const p = this.getAttribute('aria-pressed') === 'true'; this.setAttribute('aria-pressed', !p);" onkeydown="if(event.key===' '||event.key==='Enter')this.click()">Toggle</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: A div with no roles or states -->\n<div>...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="bg-gray-300 text-gray-800 py-2 px-4 rounded inline-block">Toggle</div><small class="block mt-2">Not focusable, no state, not a button.</small></div>`
+                        }
+                    },
+                    {
+                        topic: "Accessible Tabs Widget",
+                        accessibleExample: {
+                            code: `<!-- Accessible: Uses tablist, tab, and tabpanel roles -->\n<div role="tablist">\n  <button role="tab" aria-selected="true" aria-controls="panel1">Tab 1</button>\n</div>\n<div role="tabpanel" id="panel1">...</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div role="tablist" class="border-b"><button role="tab" aria-selected="true" class="py-2 px-4 -mb-px border-b-2 border-blue-500 font-semibold" aria-controls="p1">Tab 1</button><button role="tab" aria-selected="false" class="py-2 px-4 text-gray-500" tabindex="-1" aria-controls="p2">Tab 2</button></div><div role="tabpanel" id="p1" class="p-4">Content for Tab 1.</div></div>`
+                        },
+                        inaccessibleExample: {
+                            code: `<!-- Inaccessible: Buttons that just show/hide divs -->\n<button>Tab 1</button> <button>Tab 2</button>\n<div>Content for Tab 1.</div>`,
+                            render: `<div class="border p-4 rounded-lg"><div class="border-b"><button class="py-2 px-4 font-semibold">Tab 1</button><button class="py-2 px-4 text-gray-500">Tab 2</button></div><div class="p-4">Content for Tab 1.</div><small class="block mt-2">No semantic link between buttons and content.</small></div>`
+                        }
+                    }
+                ]
+            }
+        ];
+
+        const tabsContainer = document.getElementById('tabs');
+        const tabContentsContainer = document.getElementById('tab-contents');
+
+        modules.forEach((module, index) => {
+            // Create Tab
+            const tab = document.createElement('a');
+            tab.href = '#';
+            tab.textContent = `Module ${index + 1}`;
+            tab.className = 'tab whitespace-nowrap text-center py-4 px-6 block hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400';
+            if (index === 0) tab.classList.add('active');
+            tab.dataset.tab = index;
+            tabsContainer.appendChild(tab);
+
+            // Create Tab Content
+            const content = document.createElement('div');
+            content.id = `tab-content-${index}`;
+            content.className = 'tab-content';
+            if (index === 0) content.classList.add('active');
+
+            let examplesHTML = '';
+            module.examples.forEach(example => {
+                examplesHTML += `
+                    <h4 class="text-lg font-semibold mt-8 mb-2 border-t pt-6 text-gray-800">${example.topic}</h4>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-green-600">Accessible Example</h3>
+                            <div class="bg-gray-50 p-4 rounded-lg mb-4 min-h-[120px] flex flex-col justify-center">
+                                ${example.accessibleExample.render}
+                            </div>
+                            <h4 class="font-semibold mb-2">Tag Information:</h4>
+                            <pre class="bg-gray-800 text-white p-4 rounded-lg text-sm overflow-auto"><code>${example.accessibleExample.code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-red-600">Inaccessible Example</h3>
+                            <div class="bg-gray-50 p-4 rounded-lg mb-4 min-h-[120px] flex flex-col justify-center">
+                                ${example.inaccessibleExample.render}
+                            </div>
+                            <h4 class="font-semibold mb-2">Tag Information:</h4>
+                            <pre class="bg-gray-800 text-white p-4 rounded-lg text-sm overflow-auto"><code>${example.inaccessibleExample.code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4">${module.title}</h2>
+                <p class="mb-6 text-gray-700 whitespace-pre-line">${module.description}</p>
+                ${examplesHTML}
+            `;
+            tabContentsContainer.appendChild(content);
+        });
+
+        tabsContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.tab')) {
+                e.preventDefault();
+                const tabButton = e.target.closest('.tab');
+                const tabIndex = tabButton.dataset.tab;
+                
+                // Deactivate all tabs and contents
+                tabsContainer.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                tabContentsContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                // Activate clicked tab and content
+                tabButton.classList.add('active');
+                document.getElementById(`tab-content-${tabIndex}`).classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>
