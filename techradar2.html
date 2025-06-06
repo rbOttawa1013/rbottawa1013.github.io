@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThoughtWorks-Style Tech Radar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the blip points on the radar */
+        .blip {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .blip:hover {
+            transform: scale(1.2);
+            z-index: 10;
+        }
+        .blip.selected {
+            border: 3px solid #4338ca; /* Indigo-800 */
+            transform: scale(1.2);
+            z-index: 10;
+        }
+        /* Style for the custom modal for alerts */
+        #toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(-20px);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Tech Radar</h1>
+                <p class="text-sm text-gray-500">Version 2.0 (Interactive Demo) - Date: June 6, 2025</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                Language: EN FR
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Radar Visualization Section -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-center">ThoughtWorks Tech Radar</h2>
+                <div id="radar-container" class="relative w-full aspect-square max-w-2xl mx-auto">
+                    <canvas id="radar-canvas" class="w-full h-full"></canvas>
+                    <!-- Blips will be dynamically added here -->
+                </div>
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                     <h3 class="font-semibold text-gray-700">Legend</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 mt-2 text-sm">
+                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div><span>Adopt</span></div>
+                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div><span>Trial</span></div>
+                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div><span>Assess</span></div>
+                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div><span>Hold</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blip Editor Form -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Blip Editor</h2>
+                <form id="blip-form">
+                    <div class="mb-4">
+                        <label for="blip-name" class="block text-sm font-medium text-gray-700">Title (Blip Name)</label>
+                        <input type="text" id="blip-name" name="blip-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="blip-date" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="blip-date" name="blip-date" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="blip-radius" class="block text-sm font-medium text-gray-700">Radius (0-100)</label>
+                            <input type="number" id="blip-radius" name="blip-radius" min="0" max="100" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="blip-angle" class="block text-sm font-medium text-gray-700">Angle (0-359)</label>
+                            <input type="number" id="blip-angle" name="blip-angle" min="0" max="359" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="blip-quadrant" class="block text-sm font-medium text-gray-700">Quadrant</label>
+                        <select id="blip-quadrant" name="blip-quadrant" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option>Techniques</option>
+                            <option>Tools</option>
+                            <option>Platforms</option>
+                            <option>Languages & Frameworks</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="blip-overview" class="block text-sm font-medium text-gray-700">Overview</label>
+                        <textarea id="blip-overview" name="blip-overview" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Save Blip</button>
+                        <button type="button" id="add-new-blip" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Add New</button>
+                        <button type="button" id="delete-blip" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Blips List Section -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+             <h2 class="text-xl font-semibold mb-4">Tech Provider Blips</h2>
+             <div id="blips-list" class="space-y-3">
+                 <p class="text-gray-500">No blips created yet. Add one using the editor!</p>
+             </div>
+        </div>
+        
+        <!-- Export Section -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Export Graphics</h2>
+            <div class="flex space-x-4">
+                 <button id="export-svg" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Export SVG</button>
+                <button id="export-png" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">Export PNG</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Element References
+            const canvas = document.getElementById('radar-canvas');
+            const ctx = canvas.getContext('2d');
+            const radarContainer = document.getElementById('radar-container');
+            const blipForm = document.getElementById('blip-form');
+            const blipsList = document.getElementById('blips-list');
+            const addNewBlipBtn = document.getElementById('add-new-blip');
+            const deleteBlipBtn = document.getElementById('delete-blip');
+            const exportSvgBtn = document.getElementById('export-svg');
+            const exportPngBtn = document.getElementById('export-png');
+            const toast = document.getElementById('toast');
+
+            // State Management
+            let blips = [];
+            let selectedBlip = null;
+            let canvasSize = 0;
+
+            // Constants
+            const quadrants = ['Techniques', 'Tools', 'Platforms', 'Languages & Frameworks'];
+            const rings = ['Adopt', 'Trial', 'Assess', 'Hold'];
+
+            // Initial Sample Data
+            function loadSampleData() {
+                blips = [
+                    { id: 1, name: 'Micro-frontends', date: '2025-01-15', radius: 45, angle: 45, quadrant: 'Techniques', overview: 'Splitting front-end monoliths.' },
+                    { id: 2, name: 'Vite', date: '2025-03-10', radius: 15, angle: 120, quadrant: 'Tools', overview: 'Next-gen frontend tooling.' },
+                    { id: 3, name: 'WebAssembly (WASM)', date: '2025-04-20', radius: 65, angle: 210, quadrant: 'Platforms', overview: 'Binary instruction format for web apps.' },
+                    { id: 4, name: 'Rust', date: '2025-05-01', radius: 85, angle: 315, quadrant: 'Languages & Frameworks', overview: 'Focus on performance and safety.' }
+                ];
+                renderBlips();
+                updateBlipsList();
+            }
+
+            // --- Canvas and Radar Drawing ---
+            
+            function resizeCanvas() {
+                canvasSize = radarContainer.clientWidth;
+                canvas.width = canvasSize;
+                canvas.height = canvasSize;
+                drawRadar();
+                renderBlips();
+            }
+
+            function drawRadar(targetCtx = ctx) {
+                const center = canvasSize / 2;
+                targetCtx.clearRect(0, 0, canvasSize, canvasSize);
+                targetCtx.fillStyle = 'white'; // for export background
+                targetCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+
+                // Draw rings
+                targetCtx.strokeStyle = '#e2e8f0'; // gray-200
+                targetCtx.lineWidth = 1;
+                rings.forEach((ring, i) => {
+                    const radius = center * ((rings.length - i) / rings.length);
+                    targetCtx.beginPath();
+                    targetCtx.arc(center, center, radius, 0, 2 * Math.PI);
+                    targetCtx.stroke();
+                    targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                    targetCtx.textAlign = 'center';
+                    targetCtx.textBaseline = 'middle';
+                    targetCtx.font = '12px Inter';
+                    targetCtx.fillText(ring, center, center - radius + 15);
+                });
+                
+                // Draw quadrant lines
+                targetCtx.beginPath();
+                targetCtx.moveTo(center, 0);
+                targetCtx.lineTo(center, canvasSize);
+                targetCtx.moveTo(0, center);
+                targetCtx.lineTo(canvasSize, center);
+                targetCtx.stroke();
+
+                // Draw quadrant labels
+                targetCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                targetCtx.font = `bold ${canvasSize / 40}px Inter`;
+                targetCtx.fillText(quadrants[0], center * 1.5, center * 0.5);
+                targetCtx.fillText(quadrants[1], center * 0.5, center * 0.5);
+                targetCtx.fillText(quadrants[2], center * 0.5, center * 1.5);
+                targetCtx.fillText(quadrants[3], center * 1.5, center * 1.5);
+            }
+            
+            // --- Blip Management ---
+
+            function getQuadrantFromAngle(angle) {
+                if (angle >= 0 && angle < 90) return quadrants[0];
+                if (angle >= 90 && angle < 180) return quadrants[1];
+                if (angle >= 180 && angle < 270) return quadrants[2];
+                return quadrants[3];
+            }
+
+            function getRingFromRadius(radius) {
+                if (radius <= 25) return rings[0];
+                if (radius <= 50) return rings[1];
+                if (radius <= 75) return rings[2];
+                return rings[3];
+            }
+            
+            function getBlipColor(radius, type='tailwind') {
+                const ring = getRingFromRadius(radius);
+                const colors = {
+                    'Adopt':  { tailwind: 'bg-green-500', hex: '#22c55e' },
+                    'Trial':  { tailwind: 'bg-blue-500',   hex: '#3b82f6' },
+                    'Assess': { tailwind: 'bg-yellow-500', hex: '#eab308' },
+                    'Hold':   { tailwind: 'bg-red-500',    hex: '#ef4444' }
+                };
+                return colors[ring][type] || { tailwind: 'bg-gray-500', hex: '#6b7280' };
+            }
+            
+            function renderBlips() {
+                // Clear existing blip elements
+                radarContainer.querySelectorAll('.blip').forEach(b => b.remove());
+                
+                const center = canvasSize / 2;
+
+                blips.forEach((blip) => {
+                    const angleRad = (blip.angle - 90) * (Math.PI / 180); // Adjust for canvas coordinates
+                    const blipRadius = (blip.radius / 100) * center;
+
+                    const x = center + blipRadius * Math.cos(angleRad);
+                    const y = center + blipRadius * Math.sin(angleRad);
+
+                    const blipElement = document.createElement('div');
+                    blipElement.className = `blip ${getBlipColor(blip.radius, 'tailwind')}`;
+                    blipElement.style.left = `${x - 10}px`; // center the blip
+                    blipElement.style.top = `${y - 10}px`; // center the blip
+                    blipElement.dataset.id = blip.id;
+                    
+                    if (selectedBlip && blip.id === selectedBlip.id) {
+                        blipElement.classList.add('selected');
+                    }
+
+                    blipElement.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectBlip(blip);
+                    });
+                    radarContainer.appendChild(blipElement);
+                });
+            }
+
+            function updateBlipsList() {
+                if (blips.length === 0) {
+                    blipsList.innerHTML = '<p class="text-gray-500">No blips created yet. Add one using the editor!</p>';
+                    return;
+                }
+
+                blipsList.innerHTML = '';
+                // Create a sorted copy of blips by name for the list
+                [...blips].sort((a, b) => a.name.localeCompare(b.name)).forEach((blip) => {
+                    const listItem = document.createElement('div');
+                    const isSelected = selectedBlip && blip.id === selectedBlip.id;
+                    listItem.className = `p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-indigo-100 border border-indigo-500' : 'bg-gray-50 hover:bg-gray-200'}`;
+                    listItem.innerHTML = `
+                        <div class="font-semibold text-gray-800">${blip.name}</div>
+                        <div class="text-sm text-gray-600">
+                            ${getQuadrantFromAngle(blip.angle)} / ${getRingFromRadius(blip.radius)}
+                        </div>
+                    `;
+                    listItem.addEventListener('click', () => {
+                         selectBlip(blip);
+                    });
+                    blipsList.appendChild(listItem);
+                });
+            }
+
+            function selectBlip(blip) {
+                selectedBlip = blip;
+                
+                blipForm['blip-name'].value = blip.name;
+                blipForm['blip-date'].value = blip.date;
+                blipForm['blip-radius'].value = blip.radius;
+                blipForm['blip-angle'].value = blip.angle;
+                blipForm['blip-quadrant'].value = blip.quadrant;
+                blipForm['blip-overview'].value = blip.overview;
+
+                renderBlips();
+                updateBlipsList();
+            }
+            
+            function clearForm() {
+                blipForm.reset();
+                selectedBlip = null;
+                blipForm['blip-name'].focus();
+                renderBlips();
+                updateBlipsList();
+            }
+            
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            // --- Event Listeners ---
+
+            blipForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(blipForm);
+                const blipData = {
+                    id: selectedBlip ? selectedBlip.id : Date.now(),
+                    name: formData.get('blip-name'),
+                    date: formData.get('blip-date'),
+                    radius: parseInt(formData.get('blip-radius')),
+                    angle: parseInt(formData.get('blip-angle')),
+                    quadrant: formData.get('blip-quadrant'),
+                    overview: formData.get('blip-overview')
+                };
+
+                if (selectedBlip) {
+                    // Update existing blip
+                    const index = blips.findIndex(b => b.id === selectedBlip.id);
+                    blips[index] = blipData;
+                } else {
+                    // Add new blip
+                    blips.push(blipData);
+                }
+                selectBlip(blipData); // Select the newly created/updated blip
+            });
+
+            addNewBlipBtn.addEventListener('click', clearForm);
+
+            deleteBlipBtn.addEventListener('click', () => {
+                if (!selectedBlip) {
+                    showToast('Please select a blip to delete.');
+                    return;
+                }
+                blips = blips.filter(b => b.id !== selectedBlip.id);
+                clearForm();
+            });
+            
+            // --- Export Functionality ---
+
+            function generateSvgContent() {
+                const center = canvasSize / 2;
+                let svg = `<svg width="${canvasSize}" height="${canvasSize}" xmlns="http://www.w3.org/2000/svg" style="font-family: Inter, sans-serif; background-color: white;">`;
+
+                // Draw rings and labels
+                rings.forEach((ring, i) => {
+                    const radius = center * ((rings.length - i) / rings.length);
+                    svg += `<circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="1" />`;
+                    svg += `<text x="${center}" y="${center - radius + 15}" text-anchor="middle" font-size="12px" fill="rgba(0,0,0,0.4)">${ring}</text>`;
+                });
+                
+                // Draw quadrant lines and labels
+                svg += `<line x1="${center}" y1="0" x2="${center}" y2="${canvasSize}" stroke="#e2e8f0" stroke-width="1" />`;
+                svg += `<line x1="0" y1="${center}" x2="${canvasSize}" y2="${center}" stroke="#e2e8f0" stroke-width="1" />`;
+                const labelFontSize = canvasSize / 40;
+                svg += `<text x="${center*1.5}" y="${center*0.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[0]}</text>`;
+                svg += `<text x="${center*0.5}" y="${center*0.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[1]}</text>`;
+                svg += `<text x="${center*0.5}" y="${center*1.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[2]}</text>`;
+                svg += `<text x="${center*1.5}" y="${center*1.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[3]}</text>`;
+
+                // Draw blips with labels
+                blips.forEach(blip => {
+                    const angleRad = (blip.angle - 90) * (Math.PI / 180);
+                    const blipRadius = (blip.radius / 100) * center;
+                    const x = center + blipRadius * Math.cos(angleRad);
+                    const y = center + blipRadius * Math.sin(angleRad);
+                    const color = getBlipColor(blip.radius, 'hex');
+                    svg += `<circle cx="${x}" cy="${y}" r="8" fill="${color}" stroke="white" stroke-width="1.5" />`;
+                    svg += `<text x="${x + 12}" y="${y + 4}" font-size="10px" fill="#333">${blip.name}</text>`;
+                });
+
+                svg += `</svg>`;
+                return svg;
+            }
+
+            exportSvgBtn.addEventListener('click', () => {
+                const svgContent = generateSvgContent();
+                const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'tech-radar.svg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            exportPngBtn.addEventListener('click', () => {
+                // Create a temporary canvas for high-resolution export
+                const exportCanvas = document.createElement('canvas');
+                const exportSize = Math.max(1200, canvasSize * 2); // Ensure high resolution
+                exportCanvas.width = exportSize;
+                exportCanvas.height = exportSize;
+                const exportCtx = exportCanvas.getContext('2d');
+                const center = exportSize / 2;
+                const originalCanvasSize = canvasSize; // Save original size
+                canvasSize = exportSize; // Temporarily set to export size for calculations
+
+                // Draw the base radar on the export canvas
+                drawRadar(exportCtx);
+
+                // Draw blips as circles on the export canvas
+                blips.forEach(blip => {
+                    const angleRad = (blip.angle - 90) * (Math.PI / 180);
+                    const blipRadius = (blip.radius / 100) * center;
+                    const x = center + blipRadius * Math.cos(angleRad);
+                    const y = center + blipRadius * Math.sin(angleRad);
+                    
+                    exportCtx.beginPath();
+                    exportCtx.arc(x, y, 8, 0, 2 * Math.PI);
+                    exportCtx.fillStyle = getBlipColor(blip.radius, 'hex');
+                    exportCtx.fill();
+                    exportCtx.strokeStyle = 'white';
+                    exportCtx.lineWidth = 2;
+                    exportCtx.stroke();
+                    
+                    // Draw blip labels
+                    exportCtx.fillStyle = '#333';
+                    exportCtx.font = '12px Inter';
+                    exportCtx.textAlign = 'left';
+                    exportCtx.textBaseline = 'middle';
+                    exportCtx.fillText(blip.name, x + 12, y);
+                });
+
+                // Restore original canvas size
+                canvasSize = originalCanvasSize; 
+
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = exportCanvas.toDataURL('image/png');
+                a.download = 'tech-radar.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+            
+            // --- Initialization ---
+
+            window.addEventListener('resize', resizeCanvas);
+            loadSampleData();
+            resizeCanvas(); // Initial draw
+            clearForm(); // Start with a clean form
+        });
+    </script>
+</body>
+</html>
