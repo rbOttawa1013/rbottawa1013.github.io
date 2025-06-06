@@ -17,6 +17,8 @@
             margin: 0;
             padding: 20px;
             box-sizing: border-box; /* Include padding in element's total width and height */
+            overflow-x: hidden; /* Prevent horizontal scrollbar from walking emoji */
+            position: relative; /* Needed for absolute positioning of emoji walker */
         }
         .container {
             background-color: #ffffff; /* White background for the card */
@@ -29,6 +31,8 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem; /* space-y-6 equivalent */
+            z-index: 10; /* Ensure container is above walking emoji */
+            position: relative; /* Ensure it stays above the emoji walker */
         }
         .button {
             background-color: #4f46e5; /* indigo-600 */
@@ -66,6 +70,9 @@
             align-items: center;
             justify-content: center;
             line-height: 1.4; /* Improve readability */
+            /* Animation properties for dynamic effects */
+            animation-duration: 0.8s; /* Default duration for all custom animations */
+            animation-fill-mode: forwards; /* Keep the end state of the animation */
         }
         .score-box {
             display: flex;
@@ -226,6 +233,90 @@
         .modal-cancel:hover {
             background-color: #d1d5db; /* gray-300 */
         }
+
+        /* --- Custom Animation Keyframes and Classes --- */
+
+        /* Fade in and Scale */
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-fadeInScale { animation-name: fadeInScale; animation-timing-function: ease-out; }
+
+        /* Slide in from Left */
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slideInLeft { animation-name: slideInLeft; animation-timing-function: ease-out; }
+
+        /* Slide in from Right */
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slideInRight { animation-name: slideInRight; animation-timing-function: ease-out; }
+
+        /* Slide in from Top */
+        @keyframes slideInTop {
+            from { opacity: 0; transform: translateY(-100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideInTop { animation-name: slideInTop; animation-timing-function: ease-out; }
+
+        /* Slide in from Bottom */
+        @keyframes slideInBottom {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideInBottom { animation-name: slideInBottom; animation-timing-function: ease-out; }
+
+        /* Pulse Effect */
+        @keyframes pulseEffect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animate-pulseEffect { animation-name: pulseEffect; animation-timing-function: ease-in-out; }
+
+        /* Color Cycle Effect */
+        @keyframes colorCycle {
+            0% { color: #1e40af; } /* dark blue */
+            25% { color: #ef4444; } /* red */
+            50% { color: #10b981; } /* emerald */
+            75% { color: #f97316; } /* orange */
+            100% { color: #1e40af; } /* back to dark blue */
+        }
+        .animate-colorCycle { animation-name: colorCycle; animation-timing-function: linear; animation-iteration-count: 2; }
+
+        /* --- Emoji Walker Styles --- */
+        #emojiWalker {
+            position: absolute;
+            bottom: 20px; /* Adjust as needed */
+            font-size: 3rem; /* Make emoji visible */
+            z-index: 5; /* Below main container */
+            white-space: nowrap; /* Prevent emoji from wrapping */
+            display: inline-block; /* Ensure transform applies correctly */
+        }
+
+        @keyframes walkRight {
+            from { transform: translateX(-100vw); } /* Start far left, off screen */
+            to { transform: translateX(100vw); }  /* End far right, off screen */
+        }
+
+        @keyframes walkLeft {
+            from { transform: translateX(100vw); } /* Start far right, off screen */
+            to { transform: translateX(-100vw); } /* End far left, off screen */
+        }
+
+        .emoji-walk-right {
+            animation: walkRight 10s linear forwards; /* 10s duration, linear speed, stay at end */
+        }
+
+        .emoji-walk-left {
+            animation: walkLeft 10s linear forwards; /* 10s duration, linear speed, stay at end */
+        }
+
     </style>
 </head>
 <body>
@@ -271,6 +362,9 @@
         </div>
     </div>
 
+    <!-- Emoji Walker Div (new) -->
+    <div id="emojiWalker"></div>
+
     <!-- Firebase SDKs -->
     <script type="module">
         // Import necessary Firebase modules from CDN
@@ -313,12 +407,43 @@
         const timeLimitSlider = document.getElementById('timeLimitSlider');
         const timeLimitDisplay = document.getElementById('timeLimitDisplay');
 
+        // Emoji Walker element (new)
+        const emojiWalker = document.getElementById('emojiWalker');
+
         // Game State variables
         let lastClickTime = 0; // Timestamp (milliseconds) of the last successful click
         let highScore = 0; // The user's highest score
         let countdownInterval = null; // Interval ID for the countdown timer
         let currentLanguage = 'en'; // Default language
         let hourlyLimitSeconds = 60; // Default to 60 seconds (1 minute) for the booster interval
+
+        // Array of animation classes to choose from for the affirmation box
+        const affirmationAnimationClasses = [
+            'animate-fadeInScale',
+            'animate-slideInLeft',
+            'animate-slideInRight',
+            'animate-slideInTop',
+            'animate-slideInBottom',
+            'animate-pulseEffect',
+            'animate-colorCycle'
+        ];
+        let currentAffirmationAnimationClass = ''; // To keep track of the active affirmation animation class
+
+        // Array of emojis for the walker - Expanded to at least 20 different types
+        const walkingEmojis = [
+            '🐉', '🧚‍♀️', '👺', '🏌️‍♂️', // Original
+            '🚀', '⭐', '🌈', '🦋', // Fantastical/Nature
+            '👾', '🤖', '👻', '👽', // Sci-Fi/Creatures
+            '🎉', '🎈', '🥳', '✨', // Celebratory
+            '🐢', '🦉', '🦊', '🐙', // Animals
+            '🦄', '🔮', '🍀', '🌟', // Magical/Lucky
+            '🌸', '🌻', '🌲', '🌊', // Nature
+            '💡', '💎', '👑', '🏆', // Positive Symbols
+            '💯', '👍', '💪', '💖', // Encouragement
+            '😊', '😊', '🤗', '☀️', // Happy/Warm
+            '🎵', '🎨', '📚', '☕'  // Relaxing Hobbies
+        ];
+
 
         // Translations object for all UI text
         const translations = {
@@ -371,7 +496,38 @@
                     "Your kindness makes a difference.",
                     "Take a deep breath and find your calm.",
                     "You are exactly where you need to be.",
-                    "The world is better with you in it."
+                    "The world is better with you in it.",
+                    // 30 new affirmations
+                    "You are enough, just as you are.",
+                    "Your potential is limitless.",
+                    "Today is a gift, cherish it.",
+                    "You are growing and learning every day.",
+                    "Be proud of how far you've come.",
+                    "Your inner strength is powerful.",
+                    "Allow yourself to rest and recharge.",
+                    "You deserve happiness and peace.",
+                    "Small victories lead to great success.",
+                    "Every challenge makes you stronger.",
+                    "You are a unique and valuable person.",
+                    "Spread your wings and fly.",
+                    "The best is yet to come.",
+                    "You are appreciated more than you know.",
+                    "Let go of what no longer serves you.",
+                    "You have the power to create your reality.",
+                    "Celebrate your progress, no matter how small.",
+                    "Your positive energy is contagious.",
+                    "Connect with nature, find your calm.",
+                    "Listen to your heart, it knows the way.",
+                    "You inspire others with your spirit.",
+                    "Find beauty in everyday moments.",
+                    "Your dreams are within reach.",
+                    "Cultivate gratitude, it transforms everything.",
+                    "You are resilient and adaptable.",
+                    "Embrace new adventures.",
+                    "Your voice matters.",
+                    "Give yourself compassion.",
+                    "You are deserving of love.",
+                    "Trust the timing of your life."
                 ]
             },
             fr: {
@@ -423,7 +579,38 @@
                     "Votre gentillesse fait la différence.",
                     "Prenez une grande respiration et trouvez votre calme.",
                     "Vous êtes exactement là où vous devez être.",
-                    "Le monde est meilleur avec vous."
+                    "Le monde est meilleur avec vous.",
+                    // 30 nouvelles affirmations
+                    "Vous êtes suffisant, tel que vous êtes.",
+                    "Votre potentiel est illimité.",
+                    "Aujourd'hui est un cadeau, chérissez-le.",
+                    "Vous grandissez et apprenez chaque jour.",
+                    "Soyez fier de votre chemin parcouru.",
+                    "Votre force intérieure est puissante.",
+                    "Permettez-vous de vous reposer et de vous ressourcer.",
+                    "Vous méritez le bonheur et la paix.",
+                    "Les petites victoires mènent à de grands succès.",
+                    "Chaque défi vous rend plus fort.",
+                    "Vous êtes une personne unique et précieuse.",
+                    "Déployez vos ailes et envolez-vous.",
+                    "Le meilleur est encore à venir.",
+                    "Vous êtes plus apprécié que vous ne le savez.",
+                    "Lâchez ce qui ne vous sert plus.",
+                    "Vous avez le pouvoir de créer votre réalité.",
+                    "Célébrez vos progrès, aussi minimes soient-ils.",
+                    "Votre énergie positive est contagieuse.",
+                    "Connectez-vous à la nature, trouvez votre calme.",
+                    "Écoutez votre cœur, il connaît le chemin.",
+                    "Vous inspirez les autres par votre esprit.",
+                    "Trouvez la beauté dans les moments quotidiens.",
+                    "Vos rêves sont à portée de main.",
+                    "Cultivez la gratitude, elle transforme tout.",
+                    "Vous êtes résilient et adaptable.",
+                    "Embrassez de nouvelles aventures.",
+                    "Votre voix compte.",
+                    "Accordez-vous de la compassion.",
+                    "Vous êtes digne d'amour.",
+                    "Faites confiance au timing de votre vie."
                 ]
             }
         };
@@ -437,9 +624,7 @@
                 const key = el.getAttribute('data-translate-key');
                 if (translations[currentLanguage] && translations[currentLanguage][key]) {
                     if (typeof translations[currentLanguage][key] === 'function') {
-                        // For functions, just set a placeholder or initial value,
-                        // dynamic content is handled where the message is set.
-                        el.textContent = "";
+                        el.textContent = ""; // Handled dynamically
                     } else if (key === 'userIdPrefix') {
                         el.textContent = translations[currentLanguage][key] + (userId || '');
                     }
@@ -450,18 +635,14 @@
             });
 
             // Handle specific dynamic updates
-            // Initial affirmation box
             if (!affirmationBox.textContent || affirmationBox.textContent.includes("Click the button") || affirmationBox.textContent.includes("Cliquez sur le bouton")) {
                  affirmationBox.textContent = translations[currentLanguage].initialAffirmation;
             }
-            // Time limit display
             timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`;
 
-            // Update language button active state
             langEnButton.classList.toggle('active', currentLanguage === 'en');
             langFrButton.classList.toggle('active', currentLanguage === 'fr');
 
-            // Re-update countdown text to ensure language is applied correctly
             updateButtonState();
         }
 
@@ -543,25 +724,25 @@
                     const data = docSnap.data();
                     highScore = data.highScore || 0;
                     lastClickTime = data.lastClickTime || 0;
-                    hourlyLimitSeconds = data.hourlyLimitSeconds !== undefined ? data.hourlyLimitSeconds : 60; // Load or default
+                    hourlyLimitSeconds = data.hourlyLimitSeconds !== undefined ? data.hourlyLimitSeconds : 60;
 
                     highScoreDisplay.textContent = highScore;
                     lastNumberDisplay.textContent = data.lastNumber !== undefined ? data.lastNumber : '-';
-                    timeLimitSlider.value = hourlyLimitSeconds; // Update slider position
-                    timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`; // Update slider display
+                    timeLimitSlider.value = hourlyLimitSeconds;
+                    timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`;
 
                     console.log("User data loaded/updated:", data);
                     updateButtonState();
                     boostButton.disabled = false;
                     resetButton.disabled = false;
-                    timeLimitSlider.disabled = false; // Enable slider
+                    timeLimitSlider.disabled = false;
                 } else {
                     console.log("No user data found, initializing new record.");
                     setDoc(userDocRef, {
                         highScore: 0,
                         lastClickTime: 0,
                         lastNumber: '-',
-                        hourlyLimitSeconds: 60 // Initialize default value
+                        hourlyLimitSeconds: 60
                     }).catch(e => console.error("Error setting initial user data:", e));
                     updateButtonState();
                     boostButton.disabled = false;
@@ -591,8 +772,8 @@
                     highScore: newHighScore,
                     lastClickTime: Date.now(),
                     lastNumber: currentNumber,
-                    hourlyLimitSeconds: hourlyLimitSeconds // Save current setting
-                }, { merge: true }); // Use merge to avoid overwriting other fields if they exist
+                    hourlyLimitSeconds: hourlyLimitSeconds
+                }, { merge: true });
                 console.log("User data saved successfully.");
                 lastClickTime = Date.now();
                 updateButtonState();
@@ -623,7 +804,7 @@
                             highScore: 0,
                             lastClickTime: 0,
                             lastNumber: '-'
-                        }, { merge: true }); // Merge to preserve hourlyLimitSeconds
+                        }, { merge: true });
 
                         highScore = 0;
                         lastClickTime = 0;
@@ -699,7 +880,7 @@
             const timeElapsed = now - lastClickTime;
             const canClick = timeElapsed >= limitMillis;
 
-            if (hourlyLimitSeconds === 0) { // If limit is 0, always allow click
+            if (hourlyLimitSeconds === 0) {
                 boostButton.disabled = false;
                 boostButton.textContent = translations[currentLanguage].getBoostButton;
                 countdownDiv.textContent = "";
@@ -731,7 +912,47 @@
             countdownInterval = setInterval(updateButtonState, 1000);
         }
 
+        // --- Emoji Walker Logic ---
+
+        /**
+         * Starts a random emoji walking across the screen.
+         */
+        function startEmojiWalk() {
+            // Clear any existing animation classes
+            emojiWalker.className = '';
+            emojiWalker.style.display = 'none'; // Hide emoji while setting up
+
+            // Randomly select an emoji
+            const randomEmoji = walkingEmojis[Math.floor(Math.random() * walkingEmojis.length)];
+            emojiWalker.textContent = randomEmoji;
+
+            // Randomly choose direction and apply animation class
+            const direction = Math.random() < 0.5 ? 'right' : 'left';
+            if (direction === 'right') {
+                emojiWalker.classList.add('emoji-walk-right');
+            } else {
+                emojiWalker.classList.add('emoji-walk-left');
+            }
+
+            emojiWalker.style.display = 'inline-block'; // Show emoji
+
+            // Set a timeout to clear the animation after it completes (10s duration)
+            setTimeout(() => {
+                emojiWalker.className = ''; // Remove animation class to reset
+                emojiWalker.style.display = 'none'; // Hide after animation
+                // Schedule the next walk after a random delay (e.g., 5-15 seconds)
+                setTimeout(startEmojiWalk, Math.random() * 10000 + 5000); // 5 to 15 seconds
+            }, 10000); // This timeout matches the animation duration
+        }
+
+
         // --- Event Listeners ---
+
+        // Function to clean up affirmation animation classes after animation ends
+        function handleAffirmationAnimationEnd() {
+            affirmationBox.classList.remove(currentAffirmationAnimationClass);
+            affirmationBox.removeEventListener('animationend', handleAffirmationAnimationEnd);
+        }
 
         // Boost Button Listener
         boostButton.addEventListener('click', async () => {
@@ -753,26 +974,47 @@
             messageDiv.textContent = translations[currentLanguage].generatingBoost;
             boostButton.disabled = true;
 
-            const affirmation = getRandomAffirmation();
-            const newNumber = generateWeightedRandomNumber();
-
-            // Use the dedicated numberPrefix for display
-            affirmationBox.textContent = `${affirmation} ${translations[currentLanguage].numberPrefix}${newNumber}`;
-            lastNumberDisplay.textContent = newNumber;
-
-            let updatedHighScore = highScore;
-            if (newNumber > highScore) {
-                updatedHighScore = newNumber;
-                highScoreDisplay.textContent = updatedHighScore;
-                messageDiv.textContent = translations[currentLanguage].newHighScore;
-            } else {
-                messageDiv.textContent = "";
+            // Remove any previous affirmation animation classes
+            if (currentAffirmationAnimationClass) {
+                affirmationBox.classList.remove(currentAffirmationAnimationClass);
             }
+            // Add initial opacity-0 to ensure fade out starts
+            affirmationBox.classList.add('opacity-0');
 
-            await saveUserData(updatedHighScore, newNumber);
-            updateButtonState();
 
-            console.log(`Boost clicked. Number: ${newNumber}, High Score: ${updatedHighScore}`);
+            // Allow time for fade-out before changing content and applying new animation
+            setTimeout(async () => {
+                const affirmation = getRandomAffirmation();
+                const newNumber = generateWeightedRandomNumber();
+
+                // Update UI with new affirmation and number while hidden
+                affirmationBox.textContent = `${affirmation} ${translations[currentLanguage].numberPrefix}${newNumber}`;
+                lastNumberDisplay.textContent = newNumber;
+
+                let updatedHighScore = highScore;
+                if (newNumber > highScore) {
+                    updatedHighScore = newNumber;
+                    highScoreDisplay.textContent = updatedHighScore;
+                    messageDiv.textContent = translations[currentLanguage].newHighScore;
+                } else {
+                    messageDiv.textContent = "";
+                }
+
+                await saveUserData(updatedHighScore, newNumber);
+                updateButtonState();
+
+                // Select a random affirmation animation class and apply it
+                const randomIndex = Math.floor(Math.random() * affirmationAnimationClasses.length);
+                currentAffirmationAnimationClass = affirmationAnimationClasses[randomIndex];
+                affirmationBox.classList.add(currentAffirmationAnimationClass);
+
+                // Remove opacity-0 after new content and animation class are applied to trigger fade-in/animation
+                affirmationBox.classList.remove('opacity-0');
+
+                // Add listener to remove animation class after it completes
+                affirmationBox.addEventListener('animationend', handleAffirmationAnimationEnd, { once: true });
+
+            }, 300); // This duration matches the fade-out CSS transition
         });
 
         // Reset Button Listener
@@ -793,7 +1035,8 @@
         timeLimitSlider.addEventListener('input', async () => {
             hourlyLimitSeconds = parseInt(timeLimitSlider.value);
             timeLimitDisplay.textContent = `${hourlyLimitSeconds} ${translations[currentLanguage].secondsUnit}`;
-            await saveUserData(highScore, lastNumberDisplay.textContent === '-' ? '' : parseInt(lastNumberDisplay.textContent)); // Save the new limit setting
+            // Save the new limit setting, preserving the last number if it exists
+            await saveUserData(highScore, lastNumberDisplay.textContent === '-' ? '' : parseInt(lastNumberDisplay.textContent));
             updateButtonState(); // Immediately reflect new limit on countdown
         });
 
@@ -802,7 +1045,9 @@
         window.onload = () => {
             initializeFirebase();
             updateTextContent();
+            startEmojiWalk(); // Start the emoji walking animation
         };
     </script>
 </body>
 </html>
+
