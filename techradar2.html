@@ -1,493 +1,729 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtWorks-Style Tech Radar</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Technology Radar</title>
     <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --card-bg-color: #ffffff;
+            --text-color: #1f2937;
+            --text-light-color: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #4f46e5;
+            --accent-hover-color: #4338ca;
+            --green-color: #16a34a;
+            --green-hover-color: #15803d;
+            --blue-color: #2563eb;
+            --blue-hover-color: #1d4ed8;
+            --red-color: #ef4444;
+            --red-hover-color: #dc2626;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1.5rem;
+            font-size: 16px;
+            line-height: 1.5;
         }
-        /* Style for the blip points on the radar */
-        .blip {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
+        .container {
+            max-width: 1280px;
+            margin: auto;
+            display: grid;
+            gap: 1.5rem;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header-meta-container .app-title {
+            font-size: 1.875rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        .header-meta-container .app-meta {
+            font-size: 0.875rem;
+            color: var(--text-light-color);
+        }
+        #lang-toggle-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background-color: var(--card-bg-color);
+            color: var(--accent-color);
+            min-width: 50px;
+            text-align: center;
         }
-        .blip:hover {
-            transform: scale(1.2);
-            z-index: 10;
+        main {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
         }
-        .blip.selected {
-            border: 3px solid #4338ca; /* Indigo-800 */
-            transform: scale(1.2);
-            z-index: 10;
-        }
-        /* Style for the custom modal for alerts */
-        #toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #ef4444; /* red-500 */
-            color: white;
-            padding: 1rem;
+        .card {
+            background-color: var(--card-bg-color);
+            padding: 1.5rem;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.5s, transform 0.5s;
-            transform: translateY(-20px);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
         }
-        #toast.show {
-            opacity: 1;
-            transform: translateY(0);
+        .card-title {
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        #radar-title {
+            font-size: 2.25rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+            padding: 0.25rem;
+            cursor: text;
+        }
+        #radar-title:focus {
+            outline: 2px solid var(--accent-color);
+            border-radius: 0.25rem;
+        }
+        #radar-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+        #radar-svg {
+            width: 100%;
+            height: 100%;
+        }
+        .ring, .quadrant-line {
+            stroke: var(--border-color);
+            stroke-width: 1;
+            fill: none;
+        }
+        .quadrant-label {
+            font-size: 16px;
+            font-weight: bold;
+            fill: var(--text-light-color);
+            text-anchor: middle;
+        }
+         .ring-label {
+            font-size: 11px;
+            fill: #9ca3af;
+            text-anchor: middle;
+        }
+        .blip-dot {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .blip-dot:hover {
+            r: 10;
+        }
+        .blip-dot.selected {
+            stroke: var(--accent-color);
+            stroke-width: 3px;
+        }
+        .blip-label {
+            font-size: 10px;
+            fill: var(--text-color);
+            pointer-events: none;
+        }
+        .blip-tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: space-between;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.875rem;
+            color: white;
+        }
+        .btn-primary { background-color: var(--accent-color); }
+        .btn-primary:hover { background-color: var(--accent-hover-color); }
+        .btn-success { background-color: var(--green-color); }
+        .btn-success:hover { background-color: var(--green-hover-color); }
+        .btn-info { background-color: var(--blue-color); }
+        .btn-info:hover { background-color: var(--blue-hover-color); }
+        .btn-danger { background-color: var(--red-color); }
+        .btn-danger:hover { background-color: var(--red-hover-color); }
+        
+        #blips-list-container .card-title { margin-bottom: 1rem; }
+        #blips-list {
+            list-style: none;
+            padding: 0; margin: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #blips-list li {
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: 1px solid transparent;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #blips-list li:last-child { border-bottom: none; }
+        #blips-list li:hover { background-color: var(--bg-color); }
+        #blips-list li.selected {
+            background-color: #e0e7ff;
+            border-color: var(--accent-color);
+        }
+        #blips-list .blip-item-name {
+            font-weight: 600;
+        }
+        #blips-list .blip-item-description {
+            font-size: 0.9rem;
+            color: var(--text-light-color);
+            margin-top: 0.25rem;
+        }
+        #blips-list .blip-item-meta {
+            font-size: 0.8rem;
+            color: var(--text-light-color);
+            margin-top: 0.5rem;
+        }
+
+        #legend, #io-section { margin-top: 1.5rem; }
+        #legend .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        @media (max-width: 900px) {
+            main { grid-template-columns: 1fr; }
+            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
         }
     </style>
 </head>
-<body class="bg-gray-100 p-4 sm:p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header Section -->
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Tech Radar</h1>
-                <p class="text-sm text-gray-500">Version 2.0 (Interactive Demo) - Date: June 6, 2025</p>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="header-meta-container">
+                <h1 class="app-title">Tech Radar App</h1>
+                <p id="app-meta" class="app-meta"></p>
             </div>
-            <div class="text-sm text-gray-500">
-                Language: EN FR
-            </div>
+            <button id="lang-toggle-btn">EN</button>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Radar Visualization Section -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-4 text-center">ThoughtWorks Tech Radar</h2>
-                <div id="radar-container" class="relative w-full aspect-square max-w-2xl mx-auto">
-                    <canvas id="radar-canvas" class="w-full h-full"></canvas>
-                    <!-- Blips will be dynamically added here -->
-                </div>
-                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
-                     <h3 class="font-semibold text-gray-700">Legend</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 mt-2 text-sm">
-                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div><span>Adopt</span></div>
-                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div><span>Trial</span></div>
-                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div><span>Assess</span></div>
-                        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div><span>Hold</span></div>
+        <main>
+            <section class="radar-visualization">
+                <div class="card">
+                    <h1 id="radar-title" contenteditable="true"></h1>
+                    <div id="radar-container">
+                        <svg id="radar-svg"></svg>
+                        <div id="blip-tooltip" class="blip-tooltip"></div>
+                    </div>
+                     <div id="legend" class="card">
+                        <h3 class="card-title" data-i18n="legend"></h3>
+                        <div id="status-legend-content" style="display: flex; gap: 1rem; flex-wrap: wrap;"></div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Blip Editor Form -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-4">Blip Editor</h2>
-                <form id="blip-form">
-                    <div class="mb-4">
-                        <label for="blip-name" class="block text-sm font-medium text-gray-700">Title (Blip Name)</label>
-                        <input type="text" id="blip-name" name="blip-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="blip-date" class="block text-sm font-medium text-gray-700">Date</label>
-                        <input type="date" id="blip-date" name="blip-date" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="blip-radius" class="block text-sm font-medium text-gray-700">Radius (0-100)</label>
-                            <input type="number" id="blip-radius" name="blip-radius" min="0" max="100" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+            </section>
+            
+            <aside class="editor-column">
+                <div class="blip-editor card">
+                    <h2 class="card-title" data-i18n="blipEditor"></h2>
+                    <form id="blip-form">
+                        <!-- Core Fields -->
+                        <div class="form-group">
+                            <label for="blip-name" data-i18n="blipName"></label>
+                            <input type="text" id="blip-name" required>
                         </div>
-                        <div>
-                            <label for="blip-angle" class="block text-sm font-medium text-gray-700">Angle (0-359)</label>
-                            <input type="number" id="blip-angle" name="blip-angle" min="0" max="359" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        <div class="form-group">
+                            <label for="blip-description" data-i18n="description"></label>
+                            <textarea id="blip-description" rows="2"></textarea>
                         </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="blip-quadrant" data-i18n="quadrant"></label>
+                                <select id="blip-quadrant"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="blip-ring" data-i18n="ring"></label>
+                                <select id="blip-ring"></select>
+                            </div>
+                        </div>
+                        <!-- Extended Fields -->
+                        <div class="form-group">
+                            <label for="blip-commentary" data-i18n="commentary"></label>
+                            <textarea id="blip-commentary" rows="2"></textarea>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="blip-status" data-i18n="status"></label>
+                                <select id="blip-status"></select>
+                            </div>
+                             <div class="form-group">
+                                <label for="blip-movement" data-i18n="movement"></label>
+                                <input type="text" id="blip-movement">
+                            </div>
+                        </div>
+                         <div class="form-grid">
+                            <div class="form-group">
+                                <label for="blip-firstAppeared" data-i18n="firstAppeared"></label>
+                                <input type="text" id="blip-firstAppeared" placeholder="e.g., 2025.1">
+                            </div>
+                             <div class="form-group">
+                                <label for="blip-tags" data-i18n="tags"></label>
+                                <input type="text" id="blip-tags" placeholder="cloud, testing...">
+                            </div>
+                        </div>
+                         <div class="form-grid">
+                            <div class="form-group">
+                                <label for="blip-riskLevel" data-i18n="riskLevel"></label>
+                                <input type="text" id="blip-riskLevel">
+                            </div>
+                             <div class="form-group">
+                                <label for="blip-license" data-i18n="license"></label>
+                                <input type="text" id="blip-license">
+                            </div>
+                        </div>
+                         <div class="form-group">
+                            <label for="blip-owner" data-i18n="owner"></label>
+                            <input type="text" id="blip-owner">
+                        </div>
+                         <div class="form-group">
+                            <label for="blip-resources" data-i18n="resources"></label>
+                            <input type="text" id="blip-resources" placeholder="https://...">
+                        </div>
+                        
+                        <div class="button-group">
+                            <button type="submit" class="btn-primary" data-i18n="saveBlip"></button>
+                            <button type="button" id="new-blip-btn" class="btn-success" data-i18n="addNew"></button>
+                            <button type="button" id="delete-blip-btn" class="btn-danger" data-i18n="delete"></button>
+                        </div>
+                    </form>
+                </div>
+                <div id="io-section" class="card">
+                    <h3 class="card-title" data-i18n="importExport"></h3>
+                    <div class="button-group" style="justify-content: center;">
+                        <button id="import-json-btn" class="btn-info" data-i18n="importJSON"></button>
+                        <input type="file" id="json-file-input" accept=".json" style="display:none;">
+                        <button id="export-json-btn" class="btn-info" data-i18n="exportJSON"></button>
+                        <button id="import-csv-btn" class="btn-info" data-i18n="importCSV"></button>
+                        <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
+                        <button id="export-csv-btn" class="btn-info" data-i18n="exportCSV"></button>
+                        <button id="export-svg-btn" class="btn-info" data-i18n="exportSVG"></button>
+                        <button id="export-png-btn" class="btn-info" data-i18n="exportPNG"></button>
                     </div>
-                    <div class="mb-4">
-                        <label for="blip-quadrant" class="block text-sm font-medium text-gray-700">Quadrant</label>
-                        <select id="blip-quadrant" name="blip-quadrant" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                            <option>Techniques</option>
-                            <option>Tools</option>
-                            <option>Platforms</option>
-                            <option>Languages & Frameworks</option>
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label for="blip-overview" class="block text-sm font-medium text-gray-700">Overview</label>
-                        <textarea id="blip-overview" name="blip-overview" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
-                    </div>
-
-                    <div class="flex items-center justify-between flex-wrap gap-2">
-                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Save Blip</button>
-                        <button type="button" id="add-new-blip" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Add New</button>
-                        <button type="button" id="delete-blip" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Delete</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Blips List Section -->
-        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
-             <h2 class="text-xl font-semibold mb-4">Tech Provider Blips</h2>
-             <div id="blips-list" class="space-y-3">
-                 <p class="text-gray-500">No blips created yet. Add one using the editor!</p>
-             </div>
-        </div>
+                </div>
+            </aside>
+        </main>
         
-        <!-- Export Section -->
-        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold mb-4">Export Graphics</h2>
-            <div class="flex space-x-4">
-                 <button id="export-svg" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">Export SVG</button>
-                <button id="export-png" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">Export PNG</button>
-            </div>
-        </div>
+        <section id="blips-list-container" class="card">
+            <h2 class="card-title" data-i18n="blipsList"></h2>
+            <ul id="blips-list"></ul>
+        </section>
+
     </div>
-    
-    <!-- Toast Notification -->
-    <div id="toast"></div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // DOM Element References
-            const canvas = document.getElementById('radar-canvas');
-            const ctx = canvas.getContext('2d');
-            const radarContainer = document.getElementById('radar-container');
-            const blipForm = document.getElementById('blip-form');
-            const blipsList = document.getElementById('blips-list');
-            const addNewBlipBtn = document.getElementById('add-new-blip');
-            const deleteBlipBtn = document.getElementById('delete-blip');
-            const exportSvgBtn = document.getElementById('export-svg');
-            const exportPngBtn = document.getElementById('export-png');
-            const toast = document.getElementById('toast');
+    document.addEventListener('DOMContentLoaded', () => {
 
-            // State Management
-            let blips = [];
-            let selectedBlip = null;
-            let canvasSize = 0;
-
-            // Constants
-            const quadrants = ['Techniques', 'Tools', 'Platforms', 'Languages & Frameworks'];
-            const rings = ['Adopt', 'Trial', 'Assess', 'Hold'];
-
-            // Initial Sample Data
-            function loadSampleData() {
-                blips = [
-                    { id: 1, name: 'Micro-frontends', date: '2025-01-15', radius: 45, angle: 45, quadrant: 'Techniques', overview: 'Splitting front-end monoliths.' },
-                    { id: 2, name: 'Vite', date: '2025-03-10', radius: 15, angle: 120, quadrant: 'Tools', overview: 'Next-gen frontend tooling.' },
-                    { id: 3, name: 'WebAssembly (WASM)', date: '2025-04-20', radius: 65, angle: 210, quadrant: 'Platforms', overview: 'Binary instruction format for web apps.' },
-                    { id: 4, name: 'Rust', date: '2025-05-01', radius: 85, angle: 315, quadrant: 'Languages & Frameworks', overview: 'Focus on performance and safety.' }
-                ];
-                renderBlips();
-                updateBlipsList();
+        const i18n = {
+            en: {
+                blipEditor: "Blip Editor", blipName: "Name / Title", quadrant: "Quadrant", ring: "Ring",
+                description: "Description", commentary: "Commentary / Rationale", firstAppeared: "First Appeared",
+                movement: "Moved / Status Change", tags: "Tags", riskLevel: "Risk Level", license: "License / Vendor",
+                owner: "Owner / Contributor", resources: "Linked Resources", status: "Status",
+                saveBlip: "Save Blip", addNew: "Add New", delete: "Delete", importExport: "Import / Export",
+                importJSON: "Import JSON", exportJSON: "Export JSON", importCSV: "Import CSV", exportCSV: "Export CSV",
+                exportSVG: "Export SVG", exportPNG: "Export PNG", blipsList: "Blips List", legend: "Legend",
+                new: "New", changed: "Changed", deprecated: "Deprecated", untitledRadar: "Untitled Radar",
+                confirmDelete: "Are you sure you want to delete this blip?", csvParseError: "Error parsing CSV file. Please check the format.",
+            },
+            fr: {
+                blipEditor: "Éditeur de Blip", blipName: "Nom / Titre", quadrant: "Quadrant", ring: "Cercle",
+                description: "Description", commentary: "Commentaire / Justification", firstAppeared: "Première apparition",
+                movement: "Mouvement / Changement de statut", tags: "Étiquettes", riskLevel: "Niveau de risque",
+                license: "Licence / Fournisseur", owner: "Propriétaire / Contributeur", resources: "Ressources liées",
+                status: "Statut", saveBlip: "Sauvegarder", addNew: "Ajouter", delete: "Supprimer",
+                importExport: "Importer / Exporter", importJSON: "Importer JSON", exportJSON: "Exporter JSON",
+                importCSV: "Importer CSV", exportCSV: "Exporter CSV", exportSVG: "Exporter SVG", exportPNG: "Exporter PNG",
+                blipsList: "Liste des Blips", legend: "Légende", new: "Nouveau", changed: "Modifié", deprecated: "Obsolète",
+                untitledRadar: "Radar sans titre", confirmDelete: "Êtes-vous sûr de vouloir supprimer ce blip ?",
+                csvParseError: "Erreur lors de l'analyse du fichier CSV. Veuillez vérifier le format.",
             }
+        };
 
-            // --- Canvas and Radar Drawing ---
-            
-            function resizeCanvas() {
-                canvasSize = radarContainer.clientWidth;
-                canvas.width = canvasSize;
-                canvas.height = canvasSize;
-                drawRadar();
-                renderBlips();
-            }
-
-            function drawRadar(targetCtx = ctx) {
-                const center = canvasSize / 2;
-                targetCtx.clearRect(0, 0, canvasSize, canvasSize);
-                targetCtx.fillStyle = 'white'; // for export background
-                targetCtx.fillRect(0, 0, canvasSize, canvasSize);
-
-
-                // Draw rings
-                targetCtx.strokeStyle = '#e2e8f0'; // gray-200
-                targetCtx.lineWidth = 1;
-                rings.forEach((ring, i) => {
-                    const radius = center * ((rings.length - i) / rings.length);
-                    targetCtx.beginPath();
-                    targetCtx.arc(center, center, radius, 0, 2 * Math.PI);
-                    targetCtx.stroke();
-                    targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                    targetCtx.textAlign = 'center';
-                    targetCtx.textBaseline = 'middle';
-                    targetCtx.font = '12px Inter';
-                    targetCtx.fillText(ring, center, center - radius + 15);
-                });
-                
-                // Draw quadrant lines
-                targetCtx.beginPath();
-                targetCtx.moveTo(center, 0);
-                targetCtx.lineTo(center, canvasSize);
-                targetCtx.moveTo(0, center);
-                targetCtx.lineTo(canvasSize, center);
-                targetCtx.stroke();
-
-                // Draw quadrant labels
-                targetCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                targetCtx.font = `bold ${canvasSize / 40}px Inter`;
-                targetCtx.fillText(quadrants[0], center * 1.5, center * 0.5);
-                targetCtx.fillText(quadrants[1], center * 0.5, center * 0.5);
-                targetCtx.fillText(quadrants[2], center * 0.5, center * 1.5);
-                targetCtx.fillText(quadrants[3], center * 1.5, center * 1.5);
-            }
-            
-            // --- Blip Management ---
-
-            function getQuadrantFromAngle(angle) {
-                if (angle >= 0 && angle < 90) return quadrants[0];
-                if (angle >= 90 && angle < 180) return quadrants[1];
-                if (angle >= 180 && angle < 270) return quadrants[2];
-                return quadrants[3];
-            }
-
-            function getRingFromRadius(radius) {
-                if (radius <= 25) return rings[0];
-                if (radius <= 50) return rings[1];
-                if (radius <= 75) return rings[2];
-                return rings[3];
-            }
-            
-            function getBlipColor(radius, type='tailwind') {
-                const ring = getRingFromRadius(radius);
-                const colors = {
-                    'Adopt':  { tailwind: 'bg-green-500', hex: '#22c55e' },
-                    'Trial':  { tailwind: 'bg-blue-500',   hex: '#3b82f6' },
-                    'Assess': { tailwind: 'bg-yellow-500', hex: '#eab308' },
-                    'Hold':   { tailwind: 'bg-red-500',    hex: '#ef4444' }
-                };
-                return colors[ring][type] || { tailwind: 'bg-gray-500', hex: '#6b7280' };
-            }
-            
-            function renderBlips() {
-                // Clear existing blip elements
-                radarContainer.querySelectorAll('.blip').forEach(b => b.remove());
-                
-                const center = canvasSize / 2;
-
-                blips.forEach((blip) => {
-                    const angleRad = (blip.angle - 90) * (Math.PI / 180); // Adjust for canvas coordinates
-                    const blipRadius = (blip.radius / 100) * center;
-
-                    const x = center + blipRadius * Math.cos(angleRad);
-                    const y = center + blipRadius * Math.sin(angleRad);
-
-                    const blipElement = document.createElement('div');
-                    blipElement.className = `blip ${getBlipColor(blip.radius, 'tailwind')}`;
-                    blipElement.style.left = `${x - 10}px`; // center the blip
-                    blipElement.style.top = `${y - 10}px`; // center the blip
-                    blipElement.dataset.id = blip.id;
-                    
-                    if (selectedBlip && blip.id === selectedBlip.id) {
-                        blipElement.classList.add('selected');
-                    }
-
-                    blipElement.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectBlip(blip);
-                    });
-                    radarContainer.appendChild(blipElement);
-                });
-            }
-
-            function updateBlipsList() {
-                if (blips.length === 0) {
-                    blipsList.innerHTML = '<p class="text-gray-500">No blips created yet. Add one using the editor!</p>';
-                    return;
-                }
-
-                blipsList.innerHTML = '';
-                // Create a sorted copy of blips by name for the list
-                [...blips].sort((a, b) => a.name.localeCompare(b.name)).forEach((blip) => {
-                    const listItem = document.createElement('div');
-                    const isSelected = selectedBlip && blip.id === selectedBlip.id;
-                    listItem.className = `p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-indigo-100 border border-indigo-500' : 'bg-gray-50 hover:bg-gray-200'}`;
-                    listItem.innerHTML = `
-                        <div class="font-semibold text-gray-800">${blip.name}</div>
-                        <div class="text-sm text-gray-600">
-                            ${getQuadrantFromAngle(blip.angle)} / ${getRingFromRadius(blip.radius)}
-                        </div>
-                    `;
-                    listItem.addEventListener('click', () => {
-                         selectBlip(blip);
-                    });
-                    blipsList.appendChild(listItem);
-                });
-            }
-
-            function selectBlip(blip) {
-                selectedBlip = blip;
-                
-                blipForm['blip-name'].value = blip.name;
-                blipForm['blip-date'].value = blip.date;
-                blipForm['blip-radius'].value = blip.radius;
-                blipForm['blip-angle'].value = blip.angle;
-                blipForm['blip-quadrant'].value = blip.quadrant;
-                blipForm['blip-overview'].value = blip.overview;
-
-                renderBlips();
-                updateBlipsList();
-            }
-            
-            function clearForm() {
-                blipForm.reset();
-                selectedBlip = null;
-                blipForm['blip-name'].focus();
-                renderBlips();
-                updateBlipsList();
-            }
-            
-            function showToast(message) {
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }
-
-            // --- Event Listeners ---
-
-            blipForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(blipForm);
-                const blipData = {
-                    id: selectedBlip ? selectedBlip.id : Date.now(),
-                    name: formData.get('blip-name'),
-                    date: formData.get('blip-date'),
-                    radius: parseInt(formData.get('blip-radius')),
-                    angle: parseInt(formData.get('blip-angle')),
-                    quadrant: formData.get('blip-quadrant'),
-                    overview: formData.get('blip-overview')
-                };
-
-                if (selectedBlip) {
-                    // Update existing blip
-                    const index = blips.findIndex(b => b.id === selectedBlip.id);
-                    blips[index] = blipData;
-                } else {
-                    // Add new blip
-                    blips.push(blipData);
-                }
-                selectBlip(blipData); // Select the newly created/updated blip
-            });
-
-            addNewBlipBtn.addEventListener('click', clearForm);
-
-            deleteBlipBtn.addEventListener('click', () => {
-                if (!selectedBlip) {
-                    showToast('Please select a blip to delete.');
-                    return;
-                }
-                blips = blips.filter(b => b.id !== selectedBlip.id);
-                clearForm();
-            });
-            
-            // --- Export Functionality ---
-
-            function generateSvgContent() {
-                const center = canvasSize / 2;
-                let svg = `<svg width="${canvasSize}" height="${canvasSize}" xmlns="http://www.w3.org/2000/svg" style="font-family: Inter, sans-serif; background-color: white;">`;
-
-                // Draw rings and labels
-                rings.forEach((ring, i) => {
-                    const radius = center * ((rings.length - i) / rings.length);
-                    svg += `<circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="1" />`;
-                    svg += `<text x="${center}" y="${center - radius + 15}" text-anchor="middle" font-size="12px" fill="rgba(0,0,0,0.4)">${ring}</text>`;
-                });
-                
-                // Draw quadrant lines and labels
-                svg += `<line x1="${center}" y1="0" x2="${center}" y2="${canvasSize}" stroke="#e2e8f0" stroke-width="1" />`;
-                svg += `<line x1="0" y1="${center}" x2="${canvasSize}" y2="${center}" stroke="#e2e8f0" stroke-width="1" />`;
-                const labelFontSize = canvasSize / 40;
-                svg += `<text x="${center*1.5}" y="${center*0.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[0]}</text>`;
-                svg += `<text x="${center*0.5}" y="${center*0.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[1]}</text>`;
-                svg += `<text x="${center*0.5}" y="${center*1.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[2]}</text>`;
-                svg += `<text x="${center*1.5}" y="${center*1.5}" text-anchor="middle" font-size="${labelFontSize}px" font-weight="bold" fill="rgba(0,0,0,0.6)">${quadrants[3]}</text>`;
-
-                // Draw blips with labels
-                blips.forEach(blip => {
-                    const angleRad = (blip.angle - 90) * (Math.PI / 180);
-                    const blipRadius = (blip.radius / 100) * center;
-                    const x = center + blipRadius * Math.cos(angleRad);
-                    const y = center + blipRadius * Math.sin(angleRad);
-                    const color = getBlipColor(blip.radius, 'hex');
-                    svg += `<circle cx="${x}" cy="${y}" r="8" fill="${color}" stroke="white" stroke-width="1.5" />`;
-                    svg += `<text x="${x + 12}" y="${y + 4}" font-size="10px" fill="#333">${blip.name}</text>`;
-                });
-
-                svg += `</svg>`;
-                return svg;
-            }
-
-            exportSvgBtn.addEventListener('click', () => {
-                const svgContent = generateSvgContent();
-                const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'tech-radar.svg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            });
-
-            exportPngBtn.addEventListener('click', () => {
-                // Create a temporary canvas for high-resolution export
-                const exportCanvas = document.createElement('canvas');
-                const exportSize = Math.max(1200, canvasSize * 2); // Ensure high resolution
-                exportCanvas.width = exportSize;
-                exportCanvas.height = exportSize;
-                const exportCtx = exportCanvas.getContext('2d');
-                const center = exportSize / 2;
-                const originalCanvasSize = canvasSize; // Save original size
-                canvasSize = exportSize; // Temporarily set to export size for calculations
-
-                // Draw the base radar on the export canvas
-                drawRadar(exportCtx);
-
-                // Draw blips as circles on the export canvas
-                blips.forEach(blip => {
-                    const angleRad = (blip.angle - 90) * (Math.PI / 180);
-                    const blipRadius = (blip.radius / 100) * center;
-                    const x = center + blipRadius * Math.cos(angleRad);
-                    const y = center + blipRadius * Math.sin(angleRad);
-                    
-                    exportCtx.beginPath();
-                    exportCtx.arc(x, y, 8, 0, 2 * Math.PI);
-                    exportCtx.fillStyle = getBlipColor(blip.radius, 'hex');
-                    exportCtx.fill();
-                    exportCtx.strokeStyle = 'white';
-                    exportCtx.lineWidth = 2;
-                    exportCtx.stroke();
-                    
-                    // Draw blip labels
-                    exportCtx.fillStyle = '#333';
-                    exportCtx.font = '12px Inter';
-                    exportCtx.textAlign = 'left';
-                    exportCtx.textBaseline = 'middle';
-                    exportCtx.fillText(blip.name, x + 12, y);
-                });
-
-                // Restore original canvas size
-                canvasSize = originalCanvasSize; 
-
-                // Trigger download
-                const a = document.createElement('a');
-                a.href = exportCanvas.toDataURL('image/png');
-                a.download = 'tech-radar.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-            
-            // --- Initialization ---
-
-            window.addEventListener('resize', resizeCanvas);
-            loadSampleData();
-            resizeCanvas(); // Initial draw
-            clearForm(); // Start with a clean form
+        let currentLang = 'en';
+        const langToggleBtn = document.getElementById('lang-toggle-btn');
+        langToggleBtn.addEventListener('click', () => {
+            currentLang = (currentLang === 'en') ? 'fr' : 'en';
+            langToggleBtn.textContent = currentLang.toUpperCase();
+            applyTranslations();
         });
+
+        const applyTranslations = () => {
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) el.textContent = i18n[currentLang][key];
+            });
+            updateStatusLegend(); populateSelects(); renderBlipsList(); updateRadarMeta();
+        };
+
+        let radarData = {};
+        let selectedBlipId = null;
+
+        const defaultRadarData = {
+            title: "Technology Radar", author: "Innovation Team", version: "2025.1",
+            created: new Date().toISOString().slice(0, 10), modified: new Date().toISOString().slice(0, 10),
+            quadrants: ["Techniques", "Tools", "Platforms", "Languages & Frameworks"],
+            rings: ["Adopt", "Trial", "Assess", "Hold"],
+            statusSymbols: { "🆕": "new", "🔄": "changed", "⛔": "deprecated" },
+            blips: [{
+                id: 1, name: "WebAssembly", quadrant: "Platforms", ring: "Assess", status: "🆕",
+                description: "High-performance client modules", r: 62.5, angle: 200,
+                commentary: "Showing great promise for performance-critical web tasks.", firstAppeared: "2023.2",
+                movement: "New in Assess", tags: "web, performance", riskLevel: "Medium", license: "W3C Standard",
+                owner: "Frontend Guild", resources: "https://webassembly.org/"
+            }]
+        };
+
+        const loadRadarData = (data) => {
+            radarData = data; selectedBlipId = null; updateUIAfterDataLoad();
+        };
+
+        const updateUIAfterDataLoad = () => {
+            updateRadarMeta(); populateSelects(); clearForm(); drawRadar(); renderBlipsList(); applyTranslations();
+        };
+        
+        const updateRadarMeta = () => {
+            document.getElementById('radar-title').textContent = radarData.title || i18n[currentLang].untitledRadar;
+            document.getElementById('app-meta').textContent = `Version ${radarData.version || ''} by ${radarData.author || ''}`;
+        };
+
+        const radarTitleEl = document.getElementById('radar-title');
+        radarTitleEl.addEventListener('blur', () => { radarData.title = radarTitleEl.textContent; });
+        radarTitleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); radarTitleEl.blur(); }});
+
+        const radarContainer = document.getElementById('radar-container');
+        const radarSVG = document.getElementById('radar-svg');
+        const blipForm = document.getElementById('blip-form');
+        const blipsList = document.getElementById('blips-list');
+        const tooltip = document.getElementById('blip-tooltip');
+
+        const formInputs = {
+            name: document.getElementById('blip-name'), quadrant: document.getElementById('blip-quadrant'),
+            ring: document.getElementById('blip-ring'), description: document.getElementById('blip-description'),
+            status: document.getElementById('blip-status'), commentary: document.getElementById('blip-commentary'),
+            firstAppeared: document.getElementById('blip-firstAppeared'), movement: document.getElementById('blip-movement'),
+            tags: document.getElementById('blip-tags'), riskLevel: document.getElementById('blip-riskLevel'),
+            license: document.getElementById('blip-license'), owner: document.getElementById('blip-owner'),
+            resources: document.getElementById('blip-resources'),
+        };
+        
+        const drawRadar = () => {
+            const size = radarSVG.clientWidth; if (size === 0) return;
+            const center = size / 2; radarSVG.innerHTML = '';
+
+            radarData.rings.forEach((ring, i) => {
+                const radius = center * ((radarData.rings.length - i) / radarData.rings.length);
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+                circle.setAttribute('cx', center); circle.setAttribute('cy', center); circle.setAttribute('r', radius);
+                circle.setAttribute('class', 'ring'); radarSVG.appendChild(circle);
+                
+                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
+                label.setAttribute('x', center); label.setAttribute('y', center - radius + 15);
+                label.setAttribute('class', 'ring-label'); label.textContent = ring; radarSVG.appendChild(label);
+            });
+
+            const lines = [[center, 0, center, size], [0, center, size, center]];
+            lines.forEach(l => {
+                const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
+                line.setAttribute('x1', l[0]); line.setAttribute('y1', l[1]); line.setAttribute('x2', l[2]); line.setAttribute('y2', l[3]);
+                line.setAttribute('class', 'quadrant-line'); radarSVG.appendChild(line);
+            });
+
+            const labelPositions = [
+                { x: center * 1.5, y: center * 0.5 }, { x: center * 0.5, y: center * 0.5 },
+                { x: center * 0.5, y: center * 1.5 }, { x: center * 1.5, y: center * 1.5 }
+            ];
+            radarData.quadrants.forEach((quadrant, i) => {
+                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
+                label.setAttribute('x', labelPositions[i].x); label.setAttribute('y', labelPositions[i].y);
+                label.setAttribute('class', 'quadrant-label'); label.textContent = quadrant; radarSVG.appendChild(label);
+            });
+
+            const blipsGroup = document.createElementNS("http://www.w3.org/2000/svg", 'g');
+            blipsGroup.id = 'blips-group'; radarSVG.appendChild(blipsGroup);
+            renderBlipsOnRadar();
+        };
+
+        const renderBlipsOnRadar = () => {
+            const blipsGroup = document.getElementById('blips-group'); if (!blipsGroup) return;
+            blipsGroup.innerHTML = '';
+            const size = radarSVG.clientWidth; const center = size / 2;
+
+            radarData.blips.forEach(blip => {
+                const angleRad = (blip.angle - 90) * (Math.PI / 180);
+                const radius = (blip.r / 100) * center;
+                const x = center + radius * Math.cos(angleRad); const y = center + radius * Math.sin(angleRad);
+                
+                const g = document.createElementNS("http://www.w3.org/2000/svg", 'g');
+                g.setAttribute('transform', `translate(${x}, ${y})`); g.dataset.blipId = blip.id;
+
+                const dot = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+                dot.setAttribute('r', 7); dot.setAttribute('fill', getStatusColor(blip.status));
+                dot.setAttribute('class', 'blip-dot');
+                if (blip.id === selectedBlipId) dot.classList.add('selected');
+                g.appendChild(dot);
+
+                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
+                label.setAttribute('x', 12); label.setAttribute('y', 4);
+                label.setAttribute('class', 'blip-label'); label.textContent = blip.status + ' ' + blip.name;
+                g.appendChild(label);
+
+                g.addEventListener('click', () => selectBlip(blip.id));
+                g.addEventListener('mouseover', (e) => showTooltip(e, blip));
+                g.addEventListener('mouseout', hideTooltip);
+                blipsGroup.appendChild(g);
+            });
+        };
+        
+        const getStatusColor = (status) => {
+            const statusIndex = Object.keys(radarData.statusSymbols).indexOf(status);
+            const colors = ['#3b82f6', '#f97316', '#71717a'];
+            return colors[statusIndex] || '#cccccc';
+        };
+        
+        const populateSelects = () => {
+            const populate = (select, options) => {
+                const currentVal = select.value; select.innerHTML = '';
+                options.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option; opt.textContent = option; select.appendChild(opt);
+                });
+                select.value = currentVal;
+            };
+            populate(formInputs.quadrant, radarData.quadrants);
+            populate(formInputs.ring, radarData.rings);
+            
+            const currentStatus = formInputs.status.value; formInputs.status.innerHTML = '';
+            Object.entries(radarData.statusSymbols).forEach(([symbol, nameKey]) => {
+                const opt = document.createElement('option');
+                opt.value = symbol; opt.textContent = `${symbol} ${i18n[currentLang][nameKey]}`;
+                formInputs.status.appendChild(opt);
+            });
+            formInputs.status.value = currentStatus;
+        };
+
+        const selectBlip = (id) => {
+            selectedBlipId = id;
+            const blip = radarData.blips.find(b => b.id === id);
+            if (blip) {
+                Object.keys(formInputs).forEach(key => {
+                    if (blip[key] !== undefined) formInputs[key].value = blip[key]; else formInputs[key].value = '';
+                });
+            }
+            renderBlipsOnRadar(); renderBlipsList();
+        };
+        
+        const clearForm = () => {
+            blipForm.reset(); selectedBlipId = null; formInputs.name.focus();
+            renderBlipsOnRadar(); renderBlipsList();
+        };
+
+        blipForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ringIndex = radarData.rings.indexOf(formInputs.ring.value);
+            const quadrantIndex = radarData.quadrants.indexOf(formInputs.quadrant.value);
+            
+            const blipData = {
+                r: (ringIndex * 25) + 12.5,
+                angle: (quadrantIndex * 90) + 45,
+            };
+            Object.keys(formInputs).forEach(key => { blipData[key] = formInputs[key].value; });
+
+            if (selectedBlipId) {
+                const index = radarData.blips.findIndex(b => b.id === selectedBlipId);
+                radarData.blips[index] = { ...radarData.blips[index], ...blipData };
+            } else {
+                blipData.id = Date.now(); radarData.blips.push(blipData); selectedBlipId = blipData.id;
+            }
+            radarData.modified = new Date().toISOString().slice(0, 10);
+            updateRadarMeta(); drawRadar(); renderBlipsList();
+        });
+
+        document.getElementById('new-blip-btn').addEventListener('click', clearForm);
+        document.getElementById('delete-blip-btn').addEventListener('click', () => {
+            if (!selectedBlipId) return;
+            if (confirm(i18n[currentLang].confirmDelete)) {
+                radarData.blips = radarData.blips.filter(b => b.id !== selectedBlipId);
+                clearForm(); drawRadar(); renderBlipsList();
+            }
+        });
+
+        const renderBlipsList = () => {
+            blipsList.innerHTML = '';
+            radarData.blips.sort((a,b) => a.name.localeCompare(b.name)).forEach(blip => {
+                const li = document.createElement('li');
+                li.dataset.blipId = blip.id;
+                if(blip.id === selectedBlipId) li.className = 'selected';
+                li.innerHTML = `
+                    <div class="blip-item-name">${blip.status} ${blip.name}</div>
+                    <div class="blip-item-description">${blip.description || ''}</div>
+                    <div class="blip-item-meta">${blip.quadrant} / ${blip.ring}</div>`;
+                li.addEventListener('click', () => selectBlip(blip.id));
+                blipsList.appendChild(li);
+            });
+        };
+        
+        const updateStatusLegend = () => {
+            const legendContent = document.getElementById('status-legend-content'); legendContent.innerHTML = '';
+            Object.entries(radarData.statusSymbols).forEach(([symbol, nameKey]) => {
+                const div = document.createElement('div'); div.className = 'legend-item';
+                div.innerHTML = `<span style="color: ${getStatusColor(symbol)}; font-size: 1.5rem; line-height: 1;">${symbol}</span> <span>${i18n[currentLang][nameKey]}</span>`;
+                legendContent.appendChild(div);
+            });
+        };
+        
+        const showTooltip = (e, blip) => {
+            tooltip.innerHTML = `<strong>${blip.name}</strong><br>${blip.description}`;
+            tooltip.style.opacity = 1;
+            const containerRect = radarContainer.getBoundingClientRect();
+            tooltip.style.left = `${e.clientX - containerRect.left + 15}px`;
+            tooltip.style.top = `${e.clientY - containerRect.top + 15}px`;
+        };
+        const hideTooltip = () => { tooltip.style.opacity = 0; };
+        
+        const downloadFile = (content, fileName, contentType) => {
+            const a = document.createElement("a");
+            const file = new Blob([content], {type: contentType});
+            a.href = URL.createObjectURL(file); a.download = fileName; a.click(); URL.revokeObjectURL(a.href);
+        };
+
+        const jsonFileInput = document.getElementById('json-file-input');
+        document.getElementById('import-json-btn').addEventListener('click', () => jsonFileInput.click());
+        jsonFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try { loadRadarData(JSON.parse(event.target.result)); } 
+                catch (err) { alert('Error parsing JSON file.'); }
+            };
+            reader.readAsText(file);
+        });
+        document.getElementById('export-json-btn').addEventListener('click', () => {
+            downloadFile(JSON.stringify(radarData, null, 2), 'tech-radar.json', 'application/json');
+        });
+        
+        const csvFileInput = document.getElementById('csv-file-input');
+        document.getElementById('import-csv-btn').addEventListener('click', () => csvFileInput.click());
+        const CSV_HEADER = ["id", "name","quadrant","ring","status","description", "r", "angle", "commentary", "firstAppeared", "movement", "tags", "riskLevel", "license", "owner", "resources"];
+        
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            const escapeCSV = (val) => {
+                if (val === null || val === undefined) return '';
+                let str = String(val);
+                if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+                    str = '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            };
+            const rows = radarData.blips.map(blip => CSV_HEADER.map(field => escapeCSV(blip[field])).join(','));
+            const csvContent = [CSV_HEADER.map(h => `"${h}"`).join(','), ...rows].join('\n');
+            downloadFile(csvContent, 'tech-radar.csv', 'text/csv;charset=utf-8;');
+        });
+
+        const parseCSV = (text) => {
+            const re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
+            const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
+            if (!re_valid.test(text)) return null; const a = [];
+            text.replace(re_value, (m0, m1, m2, m3) => {
+                if (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+                else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+                else if (m3 !== undefined) a.push(m3);
+                return '';
+            });
+            if (/,\s*$/.test(text)) a.push(''); return a;
+        };
+
+        csvFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const lines = event.target.result.trim().split('\n');
+                    const header = parseCSV(lines.shift()); if(!header) throw new Error("Invalid header format");
+                    
+                    const newBlips = lines.map((line, index) => {
+                        const values = parseCSV(line); if(!values) return null;
+                        const blip = {}; header.forEach((key, i) => { blip[key] = values[i]; });
+                        
+                        return { ...blip, id: blip.id ? parseInt(blip.id) : Date.now() + index,
+                            r: parseFloat(blip.r), angle: parseFloat(blip.angle) };
+                    }).filter(Boolean);
+
+                    radarData.blips = newBlips; updateUIAfterDataLoad();
+                } catch (err) { console.error("CSV Parsing Error:", err); alert(i18n[currentLang].csvParseError); }
+            };
+            reader.readAsText(file); e.target.value = '';
+        });
+
+        document.getElementById('export-svg-btn').addEventListener('click', () => {
+            const svgData = new XMLSerializer().serializeToString(radarSVG);
+            downloadFile(svgData, 'tech-radar.svg', 'image/svg+xml;charset=utf-8');
+        });
+        document.getElementById('export-png-btn').addEventListener('click', () => {
+            const svgData = new XMLSerializer().serializeToString(radarSVG);
+            const canvas = document.createElement('canvas'); const size = radarSVG.clientWidth;
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d'); const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0); const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png'); a.download = 'tech-radar.png'; a.click();
+            };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        });
+
+        loadRadarData(defaultRadarData);
+        const resizeObserver = new ResizeObserver(() => drawRadar());
+        resizeObserver.observe(radarContainer);
+    });
     </script>
 </body>
 </html>
