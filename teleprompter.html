@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleprompter</title>
+    <style>
+        :root {
+            --background-color: #ffffff;
+            --text-color: #212529;
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --secondary-color: #6c757d;
+            --secondary-hover-color: #5a6268;
+            --control-bg-color: #f8f9fa;
+            --border-color: #dee2e6;
+            --note-color: #6c757d;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode {
+            --background-color: #121212;
+            --text-color: #e0e0e0;
+            --primary-color: #bb86fc;
+            --primary-hover-color: #985eff;
+            --secondary-color: #03dac6;
+            --secondary-hover-color: #01bfa5;
+            --control-bg-color: #1e1e1e;
+            --border-color: #444;
+            --note-color: #a0a0a0;
+            --shadow-color: rgba(255, 255, 255, 0.1);
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #teleprompter-container {
+            flex-grow: 1;
+            overflow-y: scroll;
+            scroll-behavior: smooth;
+            padding: 5vh 10vw;
+            font-size: 5vmin; 
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .script-line {
+            margin-bottom: 1em;
+            transition: opacity 0.3s, font-weight 0.3s;
+        }
+
+        .script-text {
+            display: block;
+        }
+
+        .script-note {
+            display: none;
+            font-style: italic;
+            opacity: 0.7;
+            font-size: 0.8em;
+            color: var(--note-color);
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            background-color: var(--control-bg-color);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 5px var(--shadow-color);
+            gap: 0.5rem;
+        }
+
+        .control-button, .file-input-wrapper label {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-button.secondary {
+             background-color: var(--secondary-color);
+        }
+
+        .control-button:hover, .file-input-wrapper label:hover {
+            background-color: var(--primary-hover-color);
+        }
+        
+        .control-button.secondary:hover {
+            background-color: var(--secondary-hover-color);
+        }
+
+        .control-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #speed-value {
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--background-color);
+            margin: auto;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            width: 80%;
+            max-width: 900px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+        }
+        
+        .modal-header {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             border-bottom: 1px solid var(--border-color);
+             padding-bottom: 10px;
+             margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close-button {
+            color: var(--text-color);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        #editor-table-container {
+            overflow-y: auto;
+        }
+
+        #script-editor-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #script-editor-table th, #script-editor-table td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: left;
+        }
+        
+        #script-editor-table th {
+            background-color: var(--control-bg-color);
+        }
+
+        #script-editor-table input, #script-editor-table textarea {
+            width: 100%;
+            box-sizing: border-box;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        .action-cell {
+            text-align: center;
+        }
+
+        .action-button {
+             background: none;
+             border: none;
+             cursor: pointer;
+             font-size: 1.2rem;
+             color: var(--primary-color);
+        }
+
+        .action-button:hover {
+            color: var(--primary-hover-color);
+        }
+        
+        .modal-footer {
+            padding-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            #controls {
+                flex-direction: column;
+            }
+            #teleprompter-container {
+                padding: 2vh 5vw;
+                font-size: 6vmin;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="teleprompter-container">
+        <div id="teleprompter-text">
+            <!-- Script lines will be injected here -->
+            <div class="script-line" data-time="0">
+                <span class="script-text">Welcome to the Teleprompter.</span>
+                <span class="script-note">Start by importing a script.</span>
+            </div>
+            <div class="script-line" data-time="5">
+                <span class="script-text">Use the controls below to play, pause, and navigate.</span>
+                <span class="script-note">Explain the controls.</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="play-pause-btn" class="control-button">▶ Play</button>
+        <button id="rewind-btn" class="control-button">« 10s</button>
+        <button id="ff-btn" class="control-button">10s »</button>
+        <button id="prev-mark-btn" class="control-button">↑ Prev</button>
+        <button id="next-mark-btn" class="control-button">Next ↓</button>
+        <div id="speed-control">
+            <label for="speed-slider">Speed:</label>
+            <input type="range" id="speed-slider" min="0.1" max="2" value="1" step="0.1">
+            <span id="speed-value">1.0x</span>
+        </div>
+        <button id="edit-script-btn" class="control-button">✎ Edit</button>
+        <div class="file-input-wrapper">
+            <input type="file" id="import-csv" accept=".csv">
+            <label for="import-csv" class="control-button">📥 Import</label>
+        </div>
+        <button id="export-csv-btn" class="control-button">📤 Export</button>
+        <button id="fullscreen-btn" class="control-button">⛶ Fullscreen</button>
+        <button id="toggle-notes-btn" class="control-button">Show Notes</button>
+        <button id="demo-script-btn" class="control-button secondary">🎬 Demo Script</button>
+        <button id="toggle-theme-btn" class="control-button">🌙</button>
+    </div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Script Editor</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div id="editor-table-container">
+                <table id="script-editor-table">
+                    <thead>
+                        <tr>
+                            <th>Time (HH:MM:SS)</th>
+                            <th>Script Line</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Script editor rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                 <button id="add-row-btn" class="control-button">+ Add Line</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const teleprompterContainer = document.getElementById('teleprompter-container');
+            const teleprompterText = document.getElementById('teleprompter-text');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const rewindBtn = document.getElementById('rewind-btn');
+            const ffBtn = document.getElementById('ff-btn');
+            const prevMarkBtn = document.getElementById('prev-mark-btn');
+            const nextMarkBtn = document.getElementById('next-mark-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const speedValue = document.getElementById('speed-value');
+            const editScriptBtn = document.getElementById('edit-script-btn');
+            const importCsvInput = document.getElementById('import-csv');
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const toggleNotesBtn = document.getElementById('toggle-notes-btn');
+            const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+            const demoScriptBtn = document.getElementById('demo-script-btn');
+            const modal = document.getElementById('modal');
+            const closeModalBtn = document.querySelector('.close-button');
+            const scriptEditorTableBody = document.querySelector('#script-editor-table tbody');
+            const addRowBtn = document.getElementById('add-row-btn');
+
+            // State
+            let script = [];
+            let isPlaying = false;
+            let scrollSpeed = 1; // pixels per frame
+            let animationFrameId;
+            let totalTime = 0;
+            let currentTime = 0;
+            let showNotes = false;
+
+            // --- Core Teleprompter Logic ---
+
+            function startScrolling() {
+                if (isPlaying) return;
+                isPlaying = true;
+                playPauseBtn.textContent = '❚❚ Pause';
+                scrollLoop();
+            }
+
+            function stopScrolling() {
+                if (!isPlaying) return;
+                isPlaying = false;
+                playPauseBtn.textContent = '▶ Play';
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            function togglePlayPause() {
+                if (isPlaying) {
+                    stopScrolling();
+                } else {
+                    startScrolling();
+                }
+            }
+
+            function scrollLoop() {
+                const scrollAmount = scrollSpeed * (parseFloat(speedSlider.value) || 1);
+                teleprompterContainer.scrollTop += scrollAmount;
+                
+                updateCurrentTimeFromScroll();
+                
+                if (teleprompterContainer.scrollTop + teleprompterContainer.clientHeight >= teleprompterContainer.scrollHeight - 5) {
+                    stopScrolling();
+                    teleprompterContainer.scrollTop = teleprompterContainer.scrollHeight;
+                } else {
+                    animationFrameId = requestAnimationFrame(scrollLoop);
+                }
+            }
+            
+            function updateCurrentTimeFromScroll() {
+                const containerHeight = teleprompterContainer.clientHeight;
+                const scrollPos = teleprompterContainer.scrollTop + (containerHeight / 2); 
+                
+                let cumulativeHeight = 0;
+                for(let i = 0; i < teleprompterText.children.length; i++) {
+                    const lineEl = teleprompterText.children[i];
+                    cumulativeHeight += lineEl.offsetHeight;
+                    if(cumulativeHeight >= scrollPos) {
+                        const time = parseFloat(lineEl.dataset.time);
+                        if (currentTime !== time) {
+                           currentTime = time;
+                           highlightCurrentLine(lineEl);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            function highlightCurrentLine(currentLineEl) {
+                document.querySelectorAll('.script-line').forEach(el => {
+                    el.style.fontWeight = 'normal';
+                    el.style.opacity = '0.7';
+                });
+                if (currentLineEl) {
+                     currentLineEl.style.fontWeight = 'bold';
+                     currentLineEl.style.opacity = '1';
+                }
+            }
+
+            function jumpTime(seconds) {
+                const newTime = Math.max(0, currentTime + seconds);
+                scrollToTime(newTime);
+            }
+
+            function scrollToTime(time) {
+                currentTime = time;
+                let targetLine = script.length > 0 ? script[0] : null;
+                for (const line of script) {
+                    if (line.time <= time) {
+                        targetLine = line;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (!targetLine) return;
+
+                // Find the first element with that exact time, as multiple lines can share a timestamp
+                const lineElement = document.querySelector(`.script-line[data-time="${targetLine.time}"]`);
+                if (lineElement) {
+                    const containerHeight = teleprompterContainer.clientHeight;
+                    const targetScrollTop = lineElement.offsetTop - (containerHeight / 2) + (lineElement.offsetHeight / 2);
+                    teleprompterContainer.scrollTop = targetScrollTop;
+                    highlightCurrentLine(lineElement);
+                }
+            }
+
+            function navigateToMarker(direction) {
+                const timestamps = [...new Set(script.map(line => line.time))].sort((a,b) => a - b);
+                if (timestamps.length === 0) return;
+
+                const currentMarkerIndex = timestamps.findIndex(t => t >= currentTime);
+
+                let nextMarkerIndex;
+
+                if (direction === 'next') {
+                    if (currentMarkerIndex !== -1 && timestamps[currentMarkerIndex] > currentTime) {
+                        nextMarkerIndex = currentMarkerIndex;
+                    } else {
+                        nextMarkerIndex = currentMarkerIndex + 1;
+                    }
+                    if (nextMarkerIndex >= timestamps.length) {
+                        nextMarkerIndex = timestamps.length - 1;
+                    }
+                } else { // 'prev'
+                    const firstVisibleTime = timestamps.find(t => t >= currentTime);
+                    if (currentMarkerIndex !== -1 && firstVisibleTime === currentTime) {
+                         nextMarkerIndex = currentMarkerIndex -1;
+                    } else {
+                         nextMarkerIndex = currentMarkerIndex !== -1 ? currentMarkerIndex - 1 : timestamps.length -1;
+                    }
+                    if (nextMarkerIndex < 0) {
+                         nextMarkerIndex = 0;
+                    }
+                }
+                
+                if(timestamps[nextMarkerIndex] !== undefined) {
+                    scrollToTime(timestamps[nextMarkerIndex]);
+                }
+            }
+
+
+            // --- Script Management ---
+
+            function parseTimeToSeconds(timeStr) {
+                const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+                if (!timeRegex.test(timeStr)) return 0;
+                const parts = timeStr.split(':').map(Number);
+                return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            }
+
+            function formatSecondsToTime(totalSeconds) {
+                totalSeconds = Math.round(totalSeconds);
+                const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+                const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+                const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+                return `${hours}:${minutes}:${seconds}`;
+            }
+
+            function loadScript(data) {
+                stopScrolling();
+                data.sort((a, b) => a.time - b.time);
+                script = data;
+                
+                renderTeleprompter();
+                renderEditor();
+                
+                if (script.length > 0) {
+                    totalTime = script[script.length - 1].time;
+                    scrollToTime(0);
+                } else {
+                    totalTime = 0;
+                    currentTime = 0;
+                }
+                saveToLocalStorage();
+            }
+
+            function renderTeleprompter() {
+                teleprompterText.innerHTML = '';
+                if (script.length === 0) {
+                    teleprompterText.innerHTML = '<div class="script-line" data-time="0"><span class="script-text">Script is empty. Import or edit the script.</span></div>';
+                    return;
+                }
+                script.forEach(line => {
+                    const lineEl = document.createElement('div');
+                    lineEl.className = 'script-line';
+                    lineEl.dataset.time = line.time;
+                    
+                    const textEl = document.createElement('span');
+                    textEl.className = 'script-text';
+                    textEl.textContent = line.text;
+
+                    const noteEl = document.createElement('span');
+                    noteEl.className = 'script-note';
+                    noteEl.textContent = line.note;
+                    noteEl.style.display = showNotes ? 'block' : 'none';
+
+                    lineEl.appendChild(textEl);
+                    lineEl.appendChild(noteEl);
+                    teleprompterText.appendChild(lineEl);
+                });
+                scrollToTime(currentTime);
+            }
+            
+            function handleImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    try {
+                        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                        const header = lines.shift(); // remove header
+                        const newScript = lines.map((line, index) => {
+                             const parts = line.match(/(?:"[^"]*"|[^,]+)/g).map(field => field.trim().replace(/^"|"$/g, ''));
+                             if (parts.length < 2) throw new Error(`Invalid CSV format on line ${index + 2}`);
+                             
+                             const time = parseTimeToSeconds(parts[0]);
+                             const text = parts[1];
+                             const note = parts[2] || '';
+                             return { time, text, note };
+                        });
+                        loadScript(newScript);
+                        importCsvInput.value = '';
+                    } catch (error) {
+                        alert(`Error parsing CSV: ${error.message}`);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            function handleExport() {
+                if (script.length === 0) {
+                    alert("Script is empty, nothing to export.");
+                    return;
+                }
+
+                let csvContent = '"Time (HH:MM:SS)","Script Line","Notes"\n';
+                script.forEach(line => {
+                    const timeStr = formatSecondsToTime(line.time);
+                    const text = `"${line.text.replace(/"/g, '""')}"`;
+                    const note = `"${(line.note || '').replace(/"/g, '""')}"`;
+                    csvContent += [timeStr, text, note].join(',') + '\n';
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "teleprompter_script.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // --- Editor Modal Logic ---
+
+            function openEditor() {
+                renderEditor();
+                modal.style.display = 'flex';
+            }
+
+            function closeEditor() {
+                modal.style.display = 'none';
+            }
+            
+            function renderEditor() {
+                scriptEditorTableBody.innerHTML = '';
+                script.forEach((line, index) => {
+                    const row = scriptEditorTableBody.insertRow();
+                    row.dataset.index = index;
+
+                    const timeCell = row.insertCell(0);
+                    const timeInput = document.createElement('input');
+                    timeInput.type = 'text';
+                    timeInput.value = formatSecondsToTime(line.time);
+                    timeInput.pattern = "([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]";
+                    timeInput.addEventListener('change', (e) => updateScriptFromEditor(index, 'time', parseTimeToSeconds(e.target.value)));
+                    timeCell.appendChild(timeInput);
+
+                    const textCell = row.insertCell(1);
+                    const textInput = document.createElement('textarea');
+                    textInput.value = line.text;
+                    textInput.rows = 2;
+                    textInput.addEventListener('input', (e) => updateScriptFromEditor(index, 'text', e.target.value));
+                    textCell.appendChild(textInput);
+
+                    const noteCell = row.insertCell(2);
+                    const noteInput = document.createElement('textarea');
+                    noteInput.value = line.note;
+                    noteInput.rows = 2;
+                    noteInput.addEventListener('input', (e) => updateScriptFromEditor(index, 'note', e.target.value));
+                    noteCell.appendChild(noteInput);
+                    
+                    const actionCell = row.insertCell(3);
+                    actionCell.className = 'action-cell';
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '🗑️';
+                    deleteBtn.className = 'action-button';
+                    deleteBtn.onclick = () => {
+                        script.splice(index, 1);
+                        loadScript([...script]);
+                    };
+                    actionCell.appendChild(deleteBtn);
+                });
+            }
+
+            function updateScriptFromEditor(index, field, value) {
+                if (script[index]) {
+                    script[index][field] = value;
+                    if(field === 'time') {
+                        loadScript([...script]);
+                    } else {
+                        renderTeleprompter();
+                        saveToLocalStorage();
+                    }
+                }
+            }
+
+            function addNewEditorRow() {
+                const newTime = script.length > 0 ? script[script.length - 1].time + 10 : 0;
+                script.push({ time: newTime, text: 'New line...', note: '' });
+                loadScript([...script]);
+            }
+
+            // --- Other Features ---
+            
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    fullscreenBtn.textContent = 'Exit Fullscreen';
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                        fullscreenBtn.textContent = '⛶ Fullscreen';
+                    }
+                }
+            }
+
+            function toggleTheme() {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+                toggleThemeBtn.textContent = isDark ? '☀️' : '🌙';
+                localStorage.setItem('teleprompterTheme', isDark ? 'dark' : 'light');
+            }
+            
+            function toggleNotesVisibility() {
+                showNotes = !showNotes;
+                document.querySelectorAll('.script-note').forEach(noteEl => {
+                    noteEl.style.display = showNotes ? 'block' : 'none';
+                });
+                toggleNotesBtn.textContent = showNotes ? 'Hide Notes' : 'Show Notes';
+            }
+            
+            function saveToLocalStorage() {
+                 try {
+                     localStorage.setItem('teleprompterScript', JSON.stringify(script));
+                 } catch (e) {
+                     console.error("Could not save to localStorage", e);
+                 }
+            }
+            
+            function loadFromLocalStorage() {
+                const savedScript = localStorage.getItem('teleprompterScript');
+                if (savedScript) {
+                    try {
+                        const parsedScript = JSON.parse(savedScript);
+                        if(Array.isArray(parsedScript) && parsedScript.length > 0) {
+                             loadScript(parsedScript);
+                        } else {
+                            loadDemoScript();
+                        }
+                    } catch (e) {
+                         console.error("Could not parse saved script", e);
+                         loadDemoScript();
+                    }
+                } else {
+                     loadDefaultScript();
+                }
+
+                const savedTheme = localStorage.getItem('teleprompterTheme');
+                if (savedTheme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    toggleThemeBtn.textContent = '☀️';
+                }
+            }
+            
+            function loadDefaultScript() {
+                const defaultScript = [
+                    { time: 0, text: 'Welcome to the Teleprompter.', note: 'Start by importing a script or loading the demo.' },
+                    { time: 5, text: 'Use the controls below to play, pause, and navigate.', note: 'Explain the controls.' }
+                 ];
+                 loadScript(defaultScript);
+            }
+
+            function loadDemoScript() {
+                const demoScript = [
+                    { time: 5, text: "Good morning, everyone. Today, I want to talk about a topic that has reshaped our professional lives: the future of remote work.", note: "Smile, make eye contact" },
+                    { time: 15, text: "Just a few years ago, the idea of a fully remote workforce was a niche concept, reserved for a handful of tech companies.", note: "Gesture to the side, indicating the past" },
+                    { time: 25, text: "But now, it's our new reality. We've traded commutes for more time with our families, and office cubicles for home offices.", note: "Positive, upbeat tone" },
+                    { time: 38, text: "This transition wasn't without its challenges. We had to adapt to new technologies, find new ways to collaborate, and, most importantly, maintain a strong company culture from a distance.", note: "Acknowledge difficulties, be relatable" },
+                    { time: 50, text: "So, what does the future hold? I believe we're moving towards a hybrid model. A flexible approach that combines the best of both worlds.", note: "Shift to future-facing tone" },
+                    { time: 62, text: "The office will become a hub for collaboration, a place for brainstorming sessions, team-building, and critical in-person meetings.", note: "Emphasize 'collaboration'" },
+                    { time: 75, text: "While our homes will remain the space for focused, deep work, allowing us to be more productive and achieve a better work-life balance.", note: "Pause for effect after 'balance'" },
+                    { time: 88, text: "This flexibility is key. It empowers employees to work when and where they are most effective, leading to higher job satisfaction and retention.", note: "Speak with conviction" },
+                    { time: 100, text: "Companies that embrace this change will attract top talent and build resilient, agile teams ready for the challenges of tomorrow.", note: "Strong, confident delivery" },
+                    { time: 112, text: "The future of work is not about where we are, but about what we can achieve together, regardless of location. Thank you.", note: "Conclude with a powerful statement, hold for applause" }
+                ];
+                loadScript(demoScript);
+                if (!showNotes) {
+                    toggleNotesVisibility();
+                }
+            }
+
+
+            // --- Event Listeners ---
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            rewindBtn.addEventListener('click', () => jumpTime(-10));
+            ffBtn.addEventListener('click', () => jumpTime(10));
+            prevMarkBtn.addEventListener('click', () => navigateToMarker('prev'));
+            nextMarkBtn.addEventListener('click', () => navigateToMarker('next'));
+            
+            speedSlider.addEventListener('input', (e) => {
+                speedValue.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+            });
+            
+            editScriptBtn.addEventListener('click', openEditor);
+            closeModalBtn.addEventListener('click', closeEditor);
+            window.addEventListener('click', (e) => {
+                if (e.target == modal) {
+                    closeEditor();
+                }
+            });
+            addRowBtn.addEventListener('click', addNewEditorRow);
+
+            importCsvInput.addEventListener('change', handleImport);
+            exportCsvBtn.addEventListener('click', handleExport);
+            
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            toggleThemeBtn.addEventListener('click', toggleTheme);
+            toggleNotesBtn.addEventListener('click', toggleNotesVisibility);
+            demoScriptBtn.addEventListener('click', loadDemoScript);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (modal.style.display === 'flex' && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+                    return;
+                }
+                
+                switch (e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        togglePlayPause();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        jumpTime(-10);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        jumpTime(10);
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        speedSlider.value = (Math.min(2, parseFloat(speedSlider.value) + 0.1)).toFixed(2);
+                        speedSlider.dispatchEvent(new Event('input'));
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        speedSlider.value = (Math.max(0.1, parseFloat(speedSlider.value) - 0.1)).toFixed(2);
+                        speedSlider.dispatchEvent(new Event('input'));
+                        break;
+                }
+            });
+            
+            // --- Initialization ---
+            loadFromLocalStorage();
+
+        });
+    </script>
+</body>
+</html>
