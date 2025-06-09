@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infographic Persona Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .slide-content {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            will-change: opacity, transform;
+        }
+        .fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .fade-out {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        main::-webkit-scrollbar {
+            width: 8px;
+        }
+        main::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        main::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+            border-radius: 10px;
+            border: 2px solid #f1f5f9;
+        }
+        /* Styles for example mockups */
+        .kpi-box {
+            background-color: #f8fafc; /* slate-50 */
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            text-align: center;
+        }
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b; /* slate-800 */
+        }
+        .kpi-label {
+            font-size: 0.75rem;
+            color: #64748b; /* slate-500 */
+            text-transform: uppercase;
+        }
+        .progress-bar-bg {
+            background-color: #e2e8f0; /* slate-200 */
+            border-radius: 9999px;
+            overflow: hidden;
+            height: 1rem;
+            width: 100%;
+        }
+        .progress-bar-fg {
+            background-color: #2563eb; /* blue-600 */
+            height: 100%;
+            border-radius: 9999px;
+            text-align: center;
+            color: white;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            white-space: nowrap;
+        }
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+        .risk-cell { padding: 0.5rem; border-radius: 0.25rem; }
+        .risk-low { background-color: #dcfce7; color: #166534; }
+        .risk-medium { background-color: #fef08a; color: #854d0e; }
+        .risk-high { background-color: #fee2e2; color: #991b1b; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-container {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        /* Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div class="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col" style="height: 85vh;">
+        <!-- Header -->
+        <header class="bg-gray-800 text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
+            <h1 class="text-xl md:text-2xl font-bold">Infographic Personas & Types</h1>
+            <div id="slide-counter" class="text-sm md:text-base font-medium bg-gray-700 px-3 py-1 rounded-full">Slide 1 / 13</div>
+        </header>
+
+        <!-- Slide Content Area -->
+        <main class="flex-grow p-6 md:p-10 overflow-y-auto relative">
+            <div id="slide-container" class="slide-content">
+                <!-- Dynamic content will be injected here -->
+            </div>
+        </main>
+
+        <!-- Navigation Footer -->
+        <footer class="bg-gray-50 border-t border-gray-200 p-4 flex items-center justify-center space-x-4 shrink-0">
+            <button id="reset-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 focus:ring-4 focus:outline-none focus:ring-gray-300 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
+            <button id="prev-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <button id="next-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+        </footer>
+    </div>
+
+    <!-- Gemini API Modal -->
+    <div id="gemini-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div id="modal-overlay" class="absolute inset-0 bg-black bg-opacity-60"></div>
+        <div id="modal-container" class="bg-white rounded-xl shadow-2xl w-11/12 max-w-2xl z-10 transform scale-95 opacity-0">
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-800">✨ Gemini AI Assistant</h3>
+                    <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600">&times;</button>
+                </div>
+                <div id="modal-content" class="mt-4 text-gray-600 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Loading spinner -->
+                    <div id="modal-loader" class="flex justify-center items-center py-10">
+                        <div class="loader"></div>
+                    </div>
+                    <!-- Generated content will appear here -->
+                    <div id="modal-text" class="whitespace-pre-wrap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const slidesData = [
+            // Persona 1
+            {
+                persona: "CIO / DG, Digital Strategy and Services",
+                description: "Requires a high-level, strategic overview of the enterprise's digital landscape, focusing on modernization, governance, and enterprise-wide services.",
+                infographics: [
+                    { title: "IT Modernization Roadmap", description: "A strategic, multi-year timeline that visually plots the transition from legacy systems to modern platforms.", exampleHTML: `<div class="p-2 bg-slate-50 rounded"><div class="font-bold text-sm text-slate-700">2025: Foundational Cloud</div><div class="text-xs text-slate-500 pl-2">- Core Infrastructure Migration</div><div class="text-xs text-slate-500 pl-2">- Data Platform Pilot</div><div class="font-bold text-sm text-slate-700 mt-2">2026: Application Modernization</div><div class="text-xs text-slate-500 pl-2">- Refactor Monolithic Apps</div><div class="text-xs text-slate-500 pl-2">- Enterprise API Gateway</div></div>` },
+                    { title: "Digital Services Inventory", description: "A comprehensive catalog of all digital services, categorized by business line, health/status, and technology stack.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value">160+</div><div class="kpi-label">Total Services</div></div><div class="kpi-box"><div class="kpi-value">82%</div><div class="kpi-label">Service Health (Green)</div></div><div class="kpi-box"><div class="kpi-value">45</div><div class="kpi-label">Legacy Tech</div></div><div class="kpi-box"><div class="kpi-value">30%</div><div class="kpi-label">On Cloud</div></div></div>` },
+                    { title: "Enterprise Architecture Overview", description: "A simplified blueprint of the IT ecosystem, illustrating business, application, data, and technology layers.", exampleHTML: `<div class="space-y-1 text-center text-sm font-semibold"><div class="p-2 bg-blue-100 rounded">Business Layer</div><div class="text-xs">▼</div><div class="p-2 bg-green-100 rounded">Application Layer</div><div class="text-xs">▼</div><div class="p-2 bg-amber-100 rounded">Data Layer</div><div class="text-xs">▼</div><div class="p-2 bg-slate-200 rounded">Technology Layer</div></div>` },
+                    { title: "Cloud Migration Status", description: "A dashboard tracking the progress of applications moving to the cloud, featuring key metrics.", exampleHTML: `<div class="space-y-2"><div class="kpi-box"><div class="kpi-value">75%</div><div class="kpi-label">Workloads Migrated</div></div><div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 75%;"></div></div><div class="text-xs text-center text-slate-500">Target: 90% by EOY 2025</div></div>` },
+                    { title: "Interoperability Map", description: "A visual representation of how different systems and services connect and exchange data.", exampleHTML: `<div class="text-center text-sm p-4"><span class="bg-slate-200 p-1 rounded">HR System</span> ↔ <span class="bg-slate-200 p-1 rounded">Finance</span><br>↕<br><span class="bg-blue-200 p-1 rounded font-bold">Data Warehouse</span> ↔ <span class="bg-slate-200 p-1 rounded">BI Tools</span></div>` },
+                    { title: "GC Digital Standards Heatmap", description: "A compliance matrix assessing key projects against the Government of Canada's Digital Standards.", exampleHTML: `<table class="w-full text-xs text-center"><thead><tr class="font-bold"><th>Project</th><th>Design w/ Users</th><th>Use Open Stds</th></tr></thead><tbody><tr class="bg-green-100"><td>Census 2026</td><td>✔</td><td>✔</td></tr><tr class="bg-yellow-100"><td>Project Phoenix</td><td>✔</td><td>In Progress</td></tr><tr class="bg-red-100"><td>Legacy System X</td><td>✘</td><td>✘</td></tr></tbody></table>` },
+                    { title: "Privacy and Data Governance Dashboard", description: "A summary of KPIs related to data management, including privacy compliance and data quality.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value">98%</div><div class="kpi-label">PIA Compliance</div></div><div class="kpi-box"><div class="kpi-value">8.9</div><div class="kpi-label">Data Quality Score</div></div></div>` },
+                    { title: "Cybersecurity Risk Matrix", description: "A risk matrix plotting the likelihood and potential impact of various cybersecurity threats.", exampleHTML: `<div class="risk-matrix"><div class="risk-medium">Phishing</div><div class="risk-high">Ransomware</div><div class="risk-high">Zero-Day</div><div class="risk-low">Insider</div><div class="risk-medium">DDoS</div><div class="risk-low">Physical</div></div>` }
+                ]
+            },
+            // Persona 2
+            {
+                persona: "CTO / Chief Data Architect",
+                description: "Focused on the underlying structure and flow of data and technology. Infographics are more technical and detailed.",
+                infographics: [
+                    { title: "Data Architecture Blueprint", description: "A detailed schematic of data infrastructure, showing data flows, storage, and processing.", exampleHTML: `<div class="text-center text-xs p-2"><span class="bg-slate-200 p-1 rounded">Sources</span> → <span class="bg-blue-200 p-1 rounded">Ingestion Layer (Kafka)</span> → <span class="bg-amber-200 p-1 rounded">Data Lake (S3)</span> → <span class="bg-green-200 p-1 rounded">Processing (Spark)</span> → <span class="bg-indigo-200 p-1 rounded">Data Warehouse</span></div>` },
+                    { title: "Metadata Flow and Standards", description: "A diagram illustrating how metadata is generated, captured, stored, and utilized throughout the data lifecycle.", exampleHTML: `<div class="p-2 text-xs"><div class="font-bold">At Ingestion:</div><div>- Capture source, schema</div><div class="font-bold mt-1">At Processing:</div><div>- Log transformations, quality rules</div><div class="font-bold mt-1">Standard:</div><div>- ISO/IEC 11179</div></div>` },
+                    { title: "Integration/API Diagram", description: "A technical drawing mapping the network of APIs, detailing protocols and data formats.", exampleHTML: `<div class="p-2 text-xs text-center"><div><span class="font-bold">Census API</span> (REST/JSON)</div><div>↕</div><div><span class="font-bold">LFS API</span> (REST/JSON)</div><div>→ <span class="text-slate-500">Internal Apps</span></div></div>` },
+                    { title: "Semantic Interoperability Map", description: "A diagram showing how data meaning is shared between systems, referencing common data models.", exampleHTML: `<div class="p-2 text-xs"><div class="font-bold">Central Ontology:</div><div><span class="bg-slate-200 rounded p-0.5">Person</span>, <span class="bg-slate-200 rounded p-0.5">Household</span></div><div><span class="font-bold mt-2">Systems Mapped:</span> 3/5</div></div>` },
+                    { title: "Data Lineage Tracker", description: "A visual representation tracing data from origin to destination, documenting transformations.", exampleHTML: `<div class="text-xs p-2"><span class="bg-slate-200">Raw Survey</span> → <span class="bg-slate-200">Cleaned</span> → <span class="bg-slate-200">Aggregated</span> → <span class="font-bold bg-green-200">Publication Table</span></div>` },
+                    { title: "Core Platform Overview", description: "An infographic breaking down key components of central data and IT platforms.", exampleHTML: `<div class="grid grid-cols-2 gap-1 text-xs text-center"><div class="bg-blue-100 p-1 rounded">Ingestion</div><div class="bg-blue-100 p-1 rounded">Storage</div><div class="bg-blue-100 p-1 rounded">Compute</div><div class="bg-blue-100 p-1 rounded">Analytics</div></div>` },
+                    { title: "Automation Pipeline Chart", description: "A flowchart visualizing automated workflows like CI/CD pipelines.", exampleHTML: `<div class="text-xs flex justify-between items-center"><span class="bg-green-200 p-1 rounded">Commit</span> > <span class="bg-green-200 p-1 rounded">Build</span> > <span class="bg-green-200 p-1 rounded">Test</span> > <span class="bg-yellow-200 p-1 rounded">Deploy</span></div>` }
+                ]
+            },
+            // Persona 3
+            {
+                persona: "Statistical Analysts, Methodologists, Data Scientists",
+                description: "Require visuals that clarify processes, analytical models, and data quality to ensure methodological soundness.",
+                infographics: [
+                    { title: "Data Lifecycle Infographic", description: "A diagram illustrating the stages of data from collection and processing to analysis and dissemination.", exampleHTML: `<div class="text-sm flex justify-around items-center p-4"><span class="font-bold">Collect</span> → <span class="font-bold">Process</span> → <span class="font-bold">Analyze</span> → <span class="font-bold">Disseminate</span></div>` },
+                    { title: "Statistical Process Flow", description: "A detailed flowchart mapping every step of a statistical program, from design to analysis.", exampleHTML: `<div class="text-xs p-2"><span class="bg-slate-200">Design</span> → <span class="bg-slate-200">Sample</span> → <span class="bg-slate-200">Collect</span> → <span class="bg-slate-200">Validate</span> → <span class="bg-slate-200">Estimate</span> → <span class="bg-slate-200">Analyze</span></div>` },
+                    { title: "Forecast vs Actual Trends", description: "A line graph comparing predicted data trends against actual observed outcomes over time.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs"><div class="font-bold mb-1">Unemployment Rate: Forecast vs. Actual</div><div class="relative h-24"><div class="absolute border-b border-l border-slate-300 bottom-0 left-0 w-full h-full"></div><svg class="absolute w-full h-full" viewBox="0 0 100 60"><polyline fill="none" stroke="#2563eb" stroke-width="2" points="0,50 20,40 40,35 60,30 80,25 100,20" /><polyline fill="none" stroke="#16a34a" stroke-width="2" points="0,52 20,43 40,33 60,35 80,22 100,18" /></svg></div><div class="flex justify-between mt-1"><span class="text-blue-600">■ Actual</span><span class="text-green-600">■ Forecast</span></div></div>` },
+                    { title: "Sampling Frame Diagram", description: "A visual explanation of the population being studied, showing sample construction.", exampleHTML: `<div class="text-xs p-2 text-center"><div class="p-2 border border-slate-400 rounded"><span class="font-bold">Total Population</span><div class="p-2 mt-1 border border-slate-400 border-dashed rounded"><span class="font-bold">Sampling Frame</span><div class="p-2 mt-1 bg-blue-100 rounded">Sample</div></div></div></div>` },
+                    { title: "Machine Learning Model Flow", description: "A diagram showing data flow, feature engineering, the algorithm, and output evaluation.", exampleHTML: `<div class="text-xs p-2"><span class="font-bold">Input Data</span> → <span class="font-bold">Feature Eng.</span> → <span class="font-bold bg-indigo-200 p-1 rounded">XGBoost</span> → <span class="font-bold">Prediction</span> → <span class="font-bold">Accuracy: 92%</span></div>` },
+                    { title: "KPI and Quality Dashboard", description: "A dashboard presenting key indicators of statistical quality, such as response rates and coverage errors.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value">87.3%</div><div class="kpi-label">Response Rate</div></div><div class="kpi-box"><div class="kpi-value">1.8%</div><div class="kpi-label">Coverage Error</div></div></div>` },
+                    { title: "Dissemination Status Tracker", description: "A timeline or Kanban-style board tracking data products towards their public release.", exampleHTML: `<div class="text-xs space-y-1"><div class="flex justify-between items-center"><span>LFS Report</span><span class="bg-green-200 px-2 rounded-full">Published</span></div><div class="flex justify-between items-center"><span>CPI Data</span><span class="bg-yellow-200 px-2 rounded-full">Final Review</span></div></div>` }
+                ]
+            },
+            // Persona 4
+            {
+                persona: "Executives (DM, SDM, ADM, DG)",
+                description: "Need high-level, outcome-focused visuals that connect activities to strategic goals and demonstrate public value.",
+                infographics: [
+                    { title: "Departmental Results Framework (DRF)", description: "A hierarchical diagram linking programs to core responsibilities and high-level results.", exampleHTML: `<div class="text-xs text-center"><div class="p-2 bg-slate-200 rounded">Result: Informed Canadians</div><div class="text-xs">▲</div><div class="p-2 bg-blue-100 rounded">Core Resp: Statistical Info</div><div class="text-xs">▲</div><div class="p-2 bg-green-100 rounded">Program: Census, LFS</div></div>` },
+                    { title: "Strategic Outcome Maps", description: "A visual narrative showing how initiatives contribute to long-term departmental and governmental priorities.", exampleHTML: `<div class="text-xs p-2"><span class="bg-yellow-100">IT Modernization</span> → <span class="bg-yellow-100">Better Data</span> → <span class="bg-green-100">Informed Policy</span></div>` },
+                    { title: "Resource Allocation Pie Chart", description: "A simple chart showing distribution of financial or human resources across programs.", exampleHTML: `<div class="flex items-center gap-4"><div style="width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(#3b82f6 0% 60%, #16a34a 60% 85%, #f97316 85% 100%);"></div><ul class="text-xs"><li>60% Core Stats</li><li>25% Modernization</li><li>15% Corporate</li></ul></div>` },
+                    { title: "Results-Based Management Summary", description: "An infographic summarizing program performance against targets, focusing on impact.", exampleHTML: `<div class="kpi-box"><div class="kpi-value">9/10</div><div class="kpi-label">Targets Achieved</div><div class="text-xs mt-2 text-green-700">Improved data timeliness by 15%</div></div>` },
+                    { title: "GBA Plus Impact Chart", description: "A visual summarizing Gender-based Analysis Plus findings, showing differential impacts.", exampleHTML: `<div class="p-2 text-xs"><div class="font-bold">Policy Change X</div><div><span class="text-blue-600">Impact on Group A:</span> +ve</div><div><span class="text-red-600">Impact on Group B:</span> -ve</div></div>` },
+                    { title: "Portfolio Overview Infographic", description: "A one-page visual summary of all major projects within a portfolio, showing status and budget.", exampleHTML: `<div class="text-xs space-y-1"><div class="flex items-center">🟢 Project A: On Track ($5M)</div><div class="flex items-center">🟡 Project B: Minor Delay ($2M)</div><div class="flex items-center">🔴 Project C: At Risk ($8M)</div></div>` },
+                    { title: "External Engagement Dashboard", description: "A map or chart highlighting key partnerships with external stakeholders.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs text-center"><div class="font-bold">Key Partnerships</div><div class="mt-2 flex justify-around"><span class="bg-blue-100 p-1 rounded">Academia</span><span class="bg-green-100 p-1 rounded">Provinces</span><span class="bg-indigo-100 p-1 rounded">Int'l</span></div></div>` }
+                ]
+            },
+            // Persona 5
+            {
+                persona: "Middle Management (Directors, Chiefs)",
+                description: "Needs infographics to manage teams, projects, and resources effectively for operational excellence.",
+                 infographics: [
+                    { title: "Program Delivery Dashboard", description: "A dashboard providing a real-time overview of a program's health, including KPIs and risks.", exampleHTML: `<div class="grid grid-cols-3 gap-2"><div class="kpi-box"><div class="kpi-value text-green-600">🟢</div><div class="kpi-label">Milestones</div></div><div class="kpi-box"><div class="kpi-value">78%</div><div class="kpi-label">Budget Spent</div></div><div class="kpi-box"><div class="kpi-value text-amber-500">2</div><div class="kpi-label">High Risks</div></div></div>` },
+                    { title: "FTE vs Budget Heatmap", description: "A matrix cross-referencing FTEs and budget allocation against projects to highlight imbalances.", exampleHTML: `<table class="w-full text-xs text-center"><thead><tr class="font-bold"><th>Team</th><th>FTEs</th><th>Budget</th></tr></thead><tbody><tr class="bg-green-100"><td>Team A</td><td>10</td><td>$1.2M</td></tr><tr class="bg-red-100"><td>Team B</td><td>5</td><td>$1M</td></tr><tr class="bg-yellow-100"><td>Team C</td><td>12</td><td>$1M</td></tr></tbody></table>` },
+                    { title: "Project and Priority Status Timeline", description: "A visual timeline tracking multiple projects, showing dependencies and deadlines.", exampleHTML: `<div class="text-xs space-y-2"><div class="font-bold">Q3 2025</div><div>Project A: <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: 80%"></div></div></div><div>Project B: <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: 50%"></div></div></div></div>` },
+                    { title: "Staffing & Capacity Plan", description: "A chart visualizing current team staffing, identifying skill gaps, and planning for hiring.", exampleHTML: `<div class="text-xs p-2"><div class="font-bold">Current Team: 15 FTEs</div><div class="text-red-600 font-bold mt-1">Skill Gap: Cloud Architects (2)</div><div class="text-green-600 font-bold mt-1">Hiring Plan: Q4 2025</div></div>` },
+                    { title: "Team Structure Map", description: "An organizational chart showing functional relationships and responsibilities.", exampleHTML: `<div class="text-xs text-center"><div class="p-1 bg-slate-200 rounded">Director</div><div class="flex justify-around mt-1"><div>- Team A</div><div>- Team B</div></div></div>` },
+                    { title: "Risks and Issues Snapshot", description: "A concise visual summary of top risks and active issues facing a team or program.", exampleHTML: `<div class="text-xs p-2">🔴 <span class="font-bold">Risk:</span> Vendor Delay<br>🟡 <span class="font-bold">Issue:</span> Scope Creep</div>` },
+                    { title: "Organizational Workflow Diagram", description: "A flowchart mapping a key business process to clarify roles and responsibilities.", exampleHTML: `<div class="text-xs p-2"><span class="bg-slate-200">Request</span> → <span class="bg-blue-200">Analysis (Team A)</span> → <span class="bg-green-200">Approval (Director)</span></div>` }
+                ]
+            },
+            // Persona 6
+            {
+                persona: "Project & Program Managers",
+                description: "Rely on detailed, tactical infographics to track progress, manage resources, and communicate status.",
+                infographics: [
+                    { title: "Project Timeline (Gantt)", description: "A classic Gantt chart providing a detailed visual schedule of project tasks and dependencies.", exampleHTML: `<div class="w-full text-xs space-y-1"><div class="font-bold">Project Plan</div><div>Task 1 <div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 100%;"></div></div></div><div>Task 2 <div class="progress-bar-bg"><div class="progress-bar-fg ml-[20%]" style="width: 80%;"></div></div></div><div>Task 3 <div class="progress-bar-bg"><div class="progress-bar-fg ml-[50%]" style="width: 50%;"></div></div></div></div>`},
+                    { title: "Project Health Indicator", description: "A simple 'traffic light' dashboard for an at-a-glance status of scope, schedule, and budget.", exampleHTML: `<div class="grid grid-cols-3 gap-2"><div class="text-center"><div class="text-4xl">🟢</div><div class="text-xs font-bold">SCOPE</div></div><div class="text-center"><div class="text-4xl">🟡</div><div class="text-xs font-bold">SCHEDULE</div></div><div class="text-center"><div class="text-4xl">🟢</div><div class="text-xs font-bold">BUDGET</div></div></div>`},
+                    { title: "Deliverable Status Board", description: "A Kanban-style board tracking the progress of project deliverables through different stages.", exampleHTML: `<div class="grid grid-cols-3 gap-1 text-xs text-center"><div class="bg-slate-100 p-1 rounded"><b>To Do</b><div class="bg-white p-1 mt-1 rounded shadow">UI Mockups</div></div><div class="bg-slate-100 p-1 rounded"><b>In Progress</b><div class="bg-white p-1 mt-1 rounded shadow">API Dev</div></div><div class="bg-slate-100 p-1 rounded"><b>Done</b><div class="bg-white p-1 mt-1 rounded shadow">Requirements</div></div></div>`},
+                    { title: "Milestone Completion Infographic", description: "A timeline or roadmap focused on celebrating and tracking the achievement of major project milestones.", exampleHTML: `<div class="text-xs flex justify-between items-center p-2"><span>✅ Kick-off</span>-<span>✅ Phase 1</span>-<span>...</span>-<span>🏁 Launch</span></div>`},
+                    { title: "Risk and Mitigation Matrix", description: "A matrix identifying project risks, scoring them, and outlining planned mitigation strategies.", exampleHTML: `<div class="p-2 text-xs"><div class="font-bold text-red-600">High Risk:</div> Staff Shortage<br><span class="font-bold">Mitigation:</span> Cross-train existing team.</div>`},
+                    { title: "RACI Role Chart", description: "A matrix clarifying team member roles and responsibilities for project tasks (Responsible, Accountable, Consulted, Informed).", exampleHTML: `<table class="w-full text-xs text-center"><thead><tr class="font-bold"><th>Task</th><th>Ana (R)</th><th>Bob (A)</th><th>Cora (C)</th></tr></thead><tbody><tr><td>Testing</td><td>✔</td><td>✔</td><td></td></tr></tbody></table>`},
+                    { title: "Agile Sprint Summary", description: "An infographic summarizing sprint outcomes, showing story points completed and team velocity.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value">42</div><div class="kpi-label">Points Done</div></div><div class="kpi-box"><div class="kpi-value">38</div><div class="kpi-label">Avg Velocity</div></div></div>`}
+                ]
+            },
+            // Persona 7
+            {
+                persona: "Finance and Administrative Officers",
+                description: "This persona requires clear, accurate, and transparent visuals to manage budgets, track expenditures, and ensure financial compliance.",
+                infographics: [
+                    { title: "Budget vs Actual Graph", description: "A bar or line chart that compares planned expenditures (budget) against actual spending over time, highlighting variances.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs"><div class="font-bold mb-1">Q2 Spending</div><div class="space-y-1"><div class="flex items-center">Budget <div class="h-4 bg-slate-300 w-full ml-2"></div></div><div class="flex items-center">Actual <div class="h-4 bg-blue-500 w-3/4 ml-2"></div></div></div><div class="text-right mt-1 font-bold text-red-600">($25k over)</div></div>` },
+                    { title: "Operational Spend Breakdown", description: "A pie chart or treemap that categorizes operational spending into key areas like salaries, IT costs, and travel to show where money is going.", exampleHTML: `<div class="flex items-center gap-4"><div style="width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(#60a5fa 0% 70%, #fbbf24 70% 85%, #a78bfa 85% 100%);"></div><ul class="text-xs"><li>70% Salaries</li><li>15% O&M</li><li>15% Capital</li></ul></div>` },
+                    { title: "Treasury Board Submission Snapshot", description: "A one-page visual summary of a formal funding request to the Treasury Board, highlighting the key objectives, costs, expected results, and risks.", exampleHTML: `<div class="p-2 space-y-2"><div class="kpi-box"><div class="kpi-value">$5.2M</div><div class="kpi-label">Total Ask</div></div><div class="text-xs text-slate-600"><strong>Objective:</strong> Modernize survey platform to improve data quality.</div></div>` },
+                    { title: "Grant & Contribution Flow", description: "A flowchart diagramming the entire process for managing grants and contributions, from application and approval to payment and reporting.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200 p-1 rounded">Application</span> → <span class="bg-slate-200 p-1 rounded">Review</span> → <span class="bg-slate-200 p-1 rounded">Approval</span> → <span class="bg-slate-200 p-1 rounded">Payment</span></div>` },
+                    { title: "Cost per Output Analysis", description: "A chart that analyzes the cost required to produce a specific unit of output (e.g., cost per survey completed), used for efficiency analysis.", exampleHTML: `<div class="text-xs p-2"><div class="font-bold">Cost per Survey</div><div class="text-green-600">↓ 12% since 2023</div></div>` },
+                    { title: "Funding Source Timeline", description: "A visual that tracks different sources of funding over time, showing when funds are received and when they are set to expire.", exampleHTML: `<div class="text-xs p-2 space-y-1"><div><span class="font-bold">A-Base:</span> Active</div><div><span class="font-bold text-red-600">Project X Funding:</span> Expires Dec 2025</div></div>` },
+                    { title: "Procurement Lifecycle Chart", description: "An infographic that maps the stages of the procurement process, from needs identification and tendering to contract award and management.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Identify Needs</span> → <span class="bg-slate-200">Tender</span> → <span class="bg-slate-200">Award</span> → <span class="bg-slate-200">Manage</span></div>` }
+                ]
+            },
+            // Persona 8
+            {
+                persona: "IT Operations and Service Desk",
+                description: "This team is focused on system health, service delivery, and user support. Their infographics are operational and data-intensive.",
+                infographics: [
+                    { title: "Incident Lifecycle Infographic", description: "A flowchart showing the steps involved in resolving an IT incident, from initial report and triage to resolution and root cause analysis.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Report</span> → <span class="bg-slate-200">Triage</span> → <span class="bg-slate-200">Resolve</span> → <span class="bg-slate-200">RCA</span></div>` },
+                    { title: "Request Volume Trendline", description: "A line graph tracking the number of IT support requests over time, helping to identify patterns and plan for peak periods.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs"><div class="font-bold mb-1">Weekly Ticket Volume</div><div class="relative h-24"><div class="absolute border-b border-l border-slate-300 bottom-0 left-0 w-full h-full"></div><svg class="absolute w-full h-full" viewBox="0 0 100 60"><polyline fill="none" stroke="#6b21a8" stroke-width="2" points="0,50 20,20 40,30 60,10 80,40 100,30" /></svg></div></div>` },
+                    { title: "SLA Performance Dashboard", description: "A dashboard displaying performance against Service Level Agreements (SLAs), with metrics like average response time, resolution time, and user satisfaction.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value text-green-600">98%</div><div class="kpi-label">SLA Met</div></div><div class="kpi-box"><div class="kpi-value">4.2/5</div><div class="kpi-label">User CSAT</div></div></div>` },
+                    { title: "Service Uptime Tracker", description: "A chart, often showing percentages, that tracks the availability and uptime of critical IT services and applications.", exampleHTML: `<div class="kpi-box"><div class="kpi-value text-green-600">99.98%</div><div class="kpi-label">Uptime (Email)</div></div>` },
+                    { title: "Support by Channel Pie Chart", description: "A simple chart showing the proportion of support requests that come from different channels (e.g., phone, email, self-service portal).", exampleHTML: `<div class="flex items-center gap-4"><div style="width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(#22d3ee 0% 50%, #a5b4fc 50% 80%, #f472b6 80% 100%);"></div><ul class="text-xs"><li>50% Portal</li><li>30% Email</li><li>20% Phone</li></ul></div>` },
+                    { title: "Change Management Flow", description: "A diagram outlining the process for managing changes to the IT environment, including request, approval, implementation, and review stages.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">CRQ</span> → <span class="bg-slate-200">CAB Approval</span> → <span class="bg-slate-200">Implement</span> → <span class="bg-slate-200">Review</span></div>` },
+                    { title: "IT Asset Lifecycle Visual", description: "An infographic that tracks IT assets (like laptops and servers) through their entire lifecycle, from procurement and deployment to maintenance and disposal.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Procure</span> → <span class="bg-slate-200">Deploy</span> → <span class="bg-slate-200">Maintain</span> → <span class="bg-slate-200">Dispose</span></div>` }
+                ]
+            },
+            // Persona 9
+            {
+                persona: "Cybersecurity and Access to Information Officers",
+                description: "These roles manage risk, compliance, and information security. Their visuals are often focused on processes, controls, and threat awareness.",
+                infographics: [
+                    { title: "Threat Landscape Overview", description: "A dashboard or infographic that summarizes the current and emerging cybersecurity threats relevant to the organization.", exampleHTML: `<div class="text-xs space-y-1"><div class="flex justify-between items-center"><span>Phishing</span><span class="bg-red-200 text-red-800 px-2 rounded-full">High</span></div><div class="flex justify-between items-center"><span>Malware</span><span class="bg-yellow-200 text-yellow-800 px-2 rounded-full">Medium</span></div></div>` },
+                    { title: "Access Control Matrix", description: "A table or matrix that clearly defines who is permitted to access specific data or systems and what level of permission they have.", exampleHTML: `<table class="w-full text-xs text-center"><thead><tr class="font-bold"><th>Role</th><th>Data A</th><th>Data B</th></tr></thead><tbody><tr><td>Analyst</td><td class="bg-green-100">Read</td><td class="bg-red-100">None</td></tr><tr><td>Admin</td><td class="bg-green-100">Write</td><td class="bg-green-100">Write</td></tr></tbody></table>` },
+                    { title: "Privacy Impact Assessment Flow", description: "A flowchart that guides users through the process of conducting a Privacy Impact Assessment (PIA) for new or changing projects.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Initiate</span> → <span class="bg-slate-200">Data Map</span> → <span class="bg-slate-200">Risk Analysis</span> → <span class="bg-slate-200">Sign-off</span></div>` },
+                    { title: "Zero Trust Framework", description: "A conceptual diagram explaining the principles of a Zero Trust security model, where no user or device is trusted by default.", exampleHTML: `<div class="p-2 text-xs"><div class="font-bold">Principles:</div><ol class="list-decimal list-inside"><li>Verify Explicitly</li><li>Use Least Privilege</li><li>Assume Breach</li></ol></div>` },
+                    { title: "Data Breach Response Plan", description: "A clear, step-by-step infographic that outlines the actions to be taken in the event of a data breach.", exampleHTML: `<div class="p-2 text-xs font-semibold space-y-1"><div class="bg-red-100 p-1 rounded">1. Contain</div><div class="bg-red-100 p-1 rounded">2. Eradicate</div><div class="bg-red-100 p-1 rounded">3. Notify</div><div class="bg-red-100 p-1 rounded">4. Review</div></div>` },
+                    { title: "Classified Data Flow Map", description: "A secure diagram that maps the flow of sensitive or classified information across the network, highlighting security controls.", exampleHTML: `<div class="text-xs text-center p-2"><span class="border p-1 rounded">User</span> → <span class="border p-1 rounded border-green-500">Encrypted Tunnel</span> → <span class="border p-1 rounded">Secure Server</span></div>` },
+                    { title: "Internal Audit Readiness", description: "A dashboard that tracks the status of compliance with various security controls and policies in preparation for an internal or external audit.", exampleHTML: `<div class="space-y-2"><div class="kpi-box"><div class="kpi-value">92%</div><div class="kpi-label">Audit Controls Met</div></div><div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 92%;"></div></div></div>` }
+                ]
+            },
+            // Persona 10
+            {
+                persona: "Innovation and Modernization Leads",
+                description: "These individuals are change agents. Their infographics are used to track new ideas, experiments, and the adoption of emerging technologies.",
+                infographics: [
+                    { title: "Innovation Funnel (Idea to Pilot)", description: "A funnel diagram that visualizes the innovation pipeline, showing the number of ideas at each stage, from initial submission through evaluation to piloting.", exampleHTML: `<div class="text-xs text-center p-2 space-y-1"><div class="bg-blue-100 p-1 rounded">Ideas (120)</div><div>▼</div><div class="bg-blue-200 p-1 rounded">Evaluated (35)</div><div>▼</div><div class="bg-blue-300 p-1 rounded">Pilots (8)</div><div>▼</div><div class="bg-blue-400 p-1 rounded">Implemented (2)</div></div>` },
+                    { title: "AI/ML Use Case Tracker", description: "A portfolio board that tracks potential and active Artificial Intelligence and Machine Learning use cases, detailing their business objective, status, and potential value.", exampleHTML: `<div class="text-xs space-y-1"><div class="font-bold">Exploring:</div><div class="bg-slate-100 p-1 rounded">NLP for Coding</div><div class="font-bold mt-1">In Pilot:</div><div class="bg-slate-100 p-1 rounded">Anomaly Detection</div></div>` },
+                    { title: "Digitization Status Timeline", description: "A timeline that shows the progress of efforts to digitize paper-based records and manual processes.", exampleHTML: `<div class="space-y-1 text-xs"><div class="font-bold">Digitization Progress</div><div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 65%;">65%</div></div></div>` },
+                    { title: "Service Experimentation Board", description: "A visual board that outlines current experiments designed to improve services, stating the hypothesis, methodology, and results of each test.", exampleHTML: `<div class="text-xs p-2 bg-slate-50 rounded"><div class="font-bold">Experiment: New Homepage</div><div><strong>Hypothesis:</strong> Simpler layout increases clicks.</div><div class="text-green-600"><strong>Result:</strong> +15% engagement. Adopt.</div></div>` },
+                    { title: "ESDC Sandbox Flow", description: "A flowchart explaining the process for using a dedicated 'sandbox' environment to safely test new technologies and ideas.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Propose Idea</span> → <span class="bg-slate-200">Sandbox Setup</span> → <span class="bg-slate-200">Test & Learn</span> → <span class="bg-slate-200">Report</span></div>` },
+                    { title: "Emerging Tech Radar", description: "A radar-style chart that categorizes emerging technologies by their maturity and relevance to the organization.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs flex items-center justify-center"><svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="55" fill="none" stroke="#cbd5e1"/><circle cx="60" cy="60" r="35" fill="none" stroke="#cbd5e1"/><path d="M60 5 L60 115 M5 60 L115 60" stroke="#cbd5e1"/><text x="62" y="55" font-size="8">Assess</text><text x="62" y="35" font-size="8">Trial</text><text x="62" y="15" font-size="8">Adopt</text></svg></div>` },
+                    { title: "Modernization Benefit Map", description: "A diagram that connects specific modernization initiatives to the concrete benefits they are expected to deliver for the organization and for citizens.", exampleHTML: `<div class="text-xs p-2"><span class="bg-yellow-100">Cloud Platform</span> → <span class="bg-green-100">Faster Processing</span> → <span class="bg-blue-100">Quicker Insights</span></div>` }
+                ]
+            },
+            // Persona 11
+            {
+                persona: "Enterprise / Business Architects",
+                description: "These architects work to align business strategy with capability and technology. Their visuals bridge the gap between business and IT.",
+                infographics: [
+                    { title: "Capability Map (AS-IS / TO-BE)", description: "A blueprint that maps the organization's current business capabilities ('as-is') and compares them to the desired future state ('to-be').", exampleHTML: `<table class="w-full text-xs text-center"><thead><tr class="font-bold"><th>Capability</th><th>As-Is</th><th>To-Be</th></tr></thead><tbody><tr><td>Data Analytics</td><td class="bg-yellow-100">Basic</td><td class="bg-green-100">Advanced</td></tr><tr><td>Digital Services</td><td class="bg-red-100">Limited</td><td class="bg-green-100">Comprehensive</td></tr></tbody></table>` },
+                    { title: "Platform Architecture Layers", description: "A layered diagram that deconstructs a technology platform into its constituent parts, such as user interface, business services, data, and infrastructure.", exampleHTML: `<div class="space-y-1 text-center text-sm font-semibold"><div class="p-2 bg-blue-100 rounded">UI/UX</div><div class="p-2 bg-green-100 rounded">Services</div><div class="p-2 bg-amber-100 rounded">Data</div><div class="p-2 bg-slate-200 rounded">Infrastructure</div></div>` },
+                    { title: "Systems Dependency Diagram", description: "A network graph that illustrates the complex web of dependencies between different IT systems, showing how a change in one system may impact others.", exampleHTML: `<div class="text-center text-sm p-4"><span class="bg-slate-200 p-1 rounded">System A</span> → <span class="bg-slate-200 p-1 rounded">System B</span><br>↑<br><span class="bg-slate-200 p-1 rounded">System C</span></div>` },
+                    { title: "Solution Blueprint Map", description: "A high-level design document that visually describes the structure and characteristics of a proposed IT solution to a business problem.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs"><div class="font-bold">Solution: New Data Portal</div><div class="grid grid-cols-2 gap-1 mt-2"><div class="bg-blue-100 p-1 rounded">Frontend</div><div class="bg-green-100 p-1 rounded">Backend APIs</div><div class="bg-amber-100 p-1 rounded col-span-2">Data Sources</div></div></div>` },
+                    { title: "Architecture Compliance Matrix", description: "A matrix that assesses projects or solutions against established architectural principles and standards to ensure alignment and consistency.", exampleHTML: `<div class="text-xs p-2"><div class="font-bold">Project X Compliance</div><div>✅ Cloud First</div><div>❌ Data Standard v2</div></div>` },
+                    { title: "Technology Lifecycle Chart", description: "A timeline that tracks the lifecycle of key technologies in the organization, indicating when they should be adopted, maintained, or retired.", exampleHTML: `<div class="text-xs p-2"><div class="text-green-600"><strong>Adopt:</strong> Python 3.12</div><div class="text-yellow-600"><strong>Maintain:</strong> Java 17</div><div class="text-red-600"><strong>Retire:</strong> ColdFusion</div></div>` },
+                    { title: "GC Standards Conformance Grid", description: "A grid that evaluates internal systems and platforms against relevant Government of Canada enterprise architecture and technology standards.", exampleHTML: `<div class="text-xs p-2"><strong>Platform Y vs GC EA Stds</strong><div>- Conformance: 85%</div><div>- Gaps identified in security.</div></div>` }
+                ]
+            },
+            // Persona 12
+            {
+                persona: "Subject Matter Experts (SMEs)",
+                description: "SMEs need to convey complex, domain-specific knowledge in a clear and structured way. Their infographics are often definitional and methodological.",
+                infographics: [
+                    { title: "Conceptual Framework Diagram", description: "A visual model that illustrates the key concepts, variables, and relationships in a particular area of study, providing a theoretical foundation.", exampleHTML: `<div class="text-xs text-center p-2"><span class="border p-1 rounded">Socio-economic Factors</span> → <span class="border p-1 rounded">Health Outcomes</span></div>` },
+                    { title: "Methodological Flowchart", description: "A step-by-step diagram that explains a complex methodology or process in a simplified, easy-to-follow format.", exampleHTML: `<div class="text-xs text-center p-2"><span class="bg-slate-200">Stratification</span> → <span class="bg-slate-200">Weighting</span> → <span class="bg-slate-200">Estimation</span></div>` },
+                    { title: "Definition & Classification Tables", description: "Structured tables that clearly define key terms and show how they are classified within a hierarchical or categorical system.", exampleHTML: `<table class="w-full text-xs"><thead><tr class="font-bold"><th>Term</th><th>Definition</th></tr></thead><tbody><tr><td>LFS</td><td>Labour Force Survey...</td></tr></tbody></table>` },
+                    { title: "Domain-specific KPIs", description: "A set of visual cards or a dashboard that highlights the key performance indicators that are most relevant to a specific subject area.", exampleHTML: `<div class="kpi-box"><div class="kpi-value">4.8%</div><div class="kpi-label">Unemployment Rate</div></div>` },
+                    { title: "Indicator Summary Cards", description: "Small, shareable infographics, each summarizing a single key indicator with a headline number, a trend line, and a brief explanatory note.", exampleHTML: `<div class="p-3 bg-blue-50 rounded-lg"><div class="text-lg font-bold">Inflation Rate: 2.7%</div><div class="text-sm text-slate-600">Annual CPI, May 2025</div></div>` },
+                    { title: "Glossary Visual Index", description: "A visually organized glossary that uses icons and images to help explain and categorize technical terms.", exampleHTML: `<div class="text-xs p-2">📈 <span class="font-bold">Indicator:</span> A measure...<br>📊 <span class="font-bold">Variable:</span> A characteristic...</div>` },
+                    { title: "Decision Trees", description: "A tree-like diagram that maps out a decision-making process or a classification system, showing the criteria used at each step.", exampleHTML: `<div class="text-xs text-center p-2"><div class="border rounded p-1"> Employed? </div><div class="flex justify-around"><span>↙ Yes</span><span>No ↘</span></div></div>` }
+                ]
+            },
+            // Persona 13
+            {
+                persona: "Operations & Field Collection Supervisors",
+                description: "This persona is on the front lines of data collection. They need operational dashboards and maps to manage fieldwork effectively.",
+                infographics: [
+                    { title: "Enumerator Deployment Map", description: "A geographic map that shows the assignment of field enumerators to specific collection areas or territories.", exampleHTML: `<div class="w-full h-full bg-slate-50 p-2 rounded-lg text-xs flex items-center justify-center"><svg class="w-24 h-24" viewBox="0 0 100 100"><path d="M10 10 L90 10 L90 90 L10 90 Z" fill="#ecfccb" stroke="#4d7c0f"/><circle cx="30" cy="30" r="5" fill="#4d7c0f"/><circle cx="70" cy="60" r="5" fill="#4d7c0f"/><circle cx="50" cy="50" r="5" fill="#4d7c0f"/></svg></div>` },
+                    { title: "Survey Response Rate Dashboard", description: "A dashboard with charts and gauges that provide a real-time view of survey response rates, broken down by region or other demographic factors.", exampleHTML: `<div class="grid grid-cols-2 gap-2"><div class="kpi-box"><div class="kpi-value">76%</div><div class="kpi-label">National Rate</div></div><div class="kpi-box"><div class="kpi-value text-red-600">62%</div><div class="kpi-label">Region X Rate</div></div></div>` },
+                    { title: "Collection Timeline", description: "A detailed timeline that tracks the key phases and deadlines for a data collection operation, from initial contact to final data capture.", exampleHTML: `<div class="text-xs space-y-1"><div class="font-bold">Week 3/8</div><div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 37.5%;">37.5%</div></div></div>` },
+                    { title: "Fieldwork Progress Tracker", description: "A visual board or chart that tracks the completion status of fieldwork assignments, showing what has been completed, what is in progress, and what remains.", exampleHTML: `<div class="grid grid-cols-3 gap-1 text-xs text-center"><div class="bg-slate-100 p-1 rounded"><b>To Do (150)</b></div><div class="bg-slate-100 p-1 rounded"><b>In Progress (45)</b></div><div class="bg-slate-100 p-1 rounded"><b>Done (320)</b></div></div>` },
+                    { title: "Outreach Activities Chart", description: "An infographic that summarizes planned and completed outreach activities designed to encourage survey participation.", exampleHTML: `<div class="text-xs p-2"><strong>This Week:</strong> Community Mail-out<br><strong>Next Week:</strong> Local Radio Ads</div>` },
+                    { title: "Training Completion Tracker", description: "A simple chart or dashboard that monitors the progress of enumerators in completing their required training modules.", exampleHTML: `<div class="space-y-1 text-xs"><div class="font-bold">Enumerator Training</div><div class="progress-bar-bg"><div class="progress-bar-fg" style="width: 95%;">95% Complete</div></div></div>` },
+                    { title: "Quality Control Heatmap", description: "A map or grid that uses color-coding to highlight areas or enumerators with potential data quality issues, allowing for targeted intervention.", exampleHTML: `<div class="risk-matrix"><div class="risk-low">Area 1</div><div class="risk-high">Area 2</div><div class="risk-low">Area 3</div><div class="risk-medium">Area 4</div></div>` }
+                ]
+            }
+        ];
+
+        // --- Core Application Logic ---
+
+        let currentSlide = 0;
+        const slideContainer = document.getElementById('slide-container');
+        const slideCounter = document.getElementById('slide-counter');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const mainContentArea = document.querySelector('main');
+
+        // Modal Elements
+        const modal = document.getElementById('gemini-modal');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modal-title');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalLoader = document.getElementById('modal-loader');
+        const modalText = document.getElementById('modal-text');
+
+
+        /**
+         * Renders the current slide's content into the container and attaches event listeners.
+         */
+        function renderSlide() {
+            const data = slidesData[currentSlide];
+            
+            const infographicsHtml = data.infographics.map((info, index) => `
+                <div class="bg-gray-50 rounded-lg p-4 ring-1 ring-gray-200">
+                    <div class="flex justify-between items-start">
+                         <h4 class="text-md font-semibold text-blue-700 mb-2">${info.title}</h4>
+                         <button class="draft-note-btn text-xs bg-indigo-100 text-indigo-700 font-semibold py-1 px-3 rounded-full hover:bg-indigo-200 transition-colors" data-index="${index}">✨ Draft Note</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mt-1">
+                        <p class="text-sm text-gray-600 leading-relaxed">${info.description}</p>
+                        <div class="bg-white rounded-lg p-3 min-h-[8rem] flex items-center justify-center text-center shadow-inner ring-1 ring-slate-200">
+                           ${info.exampleHTML}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            slideContainer.innerHTML = `
+                <div class="space-y-8">
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">${data.persona}</h2>
+                            <button id="suggest-ideas-btn" class="bg-amber-400 text-amber-900 font-bold py-2 px-4 rounded-lg hover:bg-amber-500 transition-transform duration-200 hover:scale-105">✨ Suggest Ideas</button>
+                        </div>
+                        <p class="text-base sm:text-lg text-gray-500 mt-2">${data.description}</p>
+                    </div>
+                    <div id="infographics-container" class="space-y-4 border-t border-gray-200 pt-6">
+                         ${infographicsHtml}
+                    </div>
+                </div>
+            `;
+            attachEventListeners();
+            updateControls();
+        }
+        
+        /**
+         * Attaches event listeners to the newly rendered buttons.
+         */
+        function attachEventListeners() {
+            // Button to suggest new infographic ideas for the persona
+            document.getElementById('suggest-ideas-btn').addEventListener('click', () => {
+                const personaData = slidesData[currentSlide];
+                const prompt = `You are a strategic advisor at Statistics Canada. For the persona '${personaData.persona}', who is described as '${personaData.description}', suggest three new, creative, and relevant infographic ideas that would help them in their role. Provide a title and a one-sentence description for each idea. Format the output clearly.`;
+                showModal("✨ New Infographic Ideas", prompt);
+            });
+
+            // Buttons to draft briefing notes for each infographic
+            document.querySelectorAll('.draft-note-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const infographicIndex = e.target.dataset.index;
+                    const infographicData = slidesData[currentSlide].infographics[infographicIndex];
+                    const prompt = `You are an executive assistant at a government department. Draft a short, professional briefing note paragraph (around 50-70 words) for a senior executive (e.g., a Deputy Minister) that explains the importance of the following infographic. Focus on the key takeaway and its strategic value.\n\nINFOGRAPHIC TITLE: "${infographicData.title}"\nINFOGRAPHIC DESCRIPTION: "${infographicData.description}"`;
+                    showModal(`✨ Briefing Note: ${infographicData.title}`, prompt);
+                });
+            });
+        }
+
+        /**
+         * Shows the modal, sets its title, and calls the Gemini API.
+         * @param {string} title The title for the modal window.
+         * @param {string} prompt The prompt to send to the Gemini API.
+         */
+        function showModal(title, prompt) {
+            modalTitle.textContent = title;
+            modalText.innerHTML = '';
+            modalLoader.classList.remove('hidden');
+            modal.classList.remove('hidden');
+            
+            // Trigger fade-in animation
+            setTimeout(() => {
+                modalOverlay.classList.remove('opacity-0');
+                modalContainer.classList.remove('opacity-0', 'scale-95');
+                modalContainer.classList.add('opacity-100', 'scale-100');
+            }, 10);
+
+            callGeminiAPI(prompt);
+        }
+
+        /**
+         * Hides the modal with a fade-out animation.
+         */
+        function hideModal() {
+            modalOverlay.classList.add('opacity-0');
+            modalContainer.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300); // Wait for animation to finish
+        }
+
+        /**
+         * Calls the Gemini API with a given prompt.
+         * @param {string} prompt The prompt to send.
+         */
+        async function callGeminiAPI(prompt) {
+            const apiKey = ""; // API key is handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    modalText.textContent = text;
+                } else {
+                    throw new Error("No content received from API.");
+                }
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                modalText.textContent = `Sorry, an error occurred while contacting the AI assistant.\n\nDetails: ${error.message}`;
+            } finally {
+                modalLoader.classList.add('hidden');
+            }
+        }
+        
+        // Modal close event listeners
+        modalOverlay.addEventListener('click', hideModal);
+        modalCloseBtn.addEventListener('click', hideModal);
+
+
+        function updateControls() {
+            slideCounter.textContent = `Slide ${currentSlide + 1} / ${slidesData.length}`;
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slidesData.length - 1;
+            resetBtn.disabled = currentSlide === 0;
+        }
+
+        function showSlide(index) {
+            slideContainer.classList.add('fade-out');
+            setTimeout(() => {
+                currentSlide = index;
+                renderSlide();
+                mainContentArea.scrollTop = 0;
+                slideContainer.classList.remove('fade-out');
+            }, 300);
+        }
+        
+        // --- Navigation Event Listeners ---
+        nextBtn.addEventListener('click', () => {
+            if (currentSlide < slidesData.length - 1) {
+                showSlide(currentSlide + 1);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentSlide > 0) {
+                showSlide(currentSlide - 1);
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (currentSlide !== 0) {
+                showSlide(0);
+            }
+        });
+
+        // --- Initial Render ---
+        document.addEventListener('DOMContentLoaded', () => {
+            slideContainer.classList.add('fade-in');
+            renderSlide();
+        });
+    </script>
+</body>
+</html>
