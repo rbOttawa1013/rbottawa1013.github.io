@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSP Evolutionary Algorithm Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .control-panel label {
+            font-weight: 500;
+        }
+        .control-panel input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            outline: none;
+        }
+        .control-panel input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .control-panel input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(200, 200, 200, 0.5);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col lg:flex-row h-screen overflow-hidden">
+
+    <!-- Control Panel -->
+    <div class="control-panel w-full lg:w-96 bg-white p-6 shadow-2xl overflow-y-auto space-y-6 flex-shrink-0">
+        <div class="flex justify-between items-center border-b pb-4">
+            <h1 data-lang-key="title" class="text-2xl font-bold text-gray-900">TSP Solver</h1>
+            <button id="langToggle" class="text-sm font-semibold px-3 py-1 rounded-md hover:bg-gray-200 transition-colors">FR</button>
+        </div>
+        
+        <!-- Main Controls -->
+        <div class="space-y-4">
+            <h2 data-lang-key="controlsTitle" class="text-lg font-semibold text-gray-700">Controls</h2>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="startPauseBtn" data-lang-key="start" class="btn bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Start</button>
+                <button id="stepBtn" data-lang-key="step" class="btn bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Step</button>
+                <button id="resetBtn" data-lang-key="reset" class="btn bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Reset</button>
+            </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="space-y-4">
+            <h2 data-lang-key="parametersTitle" class="text-lg font-semibold text-gray-700">Parameters</h2>
+            <div class="space-y-4">
+                <div title="The total number of cities in the route.">
+                    <label for="citiesSlider" class="flex justify-between"><span data-lang-key="citiesLabel">Number of Cities</span> <span id="citiesValue" class="font-bold text-indigo-600">10</span></label>
+                    <input type="range" id="citiesSlider" min="3" max="50" value="10" class="w-full">
+                </div>
+                <div title="The number of candidate solutions (routes) in each generation.">
+                    <label for="populationSlider" class="flex justify-between"><span data-lang-key="populationLabel">Population Size</span> <span id="populationValue" class="font-bold text-indigo-600">100</span></label>
+                    <input type="range" id="populationSlider" min="50" max="500" value="100" step="10" class="w-full">
+                </div>
+                <div title="The probability (per city) that a random change will occur in a route.">
+                    <label for="mutationSlider" class="flex justify-between"><span data-lang-key="mutationLabel">Mutation Rate</span> <span id="mutationValue" class="font-bold text-indigo-600">0.05</span></label>
+                    <input type="range" id="mutationSlider" min="0.01" max="0.2" value="0.05" step="0.01" class="w-full">
+                </div>
+                <div title="The probability that two parent routes will combine to create a new child route.">
+                    <label for="crossoverSlider" class="flex justify-between"><span data-lang-key="crossoverLabel">Crossover Rate</span> <span id="crossoverValue" class="font-bold text-indigo-600">0.8</span></label>
+                    <input type="range" id="crossoverSlider" min="0.5" max="1.0" value="0.8" step="0.05" class="w-full">
+                </div>
+                 <div title="The number of individuals that compete in a selection tournament. Higher values increase selection pressure.">
+                    <label for="tournamentSlider" class="flex justify-between"><span data-lang-key="tournamentLabel">Tournament Size</span> <span id="tournamentValue" class="font-bold text-indigo-600">3</span></label>
+                    <input type="range" id="tournamentSlider" min="2" max="10" value="3" step="1" class="w-full">
+                </div>
+                <div title="Stops the simulation if the best solution doesn't change for this many generations. 0 means disabled.">
+                    <label for="autoStopSlider" class="flex justify-between"><span data-lang-key="autoStopLabel">Auto-Stop Generations</span> <span id="autoStopValue" class="font-bold text-indigo-600">0</span></label>
+                    <input type="range" id="autoStopSlider" min="0" max="500" value="0" step="10" class="w-full">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fitness Graph -->
+        <div>
+            <h2 data-lang-key="fitnessGraphTitle" class="text-lg font-semibold text-gray-700 mb-2">Fitness Over Generations</h2>
+            <div class="bg-gray-50 p-2 rounded-lg shadow-inner">
+                 <canvas id="fitnessChart"></canvas>
+            </div>
+        </div>
+
+         <!-- Best Path Sequence -->
+        <div>
+            <h2 data-lang-key="bestPathTitle" class="text-lg font-semibold text-gray-700 mb-2">Best Path Sequence</h2>
+            <div id="pathSequence" class="text-sm bg-gray-900 text-green-400 font-mono p-3 rounded-lg h-24 overflow-y-auto break-words">N/A</div>
+        </div>
+
+    </div>
+
+    <!-- Main Visualization Area -->
+    <div class="flex-grow relative bg-gray-200">
+        <canvas id="mainCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+        <!-- Stats Overlay -->
+        <div class="absolute top-4 left-4 grid grid-cols-2 md:grid-cols-4 gap-4 w-full pr-8">
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center">
+                <h3 data-lang-key="generationLabel" class="text-sm font-medium text-gray-600">Generation</h3>
+                <p id="generation" class="text-2xl font-bold text-indigo-700">0</p>
+            </div>
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center">
+                <h3 data-lang-key="bestDistLabel" class="text-sm font-medium text-gray-600">Best Distance</h3>
+                <p id="bestDistance" class="text-2xl font-bold text-indigo-700">N/A</p>
+            </div>
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center">
+                <h3 data-lang-key="avgDistLabel" class="text-sm font-medium text-gray-600">Avg Distance</h3>
+                <p id="avgDistance" class="text-2xl font-bold text-indigo-700">N/A</p>
+            </div>
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center">
+                <h3 data-lang-key="timeLabel" class="text-sm font-medium text-gray-600">Elapsed Time</h3>
+                <p id="elapsedTime" class="text-2xl font-bold text-indigo-700">0s</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM ELEMENTS ---
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const langToggle = document.getElementById('langToggle');
+        
+        // Parameter Sliders & Displays
+        const citiesSlider = document.getElementById('citiesSlider');
+        const citiesValue = document.getElementById('citiesValue');
+        const populationSlider = document.getElementById('populationSlider');
+        const populationValue = document.getElementById('populationValue');
+        const mutationSlider = document.getElementById('mutationSlider');
+        const mutationValue = document.getElementById('mutationValue');
+        const crossoverSlider = document.getElementById('crossoverSlider');
+        const crossoverValue = document.getElementById('crossoverValue');
+        const tournamentSlider = document.getElementById('tournamentSlider');
+        const tournamentValue = document.getElementById('tournamentValue');
+        const autoStopSlider = document.getElementById('autoStopSlider');
+        const autoStopValue = document.getElementById('autoStopValue');
+        
+        // Stats Displays
+        const generationDisplay = document.getElementById('generation');
+        const bestDistanceDisplay = document.getElementById('bestDistance');
+        const avgDistanceDisplay = document.getElementById('avgDistance');
+        const elapsedTimeDisplay = document.getElementById('elapsedTime');
+        const pathSequenceDisplay = document.getElementById('pathSequence');
+
+        // --- TRANSLATION & LANGUAGE ---
+        let currentLang = 'en';
+        const translations = {
+            en: {
+                title: "TSP Solver",
+                controlsTitle: "Controls",
+                start: "Start",
+                pause: "Pause",
+                step: "Step",
+                reset: "Reset",
+                parametersTitle: "Parameters",
+                citiesLabel: "Number of Cities",
+                populationLabel: "Population Size",
+                mutationLabel: "Mutation Rate",
+                crossoverLabel: "Crossover Rate",
+                tournamentLabel: "Tournament Size",
+                autoStopLabel: "Auto-Stop Generations",
+                fitnessGraphTitle: "Fitness Over Generations",
+                bestPathTitle: "Best Path Sequence",
+                generationLabel: "Generation",
+                bestDistLabel: "Best Distance",
+                avgDistLabel: "Avg Distance",
+                timeLabel: "Elapsed Time",
+                fitnessChartLabel: "Best Fitness (Distance)"
+            },
+            fr: {
+                title: "Solveur de PVC",
+                controlsTitle: "Contrôles",
+                start: "Démarrer",
+                pause: "Pause",
+                step: "Étape",
+                reset: "Réinitialiser",
+                parametersTitle: "Paramètres",
+                citiesLabel: "Nombre de Villes",
+                populationLabel: "Taille de la Population",
+                mutationLabel: "Taux de Mutation",
+                crossoverLabel: "Taux de Croisement",
+                tournamentLabel: "Taille du Tournoi",
+                autoStopLabel: "Arrêt Auto (Géns)",
+                fitnessGraphTitle: "Aptitude par Génération",
+                bestPathTitle: "Séquence du Meilleur Chemin",
+                generationLabel: "Génération",
+                bestDistLabel: "Meilleure Distance",
+                avgDistLabel: "Distance Moyenne",
+                timeLabel: "Temps Écoulé",
+                fitnessChartLabel: "Meilleure Aptitude (Distance)"
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (translations[lang][key]) {
+                    if (el.id === 'startPauseBtn') {
+                        el.textContent = isRunning ? translations[lang].pause : translations[lang].start;
+                    } else {
+                        el.textContent = translations[lang][key];
+                    }
+                }
+            });
+            fitnessChart.data.datasets[0].label = translations[lang].fitnessChartLabel;
+            fitnessChart.update();
+            langToggle.textContent = lang === 'en' ? 'FR' : 'EN';
+        }
+
+        // --- STATE & PARAMETERS ---
+        let cities = [];
+        let population = [];
+        let bestEver = null;
+        let generation = 0;
+        let isRunning = false;
+        let animationFrameId;
+        let startTime, timerInterval;
+        let fitnessHistory = [];
+        let generationsSinceLastImprovement = 0;
+
+        // GA Parameters
+        let numCities = parseInt(citiesSlider.value);
+        let populationSize = parseInt(populationSlider.value);
+        let mutationRate = parseFloat(mutationSlider.value);
+        let crossoverRate = parseFloat(crossoverSlider.value);
+        let tournamentSize = parseInt(tournamentSlider.value);
+        let autoStopGenerations = parseInt(autoStopSlider.value);
+
+        // --- FITNESS CHART ---
+        const chartCtx = document.getElementById('fitnessChart').getContext('2d');
+        const fitnessChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: translations[currentLang].fitnessChartLabel,
+                    data: [],
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: false },
+                    x: { ticks: { display: false } }
+                },
+                plugins: { legend: { display: false } },
+                animation: { duration: 200 }
+            }
+        });
+
+        // --- CORE LOGIC ---
+        
+        function initialize() {
+            isRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(timerInterval);
+            generation = 0;
+            bestEver = null;
+            fitnessHistory = [];
+            cities = [];
+            population = [];
+            generationsSinceLastImprovement = 0;
+            resizeCanvas();
+            for (let i = 0; i < numCities; i++) {
+                cities.push({
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: Math.random() * (canvas.height - 40) + 20
+                });
+            }
+            initializePopulation();
+            updateUI();
+            updateChart();
+            draw();
+        }
+
+        function initializePopulation() {
+            population = [];
+            if (cities.length === 0) {
+                evaluateFitness();
+                return;
+            }
+            for (let i = 0; i < populationSize; i++) {
+                const path = shuffle([...Array(cities.length).keys()]);
+                population.push({ path, fitness: 0 });
+            }
+            evaluateFitness();
+        }
+
+        function animate() {
+            if (isRunning) {
+                evolve();
+                updateUI();
+            }
+            draw();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function evolve() {
+            let newPopulation = [];
+            if (bestEver) {
+                newPopulation.push(JSON.parse(JSON.stringify(bestEver)));
+            }
+            while (newPopulation.length < populationSize) {
+                const parent1 = tournamentSelection();
+                const parent2 = tournamentSelection();
+                let childPath;
+                if (parent1 && parent2 && Math.random() < crossoverRate) {
+                    childPath = orderedCrossover(parent1.path, parent2.path);
+                } else if (parent1) {
+                    childPath = [...parent1.path];
+                } else {
+                    continue;
+                }
+                childPath = swapMutation(childPath);
+                newPopulation.push({ path: childPath, fitness: 0 });
+            }
+            population = newPopulation;
+            
+            const improved = evaluateFitness();
+            if(improved) {
+                generationsSinceLastImprovement = 0;
+            } else {
+                generationsSinceLastImprovement++;
+            }
+
+            if(autoStopGenerations > 0 && generationsSinceLastImprovement >= autoStopGenerations) {
+                stopSimulation();
+            }
+
+            generation++;
+        }
+
+        function evaluateFitness() {
+            let totalDistance = 0;
+            let currentBest = { fitness: Infinity, distance: Infinity };
+            let improved = false;
+
+            for (let individual of population) {
+                const distance = calculateDistance(individual.path);
+                individual.fitness = 1 / (distance + 1);
+                individual.distance = distance;
+                totalDistance += distance;
+                if (distance < currentBest.distance) {
+                    currentBest = individual;
+                }
+            }
+            if (!bestEver || currentBest.distance < bestEver.distance) {
+                bestEver = JSON.parse(JSON.stringify(currentBest));
+                if (isFinite(bestEver.distance)) {
+                    fitnessHistory.push(bestEver.distance);
+                    updateChart();
+                }
+                improved = true;
+            }
+            avgDistanceDisplay.textContent = population.length > 0 ? (totalDistance / populationSize).toFixed(2) : 'N/A';
+            return improved;
+        }
+        
+        function tournamentSelection() {
+            let best = null;
+            if (population.length === 0) return null;
+            for (let i = 0; i < tournamentSize; i++) {
+                const idx = Math.floor(Math.random() * population.length);
+                const individual = population[idx];
+                if (best === null || individual.fitness > best.fitness) {
+                    best = individual;
+                }
+            }
+            return best;
+        }
+
+        function orderedCrossover(parent1, parent2) {
+            const start = Math.floor(Math.random() * parent1.length);
+            const end = Math.floor(Math.random() * (parent1.length - start)) + start;
+            const child = Array(parent1.length).fill(null);
+            const segment = parent1.slice(start, end + 1);
+            for (let i = start; i <= end; i++) {
+                child[i] = parent1[i];
+            }
+            let parent2Idx = 0;
+            for (let i = 0; i < child.length; i++) {
+                if (child[i] === null) {
+                    while (segment.includes(parent2[parent2Idx])) {
+                        parent2Idx++;
+                    }
+                    child[i] = parent2[parent2Idx];
+                    parent2Idx++;
+                }
+            }
+            return child;
+        }
+        
+        function swapMutation(path) {
+            let mutatedPath = [...path];
+            for (let i = 0; i < mutatedPath.length; i++) {
+                if (Math.random() < mutationRate) {
+                    const j = Math.floor(Math.random() * mutatedPath.length);
+                    [mutatedPath[i], mutatedPath[j]] = [mutatedPath[j], mutatedPath[i]];
+                }
+            }
+            return mutatedPath;
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function calculateDistance(path) {
+            if (!path || path.length < 2) return 0;
+            let totalDist = 0;
+            for (let i = 0; i < path.length - 1; i++) {
+                const cityA = cities[path[i]];
+                const cityB = cities[path[i+1]];
+                totalDist += Math.hypot(cityA.x - cityB.x, cityA.y - cityB.y);
+            }
+            const lastCity = cities[path[path.length - 1]];
+            const firstCity = cities[path[0]];
+            totalDist += Math.hypot(lastCity.x - firstCity.x, lastCity.y - firstCity.y);
+            return totalDist;
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(150, 150, 150, 0.1)';
+            ctx.lineWidth = 1;
+            for (const individual of population) {
+                drawPath(individual.path);
+            }
+            if (bestEver && bestEver.path) {
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = 'rgba(34, 197, 94, 0.5)';
+                ctx.shadowBlur = 10;
+                drawPath(bestEver.path);
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+            }
+            for (let i = 0; i < cities.length; i++) {
+                const city = cities[i];
+                ctx.fillStyle = i === 0 ? '#ef4444' : '#4f46e5';
+                ctx.beginPath();
+                ctx.arc(city.x, city.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 10px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i, city.x, city.y);
+            }
+        }
+        
+        function drawPath(path) {
+            if (!path || path.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(cities[path[0]].x, cities[path[0]].y);
+            for (let i = 1; i < path.length; i++) {
+                ctx.lineTo(cities[path[i]].x, cities[path[i]].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function updateUI() {
+            generationDisplay.textContent = generation;
+            if (bestEver && bestEver.distance !== Infinity) {
+                bestDistanceDisplay.textContent = bestEver.distance.toFixed(2);
+                pathSequenceDisplay.textContent = bestEver.path.join(' → ');
+            } else {
+                bestDistanceDisplay.textContent = 'N/A';
+                pathSequenceDisplay.textContent = 'N/A';
+            }
+            if (isRunning) {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                elapsedTimeDisplay.textContent = `${elapsed}s`;
+            }
+        }
+
+        function updateChart() {
+            fitnessChart.data.labels = fitnessHistory.map((_, i) => i);
+            fitnessChart.data.datasets[0].data = fitnessHistory;
+            fitnessChart.update();
+        }
+        
+        function stopSimulation() {
+            isRunning = false;
+            startPauseBtn.textContent = translations[currentLang].start;
+            startPauseBtn.classList.add('bg-indigo-600');
+            startPauseBtn.classList.remove('bg-yellow-500');
+            stepBtn.disabled = false;
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(timerInterval);
+        }
+
+        // --- EVENT HANDLERS ---
+        langToggle.addEventListener('click', () => {
+            const newLang = currentLang === 'en' ? 'fr' : 'en';
+            setLanguage(newLang);
+        });
+
+        startPauseBtn.addEventListener('click', () => {
+            if(isRunning) {
+                stopSimulation();
+            } else {
+                isRunning = true;
+                startPauseBtn.textContent = translations[currentLang].pause;
+                startPauseBtn.classList.remove('bg-indigo-600');
+                startPauseBtn.classList.add('bg-yellow-500');
+                stepBtn.disabled = true;
+                if (!startTime) startTime = Date.now();
+                generationsSinceLastImprovement = 0; // Reset on manual start
+                timerInterval = setInterval(updateUI, 1000);
+                animate();
+            }
+        });
+
+        stepBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                evolve();
+                updateUI();
+                draw();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            stopSimulation();
+            startTime = null;
+            elapsedTimeDisplay.textContent = '0s';
+            initialize();
+        });
+        
+        citiesSlider.addEventListener('input', (e) => {
+            numCities = parseInt(e.target.value);
+            citiesValue.textContent = numCities;
+            if (!isRunning) initialize();
+        });
+        populationSlider.addEventListener('input', (e) => {
+            populationSize = parseInt(e.target.value);
+            populationValue.textContent = populationSize;
+            if (!isRunning) initializePopulation();
+        });
+        mutationSlider.addEventListener('input', (e) => {
+            mutationRate = parseFloat(e.target.value);
+            mutationValue.textContent = mutationRate;
+        });
+        crossoverSlider.addEventListener('input', (e) => {
+            crossoverRate = parseFloat(e.target.value);
+            crossoverValue.textContent = crossoverRate;
+        });
+        tournamentSlider.addEventListener('input', (e) => {
+            tournamentSize = parseInt(e.target.value);
+            tournamentValue.textContent = tournamentSize;
+        });
+        autoStopSlider.addEventListener('input', (e) => {
+            autoStopGenerations = parseInt(e.target.value);
+            autoStopValue.textContent = autoStopGenerations;
+        });
+
+
+        let draggingCity = null;
+        canvas.addEventListener('mousedown', (e) => {
+            if (isRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            for (let i = 0; i < cities.length; i++) {
+                const city = cities[i];
+                if (Math.hypot(mouseX - city.x, mouseY - city.y) < 10) {
+                    draggingCity = i;
+                    return;
+                }
+            }
+            if (cities.length < 50) {
+                cities.push({ x: mouseX, y: mouseY });
+                numCities = cities.length;
+                citiesSlider.value = numCities;
+                citiesValue.textContent = numCities;
+                initializePopulation();
+                draw();
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (draggingCity !== null) {
+                const rect = canvas.getBoundingClientRect();
+                cities[draggingCity].x = e.clientX - rect.left;
+                cities[draggingCity].y = e.clientY - rect.top;
+                initializePopulation();
+                draw();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            draggingCity = null;
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (!isRunning) initialize();
+        });
+
+        // --- INITIALIZATION ---
+        initialize();
+
+    </script>
+</body>
+</html>
