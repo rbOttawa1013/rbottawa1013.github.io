@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Algorithm: Evolving Text</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .control-panel label {
+            font-weight: 500;
+        }
+        .control-panel input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            outline: none;
+        }
+        .control-panel input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .control-panel input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .visualization-area {
+            background-color: #1f2937; /* bg-gray-800 */
+            color: #f9fafb; /* text-gray-50 */
+            font-family: 'Courier New', Courier, monospace;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .best-phrase-char {
+            transition: color 0.3s ease-in-out;
+        }
+        .best-phrase-char.correct {
+            color: #4ade80; /* green-400 */
+        }
+        .best-phrase-char.incorrect {
+            color: #f87171; /* red-400 */
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col lg:flex-row h-screen overflow-hidden">
+
+    <!-- Control Panel -->
+    <div class="control-panel w-full lg:w-96 bg-white p-6 shadow-2xl overflow-y-auto space-y-6 flex-shrink-0">
+        <div class="flex justify-between items-center border-b pb-4">
+            <h1 data-lang-key="title" class="text-2xl font-bold text-gray-900">Evolving Text</h1>
+            <button id="langToggle" class="text-sm font-semibold px-3 py-1 rounded-md hover:bg-gray-200 transition-colors">FR</button>
+        </div>
+        
+        <div class="space-y-4">
+            <h2 data-lang-key="controlsTitle" class="text-lg font-semibold text-gray-700">Controls</h2>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="startPauseBtn" data-lang-key="start" class="btn bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Start</button>
+                <button id="stepBtn" data-lang-key="step" class="btn bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Step</button>
+                <button id="resetBtn" data-lang-key="reset" class="btn bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Reset</button>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <h2 data-lang-key="parametersTitle" class="text-lg font-semibold text-gray-700">Parameters</h2>
+            <div class="space-y-4">
+                <div title="The target phrase the algorithm will try to evolve.">
+                    <label for="targetInput" class="flex justify-between"><span data-lang-key="targetLabel">Target Phrase</span></label>
+                    <input type="text" id="targetInput" value="Hello, World!" class="w-full mt-1 p-2 border border-gray-300 rounded-md">
+                </div>
+                <div title="The number of candidate solutions (phrases) in each generation.">
+                    <label for="populationSlider" class="flex justify-between"><span data-lang-key="populationLabel">Population Size</span> <span id="populationValue" class="font-bold text-indigo-600">200</span></label>
+                    <input type="range" id="populationSlider" min="50" max="1000" value="200" step="10" class="w-full">
+                </div>
+                <div title="The probability that a candidate solution (phrase) will be mutated in a generation.">
+                    <label for="mutationSlider" class="flex justify-between"><span data-lang-key="mutationLabel">Mutation Rate</span> <span id="mutationValue" class="font-bold text-indigo-600">0.01</span></label>
+                    <input type="range" id="mutationSlider" min="0.001" max="1.0" value="0.01" step="0.001" class="w-full">
+                </div>
+                <div title="The method used to mutate a phrase.">
+                    <label for="mutationStrategySelect" class="flex justify-between"><span data-lang-key="mutationStrategyLabel">Mutation Strategy</span></label>
+                    <select id="mutationStrategySelect" class="w-full mt-1 p-2 border border-gray-300 rounded-md bg-white">
+                        <option value="single_char" data-lang-key="strategySingleChar"></option>
+                        <option value="double_char" data-lang-key="strategyDoubleChar"></option>
+                        <option value="single_vowel" data-lang-key="strategySingleVowel"></option>
+                        <option value="double_vowel" data-lang-key="strategyDoubleVowel"></option>
+                    </select>
+                </div>
+                <div title="Stops the simulation if the best solution doesn't change for this many generations. 0 means disabled.">
+                    <label for="autoStopSlider" class="flex justify-between"><span data-lang-key="autoStopLabel">Auto-Stop Generations</span> <span id="autoStopValue" class="font-bold text-indigo-600">100</span></label>
+                    <input type="range" id="autoStopSlider" min="0" max="500" value="100" step="10" class="w-full">
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <h2 data-lang-key="fitnessGraphTitle" class="text-lg font-semibold text-gray-700 mb-2">Fitness Over Generations</h2>
+            <div class="bg-gray-50 p-2 rounded-lg shadow-inner">
+                 <canvas id="fitnessChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Visualization Area -->
+    <div class="flex-grow relative visualization-area">
+        <div class="w-full max-w-4xl space-y-8">
+            <div>
+                <h3 data-lang-key="bestPhraseTitle" class="text-lg font-semibold text-gray-400 mb-2 uppercase tracking-wider">Best Phrase</h3>
+                <p id="bestPhrase" class="text-2xl md:text-4xl p-4 bg-black bg-opacity-20 rounded-lg break-words"></p>
+            </div>
+            <div>
+                <h3 data-lang-key="populationSampleTitle" class="text-lg font-semibold text-gray-400 mb-2 uppercase tracking-wider">Population Sample</h3>
+                <div id="populationSample" class="text-sm md:text-base space-y-1 p-4 bg-black bg-opacity-20 rounded-lg h-64 overflow-y-auto"></div>
+            </div>
+        </div>
+        <!-- Stats Overlay -->
+        <div class="absolute top-4 right-4 grid grid-cols-1 gap-4">
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center bg-gray-700 text-white">
+                <h3 data-lang-key="generationLabel" class="text-sm font-medium text-gray-300">Generation</h3>
+                <p id="generation" class="text-2xl font-bold text-indigo-400">0</p>
+            </div>
+             <div class="stats-card p-3 rounded-lg shadow-lg text-center bg-gray-700 text-white">
+                <h3 data-lang-key="bestFitnessLabel" class="text-sm font-medium text-gray-300">Best Fitness</h3>
+                <p id="bestFitness" class="text-2xl font-bold text-indigo-400">0%</p>
+            </div>
+            <div class="stats-card p-3 rounded-lg shadow-lg text-center bg-gray-700 text-white">
+                <h3 data-lang-key="timeLabel" class="text-sm font-medium text-gray-300">Elapsed Time</h3>
+                <p id="elapsedTime" class="text-2xl font-bold text-indigo-400">0s</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM ELEMENTS ---
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const langToggle = document.getElementById('langToggle');
+        
+        // Parameter Inputs
+        const targetInput = document.getElementById('targetInput');
+        const populationSlider = document.getElementById('populationSlider');
+        const populationValue = document.getElementById('populationValue');
+        const mutationSlider = document.getElementById('mutationSlider');
+        const mutationValue = document.getElementById('mutationValue');
+        const mutationStrategySelect = document.getElementById('mutationStrategySelect');
+        const autoStopSlider = document.getElementById('autoStopSlider');
+        const autoStopValue = document.getElementById('autoStopValue');
+        
+        // Display Elements
+        const bestPhraseDisplay = document.getElementById('bestPhrase');
+        const populationSampleDisplay = document.getElementById('populationSample');
+        const generationDisplay = document.getElementById('generation');
+        const bestFitnessDisplay = document.getElementById('bestFitness');
+        const elapsedTimeDisplay = document.getElementById('elapsedTime');
+
+        // --- TRANSLATION & LANGUAGE ---
+        let currentLang = 'en';
+        const translations = {
+            en: {
+                title: "Evolving Text",
+                controlsTitle: "Controls",
+                start: "Start",
+                pause: "Pause",
+                step: "Step",
+                reset: "Reset",
+                parametersTitle: "Parameters",
+                targetLabel: "Target Phrase",
+                populationLabel: "Population Size",
+                mutationLabel: "Mutation Rate",
+                mutationStrategyLabel: "Mutation Strategy",
+                strategySingleChar: "Single Letter",
+                strategyDoubleChar: "Double Letter",
+                strategySingleVowel: "Single Vowel",
+                strategyDoubleVowel: "Double Vowel",
+                autoStopLabel: "Auto-Stop Generations",
+                fitnessGraphTitle: "Fitness Over Generations",
+                bestPhraseTitle: "Best Phrase",
+                populationSampleTitle: "Population Sample",
+                generationLabel: "Generation",
+                bestFitnessLabel: "Best Fitness",
+                timeLabel: "Elapsed Time",
+                fitnessChartLabel: "Best Fitness"
+            },
+            fr: {
+                title: "Texte Évolutif",
+                controlsTitle: "Contrôles",
+                start: "Démarrer",
+                pause: "Pause",
+                step: "Étape",
+                reset: "Réinitialiser",
+                parametersTitle: "Paramètres",
+                targetLabel: "Phrase Cible",
+                populationLabel: "Taille de la Population",
+                mutationLabel: "Taux de Mutation",
+                mutationStrategyLabel: "Stratégie de Mutation",
+                strategySingleChar: "Lettre Seule",
+                strategyDoubleChar: "Lettre Double",
+                strategySingleVowel: "Voyelle Seule",
+                strategyDoubleVowel: "Voyelle Double",
+                autoStopLabel: "Arrêt Auto (Géns)",
+                fitnessGraphTitle: "Aptitude par Génération",
+                bestPhraseTitle: "Meilleure Phrase",
+                populationSampleTitle: "Échantillon de la Population",
+                generationLabel: "Génération",
+                bestFitnessLabel: "Meilleure Aptitude",
+                timeLabel: "Temps Écoulé",
+                fitnessChartLabel: "Meilleure Aptitude"
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (translations[lang][key]) {
+                    if (el.id === 'startPauseBtn') {
+                        el.textContent = isRunning ? translations[lang].pause : translations[lang].start;
+                    } else {
+                        el.textContent = translations[lang][key];
+                    }
+                }
+            });
+            fitnessChart.data.datasets[0].label = translations[lang].fitnessChartLabel;
+            fitnessChart.update();
+            langToggle.textContent = lang === 'en' ? 'FR' : 'EN';
+        }
+
+        // --- STATE & PARAMETERS ---
+        let population = [];
+        let bestEver = null;
+        let generation = 0;
+        let isRunning = false;
+        let animationFrameId;
+        let startTime, timerInterval;
+        let fitnessHistory = [];
+        let generationsSinceLastImprovement = 0;
+        const validChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?\'"`_-$%&()=+/\\';
+        const vowels = 'aeiouAEIOU';
+
+        // GA Parameters
+        let targetPhrase = targetInput.value;
+        let populationSize = parseInt(populationSlider.value);
+        let mutationRate = parseFloat(mutationSlider.value);
+        let mutationStrategy = mutationStrategySelect.value;
+        let autoStopGenerations = parseInt(autoStopSlider.value);
+
+        // --- FITNESS CHART ---
+        const chartCtx = document.getElementById('fitnessChart').getContext('2d');
+        const fitnessChart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: translations[currentLang].fitnessChartLabel,
+                    data: [],
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } },
+                    x: { ticks: { display: false } }
+                },
+                plugins: { legend: { display: false } },
+                animation: { duration: 0 } // Disable animation for performance
+            }
+        });
+
+        // --- CORE LOGIC ---
+        
+        function initialize() {
+            stopSimulation();
+            targetPhrase = targetInput.value;
+            generation = 0;
+            bestEver = null;
+            fitnessHistory = [];
+            population = [];
+            generationsSinceLastImprovement = 0;
+            
+            if (targetPhrase.length > 0) {
+                initializePopulation();
+            }
+            
+            updateUI();
+            updateChart();
+            updateDisplay();
+        }
+
+        function initializePopulation() {
+            population = [];
+            for (let i = 0; i < populationSize; i++) {
+                let text = '';
+                for (let j = 0; j < targetPhrase.length; j++) {
+                    text += validChars.charAt(Math.floor(Math.random() * validChars.length));
+                }
+                population.push({ text, fitness: 0 });
+            }
+            evaluateFitness();
+        }
+
+        function mainLoop() {
+            if (isRunning) {
+                evolve();
+                updateUI();
+                updateDisplay();
+            }
+            animationFrameId = requestAnimationFrame(mainLoop);
+        }
+
+        function evolve() {
+            let matingPool = [];
+            for (const individual of population) {
+                // Ensure fitness is at least 0 to avoid negative loops
+                const fitnessScore = Math.max(0, individual.fitness);
+                const n = Math.floor(fitnessScore * 100);
+                for (let j = 0; j < n; j++) {
+                    matingPool.push(individual);
+                }
+            }
+            
+            // If the mating pool is empty (e.g., all fitness is 0), populate it with everyone to avoid errors.
+            if (matingPool.length === 0) {
+                matingPool = [...population];
+            }
+            
+            let newPopulation = [];
+            for(let i = 0; i < population.length; i++) {
+                const parentA = matingPool[Math.floor(Math.random() * matingPool.length)];
+                const parentB = matingPool[Math.floor(Math.random() * matingPool.length)];
+                const childText = crossover(parentA.text, parentB.text);
+                const mutatedText = mutate(childText);
+                newPopulation.push({ text: mutatedText, fitness: 0 });
+            }
+
+            population = newPopulation;
+            
+            const improved = evaluateFitness();
+            if (improved) {
+                generationsSinceLastImprovement = 0;
+            } else {
+                generationsSinceLastImprovement++;
+            }
+
+            if ((autoStopGenerations > 0 && generationsSinceLastImprovement >= autoStopGenerations) || (bestEver && bestEver.fitness === 1)) {
+                stopSimulation();
+            }
+
+            generation++;
+        }
+
+        function evaluateFitness() {
+            let improved = false;
+            let currentBest = { fitness: -1 };
+
+            for (let individual of population) {
+                let score = 0;
+                for (let i = 0; i < targetPhrase.length; i++) {
+                    if (individual.text[i] === targetPhrase[i]) {
+                        score++;
+                    }
+                }
+                individual.fitness = score / targetPhrase.length;
+                
+                if (individual.fitness > currentBest.fitness) {
+                    currentBest = individual;
+                }
+            }
+
+            if (!bestEver || currentBest.fitness > bestEver.fitness) {
+                bestEver = { ...currentBest };
+                fitnessHistory.push(bestEver.fitness * 100);
+                updateChart();
+                improved = true;
+            }
+            
+            return improved;
+        }
+
+        function crossover(textA, textB) {
+            const midpoint = Math.floor(Math.random() * textA.length);
+            return textA.substring(0, midpoint) + textB.substring(midpoint);
+        }
+        
+        const randomValidChar = () => validChars.charAt(Math.floor(Math.random() * validChars.length));
+        const randomVowel = () => vowels.charAt(Math.floor(Math.random() * vowels.length));
+
+        function mutate(text) {
+            if (Math.random() > mutationRate) {
+                return text; // No mutation occurs for this individual
+            }
+
+            let chars = text.split('');
+            if (chars.length === 0) return '';
+            
+            switch (mutationStrategy) {
+                case 'single_char': {
+                    const index = Math.floor(Math.random() * chars.length);
+                    chars[index] = randomValidChar();
+                    break;
+                }
+                case 'double_char': {
+                    const index1 = Math.floor(Math.random() * chars.length);
+                    const index2 = Math.floor(Math.random() * chars.length);
+                    chars[index1] = randomValidChar();
+                    chars[index2] = randomValidChar();
+                    break;
+                }
+                case 'single_vowel': {
+                    const index = Math.floor(Math.random() * chars.length);
+                    chars[index] = randomVowel();
+                    break;
+                }
+                case 'double_vowel': {
+                    const index1 = Math.floor(Math.random() * chars.length);
+                    const index2 = Math.floor(Math.random() * chars.length);
+                    chars[index1] = randomVowel();
+                    chars[index2] = randomVowel();
+                    break;
+                }
+            }
+            
+            return chars.join('');
+        }
+
+
+        function stopSimulation() {
+            isRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(timerInterval);
+            startPauseBtn.textContent = translations[currentLang].start;
+            startPauseBtn.classList.remove('bg-yellow-500');
+            startPauseBtn.classList.add('bg-indigo-600');
+            stepBtn.disabled = false;
+        }
+
+        // --- UI & DISPLAY ---
+
+        function updateDisplay() {
+            if (bestEver && bestEver.text) {
+                let bestHTML = '';
+                for (let i = 0; i < bestEver.text.length; i++) {
+                    const charClass = bestEver.text[i] === targetPhrase[i] ? 'correct' : 'incorrect';
+                    bestHTML += `<span class="best-phrase-char ${charClass}">${bestEver.text[i]}</span>`;
+                }
+                bestPhraseDisplay.innerHTML = bestHTML;
+            } else {
+                 bestPhraseDisplay.textContent = '';
+            }
+
+            let sampleHTML = '';
+            const sampleSize = Math.min(population.length, 20);
+            for (let i = 0; i < sampleSize; i++) {
+                if (population[i] && population[i].text) {
+                    sampleHTML += `<div>${population[i].text}</div>`;
+                }
+            }
+            populationSampleDisplay.innerHTML = sampleHTML;
+        }
+
+        function updateUI() {
+            generationDisplay.textContent = generation;
+            if (bestEver) {
+                bestFitnessDisplay.textContent = `${(bestEver.fitness * 100).toFixed(2)}%`;
+            } else {
+                bestFitnessDisplay.textContent = '0%';
+            }
+
+            if (isRunning) {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                elapsedTimeDisplay.textContent = `${elapsed}s`;
+            }
+        }
+
+        function updateChart() {
+            fitnessChart.data.labels = fitnessHistory.map((_, i) => i);
+            fitnessChart.data.datasets[0].data = fitnessHistory;
+            fitnessChart.update();
+        }
+
+        // --- EVENT HANDLERS ---
+        langToggle.addEventListener('click', () => setLanguage(currentLang === 'en' ? 'fr' : 'en'));
+
+        startPauseBtn.addEventListener('click', () => {
+            if (isRunning) {
+                stopSimulation();
+            } else {
+                isRunning = true;
+                startPauseBtn.textContent = translations[currentLang].pause;
+                startPauseBtn.classList.remove('bg-indigo-600');
+                startPauseBtn.classList.add('bg-yellow-500');
+                stepBtn.disabled = true;
+                if (!startTime) startTime = Date.now();
+                generationsSinceLastImprovement = 0;
+                timerInterval = setInterval(updateUI, 1000);
+                mainLoop();
+            }
+        });
+
+        stepBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                evolve();
+                updateUI();
+                updateDisplay();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            startTime = null;
+            elapsedTimeDisplay.textContent = '0s';
+            initialize();
+        });
+
+        targetInput.addEventListener('change', () => { if (!isRunning) initialize(); });
+        populationSlider.addEventListener('input', (e) => {
+            populationSize = parseInt(e.target.value);
+            populationValue.textContent = populationSize;
+            if (!isRunning) initialize();
+        });
+        mutationSlider.addEventListener('input', (e) => {
+            mutationRate = parseFloat(e.target.value);
+            mutationValue.textContent = mutationRate;
+        });
+        mutationStrategySelect.addEventListener('change', (e) => {
+            mutationStrategy = e.target.value;
+        });
+        autoStopSlider.addEventListener('input', (e) => {
+            autoStopGenerations = parseInt(e.target.value);
+            autoStopValue.textContent = autoStopGenerations;
+        });
+
+        // --- INITIALIZATION ---
+        setLanguage('en'); // Set default language text on load
+        initialize();
+
+    </script>
+</body>
+</html>
