@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleWorld Canada Microsimulation App</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles for a clean, professional look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* light gray background */
+        }
+        .app-container {
+            max-width: 1400px;
+            margin: auto;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            padding: 1.5rem;
+        }
+        .btn {
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .btn-primary {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #1d4ed8; /* blue-700 */
+        }
+        .btn-secondary {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #374151; /* gray-700 */
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #d1d5db; /* gray-300 */
+        }
+         .btn-warning {
+            background-color: #f59e0b; /* amber-500 */
+            color: white;
+        }
+        .btn-warning:hover:not(:disabled) {
+            background-color: #d97706; /* amber-600 */
+        }
+        .btn:disabled {
+            background-color: #f3f4f6; /* gray-100 */
+            color: #9ca3af; /* gray-400 */
+            cursor: not-allowed;
+            border: 1px solid #e5e7eb;
+        }
+        .tab {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            color: #6b7280; /* gray-500 */
+        }
+        .tab.disabled {
+            color: #d1d5db; /* gray-300 */
+            cursor: not-allowed;
+        }
+        .tab.active {
+            color: #2563eb; /* blue-600 */
+            border-bottom-color: #2563eb;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Language Toggle */
+        .lang-toggle {
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            border-radius: 9999px;
+            padding: 0.25rem;
+            display: flex;
+        }
+        .lang-toggle span {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        .lang-toggle span.active {
+            background-color: #2563eb;
+            color: white;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div id="app" class="app-container p-4 md:p-8">
+        
+        <header class="mb-8 relative">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold text-gray-900" data-i18n="appTitle">SimpleWorld Canada</h1>
+                <p class="text-md text-gray-600 mt-2" data-i18n="appSubtitle">A Microsimulation App for Synthetic Population Data</p>
+            </div>
+            <div id="lang-toggle-container" class="lang-toggle absolute top-0 right-0">
+                <span id="lang-en" class="active">EN</span>
+                <span id="lang-fr">FR</span>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6" aria-live="polite" aria-busy="false">
+
+            <!-- Left Panel: Controls & Summary -->
+            <aside class="lg:col-span-3 space-y-6">
+                <div class="panel space-y-6">
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2" data-i18n="simHeading">Simulation</h2>
+                        <div class="space-y-4">
+                            <button id="run-sim-btn" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                                <span data-i18n="runBtn">Run New Simulation</span>
+                            </button>
+                             <button id="pause-sim-btn" class="btn btn-warning" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                <span data-i18n="pauseBtn">Pause Simulation</span>
+                             </button>
+                            <button id="reset-sim-btn" class="btn btn-secondary" data-i18n="resetBtn">Reset</button>
+                        </div>
+                    </div>
+                     <div class="pt-6 border-t">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2" data-i18n="importHeading">Import Data</h2>
+                        <div class="space-y-4">
+                            <button id="load-demo-btn" class="btn btn-secondary" data-i18n="loadDemoBtn">Load Demo Data</button>
+                            <div>
+                                 <label for="import-csv-input" class="btn btn-secondary cursor-pointer" data-i18n="importBtn">Import Initial Data</label>
+                                 <input type="file" id="import-csv-input" accept=".csv" class="hidden"/>
+                             </div>
+                        </div>
+                    </div>
+                     <div class="pt-6 border-t">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2" data-i18n="exportHeading">Export Data</h2>
+                        <div class="space-y-4">
+                            <button id="export-initial-btn" class="btn btn-secondary" disabled data-i18n="exportInitialBtn">Export Initial Data</button>
+                            <button id="export-sim-btn" class="btn btn-secondary" disabled data-i18n="exportSimBtn">Export Simulated Data</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="panel">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-2" data-i18n="summaryHeading">Last Action Summary</h2>
+                    <div id="summary-output" class="text-gray-600 space-y-2">
+                        <p data-i18n="waitingForData">Waiting for data...</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel: Console -->
+            <section class="lg:col-span-5 panel">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-semibold" data-i18n="consoleHeading">Console</h2>
+                    <div id="spinner" class="spinner hidden"></div>
+                </div>
+                <div id="console-output" class="bg-gray-900 text-white font-mono text-sm rounded-md p-4 h-80 overflow-y-auto">
+                    <p class="text-gray-400" data-i18n="consoleReady">&gt; Console ready.</p>
+                </div>
+                <div id="explainer-text" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                    <h4 class="font-bold mb-2" data-i18n="explainerTitle">What is Microsimulation?</h4>
+                    <p data-i18n="explainerPara1">This application uses microsimulation to create a synthetic, artificial dataset of individuals. It starts with a set of constraints (like age and provincial distributions) and assigns properties to each person one-by-one, as shown in the console logs.</p>
+                    <p class="mt-2" data-i18n="explainerPara2">This method is useful for policy analysis, research, and understanding population dynamics without using real, sensitive data.</p>
+                </div>
+            </section>
+
+            <!-- Right Panel: Data Views -->
+            <section class="lg:col-span-4 panel">
+                <div class="border-b mb-4">
+                    <nav class="flex -mb-px flex-wrap" id="tabs">
+                        <a class="tab active disabled" data-tab="initial-dataset" data-i18n="initialDatasetTab">Initial Dataset</a>
+                        <a class="tab disabled" data-tab="simulated-dataset" data-i18n="simulatedDatasetTab">Simulated Dataset</a>
+                    </nav>
+                </div>
+                <div id="tab-content">
+                    <!-- Initial Data View -->
+                    <div id="initial-dataset-content" class="hidden">
+                        <h3 class="font-bold text-lg mb-2" data-i18n="initialTableTitle">Initial Data Table</h3>
+                        <p class="text-sm text-gray-500 mb-4" data-i18n="initialTableDesc">This is the data loaded from the demo or your CSV file.</p>
+                        <div class="h-64 overflow-auto border rounded-md mb-6">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0"><tr id="initial-table-header"></tr></thead>
+                                <tbody id="initial-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2" data-i18n="initialChartTitle">Initial Data Charts</h3>
+                        <div class="space-y-6"><canvas id="initial-province-chart"></canvas><canvas id="initial-age-chart"></canvas></div>
+                    </div>
+                    <!-- Simulated Data View -->
+                    <div id="simulated-dataset-content" class="hidden">
+                        <h3 class="font-bold text-lg mb-2" data-i18n="simTableTitle">Simulated Data Table</h3>
+                         <p class="text-sm text-gray-500 mb-4" data-i18n="simTableDesc">This is the new dataset generated by the simulation.</p>
+                        <div class="h-64 overflow-auto border rounded-md mb-6">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0"><tr id="sim-table-header"></tr></thead>
+                                <tbody id="sim-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2" data-i18n="simChartTitle">Simulated Data Charts</h3>
+                        <div class="space-y-6"><canvas id="sim-province-chart"></canvas><canvas id="sim-age-chart"></canvas></div>
+                    </div>
+                     <div id="placeholder-content">
+                        <p class="text-gray-500 text-center mt-8" data-i18n="placeholder">Load or simulate data to see results here.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="mt-8">
+             <div id="status-banner" class="p-4 rounded-md text-center" role="alert"></div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM References ---
+            const runBtn = document.getElementById('run-sim-btn');
+            const pauseBtn = document.getElementById('pause-sim-btn');
+            const resetBtn = document.getElementById('reset-sim-btn');
+            const loadDemoBtn = document.getElementById('load-demo-btn');
+            const importCsvInput = document.getElementById('import-csv-input');
+            const importCsvLabel = document.querySelector('label[for="import-csv-input"]');
+            const exportInitialBtn = document.getElementById('export-initial-btn');
+            const exportSimBtn = document.getElementById('export-sim-btn');
+            const spinner = document.getElementById('spinner');
+            const consoleOutput = document.getElementById('console-output');
+            const summaryOutput = document.getElementById('summary-output');
+            const statusBanner = document.getElementById('status-banner');
+            const mainContent = document.querySelector('main');
+            const tabs = document.querySelectorAll('.tab');
+            const placeholderContent = document.getElementById('placeholder-content');
+            
+            // --- Chart Instances ---
+            let initialProvinceChart, initialAgeChart, simProvinceChart, simAgeChart;
+
+            // --- State Variables ---
+            let initialData = [];
+            let simulatedData = [];
+            let isSimulating = false;
+            let isPaused = false;
+            let currentLang = 'en';
+
+            // --- Internationalization (i18n) ---
+            const i18n = {
+                en: {
+                    appTitle: 'SimpleWorld Canada',
+                    appSubtitle: 'A Microsimulation App for Synthetic Population Data',
+                    simHeading: 'Simulation',
+                    runBtn: 'Run New Simulation',
+                    pauseBtn: 'Pause Simulation',
+                    resumeBtn: 'Resume Simulation',
+                    resetBtn: 'Reset',
+                    importHeading: 'Import Data',
+                    loadDemoBtn: 'Load Demo Data',
+                    importBtn: 'Import Initial Data',
+                    exportHeading: 'Export Data',
+                    exportInitialBtn: 'Export Initial Data',
+                    exportSimBtn: 'Export Simulated Data',
+                    summaryHeading: 'Last Action Summary',
+                    waitingForData: 'Waiting for data...',
+                    individuals: 'Individuals:',
+                    provinces: 'Provinces:',
+                    consoleHeading: 'Console',
+                    consoleReady: '&gt; Console ready.',
+                    explainerTitle: 'What is Microsimulation?',
+                    explainerPara1: 'This application uses microsimulation to create a synthetic, artificial dataset of individuals. It starts with a set of constraints (like age and provincial distributions) and assigns properties to each person one-by-one, as shown in the console logs.',
+                    explainerPara2: 'This method is useful for policy analysis, research, and understanding population dynamics without using real, sensitive data.',
+                    initialDatasetTab: 'Initial Dataset',
+                    simulatedDatasetTab: 'Simulated Dataset',
+                    initialTableTitle: 'Initial Data Table',
+                    initialTableDesc: 'This is the data loaded from the demo or your CSV file.',
+                    initialChartTitle: 'Initial Data Charts',
+                    simTableTitle: 'Simulated Data Table',
+                    simTableDesc: 'This is the new dataset generated by the simulation.',
+                    simChartTitle: 'Simulated Data Charts',
+                    placeholder: 'Load or simulate data to see results here.',
+                    simComplete: (duration) => `✅ New simulation complete in ${duration}s.`,
+                    demoLoaded: '✅ Demo data loaded successfully.',
+                    importSuccess: (count) => `✅ Successfully imported ${count} records.`,
+                    noExportData: 'No data available to export.',
+                    systemReset: 'System reset.',
+                    simPaused: 'Simulation paused.',
+                    simResumed: 'Simulation resumed.',
+                },
+                fr: {
+                    appTitle: 'SimpleMonde Canada',
+                    appSubtitle: 'Une application de microsimulation pour les données de population synthétiques',
+                    simHeading: 'Simulation',
+                    runBtn: 'Lancer une nouvelle simulation',
+                    pauseBtn: 'Suspendre la simulation',
+                    resumeBtn: 'Reprendre la simulation',
+                    resetBtn: 'Réinitialiser',
+                    importHeading: 'Importer des données',
+                    loadDemoBtn: 'Charger les données de démo',
+                    importBtn: 'Importer les données initiales',
+                    exportHeading: 'Exporter les données',
+                    exportInitialBtn: 'Exporter les données initiales',
+                    exportSimBtn: 'Exporter les données simulées',
+                    summaryHeading: 'Résumé de la dernière action',
+                    waitingForData: 'En attente de données...',
+                    individuals: 'Individus :',
+                    provinces: 'Provinces :',
+                    consoleHeading: 'Console',
+                    consoleReady: '&gt; Console prête.',
+                    explainerTitle: "Qu'est-ce que la microsimulation ?",
+                    explainerPara1: "Cette application utilise la microsimulation pour créer un ensemble de données synthétiques et artificielles d'individus. Elle commence par un ensemble de contraintes (comme la répartition par âge et par province) et attribue des propriétés à chaque personne une par une, comme le montrent les journaux de la console.",
+                    explainerPara2: "Cette méthode est utile pour l'analyse des politiques, la recherche et la compréhension de la dynamique de la population sans utiliser de données réelles et sensibles.",
+                    initialDatasetTab: 'Données initiales',
+                    simulatedDatasetTab: 'Données simulées',
+                    initialTableTitle: 'Tableau de données initiales',
+                    initialTableDesc: "Voici les données chargées à partir de la démo ou de votre fichier CSV.",
+                    initialChartTitle: 'Graphiques des données initiales',
+                    simTableTitle: 'Tableau de données simulées',
+                    simTableDesc: "Voici le nouvel ensemble de données généré par la simulation.",
+                    simChartTitle: 'Graphiques des données simulées',
+                    placeholder: 'Chargez ou simulez des données pour voir les résultats ici.',
+                    simComplete: (duration) => `✅ Nouvelle simulation terminée en ${duration}s.`,
+                    demoLoaded: '✅ Données de démonstration chargées avec succès.',
+                    importSuccess: (count) => `✅ ${count} enregistrements importés avec succès.`,
+                    noExportData: "Aucune donnée disponible pour l'exportation.",
+                    systemReset: 'Système réinitialisé.',
+                    simPaused: 'Simulation suspendue.',
+                    simResumed: 'Simulation reprise.',
+                }
+            };
+
+            const updateLanguage = (lang) => {
+                currentLang = lang;
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.dataset.i18n;
+                    if (i18n[lang][key]) {
+                        // Handle elements that contain other elements (like buttons with SVG)
+                        if (el.children.length > 0 && el.querySelector('span[data-i18n]')) {
+                            el.querySelector('span[data-i18n]').textContent = i18n[lang][key];
+                        } else {
+                            el.innerHTML = i18n[lang][key];
+                        }
+                    }
+                });
+
+                // Update dynamic text in summary
+                 if (summaryOutput.dataset.type) {
+                    const data = summaryOutput.dataset.type === 'initial' ? initialData : simulatedData;
+                    updateSummary(data, summaryOutput.dataset.type);
+                }
+
+                // Update charts if they exist
+                if (initialData.length > 0) renderCharts(initialData, 'initial');
+                if (simulatedData.length > 0) renderCharts(simulatedData, 'simulated');
+            };
+
+
+            // --- Logging ---
+            const logToConsole = (message, type = 'info') => {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('p');
+                let colorClass = 'text-green-400';
+                if (type === 'error') colorClass = 'text-red-400';
+                if (type === 'warn') colorClass = 'text-yellow-400';
+                logEntry.innerHTML = `<span class="${colorClass}">[${timestamp}]</span> ${message}`;
+                consoleOutput.appendChild(logEntry);
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            };
+
+            // --- Core Simulation Logic ---
+            const runSimulation = async () => {
+                if (isSimulating) return;
+                isSimulating = true;
+                isPaused = false;
+                
+                simulatedData = []; // Clear only simulated data
+                mainContent.setAttribute('aria-busy', 'true');
+                [runBtn, loadDemoBtn, importCsvLabel, resetBtn].forEach(el => el ? el.disabled = true : null);
+                pauseBtn.disabled = false;
+                pauseBtn.querySelector('span').textContent = i18n[currentLang].pauseBtn;
+                spinner.classList.remove('hidden');
+
+                const startTime = performance.now();
+                logToConsole('Starting new simulation...', 'warn');
+
+                const steps = [
+                    { message: 'Initializing weights...', delay: 500 },
+                    { message: 'Applying constraints...', delay: 700 },
+                    { message: 'Assigning population...', delay: 800 },
+                    { message: 'Generating final dataset...', delay: 400 },
+                ];
+                
+                try {
+                    for (let i = 0; i < steps.length; i++) {
+                        // Pause check
+                        while (isPaused) {
+                            await new Promise(resolve => setTimeout(resolve, 100)); // wait until unpaused
+                        }
+                        const step = steps[i];
+                        logToConsole(`<span class="text-gray-300">Step ${i+1}:</span> ${step.message}`);
+                        await new Promise(resolve => setTimeout(resolve, step.delay));
+                    }
+                    
+                    const generatedData = generateSyntheticData();
+                    const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+                    const successMsg = i18n[currentLang].simComplete(duration);
+                    logToConsole(`<strong>${successMsg.replace('✅ ', '')}</strong>`);
+                    processSimulationData(generatedData, successMsg);
+
+                } catch (error) {
+                    showErrorState(error.message);
+                } finally {
+                    isSimulating = false;
+                    isPaused = false;
+                    mainContent.setAttribute('aria-busy', 'false');
+                    spinner.classList.add('hidden');
+                    [runBtn, loadDemoBtn, importCsvLabel, resetBtn].forEach(el => el ? el.disabled = false : null);
+                    pauseBtn.disabled = true;
+                     pauseBtn.querySelector('span').textContent = i18n[currentLang].pauseBtn;
+                }
+            };
+
+            const togglePauseSimulation = () => {
+                if (!isSimulating) return;
+                isPaused = !isPaused;
+                const pauseBtnSpan = pauseBtn.querySelector('span');
+                if (isPaused) {
+                    pauseBtnSpan.textContent = i18n[currentLang].resumeBtn;
+                    logToConsole(i18n[currentLang].simPaused, 'warn');
+                } else {
+                    pauseBtnSpan.textContent = i18n[currentLang].pauseBtn;
+                    logToConsole(i18n[currentLang].simResumed, 'warn');
+                }
+            };
+
+            const generateSyntheticData = () => {
+                const provinces = [
+                    { name: 'Ontario', weight: 38 }, { name: 'Quebec', weight: 23 }, { name: 'British Columbia', weight: 13 },
+                    { name: 'Alberta', weight: 11 }, { name: 'Manitoba', weight: 4 },
+                ];
+                const sexes = [{ name: 'Male', weight: 49.6 }, { name: 'Female', weight: 50.4 }];
+                const totalPopulation = 1000;
+                const data = [];
+                const weightedSample = (items) => {
+                    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+                    let random = Math.random() * totalWeight;
+                    for (const item of items) {
+                        if (random < item.weight) return item.name;
+                        random -= item.weight;
+                    }
+                };
+                for (let i = 1; i <= totalPopulation; i++) {
+                    data.push({
+                        id: i,
+                        age: Math.floor(Math.random() * 85) + 15,
+                        sex: weightedSample(sexes),
+                        province: weightedSample(provinces),
+                    });
+                }
+                return data;
+            };
+
+            const loadDemoData = () => {
+                logToConsole("Loading demo dataset...", 'warn');
+                const demoData = [
+                    { id: 1, age: 25, sex: 'Female', province: 'Ontario' }, { id: 2, age: 42, sex: 'Male', province: 'Quebec' },
+                    { id: 3, age: 31, sex: 'Male', province: 'British Columbia' }, { id: 4, age: 67, sex: 'Female', province: 'Ontario' },
+                ];
+                processInitialData(demoData, i18n[currentLang].demoLoaded);
+            };
+
+            const handleCsvImport = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                logToConsole(`Importing data from ${file.name}...`, 'warn');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const lines = e.target.result.split(/\r?\n/).filter(line => line.trim() !== '');
+                        if (lines.length < 2) throw new Error("CSV needs a header and data.");
+                        const headers = lines[0].split(',').map(h => h.trim());
+                        const required = ['id', 'age', 'sex', 'province'];
+                        if (!required.every(h => headers.includes(h))) throw new Error(`CSV must contain headers: ${required.join(', ')}.`);
+                        const data = lines.slice(1).map(line => {
+                            const values = line.split(',');
+                            const entry = {};
+                            headers.forEach((h, i) => { entry[h] = values[i] ? values[i].trim() : ''; });
+                            return entry;
+                        });
+                        processInitialData(data, i18n[currentLang].importSuccess(data.length));
+                    } catch (error) { showErrorState(error.message); }
+                };
+                reader.onerror = () => showErrorState("Failed to read the file.");
+                reader.readAsText(file);
+                importCsvInput.value = ''; // Reset for re-upload
+            };
+
+            // --- UI Update & State Management ---
+            const processInitialData = (data, successMessage) => {
+                initialData = data;
+                updateView('initial', initialData);
+                updateSummary(initialData, 'Initial');
+                setStatus(successMessage, 'success');
+                exportInitialBtn.disabled = false;
+                enableTabs(['initial-dataset']);
+                switchTab('initial-dataset');
+            };
+
+            const processSimulationData = (data, successMessage) => {
+                simulatedData = data;
+                updateView('simulated', simulatedData);
+                updateSummary(data, 'Simulated');
+                setStatus(successMessage, 'success');
+                exportSimBtn.disabled = false;
+                enableTabs(['simulated-dataset']);
+                switchTab('simulated-dataset');
+            };
+
+            const updateView = (type, data) => {
+                const tableHeaderId = type === 'initial' ? 'initial-table-header' : 'sim-table-header';
+                const tableBodyId = type === 'initial' ? 'initial-table-body' : 'sim-table-body';
+                populateTable(data, tableHeaderId, tableBodyId);
+                renderCharts(data, type);
+            };
+            
+            const setStatus = (message, type) => {
+                if (type === 'success') {
+                    statusBanner.innerHTML = message;
+                    statusBanner.className = 'p-4 rounded-md text-center bg-green-100 text-green-800 font-semibold';
+                } else if (type === 'error') {
+                    statusBanner.innerHTML = `❌ ${message}`;
+                    statusBanner.className = 'p-4 rounded-md text-center bg-red-100 text-red-800 font-bold';
+                } else {
+                    statusBanner.innerHTML = '';
+                    statusBanner.className = 'p-4 rounded-md text-center';
+                }
+            };
+            
+            const showErrorState = (message) => {
+                setStatus(message, 'error');
+                logToConsole(`Error: ${message}`, 'error');
+            };
+
+            const resetUIState = () => {
+                logToConsole(i18n[currentLang].systemReset, 'warn');
+                initialData = [];
+                simulatedData = [];
+                isSimulating = false;
+                isPaused = false;
+                
+                consoleOutput.innerHTML = `<p class="text-gray-400">${i18n[currentLang].consoleReady}</p>`;
+                summaryOutput.innerHTML = `<p data-i18n="waitingForData">${i18n[currentLang].waitingForData}</p>`;
+                setStatus('', 'clear');
+
+                exportInitialBtn.disabled = true;
+                exportSimBtn.disabled = true;
+                pauseBtn.disabled = true;
+                pauseBtn.querySelector('span').textContent = i18n[currentLang].pauseBtn;
+
+
+                disableTabs(['initial-dataset', 'simulated-dataset']);
+                switchTab(null); // Hide all tabs
+
+                ['initial', 'sim'].forEach(type => {
+                     const header = document.getElementById(`${type}-table-header`);
+                     const body = document.getElementById(`${type}-table-body`);
+                     if(header) header.innerHTML = '';
+                     if(body) body.innerHTML = '';
+                });
+
+                [initialProvinceChart, initialAgeChart, simProvinceChart, simAgeChart].forEach(chart => chart?.destroy());
+            };
+            
+            const updateSummary = (data, type) => {
+                summaryOutput.dataset.type = type;
+                const provinces = [...new Set(data.map(p => p.province))];
+                summaryOutput.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="font-semibold">${i18n[currentLang][type === 'initial' ? 'initialDatasetTab': 'simulatedDatasetTab']}:</span></div>
+                    <div class="flex justify-between items-center"><span>${i18n[currentLang].individuals}</span><strong class="text-lg text-blue-600">${data.length}</strong></div>
+                    <div class="flex justify-between items-center"><span>${i18n[currentLang].provinces}</span><strong class="text-lg text-blue-600">${provinces.length}</strong></div>`;
+            };
+
+            const populateTable = (data, headerId, bodyId) => {
+                const headerEl = document.getElementById(headerId);
+                const bodyEl = document.getElementById(bodyId);
+                if (!headerEl || !bodyEl || data.length === 0) return;
+
+                const headers = Object.keys(data[0]);
+                headerEl.innerHTML = headers.map(h => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('');
+                bodyEl.innerHTML = data.slice(0, 200).map(row => `<tr>${headers.map(h => `<td class="px-4 py-2 text-sm text-gray-700">${row[h]}</td>`).join('')}</tr>`).join('');
+            };
+
+            const renderCharts = (data, type) => {
+                 const provinceCanvasId = type === 'initial' ? 'initial-province-chart' : 'sim-province-chart';
+                 const ageCanvasId = type === 'initial' ? 'initial-age-chart' : 'sim-age-chart';
+                 
+                 const provinceCounts = data.reduce((acc, p) => { acc[p.province] = (acc[p.province] || 0) + 1; return acc; }, {});
+                 const sortedProvinces = Object.entries(provinceCounts).sort(([,a],[,b]) => b-a);
+                 
+                 const ageGroups = { '15-24': 0, '25-44': 0, '45-64': 0, '65+': 0 };
+                 data.forEach(p => {
+                    const age = parseInt(p.age, 10);
+                    if (age <= 24) ageGroups['15-24']++; else if (age <= 44) ageGroups['25-44']++;
+                    else if (age <= 64) ageGroups['45-64']++; else ageGroups['65+']++;
+                 });
+
+                 const totalPopulation = data.length || 1;
+                 const ageLabelsWithPercentages = Object.keys(ageGroups).map(key => {
+                    const count = ageGroups[key];
+                    const percentage = ((count / totalPopulation) * 100).toFixed(1);
+                    return `${key} (${percentage}%)`;
+                 });
+
+                 if (type === 'initial') {
+                    if (initialProvinceChart) initialProvinceChart.destroy();
+                    initialProvinceChart = new Chart(provinceCanvasId, { type: 'bar', data: { labels: sortedProvinces.map(p => p[0]), datasets: [{ label: 'Population', data: sortedProvinces.map(p => p[1]), backgroundColor: 'rgba(22, 163, 74, 0.8)' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+                    if (initialAgeChart) initialAgeChart.destroy();
+                    initialAgeChart = new Chart(ageCanvasId, { type: 'doughnut', data: { labels: ageLabelsWithPercentages, datasets: [{ data: Object.values(ageGroups), backgroundColor: ['#16a34a', '#22c55e', '#4ade80', '#86efac'] }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
+                 } else { // simulated
+                    if (simProvinceChart) simProvinceChart.destroy();
+                    simProvinceChart = new Chart(provinceCanvasId, { type: 'bar', data: { labels: sortedProvinces.map(p => p[0]), datasets: [{ label: 'Population', data: sortedProvinces.map(p => p[1]), backgroundColor: 'rgba(37, 99, 235, 0.8)' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+                    if (simAgeChart) simAgeChart.destroy();
+                    simAgeChart = new Chart(ageCanvasId, { type: 'doughnut', data: { labels: ageLabelsWithPercentages, datasets: [{ data: Object.values(ageGroups), backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'] }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
+                 }
+            }
+            
+            const exportData = (data, filename) => {
+                if (data.length === 0) {
+                    showErrorState(i18n[currentLang].noExportData);
+                    return;
+                }
+                const headers = Object.keys(data[0]);
+                const csvString = [ headers.join(','), ...data.map(row => headers.map(h => `"${row[h]}"`).join(',')) ].join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.setAttribute('href', URL.createObjectURL(blob));
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+            
+            // --- Tab Controls ---
+            const switchTab = (tabId) => {
+                let foundTab = false;
+                tabs.forEach(tab => {
+                    const content = document.getElementById(`${tab.dataset.tab}-content`);
+                    if (tab.dataset.tab === tabId) {
+                        tab.classList.add('active');
+                        if (content) content.classList.remove('hidden');
+                        foundTab = true;
+                    } else {
+                        tab.classList.remove('active');
+                        if (content) content.classList.add('hidden');
+                    }
+                });
+                if (placeholderContent) {
+                    placeholderContent.style.display = foundTab ? 'none' : 'block';
+                }
+            };
+
+            const enableTabs = (tabIds) => tabIds.forEach(id => {
+                const tab = document.querySelector(`[data-tab="${id}"]`);
+                if(tab) tab.classList.remove('disabled');
+            });
+            const disableTabs = (tabIds) => tabIds.forEach(id => {
+                const tab = document.querySelector(`[data-tab="${id}"]`);
+                if(tab) tab.classList.add('disabled');
+            });
+
+            // --- Event Listeners ---
+            runBtn.addEventListener('click', runSimulation);
+            pauseBtn.addEventListener('click', togglePauseSimulation);
+            resetBtn.addEventListener('click', resetUIState);
+            loadDemoBtn.addEventListener('click', loadDemoData);
+            importCsvInput.addEventListener('change', handleCsvImport);
+            exportInitialBtn.addEventListener('click', () => exportData(initialData, 'initial_data.csv'));
+            exportSimBtn.addEventListener('click', () => exportData(simulatedData, 'simulated_data.csv'));
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    if (!e.currentTarget.classList.contains('disabled')) {
+                        switchTab(e.currentTarget.dataset.tab);
+                    }
+                });
+            });
+
+            document.getElementById('lang-toggle-container').addEventListener('click', (e) => {
+                const targetLang = e.target.id.split('-')[1]; // 'en' or 'fr'
+                if(targetLang && targetLang !== currentLang) {
+                    document.getElementById(`lang-${currentLang}`).classList.remove('active');
+                    document.getElementById(`lang-${targetLang}`).classList.add('active');
+                    updateLanguage(targetLang);
+                }
+            });
+
+
+            // --- Initial State on Load ---
+            resetUIState();
+            updateLanguage('en');
+        });
+    </script>
+
+</body>
+</html>
