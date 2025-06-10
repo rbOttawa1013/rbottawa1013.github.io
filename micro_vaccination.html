@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Disease Spread Simulation with Vaccination</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .control-panel label {
+            min-width: 180px;
+        }
+        .modal {
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal.is-open {
+            display: flex; /* Use flex for centering */
+        }
+        canvas {
+            background-color: #f8fafc; /* A slightly off-white color */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Disease Spread Simulation (SEIR-V Model)</h1>
+            <p class="text-gray-600 mt-2">An agent-based model to simulate disease dynamics with vaccination.</p>
+        </header>
+
+        <div class="flex flex-col items-center gap-8">
+            <!-- Simulation Canvas -->
+            <div class="w-full lg:w-2/3 flex flex-col items-center">
+                <canvas id="canvas" class="rounded-lg shadow-lg w-full max-w-2xl aspect-square"></canvas>
+            </div>
+
+            <!-- Live Stats Panel -->
+            <div id="stats-panel" class="w-full lg:w-2/3 bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Live Statistics</h2>
+                <div id="stats-content" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-y-4 gap-x-2 text-center">
+                    <!-- Stats will be populated here by JS -->
+                </div>
+                <hr class="my-4">
+                <h3 class="text-xl font-bold mb-2">Infections by Location</h3>
+                <div id="infection-stats" class="grid grid-cols-3 gap-4 text-center">
+                     <!-- Infection stats will be populated here by JS -->
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="w-full lg:w-2/3 bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Controls</h2>
+
+                <!-- Main Actions -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button onclick="toggleSimulation()" id="toggleBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Start</button>
+                    <button onclick="resetSimulation()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Reset</button>
+                </div>
+                
+                 <div class="space-y-4">
+                     <h3 class="text-lg font-semibold border-b pb-2">Settings</h3>
+                    <!-- Parameters -->
+                    <div>
+                        <label for="speed" class="block font-medium mb-1">Simulation Speed</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="speed" min="1" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <span id="speedValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">5</span>
+                        </div>
+                    </div>
+                     <div class="flex items-center justify-between">
+                         <label for="boundaryToggle" class="font-medium">Show Boundaries</label>
+                         <input type="checkbox" id="boundaryToggle" class="h-5 w-5 rounded text-blue-500 focus:ring-blue-400" checked>
+                     </div>
+                     <div class="flex items-center justify-between">
+                         <label for="traceToggle" class="font-medium">Show Trace Lines</label>
+                         <input type="checkbox" id="traceToggle" class="h-5 w-5 rounded text-blue-500 focus:ring-blue-400">
+                     </div>
+
+                    <!-- Location Weights -->
+                    <h3 class="text-lg font-semibold border-b pb-2 pt-4">Location Weights</h3>
+                    <div>
+                        <label for="homeWeight" class="block font-medium mb-1">Home</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="homeWeight" min="0" max="100" value="60" class="w-full">
+                            <span id="homeWeightValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">60</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="workWeight" class="block font-medium mb-1">Work</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="workWeight" min="0" max="100" value="30" class="w-full">
+                            <span id="workWeightValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">30</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="shoppingWeight" class="block font-medium mb-1">Shopping</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="shoppingWeight" min="0" max="100" value="10" class="w-full">
+                            <span id="shoppingWeightValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">10</span>
+                        </div>
+                    </div>
+
+                    <!-- Infection Rates -->
+                    <h3 class="text-lg font-semibold border-b pb-2 pt-4">Infection & Recovery</h3>
+                    <div>
+                        <label for="pInfectHome" class="block font-medium mb-1">Home Infection Rate</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="pInfectHome" min="0" max="1" step="0.01" value="0.05" class="w-full">
+                            <span id="pInfectHomeValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">0.05</span>
+                        </div>
+                    </div>
+                     <div>
+                        <label for="pInfectWork" class="block font-medium mb-1">Work Infection Rate</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="pInfectWork" min="0" max="1" step="0.01" value="0.1" class="w-full">
+                            <span id="pInfectWorkValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">0.10</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="pInfectShopping" class="block font-medium mb-1">Shopping Infection Rate</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="pInfectShopping" min="0" max="1" step="0.01" value="0.2" class="w-full">
+                            <span id="pInfectShoppingValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">0.20</span>
+                        </div>
+                    </div>
+                     <div>
+                        <label for="pRecover" class="block font-medium mb-1">Recovery Rate</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="pRecover" min="0" max="0.1" step="0.001" value="0.01" class="w-full">
+                            <span id="pRecoverValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">0.01</span>
+                        </div>
+                    </div>
+
+                    <!-- Interventions -->
+                    <h3 class="text-lg font-semibold border-b pb-2 pt-4">Interventions</h3>
+                    <div>
+                        <label for="vaccinationRate" class="block font-medium mb-1">Vaccination Rate (%)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="vaccinationRate" min="0" max="100" value="0" class="w-full">
+                            <span id="vaccinationRateValue" class="font-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-sm">0</span>
+                        </div>
+                    </div>
+                    <button onclick="applyVaccination()" id="applyVaccinationBtn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mt-2">Apply Vaccination</button>
+                    <button onclick="showHelp()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors mt-2">Help</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Help Modal -->
+        <div id="helpModal" class="modal fixed inset-0 bg-black bg-opacity-50 justify-center items-center p-4">
+            <div class="bg-white p-8 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">SEIR-V Model Explanation</h2>
+                    <button onclick="closeHelp()" class="text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+                </div>
+                <div class="text-gray-700 space-y-4">
+                    <p>The SEIR-V model is an extension of the SIR model, incorporating an "Exposed" state and a "Vaccinated" state. This model is used to simulate the spread of diseases with incubation periods and the impact of vaccination campaigns.</p>
+                    <div>
+                        <p class="font-semibold">States:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li><strong class="text-blue-600">Susceptible (S)</strong>: Can become exposed to the virus.</li>
+                            <li><strong class="text-orange-500">Exposed (E)</strong>: Infected but not yet infectious to others (incubation period).</li>
+                            <li><strong class="text-red-600">Infected (I)</strong>: Infectious and can spread the disease.</li>
+                            <li><strong class="text-green-600">Recovered (R)</strong>: Immune due to prior infection and cannot be reinfected.</li>
+                            <li><strong class="text-teal-500">Vaccinated (V)</strong>: Immune due to vaccination and cannot be infected.</li>
+                        </ul>
+                    </div>
+                     <div>
+                        <p class="font-semibold">Parameters:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li><strong>Infection Rates</strong>: Probability of infection during an interaction in different locations (home, work, shopping).</li>
+                            <li><strong>Recovery Rate</strong>: Probability of an infected individual recovering per simulation tick.</li>
+                            <li><strong>Location Weights</strong>: Likelihood of agents choosing to move to each location type.</li>
+                            <li><strong>Vaccination Rate</strong>: Percentage of susceptible individuals who become vaccinated when applied.</li>
+                        </ul>
+                    </div>
+                    <p>Adjust the sliders and apply vaccination to see how different parameters affect the spread of the disease.</p>
+                </div>
+                <button onclick="closeHelp()" class="mt-6 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Canvas & Context ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- Simulation Constants ---
+        const N = 100; // Number of agents
+        const INTERACTION_DISTANCE_BASE = 10; // Base interaction distance, will be scaled
+        const STEP_SIZE = 2; // How far agents move randomly within a location
+        const INCUBATION_TICKS = 80; // Ticks an agent stays in 'Exposed' state
+
+        // --- State Variables ---
+        let agents = [];
+        let homes = [];
+        let workplaces = [];
+        let shoppingAreas = [];
+        let transitions = []; // For trace lines
+        let infections = { home: 0, work: 0, shopping: 0 };
+        let running = false;
+        let simulationTimeoutId;
+        let generation = 0;
+        let vaccinationApplied = false;
+
+        // --- Control Parameters ---
+        let showTrace = false;
+        let showBoundaries = true;
+        let speed = 5;
+        let pInfect = { 'home': 0.05, 'work': 0.1, 'shopping': 0.2 };
+        let pRecover = 0.01;
+        let vaccinationRate = 0;
+        let weights = { home: 60, work: 30, shopping: 10 };
+
+        // --- UI Elements ---
+        const toggleBtn = document.getElementById('toggleBtn');
+        const applyVaccinationBtn = document.getElementById('applyVaccinationBtn');
+
+        // --- Initialization and Setup ---
+
+        /**
+         * Main entry point on page load. Sets up the initial state of the simulation.
+         */
+        window.addEventListener('load', () => {
+            setupEventListeners();
+            updateAllControlDisplays();
+            
+            // Set initial canvas size based on container
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, 600);
+            canvas.width = size;
+            canvas.height = size;
+
+            // Now initialize and draw everything based on the correct size
+            initializeSimulationState();
+            draw();
+        });
+
+        /**
+         * Binds all event listeners for UI controls.
+         */
+        function setupEventListeners() {
+            document.getElementById('speed').addEventListener('input', (e) => {
+                speed = parseInt(e.target.value);
+                document.getElementById('speedValue').textContent = speed;
+            });
+
+            ['homeWeight', 'workWeight', 'shoppingWeight'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updateWeights);
+            });
+            
+            ['pInfectHome', 'pInfectWork', 'pInfectShopping', 'pRecover'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updateDiseaseParameters);
+            });
+
+            document.getElementById('vaccinationRate').addEventListener('input', (e) => {
+                vaccinationRate = parseInt(e.target.value);
+                document.getElementById('vaccinationRateValue').textContent = vaccinationRate;
+            });
+            
+            document.getElementById('traceToggle').addEventListener('change', function() { showTrace = this.checked; draw(); });
+            document.getElementById('boundaryToggle').addEventListener('change', function() { showBoundaries = this.checked; draw(); });
+            
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        /**
+         * Initializes or resets the simulation's core components.
+         */
+        function initializeSimulationState() {
+            infections = { home: 0, work: 0, shopping: 0 };
+            generation = 0;
+            vaccinationApplied = false;
+            transitions = [];
+            
+            applyVaccinationBtn.disabled = false;
+            applyVaccinationBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            initLocations();
+            initAgents();
+            updateStatsPanel();
+        }
+
+        /**
+         * Handles window resize events to make the simulation responsive.
+         * It scales agent positions and re-calculates location boundaries.
+         */
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, 600);
+            const oldSize = canvas.width;
+
+            if (oldSize === size) return; // No change needed
+
+            canvas.width = size;
+            canvas.height = size;
+            const scale = size / oldSize;
+            
+            // Re-create location boundaries for the new size
+            initLocations();
+
+            // Scale agent positions and re-link them to the new location objects
+            agents.forEach(agent => {
+                agent.x *= scale;
+                agent.y *= scale;
+
+                switch(agent.current_activity) {
+                    case 'home': agent.current_location = homes[agent.home]; break;
+                    case 'work': agent.current_location = workplaces[agent.work]; break;
+                    case 'shopping':
+                        // If they were shopping, assign them to a random new shopping area
+                        if (shoppingAreas.length > 0) {
+                            agent.current_location = shoppingAreas[Math.floor(Math.random() * shoppingAreas.length)];
+                        }
+                        break;
+                }
+                
+                // Ensure agent is within the new boundaries after scaling
+                const loc = agent.current_location;
+                if(loc) {
+                    agent.x = Math.max(loc.x_min, Math.min(agent.x, loc.x_max));
+                    agent.y = Math.max(loc.y_min, Math.min(agent.y, loc.y_max));
+                }
+            });
+
+            draw(); // Redraw everything with new sizes
+        }
+
+
+        /**
+         * Creates the fixed locations (homes, workplaces, shopping) on the canvas.
+         */
+        function initLocations() {
+            homes = [];
+            workplaces = [];
+            shoppingAreas = [];
+            const w = canvas.width;
+            const h = canvas.height;
+            const locationSize = w * 0.1;
+
+            // 10 Homes
+            for (let i = 0; i < 10; i++) {
+                let x_offset = w * 0.1; // Offset to make space for labels
+                let grid_width = w * 0.9;
+                let x = x_offset + (i % 5) * (grid_width / 5) + (grid_width/5 - locationSize)/2;
+                let y = Math.floor(i / 5) * (h / 5) + (h/5 - locationSize)/2;
+                homes.push({ x_min: x, x_max: x + locationSize, y_min: y, y_max: y + locationSize, type: 'home' });
+            }
+            // 5 Workplaces
+            for (let i = 0; i < 5; i++) {
+                let x_offset = w * 0.1;
+                let grid_width = w * 0.9;
+                let x = x_offset + i * (grid_width / 5) + (grid_width/5 - locationSize)/2;
+                let y = 2 * (h / 5) + (h/5 - locationSize)/2;
+                workplaces.push({ x_min: x, x_max: x + locationSize, y_min: y, y_max: y + locationSize, type: 'work' });
+            }
+            // 2 Shopping Areas
+            for (let i = 0; i < 2; i++) {
+                let x_offset = w * 0.1;
+                let grid_width = w * 0.9;
+                let x = x_offset + (i * (grid_width / 2)) + grid_width/4 - locationSize/2;
+                let y = 3.5 * (h / 5);
+                shoppingAreas.push({ x_min: x, x_max: x + locationSize, y_min: y, y_max: y + locationSize, type: 'shopping' });
+            }
+        }
+
+        /**
+         * Creates the population of agents with their initial states and properties.
+         */
+        function initAgents() {
+            agents = [];
+            if (homes.length === 0 || workplaces.length === 0) return;
+
+            for (let i = 0; i < N; i++) {
+                // Assign agents to homes and workplaces cyclically for even distribution
+                const homeIdx = i % homes.length;
+                const workIdx = i % workplaces.length;
+                const home = homes[homeIdx];
+                
+                agents.push({
+                    state: i < 5 ? 'E' : 'S', // Start with 5 exposed agents
+                    x: home.x_min + Math.random() * (home.x_max - home.x_min),
+                    y: home.y_min + Math.random() * (home.y_max - home.y_min),
+                    home: homeIdx,
+                    work: workIdx,
+                    current_activity: 'home',
+                    current_location: home,
+                    exposure_time: 0,
+                });
+            }
+        }
+
+        // --- UI Update Functions ---
+
+        function updateAllControlDisplays() {
+            updateWeights();
+            updateDiseaseParameters();
+            document.getElementById('speedValue').textContent = document.getElementById('speed').value;
+            document.getElementById('vaccinationRateValue').textContent = document.getElementById('vaccinationRate').value;
+        }
+        
+        function updateWeights() {
+            weights.home = parseInt(document.getElementById('homeWeight').value);
+            weights.work = parseInt(document.getElementById('workWeight').value);
+            weights.shopping = parseInt(document.getElementById('shoppingWeight').value);
+            document.getElementById('homeWeightValue').textContent = weights.home;
+            document.getElementById('workWeightValue').textContent = weights.work;
+            document.getElementById('shoppingWeightValue').textContent = weights.shopping;
+        }
+
+        function updateDiseaseParameters() {
+            pInfect.home = parseFloat(document.getElementById('pInfectHome').value);
+            pInfect.work = parseFloat(document.getElementById('pInfectWork').value);
+            pInfect.shopping = parseFloat(document.getElementById('pInfectShopping').value);
+            pRecover = parseFloat(document.getElementById('pRecover').value);
+            document.getElementById('pInfectHomeValue').textContent = pInfect.home.toFixed(2);
+            document.getElementById('pInfectWorkValue').textContent = pInfect.work.toFixed(2);
+            document.getElementById('pInfectShoppingValue').textContent = pInfect.shopping.toFixed(2);
+            document.getElementById('pRecoverValue').textContent = pRecover.toFixed(3);
+        }
+
+        function updateStatsPanel() {
+            const statsContent = document.getElementById('stats-content');
+            const infectionStats = document.getElementById('infection-stats');
+            if (!statsContent || !infectionStats) return;
+
+            const counts = agents.reduce((acc, a) => {
+                acc[a.state] = (acc[a.state] || 0) + 1;
+                return acc;
+            }, {});
+
+            statsContent.innerHTML = `
+                <div><p class="font-semibold text-gray-500 text-sm uppercase">Generation</p><p class="text-2xl font-bold">${generation}</p></div>
+                <div><p class="font-semibold text-blue-600 text-sm uppercase">Susceptible</p><p class="text-2xl font-bold">${counts['S'] || 0}</p></div>
+                <div><p class="font-semibold text-orange-500 text-sm uppercase">Exposed</p><p class="text-2xl font-bold">${counts['E'] || 0}</p></div>
+                <div><p class="font-semibold text-red-600 text-sm uppercase">Infected</p><p class="text-2xl font-bold">${counts['I'] || 0}</p></div>
+                <div><p class="font-semibold text-green-600 text-sm uppercase">Recovered</p><p class="text-2xl font-bold">${counts['R'] || 0}</p></div>
+                <div><p class="font-semibold text-teal-500 text-sm uppercase">Vaccinated</p><p class="text-2xl font-bold">${counts['V'] || 0}</p></div>
+            `;
+            infectionStats.innerHTML = `
+                <div><p class="font-semibold text-gray-700">Home</p><p class="text-2xl font-mono">${infections.home}</p></div>
+                <div><p class="font-semibold text-gray-700">Work</p><p class="text-2xl font-mono">${infections.work}</p></div>
+                <div><p class="font-semibold text-gray-700">Shopping</p><p class="text-2xl font-mono">${infections.shopping}</p></div>
+            `;
+        }
+
+
+        // --- Simulation Controls ---
+
+        function toggleSimulation() {
+            running = !running;
+            toggleBtn.textContent = running ? 'Pause' : 'Start';
+            toggleBtn.classList.toggle('bg-blue-500', !running);
+            toggleBtn.classList.toggle('hover:bg-blue-600', !running);
+            toggleBtn.classList.toggle('bg-yellow-500', running);
+            toggleBtn.classList.toggle('hover:bg-yellow-600', running);
+            if (running) simulate();
+        }
+
+        function resetSimulation() {
+            running = false;
+            clearTimeout(simulationTimeoutId);
+            
+            initializeSimulationState();
+
+            toggleBtn.textContent = 'Start';
+            toggleBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+            toggleBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            draw();
+        }
+        
+        function applyVaccination() {
+            if (vaccinationApplied) return;
+            const rate = vaccinationRate / 100;
+            agents.forEach(agent => {
+                if (agent.state === 'S' && Math.random() < rate) {
+                    agent.state = 'V';
+                }
+            });
+            vaccinationApplied = true;
+            applyVaccinationBtn.disabled = true;
+            applyVaccinationBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            draw(); // Redraw to show newly vaccinated agents
+        }
+
+        // --- Modal Controls ---
+        function showHelp() { document.getElementById('helpModal').classList.add('is-open'); }
+        function closeHelp() { document.getElementById('helpModal').classList.remove('is-open'); }
+
+        // --- Core Simulation Logic ---
+
+        function distance(agent1, agent2) {
+            return Math.sqrt((agent1.x - agent2.x) ** 2 + (agent1.y - agent2.y) ** 2);
+        }
+
+        /**
+         * Executes a single tick or step of the simulation.
+         */
+        function step() {
+            const totalWeight = weights.home + weights.work + weights.shopping;
+
+            // --- 1. Agent Movement and State Progression ---
+            agents.forEach(agent => {
+                // Decide on a new activity based on weights
+                if (totalWeight > 0) {
+                    const r = Math.random();
+                    const pHome = weights.home / totalWeight;
+                    const pWork = pHome + (weights.work / totalWeight);
+
+                    let newActivity;
+                    if (r < pHome) newActivity = 'home';
+                    else if (r < pWork) newActivity = 'work';
+                    else newActivity = 'shopping';
+
+                    // If activity changes, move to a random point in the new location
+                    if (newActivity !== agent.current_activity) {
+                        const start_x = agent.x, start_y = agent.y;
+                        agent.current_activity = newActivity;
+                        
+                        if (newActivity === 'home') agent.current_location = homes[agent.home];
+                        else if (newActivity === 'work') agent.current_location = workplaces[agent.work];
+                        else agent.current_location = shoppingAreas[Math.floor(Math.random() * shoppingAreas.length)];
+                        
+                        const loc = agent.current_location;
+                        const new_x = loc.x_min + Math.random() * (loc.x_max - loc.x_min);
+                        const new_y = loc.y_min + Math.random() * (loc.y_max - loc.y_min);
+
+                        if(showTrace) transitions.push({ start_x, start_y, end_x: new_x, end_y: new_y, opacity: 1 });
+                        agent.x = new_x;
+                        agent.y = new_y;
+                    }
+                }
+                
+                // Random walk within the current location's bounds
+                const loc = agent.current_location;
+                if (loc) {
+                    const dx = (Math.random() - 0.5) * STEP_SIZE;
+                    const dy = (Math.random() - 0.5) * STEP_SIZE;
+                    agent.x = Math.max(loc.x_min, Math.min(agent.x + dx, loc.x_max));
+                    agent.y = Math.max(loc.y_min, Math.min(agent.y + dy, loc.y_max));
+                }
+
+                // Progress disease state
+                if (agent.state === 'E') {
+                    agent.exposure_time++;
+                    if (agent.exposure_time >= INCUBATION_TICKS) {
+                        agent.state = 'I';
+                        agent.exposure_time = 0;
+                    }
+                } else if (agent.state === 'I') {
+                    if (Math.random() < pRecover) {
+                        agent.state = 'R';
+                    }
+                }
+            });
+
+            // --- 2. Infection Logic ---
+            const newlyExposed = new Set();
+            for (let i = 0; i < agents.length; i++) {
+                const agent1 = agents[i];
+                if (agent1.state !== 'I') continue; // Only infected agents can spread
+
+                for (let j = 0; j < agents.length; j++) {
+                    if (i === j) continue;
+                    const agent2 = agents[j];
+                    if (agent2.state !== 'S' || newlyExposed.has(agent2)) continue;
+
+                    // Check if they are in the same location and close enough
+                    if (agent1.current_location === agent2.current_location && distance(agent1, agent2) < INTERACTION_DISTANCE_BASE * (canvas.width / 500)) {
+                        const locType = agent1.current_location.type;
+                        if (Math.random() < pInfect[locType]) {
+                            newlyExposed.add(agent2);
+                            infections[locType]++;
+                        }
+                    }
+                }
+            }
+            newlyExposed.forEach(agent => agent.state = 'E');
+
+            // --- 3. Update Trace Lines ---
+            if (showTrace) {
+                transitions = transitions.map(t => ({ ...t, opacity: t.opacity - 0.05 })).filter(t => t.opacity > 0);
+            }
+            generation++;
+        }
+
+        // --- Drawing Functions ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width;
+            const h = canvas.height;
+            
+            // Draw location tier labels
+            ctx.save();
+            ctx.font = `bold ${Math.max(10, 14 * (w/600))}px Inter, sans-serif`;
+            ctx.fillStyle = "#6b7280"; // gray-500
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            if (homes.length > 0) ctx.fillText("Homes", (w * 0.1) / 2, h / 5);
+            if (workplaces.length > 0) ctx.fillText("Work", (w * 0.1) / 2, 2.5 * h / 5);
+            if (shoppingAreas.length > 0) ctx.fillText("Shopping", (w * 0.1) / 2, 3.75 * h / 5);
+            ctx.restore();
+
+
+            // Draw boundaries if enabled
+            if (showBoundaries) {
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.5;
+                homes.forEach(l => { ctx.strokeStyle = '#3b82f6'; ctx.strokeRect(l.x_min, l.y_min, l.x_max-l.x_min, l.y_max-l.y_min); });
+                workplaces.forEach(l => { ctx.strokeStyle = '#16a34a'; ctx.strokeRect(l.x_min, l.y_min, l.x_max-l.x_min, l.y_max-l.y_min); });
+                shoppingAreas.forEach(l => { ctx.strokeStyle = '#c026d3'; ctx.strokeRect(l.x_min, l.y_min, l.x_max-l.x_min, l.y_max-l.y_min); });
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Draw trace lines if enabled
+            if (showTrace) {
+                ctx.lineWidth = 1;
+                transitions.forEach(trans => {
+                    ctx.beginPath();
+                    ctx.moveTo(trans.start_x, trans.start_y);
+                    ctx.lineTo(trans.end_x, trans.end_y);
+                    ctx.strokeStyle = `rgba(107, 114, 128, ${trans.opacity})`;
+                    ctx.stroke();
+                });
+            }
+
+            // Draw agents
+            const agentRadius = Math.max(2, w / 150);
+            const stateColors = { 'S': '#3b82f6', 'E': '#f97316', 'I': '#ef4444', 'R': '#22c55e', 'V': '#14b8a6'};
+            agents.forEach(agent => {
+                ctx.beginPath();
+                ctx.arc(agent.x, agent.y, agentRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = stateColors[agent.state];
+                ctx.fill();
+            });
+
+            // Update the external stats panel
+            updateStatsPanel();
+        }
+
+        // --- Main Simulation Loop ---
+        function simulate() {
+            if (!running) return;
+            step();
+            draw();
+            simulationTimeoutId = setTimeout(simulate, 120 - (speed * 10)); // Speed 1=110ms, 10=20ms
+        }
+
+    </script>
+</body>
+</html>
