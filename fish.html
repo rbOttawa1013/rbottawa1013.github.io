@@ -581,13 +581,15 @@
 
         // --- Helper Functions ---
         function showMessageBox(title, text, callback) {
+            console.log("showMessageBox opened. Pausing game.");
             messageBoxTitle.textContent = title;
             messageBoxText.textContent = text;
             messageBoxOverlay.classList.add('active');
             gameActive = false; // Pause game when message box is active
             messageBoxCloseBtn.onclick = () => {
+                console.log("showMessageBox closed. Resuming game.");
                 messageBoxOverlay.classList.remove('active');
-                gameActive = true; // Resume game
+                gameActive = true; // Resume game AFTER message box closes
                 if (callback) callback();
             };
         }
@@ -780,6 +782,7 @@
                     hook.length = 0;
                     // If a fish was caught and then retracted, it's released if math was incorrect
                     if (caughtFish) {
+                        console.log(`Fish (${caughtFish.name}) was caught but not secured (math incorrect). Releasing.`);
                         fishArray.push(caughtFish); // Release the fish back into the water
                         caughtFish = null;
                         showMessageBox("Oops!", "The fish got away! Answer the math question correctly next time.", null);
@@ -807,6 +810,7 @@
                         hook.dropping = false;
                         hook.retracting = true; // Immediately retract with the fish
                         playSound('catch');
+                        console.log(`Fish (${caughtFish.name}) caught! Starting math question.`);
                         startMathQuestion(); // Prompt for math question
                         break;
                     }
@@ -877,15 +881,18 @@
             playSound('gameover');
             finalScoreDisplay.textContent = `Your final score: ${score}`;
             gameOverOverlay.classList.add('active');
+            console.log("Game Over. Game set to inactive.");
         }
 
         function restartGame() {
             gameOverOverlay.classList.remove('active');
             initGame();
+            console.log("Game restarted. Game set to active.");
         }
 
         // --- Math Question Logic ---
         async function startMathQuestion() {
+            console.log("Starting math question. Pausing game.");
             mathQuestionOverlay.classList.add('active');
             mathAnswerInput.value = '';
             mathAnswerInput.focus();
@@ -930,10 +937,12 @@
                     const parsedJson = JSON.parse(json);
                     mathQuestionElement.textContent = parsedJson.question;
                     currentMathAnswer = parsedJson.answer;
+                    console.log(`Math question generated: "${parsedJson.question}", Answer: ${parsedJson.answer}`);
                 } else {
                     // Fallback if LLM fails or returns unexpected structure
                     mathQuestionElement.textContent = "What is 5 + 7?";
                     currentMathAnswer = 12;
+                    console.warn("LLM failed to generate math question. Using default: 5 + 7 = 12");
                     showMessageBox("Error", "Could not generate a math question. Using a default one.", null);
                 }
             } catch (error) {
@@ -955,6 +964,7 @@
                 mathQuestionElement.textContent = `${mathQuestionElement.textContent.split('?')[0]}? (${mathQuestionTimeRemaining}s)`;
                 if (mathQuestionTimeRemaining <= 0) {
                     clearInterval(mathQuestionTimer);
+                    console.log("Math question timer ran out.");
                     processMathAnswer(false); // Time's up, incorrect
                 }
             }, 1000);
@@ -964,6 +974,7 @@
             clearInterval(mathQuestionTimer); // Stop the timer
             mathQuestionOverlay.classList.remove('active');
             gameActive = true; // Resume game after math question
+            console.log("Math question processed. Resuming game.");
 
             let isCorrect = false;
             if (isUserSubmission) {
@@ -978,11 +989,13 @@
                 score += caughtFish.value;
                 fishCaught++;
                 updateLeaderboard(caughtFish); // Add fish to leaderboard if it's a new largest
+                console.log(`Answer correct! Caught a ${caughtFish.name}. Score: ${score}, Caught: ${fishCaught}`);
                 showMessageBox("Correct!", `You caught a ${caughtFish.name} for ${caughtFish.value} points!`, null);
             } else {
                 playSound('incorrect');
                 // The fish is already in `caughtFish` and will be re-added to `fishArray` when hook retracts
                 // This is implicitly handled when hook retracts if caughtFish is still set
+                console.log(`Answer incorrect! Fish got away. Correct answer was ${currentMathAnswer}.`);
                 showMessageBox("Incorrect!", `The fish got away! The correct answer was ${currentMathAnswer}.`, null);
             }
             caughtFish = null; // Clear caught fish reference
@@ -1022,6 +1035,7 @@
             playSound('button');
             leaderboardOverlay.classList.add('active');
             gameActive = false; // Pause game
+            console.log("Leaderboard opened. Pausing game.");
             leaderboardList.innerHTML = '';
             const leaderboard = getLeaderboard();
             const sortedFish = Object.entries(leaderboard).sort(([, a], [, b]) => b.weight - a.weight); // Sort by weight descending
@@ -1112,6 +1126,7 @@
             saveGameSettings(); // Save to local storage
             hideOverlays();
             initGame(); // Restart game with new settings
+            console.log("Settings saved and game re-initialized.");
         }
 
         // --- Event Listeners ---
@@ -1124,7 +1139,10 @@
         // Keyboard Controls
         document.addEventListener('keydown', (e) => {
             // Only allow controls if game is active and no overlays are open
-            if (!gameActive || mathQuestionOverlay.classList.contains('active') || leaderboardOverlay.classList.contains('active') || settingsOverlay.classList.contains('active') || gameOverOverlay.classList.contains('active') || messageBoxOverlay.classList.contains('active')) return;
+            if (!gameActive || mathQuestionOverlay.classList.contains('active') || leaderboardOverlay.classList.contains('active') || settingsOverlay.classList.contains('active') || gameOverOverlay.classList.contains('active') || messageBoxOverlay.classList.contains('active')) {
+                // console.log("Input ignored: Game inactive or overlay active.");
+                return;
+            }
 
             const fishermanSpeed = 10;
             if (e.key === 'ArrowLeft') {
@@ -1137,6 +1155,7 @@
                     hook.x = fisherman.rodTipX; // Hook starts from rod tip X
                     hook.y = fisherman.rodTipY; // Hook starts from rod tip Y
                     hook.dropping = true;
+                    console.log("Hook dropped by keyboard.");
                 }
             }
             // Update hook X position to follow fisherman, even when not dropping/retracting
@@ -1171,6 +1190,7 @@
                     hook.x = fisherman.rodTipX; // Hook starts from rod tip X
                     hook.y = fisherman.rodTipY; // Hook starts from rod tip Y
                     hook.dropping = true;
+                    console.log("Hook dropped by mouse.");
                 }
             }
         });
@@ -1194,6 +1214,7 @@
             playSound('button');
             leaderboardOverlay.classList.remove('active');
             gameActive = true; // Resume game
+            console.log("Leaderboard closed. Resuming game.");
         });
 
         // Game Over Buttons
@@ -1203,14 +1224,15 @@
         });
 
         messageBoxCloseBtn.addEventListener('click', () => {
-            messageBoxOverlay.classList.remove('active');
-            gameActive = true; // Resume game
+            // This is handled by the showMessageBox function's internal onclick
+            // This listener here is redundant but harmless.
         });
 
         // Settings Buttons
         showSettingsBtn.addEventListener('click', () => {
             playSound('button');
             gameActive = false; // Pause game when settings are open
+            console.log("Settings opened. Pausing game.");
             populateSettingsUI();
             settingsOverlay.classList.add('active');
         });
@@ -1221,6 +1243,7 @@
             playSound('button');
             settingsOverlay.classList.remove('active');
             gameActive = true; // Resume game
+            console.log("Settings closed. Resuming game.");
         });
 
         // New Fish Control Buttons
@@ -1229,6 +1252,7 @@
             if (gameActive) { // Only allow if game is active
                 generateFish();
                 showMessageBox("Fish Generated!", "New fish have appeared in the tank.", null);
+                console.log("Generated new fish.");
             } else {
                 showMessageBox("Game Paused", "Cannot generate fish while the game is paused or an overlay is open.", null);
             }
@@ -1239,6 +1263,7 @@
             if (gameActive) { // Only allow if game is active
                 fishArray = []; // Clear all fish
                 showMessageBox("Fish Cleared!", "All fish have been removed from the tank.", null);
+                console.log("Cleared all fish.");
             } else {
                 showMessageBox("Game Paused", "Cannot clear fish while the game is paused or an overlay is open.", null);
             }
@@ -1338,3 +1363,5 @@
     </script>
 </body>
 </html>
+
+      
