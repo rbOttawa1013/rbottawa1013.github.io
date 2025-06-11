@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Fisherman Game</title>
+    <!-- Tailwind CSS CDN for responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Tone.js for audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #87CEEB, #6495ED); /* Sky blue to cornflower blue */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Large rounded corners */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 90vw; /* Responsive max-width */
+            width: 100%;
+            position: relative; /* For loading spinner and overlays */
+        }
+        canvas {
+            background: linear-gradient(to bottom, #A7D7F3, #6B8EBF); /* Lighter blue to darker blue for water */
+            border-radius: 0.75rem; /* Medium rounded corners */
+            border: 2px solid #4a75a8;
+            display: block;
+            width: 100%; /* Fluid width */
+            aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+            max-width: 800px; /* Max width for larger screens */
+            margin: 0 auto;
+        }
+        .ui-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 1rem;
+        }
+        .game-info {
+            background-color: #E0F2F7;
+            padding: 0.75rem 1.25rem;
+            border-radius: 9999px; /* Pill shape */
+            font-weight: 600;
+            color: #2F80ED;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .math-question-overlay, .leaderboard-overlay, .game-over-overlay, .settings-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            flex-direction: column;
+            gap: 1.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            overflow-y: auto; /* Allow scrolling for settings */
+        }
+        .math-question-overlay.active, .leaderboard-overlay.active, .game-over-overlay.active, .settings-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .math-card, .leaderboard-card, .game-over-card, .settings-card {
+            background: linear-gradient(to bottom right, #FFFDEB, #FFEBCC); /* Default for math/game over */
+            padding: 2.5rem;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 90%;
+            width: 400px;
+            color: #333;
+            border: 2px solid #FFD700;
+        }
+        .leaderboard-card {
+            background: linear-gradient(to bottom right, #e0f7fa, #b2ebf2);
+            border: 2px solid #00BCD4;
+            width: 500px;
+        }
+        .game-over-card {
+            background: linear-gradient(to bottom right, #fceabb, #f8b500); /* Golden theme */
+            border: 2px solid #DAA520;
+            width: 450px;
+        }
+        .settings-card {
+            background: linear-gradient(to bottom right, #e6ffe6, #c6f6d5); /* Light green theme */
+            border: 2px solid #38A169;
+            width: 550px;
+            max-height: 90vh; /* Max height to fit screen */
+            overflow-y: auto; /* Scrollable content */
+        }
+
+        .math-card h2, .leaderboard-card h2, .game-over-card h2, .settings-card h2 {
+            font-size: 1.875rem; /* 3xl */
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #D4AF37;
+        }
+        .leaderboard-card h2 { color: #00838F; }
+        .game-over-card h2 { color: #8B4513; }
+        .settings-card h2 { color: #2F855A; }
+
+        .math-card input, .settings-card input[type="number"], .settings-card select {
+            width: calc(100% - 2rem);
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 2px solid #ccc;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .settings-card input[type="number"] { width: auto; text-align: left; }
+        .math-card input:focus, .settings-card input:focus, .settings-card select:focus {
+            border-color: #2F80ED;
+        }
+        .math-card button, .leaderboard-card button, .game-over-card button, .settings-card button, .ui-panel button {
+            background: linear-gradient(to right, #2F80ED, #2D9CDB); /* Default button style */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            border: none;
+            font-size: 1.125rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 0; /* Adjusted for ui-panel */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        .leaderboard-card button { background: linear-gradient(to right, #00BCD4, #00ACC1); }
+        .game-over-card button { background: linear-gradient(to right, #8B4513, #CD853F); }
+        .settings-card button { background: linear-gradient(to right, #38A169, #48BB78); margin-left: 0.5rem; margin-right: 0.5rem; }
+        .ui-panel button {
+            background: linear-gradient(to right, #4A5568, #718096); /* Custom style for UI panel buttons */
+            padding: 0.75rem 1rem; /* Slightly smaller padding */
+            font-size: 1rem; /* Smaller font */
+        }
+        #showLeaderboardBtn {
+            background: linear-gradient(to right, #2F80ED, #2D9CDB); /* Keep original blue for leaderboard */
+        }
+        #showSettingsBtn {
+            background: linear-gradient(to right, #4A5568, #718096); /* Keep original grey for settings */
+        }
+        .math-card button:hover, .leaderboard-card button:hover, .game-over-card button:hover, .settings-card button:hover, .ui-panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px -2px rgba(0, 0, 0, 0.15), 0 3px 6px -2px rgba(0, 0, 0, 0.08);
+        }
+        .leaderboard-card ul {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+            background-color: #f5f5f5;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .leaderboard-card li {
+            background-color: #ffffff;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .leaderboard-card li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Settings specific styles */
+        .settings-section {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .settings-section label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #4A5568;
+        }
+        .fish-distribution-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .fish-distribution-item span {
+            flex-grow: 1;
+            margin-right: 1rem;
+        }
+        .fish-distribution-item input {
+            width: 60px;
+            text-align: right;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        .settings-card .error-message {
+            color: #E53E3E;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            z-index: 102;
+            display: none; /* Hidden by default */
+        }
+        .loading-spinner.active {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Message box for alerts */
+        .message-box-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .message-box-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .message-box-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            max-width: 400px;
+            color: #333;
+        }
+        .message-box-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .message-box-content p {
+            margin-bottom: 1.5rem;
+        }
+        .message-box-content button {
+            background-color: #2F80ED;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .message-box-content button:hover {
+            background-color: #2D9CDB;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 1rem;
+            }
+            .ui-panel {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .game-info {
+                width: 100%;
+                justify-content: center;
+            }
+            .math-card, .leaderboard-card, .game-over-card, .settings-card {
+                padding: 1.5rem;
+                width: 95%;
+            }
+            .math-card h2, .leaderboard-card h2, .game-over-card h2, .settings-card h2 {
+                font-size: 1.5rem;
+            }
+            .math-card input, .settings-card input[type="number"], .settings-card select {
+                font-size: 1rem;
+            }
+            .settings-card button {
+                margin-top: 1rem;
+                width: 100%;
+            }
+            .ui-panel button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Game UI Panel -->
+        <div class="ui-panel">
+            <div id="scoreDisplay" class="game-info">
+                <i class="fas fa-coins text-yellow-500"></i> Score: 0
+            </div>
+            <div id="levelDisplay" class="game-info">
+                <i class="fas fa-layer-group text-blue-500"></i> Level: 1
+            </div>
+            <div id="fishCaughtDisplay" class="game-info">
+                <i class="fas fa-fish text-teal-500"></i> Caught: 0
+            </div>
+            <div id="timerDisplay" class="game-info hidden">
+                <i class="fas fa-hourglass-half text-gray-500"></i> Time: 30s
+            </div>
+            <button id="showLeaderboardBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                <i class="fas fa-trophy mr-2"></i>Leaderboard
+            </button>
+            <button id="showSettingsBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                <i class="fas fa-cog mr-2"></i>Settings
+            </button>
+            <!-- New buttons -->
+            <button id="generateFishBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                <i class="fas fa-redo mr-2"></i>Generate New Fish
+            </button>
+            <button id="clearFishBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                <i class="fas fa-eraser mr-2"></i>Clear All Fish
+            </button>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Math Question Overlay -->
+        <div id="mathQuestionOverlay" class="math-question-overlay">
+            <div class="math-card">
+                <h2 id="mathQuestion"></h2>
+                <input type="number" id="mathAnswerInput" placeholder="Your Answer" autocomplete="off">
+                <button id="submitMathAnswer">Submit Answer</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Overlay -->
+        <div id="leaderboardOverlay" class="leaderboard-overlay">
+            <div class="leaderboard-card">
+                <h2>Leaderboard</h2>
+                <ul id="leaderboardList">
+                    <!-- Leaderboard items will be injected here -->
+                </ul>
+                <button id="closeLeaderboardBtn">Close</button>
+            </div>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="gameOverOverlay" class="game-over-overlay">
+            <div class="game-over-card">
+                <h2>Game Over!</h2>
+                <p id="finalScoreDisplay"></p>
+                <button id="restartGameBtn">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Settings Overlay -->
+        <div id="settingsOverlay" class="settings-overlay">
+            <div class="settings-card">
+                <h2>Game Settings</h2>
+                <div class="settings-section">
+                    <label for="totalFishCountInput">Total Number of Fish:</label>
+                    <input type="number" id="totalFishCountInput" min="5" max="50" value="15">
+                </div>
+                <div class="settings-section">
+                    <label for="fishSizeSelect">Fish Size:</label>
+                    <select id="fishSizeSelect">
+                        <option value="small">Small</option>
+                        <option value="medium">Medium</option>
+                        <option value="large">Large</option>
+                    </select>
+                </div>
+                <div class="settings-section">
+                    <label>Fish Type Distribution (%): <span id="distributionSum">Total: 0%</span></label>
+                    <div id="fishDistributionInputs">
+                        <!-- Fish type percentage inputs will be injected here -->
+                    </div>
+                    <p id="distributionError" class="error-message hidden">Percentages must add up to 100%!</p>
+                </div>
+                <button id="saveSettingsBtn">Save Settings</button>
+                <button id="closeSettingsBtn">Close</button>
+            </div>
+        </div>
+
+        <!-- Loading Spinner for LLM call -->
+        <div id="loadingSpinner" class="loading-spinner"></div>
+
+        <!-- Message Box for general alerts -->
+        <div id="messageBoxOverlay" class="message-box-overlay">
+            <div class="message-box-content">
+                <h3 id="messageBoxTitle"></h3>
+                <p id="messageBoxText"></p>
+                <button id="messageBoxCloseBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set up the API key for Gemini API.
+        // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002,
+        // provide an API key here. Otherwise, leave this as-is.
+        const API_KEY = "";
+
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const fishCaughtDisplay = document.getElementById('fishCaughtDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const showLeaderboardBtn = document.getElementById('showLeaderboardBtn');
+        const showSettingsBtn = document.getElementById('showSettingsBtn'); // New settings button
+        const generateFishBtn = document.getElementById('generateFishBtn'); // New button
+        const clearFishBtn = document.getElementById('clearFishBtn'); // New button
+
+        const mathQuestionOverlay = document.getElementById('mathQuestionOverlay');
+        const mathQuestionElement = document.getElementById('mathQuestion');
+        const mathAnswerInput = document.getElementById('mathAnswerInput');
+        const submitMathAnswerBtn = document.getElementById('submitMathAnswer');
+
+        const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+        const restartGameBtn = document.getElementById('restartGameBtn');
+
+        const settingsOverlay = document.getElementById('settingsOverlay'); // New settings overlay
+        const totalFishCountInput = document.getElementById('totalFishCountInput');
+        const fishSizeSelect = document.getElementById('fishSizeSelect');
+        const fishDistributionInputs = document.getElementById('fishDistributionInputs');
+        const distributionSumSpan = document.getElementById('distributionSum');
+        const distributionError = document.getElementById('distributionError');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const messageBoxOverlay = document.getElementById('messageBoxOverlay');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxText = document.getElementById('messageBoxText');
+        const messageBoxCloseBtn = document.getElementById('messageBoxCloseBtn');
+
+        // --- Game Variables ---
+        let fisherman = { x: 0, y: 30, width: 60, height: 40, rodLength: 80 }; // Added rodLength
+        let hook = { x: 0, y: 0, length: 0, dropping: false, retracting: false, speed: 5 };
+        let score = 0;
+        let level = 1;
+        let fishCaught = 0;
+        let gameActive = true;
+        let animationFrameId;
+        let lastTime = 0;
+
+        let fishArray = [];
+
+        // Base properties for fish, to be scaled by size settings
+        const BASE_FISH_PROPERTIES = [
+            { name: "Small Fry", color: "#FF6347", baseRadius: 10, baseValue: 10, baseWeight: 1, baseSpeed: 1 },
+            { name: "Blue Gill", color: "#4682B4", baseRadius: 15, baseValue: 20, baseWeight: 2, baseSpeed: 1.5 },
+            { name: "Green Perch", color: "#3CB371", baseRadius: 18, baseValue: 30, baseWeight: 3, baseSpeed: 1.8 },
+            { name: "Golden Trout", color: "#FFD700", baseRadius: 22, baseValue: 50, baseWeight: 5, baseSpeed: 2.2 },
+            { name: "Giant Bass", color: "#6A5ACD", baseRadius: 25, baseValue: 80, baseWeight: 8, baseSpeed: 2.5 },
+            { name: "Mystic Marlin", color: "#8A2BE2", baseRadius: 30, baseValue: 150, baseWeight: 12, baseSpeed: 3, isRare: true }
+        ];
+
+        const FISH_SIZE_MULTIPLIERS = {
+            small: { radius: 0.8, value: 0.7, weight: 0.7, speed: 1.2 },
+            medium: { radius: 1.0, value: 1.0, weight: 1.0, speed: 1.0 },
+            large: { radius: 1.2, value: 1.3, weight: 1.3, speed: 0.8 }
+        };
+
+        // Game settings defaults
+        let gameSettings = {
+            totalFishCount: 15,
+            fishSizeTier: 'medium',
+            fishDistribution: {
+                "Small Fry": 20,
+                "Blue Gill": 20,
+                "Green Perch": 20,
+                "Golden Trout": 15,
+                "Giant Bass": 15,
+                "Mystic Marlin": 10
+            }
+        };
+
+        let caughtFish = null;
+        let currentMathAnswer = null;
+        let mathQuestionTimer = null;
+        let mathQuestionTimeRemaining = 15; // 15 seconds to answer math question
+
+        const LEVEL_REQUIREMENTS = [
+            { caught: 3, timeLimit: 0 }, // Level 1: Catch 3 fish
+            { caught: 5, timeLimit: 0 }, // Level 2: Catch 5 fish
+            { caught: 7, timeLimit: 0 }, // Level 3: Catch 7 fish
+            { caught: 0, timeLimit: 60 } // Level 4: Survive 60 seconds (no catch limit)
+        ];
+
+        // --- Audio Setup ---
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: {
+                type: "triangle"
+            },
+            envelope: {
+                attack: 0.005,
+                decay: 0.1,
+                sustain: 0.05,
+                release: 0.5
+            }
+        }).toDestination();
+
+        function playSound(type) {
+            switch (type) {
+                case 'catch':
+                    synth.triggerAttackRelease("C4", "8n"); // Success tone
+                    break;
+                case 'correct':
+                    synth.triggerAttackRelease(["E5", "G5", "C6"], "8n"); // Upward arpeggio
+                    break;
+                case 'incorrect':
+                    synth.triggerAttackRelease(["C3", "G2"], "8n"); // Downward tone
+                    break;
+                case 'button':
+                    synth.triggerAttackRelease("C5", "32n"); // Short click
+                    break;
+                case 'gameover':
+                    synth.triggerAttackRelease(["F#2", "C2"], "2n"); // Low, sustained tones
+                    break;
+                case 'warning':
+                    synth.triggerAttackRelease("C3", "16n", Tone.now(), 0.5); // Single low tone
+                    break;
+            }
+        }
+
+        // --- Helper Functions ---
+        function showMessageBox(title, text, callback) {
+            messageBoxTitle.textContent = title;
+            messageBoxText.textContent = text;
+            messageBoxOverlay.classList.add('active');
+            gameActive = false; // Pause game when message box is active
+            messageBoxCloseBtn.onclick = () => {
+                messageBoxOverlay.classList.remove('active');
+                gameActive = true; // Resume game
+                if (callback) callback();
+            };
+        }
+
+        // --- Game Settings Persistence ---
+        function loadGameSettings() {
+            try {
+                const savedSettings = JSON.parse(localStorage.getItem('fishermanGameSettings'));
+                if (savedSettings) {
+                    gameSettings = { ...gameSettings, ...savedSettings };
+                    // Ensure all fish types are in distribution, even if not saved
+                    BASE_FISH_PROPERTIES.forEach(fishType => {
+                        if (gameSettings.fishDistribution[fishType.name] === undefined) {
+                            gameSettings.fishDistribution[fishType.name] = 0; // Default to 0 if not present
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading game settings from localStorage:", e);
+                showMessageBox("Error", "Could not load game settings. Your browser may not support localStorage.", null);
+            }
+        }
+
+        function saveGameSettings() {
+            try {
+                localStorage.setItem('fishermanGameSettings', JSON.stringify(gameSettings));
+            } catch (e) {
+                console.error("Error saving game settings to localStorage:", e);
+                showMessageBox("Error", "Could not save game settings. Your browser may not support localStorage or it's full.", null);
+            }
+        }
+
+        // --- Game Initialization and Reset ---
+        function initGame() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientWidth * (9 / 16); // Maintain 16:9 aspect ratio
+
+            fisherman.x = canvas.width / 2 - fisherman.width / 2;
+            hook.x = fisherman.x + fisherman.width / 2;
+            hook.y = fisherman.y + fisherman.height;
+            hook.length = 0;
+            hook.dropping = false;
+            hook.retracting = false;
+
+            score = 0;
+            level = 1;
+            fishCaught = 0;
+            gameActive = true;
+            fishArray = [];
+            caughtFish = null;
+            currentMathAnswer = null;
+            clearInterval(mathQuestionTimer);
+            mathQuestionTimer = null;
+            mathQuestionTimeRemaining = 15;
+            timerDisplay.classList.add('hidden'); // Hide game timer initially
+            clearInterval(gameTimerInterval); // Clear game timer interval on reset
+
+            updateUI();
+            generateFish(); // Generate fish based on settings initially
+            hideOverlays();
+
+            // Start the game loop
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            lastTime = performance.now();
+            animate();
+        }
+
+        function updateUI() {
+            scoreDisplay.innerHTML = `<i class="fas fa-coins text-yellow-500"></i> Score: ${score}`;
+            levelDisplay.innerHTML = `<i class="fas fa-layer-group text-blue-500"></i> Level: ${level}`;
+            fishCaughtDisplay.innerHTML = `<i class="fas fa-fish text-teal-500"></i> Caught: ${fishCaught}`;
+        }
+
+        function hideOverlays() {
+            mathQuestionOverlay.classList.remove('active');
+            leaderboardOverlay.classList.remove('active');
+            gameOverOverlay.classList.remove('active');
+            settingsOverlay.classList.remove('active'); // Hide settings overlay
+            loadingSpinner.classList.remove('active');
+        }
+
+        // --- Drawing Functions ---
+        function drawFisherman() {
+            const bodyWidth = fisherman.width * 0.8;
+            const bodyHeight = fisherman.height * 1.5;
+            const headRadius = fisherman.width * 0.2;
+            const armLength = fisherman.width * 0.5;
+            const armWidth = 5;
+            const rodWidth = 4; // Thicker rod
+            // Calculate rod tip position based on fisherman's center and rod length
+            const rodBaseX = fisherman.x + fisherman.width / 2 + 15; // Arm connection point
+            const rodBaseY = fisherman.y + bodyHeight / 2 - 10 + armWidth / 2; // Arm connection point
+            const rodAngle = -Math.PI / 4; // Angle the rod upwards (e.g., 45 degrees counter-clockwise)
+
+            const rodTipX = rodBaseX + fisherman.rodLength * Math.cos(rodAngle);
+            const rodTipY = rodBaseY + fisherman.rodLength * Math.sin(rodAngle);
+
+            // Body (simple rectangle)
+            ctx.fillStyle = '#8B4513'; // SaddleBrown
+            ctx.fillRect(fisherman.x + (fisherman.width - bodyWidth) / 2, fisherman.y, bodyWidth, bodyHeight);
+
+            // Head (circle)
+            ctx.fillStyle = '#FFDAB9'; // PeachPuff (skin tone)
+            ctx.beginPath();
+            ctx.arc(fisherman.x + fisherman.width / 2, fisherman.y - headRadius, headRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hat (brim and top)
+            ctx.fillStyle = '#228B22'; // ForestGreen
+            // Brim
+            ctx.fillRect(fisherman.x + (fisherman.width - bodyWidth) / 2 - 5, fisherman.y - headRadius * 2 - 5, bodyWidth + 10, 8);
+            // Top of hat
+            ctx.beginPath();
+            ctx.arc(fisherman.x + fisherman.width / 2, fisherman.y - headRadius * 2 - 8, headRadius * 1.2, Math.PI, Math.PI * 2, true); // Arc for top
+            ctx.fill();
+
+            // Arm (simple rectangle) - positioned to hold the rod
+            ctx.fillStyle = '#8B4513'; // Same color as body
+            ctx.fillRect(rodBaseX - armLength + armWidth, rodBaseY - armWidth / 2, armLength, armWidth);
+
+            // Fishing Rod (thick line)
+            ctx.strokeStyle = '#604020'; // Darker brown for rod
+            ctx.lineWidth = rodWidth;
+            ctx.beginPath();
+            ctx.moveTo(rodBaseX, rodBaseY); // From arm/hand
+            ctx.lineTo(rodTipX, rodTipY);
+            ctx.stroke();
+
+            // Store rod tip coordinates for hook line
+            fisherman.rodTipX = rodTipX;
+            fisherman.rodTipY = rodTipY;
+
+            // Draw fishing line
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(fisherman.rodTipX, fisherman.rodTipY); // Line starts from rod tip
+            ctx.lineTo(hook.x, hook.y);
+            ctx.stroke();
+        }
+
+        function drawHook() {
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(hook.x, hook.y);
+            ctx.lineTo(hook.x, hook.y + hook.length);
+            ctx.stroke();
+
+            // Draw the hook tip (a small curve)
+            ctx.beginPath();
+            ctx.arc(hook.x + 2, hook.y + hook.length - 5, 5, 0, Math.PI * 2, false);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawFish(fish) {
+            ctx.beginPath();
+            ctx.arc(fish.x, fish.y, fish.radius, 0, Math.PI * 2);
+            ctx.fillStyle = fish.color;
+            ctx.fill();
+            ctx.closePath();
+
+            // Draw a simple eye
+            ctx.beginPath();
+            ctx.arc(fish.x + fish.radius / 2, fish.y - fish.radius / 4, fish.radius / 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'black';
+            ctx.fill();
+        }
+
+        // --- Game Logic Updates ---
+        function updateGame(deltaTime) {
+            if (!gameActive) return;
+
+            // Move fisherman based on mouse/keyboard input (handled by event listeners)
+
+            // Update hook position
+            if (hook.dropping) {
+                hook.y += hook.speed;
+                if (hook.y + hook.length > canvas.height) {
+                    hook.dropping = false;
+                    hook.retracting = true;
+                }
+            } else if (hook.retracting) {
+                hook.y -= hook.speed;
+                if (hook.y <= fisherman.rodTipY) { // Hook retracts to rod tip
+                    hook.retracting = false;
+                    // Reset hook length for next drop
+                    hook.length = 0;
+                    // If a fish was caught and then retracted, it's released if math was incorrect
+                    if (caughtFish) {
+                        fishArray.push(caughtFish); // Release the fish back into the water
+                        caughtFish = null;
+                        showMessageBox("Oops!", "The fish got away! Answer the math question correctly next time.", null);
+                    }
+                }
+            }
+
+            // Update fish positions
+            fishArray.forEach(fish => {
+                fish.x += fish.direction * fish.speed * (deltaTime / 16); // Normalize speed by deltaTime
+                if (fish.x + fish.radius > canvas.width || fish.x - fish.radius < 0) {
+                    fish.direction *= -1; // Reverse direction
+                }
+            });
+
+            // Collision detection (only when dropping the hook)
+            if (hook.dropping) {
+                for (let i = 0; i < fishArray.length; i++) {
+                    const fish = fishArray[i];
+                    const distance = Math.sqrt(Math.pow(hook.x - fish.x, 2) + Math.pow((hook.y + hook.length) - fish.y, 2));
+                    if (distance < fish.radius + 5) { // 5 is a small buffer
+                        // Fish caught!
+                        caughtFish = fish;
+                        fishArray.splice(i, 1); // Remove from active fish
+                        hook.dropping = false;
+                        hook.retracting = true; // Immediately retract with the fish
+                        playSound('catch');
+                        startMathQuestion(); // Prompt for math question
+                        break;
+                    }
+                }
+            }
+
+            // Level progression logic
+            if (level <= LEVEL_REQUIREMENTS.length) {
+                const currentLevelReq = LEVEL_REQUIREMENTS[level - 1];
+                if (currentLevelReq.caught > 0 && fishCaught >= currentLevelReq.caught) {
+                    levelUp();
+                }
+            }
+
+            // Game over logic for time-based levels
+            if (level > LEVEL_REQUIREMENTS.length && gameActive) {
+                // This means all "caught" levels are done, now it's time-based
+                timerDisplay.classList.remove('hidden'); // Show timer
+                if (gameActive && gameTimer <= 0) {
+                    gameOver();
+                }
+            }
+        }
+
+        let gameTimer = 0; // For time-based levels
+        let gameTimerInterval = null;
+
+        function startGameTimer(duration) {
+            gameTimer = duration;
+            timerDisplay.textContent = `Time: ${gameTimer}s`;
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                if (!gameActive) {
+                    clearInterval(gameTimerInterval);
+                    return;
+                }
+                gameTimer--;
+                timerDisplay.textContent = `Time: ${gameTimer}s`;
+                if (gameTimer <= 0) {
+                    clearInterval(gameTimerInterval);
+                    if (gameActive) { // Ensure game is still active before ending
+                        gameOver();
+                    }
+                }
+            }, 1000);
+        }
+
+        function levelUp() {
+            playSound('correct'); // Use correct sound for level up
+            level++;
+            fishCaught = 0; // Reset fish caught for the new level
+            generateFish(); // Regenerate fish based on settings for the new level
+            showMessageBox("Level Up!", `Welcome to Level ${level}!`, () => {
+                if (level <= LEVEL_REQUIREMENTS.length) {
+                    // Start next "catch fish" level (no special action needed here, game loop continues)
+                } else {
+                    // If all caught levels are done, start the time-based level
+                    startGameTimer(LEVEL_REQUIREMENTS[LEVEL_REQUIREMENTS.length - 1].timeLimit);
+                }
+            });
+            updateUI();
+        }
+
+        function gameOver() {
+            gameActive = false;
+            cancelAnimationFrame(animationFrameId);
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            playSound('gameover');
+            finalScoreDisplay.textContent = `Your final score: ${score}`;
+            gameOverOverlay.classList.add('active');
+        }
+
+        function restartGame() {
+            gameOverOverlay.classList.remove('active');
+            initGame();
+        }
+
+        // --- Math Question Logic ---
+        async function startMathQuestion() {
+            mathQuestionOverlay.classList.add('active');
+            mathAnswerInput.value = '';
+            mathAnswerInput.focus();
+            loadingSpinner.classList.add('active'); // Show loading spinner
+            gameActive = false; // Pause game while math question is active
+
+            try {
+                // LLM API call to generate math question
+                let chatHistory = [];
+                const difficulty = Math.min(level, 5); // Increase difficulty with level, cap at 5
+                const mathPrompt = `Generate a simple math problem (addition, subtraction, or multiplication, use two numbers between 1 and ${10 * difficulty}) suitable for a ${6 + difficulty}-12 year old, along with its numerical answer. Provide the response as a JSON object with 'question' and 'answer' fields. Example: {"question": "5 + 3?", "answer": 8}`;
+                chatHistory.push({ role: "user", parts: [{ text: mathPrompt }] });
+
+                const payload = {
+                    contents: chatHistory,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "question": { "type": "STRING" },
+                                "answer": { "type": "NUMBER" }
+                            },
+                            "required": ["question", "answer"],
+                            "propertyOrdering": ["question", "answer"]
+                        }
+                    }
+                };
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const json = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(json);
+                    mathQuestionElement.textContent = parsedJson.question;
+                    currentMathAnswer = parsedJson.answer;
+                } else {
+                    // Fallback if LLM fails or returns unexpected structure
+                    mathQuestionElement.textContent = "What is 5 + 7?";
+                    currentMathAnswer = 12;
+                    showMessageBox("Error", "Could not generate a math question. Using a default one.", null);
+                }
+            } catch (error) {
+                console.error("Error fetching math question:", error);
+                mathQuestionElement.textContent = "What is 10 + 5?"; // Fallback
+                currentMathAnswer = 15;
+                showMessageBox("Error", "Failed to get math question. Using a default.", null);
+            } finally {
+                loadingSpinner.classList.remove('active'); // Hide spinner
+                startMathQuestionTimer();
+            }
+        }
+
+        function startMathQuestionTimer() {
+            mathQuestionTimeRemaining = 15; // Reset timer for each question
+            clearInterval(mathQuestionTimer); // Clear any existing timer
+            mathQuestionTimer = setInterval(() => {
+                mathQuestionTimeRemaining--;
+                mathQuestionElement.textContent = `${mathQuestionElement.textContent.split('?')[0]}? (${mathQuestionTimeRemaining}s)`;
+                if (mathQuestionTimeRemaining <= 0) {
+                    clearInterval(mathQuestionTimer);
+                    processMathAnswer(false); // Time's up, incorrect
+                }
+            }, 1000);
+        }
+
+        function processMathAnswer(isUserSubmission) {
+            clearInterval(mathQuestionTimer); // Stop the timer
+            mathQuestionOverlay.classList.remove('active');
+            gameActive = true; // Resume game after math question
+
+            let isCorrect = false;
+            if (isUserSubmission) {
+                const userAnswer = parseInt(mathAnswerInput.value, 10);
+                if (!isNaN(userAnswer) && userAnswer === currentMathAnswer) {
+                    isCorrect = true;
+                }
+            }
+
+            if (isCorrect) {
+                playSound('correct');
+                score += caughtFish.value;
+                fishCaught++;
+                updateLeaderboard(caughtFish); // Add fish to leaderboard if it's a new largest
+                showMessageBox("Correct!", `You caught a ${caughtFish.name} for ${caughtFish.value} points!`, null);
+            } else {
+                playSound('incorrect');
+                // The fish is already in `caughtFish` and will be re-added to `fishArray` when hook retracts
+                // This is implicitly handled when hook retracts if caughtFish is still set
+                showMessageBox("Incorrect!", `The fish got away! The correct answer was ${currentMathAnswer}.`, null);
+            }
+            caughtFish = null; // Clear caught fish reference
+            updateUI();
+        }
+
+        // --- Leaderboard Logic ---
+        function getLeaderboard() {
+            try {
+                const leaderboard = JSON.parse(localStorage.getItem('fishermanLeaderboard')) || {};
+                return leaderboard;
+            } catch (e) {
+                console.error("Error reading from localStorage:", e);
+                showMessageBox("Error", "Could not load leaderboard data. Your browser may not support localStorage or it's full.", null);
+                return {};
+            }
+        }
+
+        function saveLeaderboard(leaderboard) {
+            try {
+                localStorage.setItem('fishermanLeaderboard', JSON.stringify(leaderboard));
+            } catch (e) {
+                console.error("Error writing to localStorage:", e);
+                showMessageBox("Error", "Could not save leaderboard data. Your browser may not support localStorage or it's full.", null);
+            }
+        }
+
+        function updateLeaderboard(fish) {
+            const leaderboard = getLeaderboard();
+            if (!leaderboard[fish.name] || leaderboard[fish.name].weight < fish.weight) {
+                leaderboard[fish.name] = { weight: fish.weight, value: fish.value, color: fish.color };
+                saveLeaderboard(leaderboard);
+            }
+        }
+
+        function displayLeaderboard() {
+            playSound('button');
+            leaderboardOverlay.classList.add('active');
+            gameActive = false; // Pause game
+            leaderboardList.innerHTML = '';
+            const leaderboard = getLeaderboard();
+            const sortedFish = Object.entries(leaderboard).sort(([, a], [, b]) => b.weight - a.weight); // Sort by weight descending
+
+            if (sortedFish.length === 0) {
+                leaderboardList.innerHTML = '<li class="justify-center text-gray-500">No fish caught yet!</li>';
+            } else {
+                sortedFish.forEach(([name, data]) => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `
+                        <span class="font-bold" style="color: ${data.color};">${name}</span>
+                        <span>Weight: ${data.weight}kg, Value: ${data.value}</span>
+                    `;
+                    leaderboardList.appendChild(listItem);
+                });
+            }
+        }
+
+        // --- Settings UI Logic ---
+        function populateSettingsUI() {
+            totalFishCountInput.value = gameSettings.totalFishCount;
+            fishSizeSelect.value = gameSettings.fishSizeTier;
+
+            fishDistributionInputs.innerHTML = '';
+            let currentSum = 0;
+            BASE_FISH_PROPERTIES.forEach(fishType => {
+                const div = document.createElement('div');
+                div.classList.add('fish-distribution-item');
+                div.innerHTML = `
+                    <span>${fishType.name}:</span>
+                    <input type="number" min="0" max="100" value="${gameSettings.fishDistribution[fishType.name] || 0}" data-fish-name="${fishType.name}">
+                    <span>%</span>
+                `;
+                fishDistributionInputs.appendChild(div);
+                currentSum += (gameSettings.fishDistribution[fishType.name] || 0);
+            });
+
+            const percentageInputs = fishDistributionInputs.querySelectorAll('input[type="number"]');
+            percentageInputs.forEach(input => {
+                input.addEventListener('input', updateDistributionSum);
+            });
+            updateDistributionSum(); // Initial sum calculation
+        }
+
+        function updateDistributionSum() {
+            let sum = 0;
+            const percentageInputs = fishDistributionInputs.querySelectorAll('input[type="number"]');
+            percentageInputs.forEach(input => {
+                sum += parseInt(input.value) || 0;
+            });
+            distributionSumSpan.textContent = `Total: ${sum}%`;
+            if (sum !== 100) {
+                distributionSumSpan.classList.add('text-red-500');
+                distributionError.classList.remove('hidden');
+            } else {
+                distributionSumSpan.classList.remove('text-red-500');
+                distributionError.classList.add('hidden');
+            }
+        }
+
+        function saveSettings() {
+            playSound('button');
+            const newTotalFishCount = parseInt(totalFishCountInput.value);
+            const newFishSizeTier = fishSizeSelect.value;
+            const newFishDistribution = {};
+
+            let sumPercentages = 0;
+            const percentageInputs = fishDistributionInputs.querySelectorAll('input[type="number"]');
+            percentageInputs.forEach(input => {
+                const fishName = input.dataset.fishName;
+                const percentage = parseInt(input.value) || 0;
+                newFishDistribution[fishName] = percentage;
+                sumPercentages += percentage;
+            });
+
+            if (sumPercentages !== 100) {
+                showMessageBox("Error", "Fish distribution percentages must add up to 100%. Please adjust them.", () => {
+                    // Re-show settings if there was an error
+                    settingsOverlay.classList.add('active');
+                });
+                return;
+            }
+
+            gameSettings.totalFishCount = newTotalFishCount;
+            gameSettings.fishSizeTier = newFishSizeTier;
+            gameSettings.fishDistribution = newFishDistribution;
+
+            saveGameSettings(); // Save to local storage
+            hideOverlays();
+            initGame(); // Restart game with new settings
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', initGame); // Re-initialize on resize to adjust canvas
+        window.onload = function() {
+            loadGameSettings(); // Load settings first
+            initGame(); // Initial game setup
+        };
+
+        // Keyboard Controls
+        document.addEventListener('keydown', (e) => {
+            // Only allow controls if game is active and no overlays are open
+            if (!gameActive || mathQuestionOverlay.classList.contains('active') || leaderboardOverlay.classList.contains('active') || settingsOverlay.classList.contains('active') || gameOverOverlay.classList.contains('active') || messageBoxOverlay.classList.contains('active')) return;
+
+            const fishermanSpeed = 10;
+            if (e.key === 'ArrowLeft') {
+                fisherman.x = Math.max(0, fisherman.x - fishermanSpeed);
+            } else if (e.key === 'ArrowRight') {
+                fisherman.x = Math.min(canvas.width - fisherman.width, fisherman.x + fishermanSpeed);
+            } else if (e.key === ' ' || e.key === 'Spacebar') { // Spacebar for hook
+                e.preventDefault(); // Prevent scrolling
+                if (!hook.dropping && !hook.retracting) {
+                    hook.x = fisherman.rodTipX; // Hook starts from rod tip X
+                    hook.y = fisherman.rodTipY; // Hook starts from rod tip Y
+                    hook.dropping = true;
+                }
+            }
+            // Update hook X position to follow fisherman, even when not dropping/retracting
+            if (!hook.dropping && !hook.retracting) {
+                hook.x = fisherman.rodTipX; // Keep hook aligned with fisherman's rod tip X when idle
+                hook.y = fisherman.rodTipY; // Keep hook aligned with fisherman's rod tip Y when idle
+            }
+        });
+
+        // Mouse Controls
+        canvas.addEventListener('mousemove', (e) => {
+            // Only allow controls if game is active and no overlays are open
+            if (!gameActive || mathQuestionOverlay.classList.contains('active') || leaderboardOverlay.classList.contains('active') || settingsOverlay.classList.contains('active') || gameOverOverlay.classList.contains('active') || messageBoxOverlay.classList.contains('active')) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            let mouseX = (e.clientX - rect.left) * scaleX;
+            fisherman.x = Math.max(0, Math.min(canvas.width - fisherman.width, mouseX - fisherman.width / 2));
+            // Update hook X position to follow fisherman, even when not dropping/retracting
+            if (!hook.dropping && !hook.retracting) {
+                hook.x = fisherman.rodTipX;
+                hook.y = fisherman.rodTipY;
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            // Only allow controls if game is active and no overlays are open
+            if (!gameActive || mathQuestionOverlay.classList.contains('active') || leaderboardOverlay.classList.contains('active') || settingsOverlay.classList.contains('active') || gameOverOverlay.classList.contains('active') || messageBoxOverlay.classList.contains('active')) return;
+
+            if (e.button === 0) { // Left click
+                if (!hook.dropping && !hook.retracting) {
+                    hook.x = fisherman.rodTipX; // Hook starts from rod tip X
+                    hook.y = fisherman.rodTipY; // Hook starts from rod tip Y
+                    hook.dropping = true;
+                }
+            }
+        });
+
+        // Math Question Overlay Button
+        submitMathAnswerBtn.addEventListener('click', () => {
+            playSound('button');
+            processMathAnswer(true);
+        });
+
+        // Allow pressing Enter in math answer input to submit
+        mathAnswerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitMathAnswerBtn.click();
+            }
+        });
+
+        // Leaderboard Buttons
+        showLeaderboardBtn.addEventListener('click', displayLeaderboard);
+        closeLeaderboardBtn.addEventListener('click', () => {
+            playSound('button');
+            leaderboardOverlay.classList.remove('active');
+            gameActive = true; // Resume game
+        });
+
+        // Game Over Buttons
+        restartGameBtn.addEventListener('click', () => {
+            playSound('button');
+            restartGame();
+        });
+
+        messageBoxCloseBtn.addEventListener('click', () => {
+            messageBoxOverlay.classList.remove('active');
+            gameActive = true; // Resume game
+        });
+
+        // Settings Buttons
+        showSettingsBtn.addEventListener('click', () => {
+            playSound('button');
+            gameActive = false; // Pause game when settings are open
+            populateSettingsUI();
+            settingsOverlay.classList.add('active');
+        });
+
+        saveSettingsBtn.addEventListener('click', saveSettings);
+
+        closeSettingsBtn.addEventListener('click', () => {
+            playSound('button');
+            settingsOverlay.classList.remove('active');
+            gameActive = true; // Resume game
+        });
+
+        // New Fish Control Buttons
+        generateFishBtn.addEventListener('click', () => {
+            playSound('button');
+            if (gameActive) { // Only allow if game is active
+                generateFish();
+                showMessageBox("Fish Generated!", "New fish have appeared in the tank.", null);
+            } else {
+                showMessageBox("Game Paused", "Cannot generate fish while the game is paused or an overlay is open.", null);
+            }
+        });
+
+        clearFishBtn.addEventListener('click', () => {
+            playSound('button');
+            if (gameActive) { // Only allow if game is active
+                fishArray = []; // Clear all fish
+                showMessageBox("Fish Cleared!", "All fish have been removed from the tank.", null);
+            } else {
+                showMessageBox("Game Paused", "Cannot clear fish while the game is paused or an overlay is open.", null);
+            }
+        });
+
+
+        // --- Fish Generation ---
+        function generateFish() {
+            fishArray = []; // Clear existing fish
+            const totalFish = gameSettings.totalFishCount;
+            const sizeMultiplier = FISH_SIZE_MULTIPLIERS[gameSettings.fishSizeTier];
+
+            // Calculate exact number of each fish type based on percentages
+            const fishCounts = {};
+            let remainingFish = totalFish;
+            let sumOfPercentages = 0;
+            for (const type of BASE_FISH_PROPERTIES) {
+                sumOfPercentages += gameSettings.fishDistribution[type.name] || 0;
+            }
+
+            BASE_FISH_PROPERTIES.forEach(fishType => {
+                const percentage = gameSettings.fishDistribution[fishType.name] || 0;
+                let count = Math.floor(totalFish * (percentage / 100));
+                fishCounts[fishType.name] = count;
+                remainingFish -= count;
+            });
+
+            // Distribute any remaining fish due to rounding
+            let i = 0;
+            while (remainingFish > 0 && i < BASE_FISH_PROPERTIES.length) {
+                fishCounts[BASE_FISH_PROPERTIES[i].name]++;
+                remainingFish--;
+                i++;
+                if (i === BASE_FISH_PROPERTIES.length) {
+                    i = 0; // Loop back if still fish to distribute
+                }
+            }
+
+
+            for (const type of BASE_FISH_PROPERTIES) {
+                const count = fishCounts[type.name] || 0;
+                for (let k = 0; k < count; k++) {
+                    // Water starts below the fisherman and his body/hat
+                    const waterTop = fisherman.y + fisherman.height * 1.5 + 20; // Adjusted based on fisherman's height and hat/head
+                    const waterBottom = canvas.height;
+                    const fishRadius = type.baseRadius * sizeMultiplier.radius;
+
+                    const fish = {
+                        // Ensure fish spawn fully within the water, avoiding edges
+                        x: Math.random() * (canvas.width - fishRadius * 2) + fishRadius,
+                        y: (waterTop + fishRadius) + Math.random() * (waterBottom - waterTop - (fishRadius * 2)),
+                        radius: fishRadius,
+                        color: type.color,
+                        speed: type.baseSpeed * sizeMultiplier.speed * (1 + level * 0.1), // Fish get faster per level
+                        direction: Math.random() < 0.5 ? 1 : -1, // Random initial direction
+                        value: Math.round(type.baseValue * sizeMultiplier.value),
+                        weight: Math.round(type.baseWeight * sizeMultiplier.weight),
+                        name: type.name,
+                    };
+                    fishArray.push(fish);
+                }
+            }
+        }
+
+        // --- Game Loop ---
+        function animate(currentTime) {
+            // Keep requesting animation frame even if game is not active,
+            // so it can resume when gameActive becomes true.
+            animationFrameId = requestAnimationFrame(animate);
+
+            if (!gameActive) {
+                // If game is not active, just return without updating or drawing,
+                // but keep requesting the next frame.
+                return;
+            }
+
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            // Draw water surface effect (optional, can be done with CSS gradient on canvas parent)
+            // For simple visual, just a subtle change in blue
+            const waterGradient = ctx.createLinearGradient(0, fisherman.y + fisherman.height, 0, canvas.height);
+            waterGradient.addColorStop(0, '#A7D7F3'); // Lighter blue at surface
+            waterGradient.addColorStop(1, '#6B8EBF'); // Deeper blue
+            ctx.fillStyle = waterGradient;
+            ctx.fillRect(0, fisherman.y + fisherman.height, canvas.width, canvas.height - (fisherman.y + fisherman.height));
+
+
+            drawFisherman();
+            drawHook();
+            fishArray.forEach(drawFish);
+
+            updateGame(deltaTime); // Pass deltaTime for smoother movement
+        }
+    </script>
+</body>
+</html>
