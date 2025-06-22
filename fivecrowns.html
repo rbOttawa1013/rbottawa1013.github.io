@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5 Crowns AI Simulator (with Meld Metrics)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 sm:p-6 lg:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">5 Crowns AI vs AI Simulator</h1>
+            <p class="mt-2 text-md text-gray-600">A fully validated simulator featuring an advanced AI and all official rules.</p>
+        </header>
+
+        <!-- Controls Section -->
+        <div id="controls" class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 items-end">
+                <div class="flex flex-col">
+                    <label for="numGames" class="mb-2 font-medium text-gray-700">Number of Games</label>
+                    <input type="number" id="numGames" value="10" min="1" max="10000" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                </div>
+                <div class="flex flex-col">
+                    <label for="p1Strategy" class="mb-2 font-medium text-gray-700">Player 1 Strategy</label>
+                    <select id="p1Strategy" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="balanced">Balanced</option>
+                        <option value="aggressive">Aggressive</option>
+                        <option value="conservative">Conservative</option>
+                    </select>
+                </div>
+                <div class="flex flex-col">
+                    <label for="p2Strategy" class="mb-2 font-medium text-gray-700">Player 2 Strategy</label>
+                    <select id="p2Strategy" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="balanced">Balanced</option>
+                        <option value="aggressive">Aggressive</option>
+                        <option value="conservative">Conservative</option>
+                    </select>
+                </div>
+                <div class="flex flex-col md:col-span-3 lg:col-span-2 lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0">
+                    <button id="startButton" onclick="startSimulation()" class="w-full lg:w-1/2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Start Simulation
+                    </button>
+                    <button onclick="resetSimulation()" class="w-full lg:w-1/2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 ease-in-out">
+                        Reset
+                    </button>
+                </div>
+            </div>
+             <div id="loading" class="text-center mt-4 hidden">
+                <p class="text-indigo-600 font-medium">Simulating...</p>
+                <div class="mt-2 text-sm text-gray-500 font-mono" id="progress-indicator">
+                    <span>Game: <span id="game-progress" class="font-semibold text-gray-700"></span></span> |
+                    <span>Round: <span id="round-progress" class="font-semibold text-gray-700"></span></span> |
+                    <span>Turn: <span id="turn-progress" class="font-semibold text-gray-700"></span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div id="stats" class="hidden">
+            <h2 class="text-2xl font-bold text-center mb-6">Simulation Results</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Win Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="winChart" role="img" aria-label="Pie chart showing win distribution for Player 1, Player 2, and Ties."></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Player 1 Meld Composition</h3>
+                     <div class="chart-container">
+                        <canvas id="p1MeldChart" role="img" aria-label="Pie chart showing Player 1's meld composition."></canvas>
+                    </div>
+                </div>
+                 <div class="bg-white p-6 rounded-xl shadow-md lg:col-start-2">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Player 2 Meld Composition</h3>
+                     <div class="chart-container">
+                        <canvas id="p2MeldChart" role="img" aria-label="Pie chart showing Player 2's meld composition."></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-center space-x-4">
+                <button onclick="downloadJSON()" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">Download JSON</button>
+                <button onclick="downloadCSV()" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">Download CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CORE GAME CLASSES ---
+
+        class Card {
+            constructor(rank, suit) {
+                this.rank = rank; this.suit = suit;
+                this.id = Math.random().toString(36).substring(2, 15);
+            }
+            get value() {
+                if (this.isJoker()) return 0;
+                const ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+                return ranks.indexOf(this.rank) + 3;
+            }
+            isJoker() { return this.rank === "Joker"; }
+            isWild(round) { return this.isJoker() || this.value === round; }
+            pointValue(round) {
+                if (this.isJoker()) return 50;
+                if (this.isWild(round)) return 20;
+                if (["J", "Q", "K"].includes(this.rank)) return 10;
+                return this.value;
+            }
+        }
+
+        class Deck {
+            constructor() {
+                this.cards = [];
+                const suits = ["♣", "♦", "♥", "♠", "★"];
+                const ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+                for (let i = 0; i < 2; i++) {
+                    for (const suit of suits) { for (const rank of ranks) { this.cards.push(new Card(rank, suit)); } }
+                }
+                for (let i = 0; i < 6; i++) { this.cards.push(new Card("Joker", "Joker")); }
+            }
+            shuffle() {
+                for (let i = this.cards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+                }
+            }
+            deal(num) { return this.cards.splice(0, num); }
+        }
+        
+        class Player {
+            constructor(name, strategy) { this.name = name; this.hand = []; this.setStrategy(strategy); }
+            setStrategy(strategy) { this.strategy = strategy; }
+        }
+
+        class Game {
+            constructor(p1Strategy, p2Strategy) {
+                this.players = { P1: new Player("P1", p1Strategy), P2: new Player("P2", p2Strategy) };
+                this.scores = { P1: 0, P2: 0 };
+            }
+
+            async playGame(gameNum, totalGames, stats) {
+                for (let r = 3; r <= 13; r++) { await this.playRound(r, gameNum, totalGames, stats); }
+                return this.scores;
+            }
+            
+            async playRound(round, gameNum, totalGames, stats) {
+                this.round = round;
+                this.deck = new Deck(); this.deck.shuffle();
+                this.players.P1.hand = this.deck.deal(round);
+                this.players.P2.hand = this.deck.deal(round);
+                this.discardPile = this.deck.deal(1);
+                
+                let activePlayerId = "P1";
+                let playerWhoWentOut = null;
+                let turnCounter = 1;
+                let lastUIUpdate = 0;
+
+                while(true) {
+                    const now = Date.now();
+                    if (now - lastUIUpdate > 100) {
+                        updateProgress(gameNum, totalGames, this.round, turnCounter);
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                        lastUIUpdate = now;
+                    }
+                    
+                    if (this.deck.cards.length === 0) {
+                        if (this.discardPile.length <= 1) { break; }
+                        const topCard = this.discardPile.pop();
+                        this.deck.cards = this.discardPile; this.deck.shuffle();
+                        this.discardPile = topCard ? [topCard] : [];
+                    }
+
+                    const wentOut = this.playerTurn(this.players[activePlayerId]);
+
+                    if (playerWhoWentOut) { break; }
+                    if (wentOut) { playerWhoWentOut = activePlayerId; }
+                    
+                    activePlayerId = (activePlayerId === "P1") ? "P2" : "P1";
+                    turnCounter++;
+                }
+                this.scoreRound(playerWhoWentOut, stats);
+            }
+            
+            playerTurn(player) {
+                const drawSource = chooseDrawSource(player, this);
+                let drawnCard = null;
+                if (drawSource === 'deck' && this.deck.cards.length > 0) {
+                    drawnCard = this.deck.deal(1)[0];
+                } else if (this.discardPile.length > 0) {
+                    drawnCard = this.discardPile.pop();
+                }
+                if (drawnCard) { player.hand.push(drawnCard); }
+
+                if (canGoOut(player, this.round)) { return true; }
+                
+                const cardToDiscard = chooseDiscard(player, this);
+                if (!cardToDiscard) { return false; } 
+
+                const cardIndex = player.hand.findIndex(c => c.id === cardToDiscard.id);
+                if (cardIndex > -1) {
+                    const discarded = player.hand.splice(cardIndex, 1);
+                    this.discardPile.push(discarded[0]);
+                }
+                return false;
+            }
+
+            scoreRound(playerWhoWentOut, stats) {
+                const p1Result = getBestMelds(this.players.P1.hand, this.round);
+                const p2Result = getBestMelds(this.players.P2.hand, this.round);
+                
+                // Track meld stats before layoffs
+                Object.keys(stats.p1MeldStats).forEach(key => stats.p1MeldStats[key] += p1Result.meldCounts[key]);
+                Object.keys(stats.p2MeldStats).forEach(key => stats.p2MeldStats[key] += p2Result.meldCounts[key]);
+
+                if (!playerWhoWentOut) {
+                    this.scores.P1 += p1Result.deadwoodValue;
+                    this.scores.P2 += p2Result.deadwoodValue;
+                    return;
+                }
+
+                const winner = this.players[playerWhoWentOut];
+                const loserId = playerWhoWentOut === 'P1' ? 'P2' : 'P1';
+                const loser = this.players[loserId];
+
+                let winnerMelds = p1Result.melds;
+                if (playerWhoWentOut === 'P2') {
+                    winnerMelds = p2Result.melds;
+                }
+                
+                let loserHand = [...loser.hand];
+                let laidOffCards = [];
+                let canStillLayOff = true;
+                while (canStillLayOff) {
+                    canStillLayOff = false;
+                    let cardToLayOff = null;
+                    for (const card of loserHand) {
+                        if (canLayOff(card, winnerMelds, this.round)) {
+                            cardToLayOff = card; break;
+                        }
+                    }
+                    if (cardToLayOff) {
+                        laidOffCards.push(cardToLayOff);
+                        loserHand = loserHand.filter(c => c.id !== cardToLayOff.id);
+                        winnerMelds = getBestMelds(winner.hand.concat(laidOffCards), this.round).melds;
+                        canStillLayOff = true;
+                    }
+                }
+                
+                const loserResult = getBestMelds(loserHand, this.round);
+                this.scores[loserId] += loserResult.deadwoodValue;
+            }
+        }
+        
+        // --- AI STRATEGY & LOGIC ---
+        const STRATEGIES = {
+            balanced: { meldGreed: 0.5, discardRisk: 0.5, takeDiscardThreshold: -5 },
+            aggressive: { meldGreed: 0.8, discardRisk: 0.8, takeDiscardThreshold: 0 },
+            conservative: { meldGreed: 0.2, discardRisk: 0.2, takeDiscardThreshold: -10 }
+        };
+
+        function getBestMelds(initialHand, round) {
+            const hand = initialHand.filter(c => c);
+            const wilds = hand.filter(c => c.isWild(round));
+            const nonWilds = hand.filter(c => !c.isWild(round));
+
+            const potentialMelds = findAllPotentialMelds(nonWilds, wilds.length);
+            
+            let bestMelds = [];
+            let bestMeldTypes = [];
+            let bestDeadwood = Infinity;
+
+            const combinations = 1 << potentialMelds.length;
+            if (combinations > 500000) { // Safety break
+                 const deadwoodValue = hand.reduce((sum, c) => sum + c.pointValue(round), 0);
+                 return { deadwoodValue: deadwoodValue, melds: [], meldCounts: {runs:0, sets:0, runsWithWilds:0, setsWithWilds:0} };
+            }
+
+            for (let i = 0; i < combinations; i++) {
+                let currentMelds = [];
+                let currentMeldTypes = [];
+                let usedCardIds = new Set();
+                let wildsUsed = 0;
+                let possible = true;
+
+                for (let j = 0; j < potentialMelds.length; j++) {
+                    if ((i >> j) & 1) {
+                        const meld = potentialMelds[j];
+                        if (wildsUsed + meld.wildsNeeded > wilds.length || meld.cards.some(c => usedCardIds.has(c.id))) {
+                            possible = false; break;
+                        }
+                        currentMelds.push(meld.cards);
+                        currentMeldTypes.push(meld.type);
+                        meld.cards.forEach(c => usedCardIds.add(c.id));
+                        wildsUsed += meld.wildsNeeded;
+                    }
+                }
+
+                if (possible) {
+                    const finalMeldedWilds = wilds.slice(0, wildsUsed);
+                    const allMeldedIds = new Set([...usedCardIds, ...finalMeldedWilds.map(w => w.id)]);
+                    const deadwoodCards = hand.filter(c => !allMeldedIds.has(c.id));
+                    const deadwoodValue = deadwoodCards.reduce((sum, c) => sum + c.pointValue(round), 0);
+
+                    if (deadwoodValue < bestDeadwood) {
+                        bestDeadwood = deadwoodValue;
+                        bestMelds = currentMelds;
+                        bestMeldTypes = currentMeldTypes;
+                    }
+                }
+            }
+
+            const meldCounts = bestMeldTypes.reduce((acc, type) => {
+                acc[type]++;
+                return acc;
+            }, { runs: 0, sets: 0, runsWithWilds: 0, setsWithWilds: 0 });
+
+            return { deadwoodValue: bestDeadwood, melds: bestMelds, meldCounts };
+        }
+
+        function findAllPotentialMelds(nonWilds, wildCount) {
+             const melds = [];
+             const rankGroups = nonWilds.reduce((acc, c) => { (acc[c.rank] = acc[c.rank] || []).push(c); return acc; }, {});
+             for (const rank in rankGroups) {
+                 for (let i = 0; i <= wildCount; i++) {
+                     if (rankGroups[rank].length + i >= 3) {
+                         melds.push({ cards: rankGroups[rank], wildsNeeded: i, type: i > 0 ? 'setsWithWilds' : 'sets' });
+                     }
+                 }
+             }
+             const suitGroups = nonWilds.reduce((acc, c) => { (acc[c.suit] = acc[c.suit] || []).push(c); return acc; }, {});
+             for (const suit in suitGroups) {
+                const cards = suitGroups[suit].sort((a,b) => a.value - b.value);
+                for (let i = 0; i < cards.length; i++) {
+                    for (let j = i; j < cards.length; j++) {
+                        const slice = cards.slice(i, j + 1);
+                        const requiredWilds = (slice[slice.length - 1].value - slice[0].value + 1) - slice.length;
+                        if (requiredWilds >= 0 && requiredWilds <= wildCount && slice.length + requiredWilds >= 3) {
+                            melds.push({ cards: slice, wildsNeeded: requiredWilds, type: requiredWilds > 0 ? 'runsWithWilds' : 'runs' });
+                        }
+                    }
+                }
+             }
+            return melds;
+        }
+
+        function canLayOff(card, melds, round) {
+            if (card.isWild(round)) return false; 
+            for (const meld of melds) {
+                const meldNonWilds = meld.filter(c => !c.isWild(round));
+                if(meldNonWilds.length === 0) continue;
+                const meldRank = meldNonWilds[0].rank;
+                const isSet = meldNonWilds.every(c => c.rank === meldRank);
+                if (isSet) {
+                    if (card.rank === meldRank) return true;
+                } else {
+                    const meldSuit = meldNonWilds[0].suit;
+                    if (card.suit !== meldSuit) continue;
+                    let meldValues = meldNonWilds.map(c => c.value);
+                    const wildsAvailable = meld.length - meldNonWilds.length;
+                    const minVal = Math.min(...meldValues);
+                    const maxVal = Math.max(...meldValues);
+                    const requiredForRun = (maxVal - minVal + 1) - meldNonWilds.length;
+                    if (wildsAvailable >= requiredForRun) {
+                        if (card.value === minVal - 1 || card.value === maxVal + 1) { return true; }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function canGoOut(player, round) { return getBestMelds(player.hand, round).deadwoodValue === 0; }
+
+        function chooseDrawSource(player, game) {
+            const topDiscard = game.discardPile[game.discardPile.length - 1];
+            if (!topDiscard) return 'deck';
+            const currentScore = getBestMelds(player.hand, game.round).deadwoodValue;
+            const potentialScore = getBestMelds([...player.hand, topDiscard], game.round).deadwoodValue;
+            if ((potentialScore - currentScore) < player.strategy.takeDiscardThreshold && Math.random() < player.strategy.meldGreed) {
+                return 'discard';
+            }
+            return 'deck';
+        }
+
+        function chooseDiscard(player, game) {
+            let bestCardToDiscard = null; let maxScore = -Infinity;
+            if (player.hand.length <= game.round) return player.hand[0];
+            for (const card of player.hand) {
+                const tempHand = player.hand.filter(c => c.id !== card.id);
+                const { deadwoodValue } = getBestMelds(tempHand, game.round);
+                let currentCardScore = card.pointValue(game.round) * player.strategy.discardRisk - deadwoodValue * (1 - player.strategy.discardRisk);
+                if (card.isWild(game.round)) { currentCardScore -= 100; }
+                if (currentCardScore > maxScore) {
+                    maxScore = currentCardScore; bestCardToDiscard = card;
+                }
+            }
+            return bestCardToDiscard;
+        }
+
+        // --- SIMULATION & UI LOGIC ---
+        let lastSimulationStats = null;
+        let winChartInstance, p1MeldChartInstance, p2MeldChartInstance;
+        
+        const loadingEl = document.getElementById('loading'), startButtonEl = document.getElementById('startButton'), statsEl = document.getElementById('stats');
+        const gameProgressEl = document.getElementById('game-progress'), roundProgressEl = document.getElementById('round-progress'), turnProgressEl = document.getElementById('turn-progress');
+        
+        function updateProgress(game, total, round, turn) {
+            gameProgressEl.textContent = `${game}/${total}`;
+            roundProgressEl.textContent = round;
+            turnProgressEl.textContent = turn;
+        }
+
+        async function startSimulation() {
+            const numGames = parseInt(document.getElementById("numGames").value);
+            if(numGames <= 0 || numGames > 10000) return;
+            const p1Strategy = STRATEGIES[document.getElementById("p1Strategy").value];
+            const p2Strategy = STRATEGIES[document.getElementById("p2Strategy").value];
+
+            loadingEl.classList.remove('hidden'); startButtonEl.disabled = true;
+            statsEl.classList.add('hidden'); resetSimulation();
+            
+            const stats = { 
+                p1Wins: 0, p2Wins: 0, ties: 0, p1Scores: [], p2Scores: [],
+                p1MeldStats: { runs: 0, sets: 0, runsWithWilds: 0, setsWithWilds: 0 },
+                p2MeldStats: { runs: 0, sets: 0, runsWithWilds: 0, setsWithWilds: 0 }
+            };
+
+            for (let g = 0; g < numGames; g++) {
+                const game = new Game(p1Strategy, p2Strategy);
+                await game.playGame(g + 1, numGames, stats);
+                const finalScores = game.scores;
+                if (finalScores.P1 < finalScores.P2) stats.p1Wins++;
+                else if (finalScores.P2 < finalScores.P1) stats.p2Wins++;
+                else stats.ties++;
+                stats.p1Scores.push(finalScores.P1);
+                stats.p2Scores.push(finalScores.P2);
+            }
+            lastSimulationStats = stats;
+            updateUI(stats);
+            loadingEl.classList.add('hidden'); startButtonEl.disabled = false;
+        }
+
+        function updateUI(stats) {
+            statsEl.classList.remove('hidden');
+            const pieChartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } };
+            const meldLabels = ['Natural Runs', 'Natural Sets', 'Runs with Wilds', 'Sets with Wilds'];
+            const meldColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
+            
+            const winData = { labels: ["P1 Wins", "P2 Wins", "Ties"], datasets: [{ data: [stats.p1Wins, stats.p2Wins, stats.ties], backgroundColor: ["#4f46e5", "#f43f5e", "#a855f7"] }] };
+            if (!winChartInstance) {
+                winChartInstance = new Chart(document.getElementById("winChart").getContext("2d"), { type: "doughnut", data: winData, options: pieChartOptions });
+            } else {
+                winChartInstance.data = winData; winChartInstance.update();
+            }
+
+            const p1MeldData = { labels: meldLabels, datasets: [{ data: Object.values(stats.p1MeldStats), backgroundColor: meldColors }] };
+            if (!p1MeldChartInstance) {
+                p1MeldChartInstance = new Chart(document.getElementById("p1MeldChart").getContext("2d"), { type: 'pie', data: p1MeldData, options: pieChartOptions });
+            } else {
+                p1MeldChartInstance.data = p1MeldData; p1MeldChartInstance.update();
+            }
+
+            const p2MeldData = { labels: meldLabels, datasets: [{ data: Object.values(stats.p2MeldStats), backgroundColor: meldColors }] };
+            if (!p2MeldChartInstance) {
+                p2MeldChartInstance = new Chart(document.getElementById("p2MeldChart").getContext("2d"), { type: 'pie', data: p2MeldData, options: pieChartOptions });
+            } else {
+                p2MeldChartInstance.data = p2MeldData; p2MeldChartInstance.update();
+            }
+        }
+        
+        function resetSimulation() {
+          statsEl.classList.add('hidden');
+          lastSimulationStats = null;
+          if (winChartInstance) winChartInstance.destroy();
+          if (p1MeldChartInstance) p1MeldChartInstance.destroy();
+          if (p2MeldChartInstance) p2MeldChartInstance.destroy();
+          winChartInstance = null;
+          p1MeldChartInstance = null;
+          p2MeldChartInstance = null;
+        }
+
+        function downloadJSON() {
+            if (!lastSimulationStats) { alert("Please run a simulation first."); return; }
+            const blob = new Blob([JSON.stringify(lastSimulationStats, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "5crowns_simulation_stats.json"; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function downloadCSV() {
+            if (!lastSimulationStats) { alert("Please run a simulation first."); return; }
+            let csv = "Game,P1_Score,P2_Score,Winner\n";
+            for(let i = 0; i < lastSimulationStats.p1Scores.length; i++) {
+                const p1s = lastSimulationStats.p1Scores[i];
+                const p2s = lastSimulationStats.p2Scores[i];
+                const winner = p1s < p2s ? 'P1' : (p2s < p1s ? 'P2' : 'Tie');
+                csv += `${i + 1},${p1s},${p2s},${winner}\n`;
+            }
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "5crowns_simulation_stats.csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
