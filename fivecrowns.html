@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5 Crowns AI Simulator (with Summary Table)</title>
+    <title>5 Crowns AI Simulator (with Advanced Strategies)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
@@ -41,6 +41,10 @@
                         <option value="balanced">Balanced</option>
                         <option value="aggressive">Aggressive</option>
                         <option value="conservative">Conservative</option>
+                        <option value="wildOptimizer">Wild Optimizer</option>
+                        <option value="opponentTracker">Opponent Tracker</option>
+                        <option value="adaptive">Adaptive</option>
+                        <option value="riskManager">Risk Manager</option>
                     </select>
                 </div>
                 <div>
@@ -49,6 +53,10 @@
                         <option value="balanced">Balanced</option>
                         <option value="aggressive">Aggressive</option>
                         <option value="conservative">Conservative</option>
+                        <option value="wildOptimizer">Wild Optimizer</option>
+                        <option value="opponentTracker">Opponent Tracker</option>
+                        <option value="adaptive">Adaptive</option>
+                        <option value="riskManager">Risk Manager</option>
                     </select>
                 </div>
             </div>
@@ -111,7 +119,6 @@
                             </tr>
                         </thead>
                         <tbody id="summary-table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Data will be inserted here by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -126,7 +133,6 @@
 
     <script>
         // --- CORE GAME CLASSES ---
-
         class Card {
             constructor(rank, suit) {
                 this.rank = rank; this.suit = suit;
@@ -167,8 +173,17 @@
         }
         
         class Player {
-            constructor(name, strategy) { this.name = name; this.hand = []; this.setStrategy(strategy); }
+            constructor(name, strategy) { 
+                this.name = name; 
+                this.hand = []; 
+                this.setStrategy(strategy);
+                this.opponentMemory = []; // For Opponent Tracker strategy
+            }
             setStrategy(strategy) { this.strategy = strategy; }
+            rememberOpponentDraw(card) {
+                if(this.opponentMemory.length >= 5) { this.opponentMemory.shift(); }
+                this.opponentMemory.push(card);
+            }
         }
 
         class Game {
@@ -187,6 +202,8 @@
                 this.deck = new Deck(); this.deck.shuffle();
                 this.players.P1.hand = this.deck.deal(round);
                 this.players.P2.hand = this.deck.deal(round);
+                this.players.P1.opponentMemory = [];
+                this.players.P2.opponentMemory = [];
                 this.discardPile = this.deck.deal(1);
                 
                 let activePlayerId = "P1";
@@ -209,7 +226,7 @@
                         this.discardPile = topCard ? [topCard] : [];
                     }
 
-                    const wentOut = this.playerTurn(this.players[activePlayerId]);
+                    const wentOut = this.playerTurn(this.players[activePlayerId], activePlayerId === 'P1' ? this.players.P2 : this.players.P1);
 
                     if (playerWhoWentOut) { break; }
                     if (wentOut) { playerWhoWentOut = activePlayerId; }
@@ -222,13 +239,14 @@
                 this.scoreRound(playerWhoWentOut, stats);
             }
             
-            playerTurn(player) {
+            playerTurn(player, opponent) {
                 const drawSource = chooseDrawSource(player, this);
                 let drawnCard = null;
                 if (drawSource === 'deck' && this.deck.cards.length > 0) {
                     drawnCard = this.deck.deal(1)[0];
                 } else if (this.discardPile.length > 0) {
                     drawnCard = this.discardPile.pop();
+                    opponent.rememberOpponentDraw(drawnCard); // Opponent tracks this draw
                 }
                 if (drawnCard) { player.hand.push(drawnCard); }
 
@@ -246,28 +264,21 @@
             }
 
             scoreRound(playerWhoWentOut, stats) {
-                const p1Result = getBestMelds(this.players.P1.hand, this.round);
-                const p2Result = getBestMelds(this.players.P2.hand, this.round);
+                const p1Result = getBestMelds(this.players.P1.hand, this.round, this.players.P1.strategy);
+                const p2Result = getBestMelds(this.players.P2.hand, this.round, this.players.P2.strategy);
                 
                 Object.keys(stats.p1MeldStats).forEach(key => stats.p1MeldStats[key] += p1Result.meldCounts[key]);
                 Object.keys(stats.p2MeldStats).forEach(key => stats.p2MeldStats[key] += p2Result.meldCounts[key]);
-
                 const roundStats = stats.roundData[this.round].meldCounts;
-                Object.keys(roundStats).forEach(key => {
-                    roundStats[key] += p1Result.meldCounts[key];
-                    roundStats[key] += p2Result.meldCounts[key];
-                });
+                Object.keys(roundStats).forEach(key => { roundStats[key] += p1Result.meldCounts[key] + p2Result.meldCounts[key]; });
 
                 if (!playerWhoWentOut) {
-                    this.scores.P1 += p1Result.deadwoodValue;
-                    this.scores.P2 += p2Result.deadwoodValue;
-                    return;
+                    this.scores.P1 += p1Result.deadwoodValue; this.scores.P2 += p2Result.deadwoodValue; return;
                 }
 
                 const winner = this.players[playerWhoWentOut];
                 const loserId = playerWhoWentOut === 'P1' ? 'P2' : 'P1';
                 const loser = this.players[loserId];
-
                 let winnerMelds = (playerWhoWentOut === 'P1') ? p1Result.melds : p2Result.melds;
                 
                 let loserHand = [...loser.hand];
@@ -276,86 +287,72 @@
                     canStillLayOff = false;
                     let cardToLayOff = null;
                     for (const card of loserHand) {
-                        if (canLayOff(card, winnerMelds, this.round)) {
-                            cardToLayOff = card; break;
-                        }
+                        if (canLayOff(card, winnerMelds, this.round)) { cardToLayOff = card; break; }
                     }
                     if (cardToLayOff) {
                         const laidOffCards = loserHand.filter(c => c.id === cardToLayOff.id);
                         loserHand = loserHand.filter(c => c.id !== cardToLayOff.id);
-                        winnerMelds = getBestMelds(winner.hand.concat(laidOffCards), this.round).melds;
+                        winnerMelds = getBestMelds(winner.hand.concat(laidOffCards), this.round, winner.strategy).melds;
                         canStillLayOff = true;
                     }
                 }
-                
-                const loserResult = getBestMelds(loserHand, this.round);
+                const loserResult = getBestMelds(loserHand, this.round, loser.strategy);
                 this.scores[loserId] += loserResult.deadwoodValue;
             }
         }
         
         // --- AI STRATEGY & LOGIC ---
         const STRATEGIES = {
-            balanced: { meldGreed: 0.5, discardRisk: 0.5, takeDiscardThreshold: -5 },
-            aggressive: { meldGreed: 0.8, discardRisk: 0.8, takeDiscardThreshold: 0 },
-            conservative: { meldGreed: 0.2, discardRisk: 0.2, takeDiscardThreshold: -10 }
+            balanced:        { meldGreed: 0.5, discardRisk: 0.5, takeDiscardThreshold: -5 },
+            aggressive:      { meldGreed: 0.8, discardRisk: 0.8, takeDiscardThreshold: 0 },
+            conservative:    { meldGreed: 0.2, discardRisk: 0.2, takeDiscardThreshold: -10 },
+            wildOptimizer:   { meldGreed: 0.7, discardRisk: 0.4, takeDiscardThreshold: -8,  wildLockPenalty: 10 },
+            opponentTracker: { meldGreed: 0.5, discardRisk: 0.5, takeDiscardThreshold: -5,  opponentAwareness: 0.8 },
+            adaptive:        { meldGreed: 0.6, discardRisk: 0.5, takeDiscardThreshold: -6,  runBias: 5 },
+            riskManager:     { meldGreed: 0.3, discardRisk: 0.9, takeDiscardThreshold: -2 }
         };
 
-        function getBestMelds(initialHand, round) {
+        function getBestMelds(initialHand, round, strategy) {
             const hand = initialHand.filter(c => c);
             const wilds = hand.filter(c => c.isWild(round));
             const nonWilds = hand.filter(c => !c.isWild(round));
-
-            const potentialMelds = findAllPotentialMelds(nonWilds, wilds.length);
+            const potentialMelds = findAllPotentialMelds(nonWilds, wilds.length, strategy, round);
             
-            let bestMelds = [];
-            let bestMeldTypes = [];
-            let bestDeadwood = Infinity;
-
+            let bestMelds = [], bestMeldTypes = [], bestDeadwood = Infinity;
             const combinations = 1 << potentialMelds.length;
-            if (combinations > 500000) { // Safety break
+            if (combinations > 500000) { 
                  const deadwoodValue = hand.reduce((sum, c) => sum + c.pointValue(round), 0);
                  return { deadwoodValue: deadwoodValue, melds: [], meldCounts: {runs:0, sets:0, runsWithWilds:0, setsWithWilds:0} };
             }
 
             for (let i = 0; i < combinations; i++) {
-                let currentMelds = [];
-                let currentMeldTypes = [];
-                let usedCardIds = new Set();
-                let wildsUsed = 0;
-                let possible = true;
-
+                let currentMelds = [], currentMeldTypes = [], usedCardIds = new Set(), wildsUsed = 0, possible = true;
                 for (let j = 0; j < potentialMelds.length; j++) {
                     if ((i >> j) & 1) {
                         const meld = potentialMelds[j];
                         if (wildsUsed + meld.wildsNeeded > wilds.length || meld.cards.some(c => usedCardIds.has(c.id))) {
                             possible = false; break;
                         }
-                        currentMelds.push(meld.cards);
-                        currentMeldTypes.push(meld.type);
+                        currentMelds.push(meld.cards); currentMeldTypes.push(meld.type);
                         meld.cards.forEach(c => usedCardIds.add(c.id));
                         wildsUsed += meld.wildsNeeded;
                     }
                 }
-
                 if (possible) {
                     const finalMeldedWilds = wilds.slice(0, wildsUsed);
                     const allMeldedIds = new Set([...usedCardIds, ...finalMeldedWilds.map(w => w.id)]);
                     const deadwoodCards = hand.filter(c => !allMeldedIds.has(c.id));
                     const deadwoodValue = deadwoodCards.reduce((sum, c) => sum + c.pointValue(round), 0);
-
                     if (deadwoodValue < bestDeadwood) {
-                        bestDeadwood = deadwoodValue;
-                        bestMelds = currentMelds;
-                        bestMeldTypes = currentMeldTypes;
+                        bestDeadwood = deadwoodValue; bestMelds = currentMelds; bestMeldTypes = currentMeldTypes;
                     }
                 }
             }
-
             const meldCounts = bestMeldTypes.reduce((acc, type) => { acc[type]++; return acc; }, { runs: 0, sets: 0, runsWithWilds: 0, setsWithWilds: 0 });
             return { deadwoodValue: bestDeadwood, melds: bestMelds, meldCounts };
         }
 
-        function findAllPotentialMelds(nonWilds, wildCount) {
+        function findAllPotentialMelds(nonWilds, wildCount, strategy, round) {
              const melds = [];
              const rankGroups = nonWilds.reduce((acc, c) => { (acc[c.rank] = acc[c.rank] || []).push(c); return acc; }, {});
              for (const rank in rankGroups) {
@@ -378,7 +375,14 @@
                     }
                 }
              }
-            return melds;
+
+             melds.forEach(meld => {
+                meld.score = meld.cards.reduce((sum, c) => sum + c.pointValue(round), 0) + meld.wildsNeeded * 20;
+                if(strategy.runBias && meld.type.includes('run')) { meld.score += strategy.runBias; }
+                if(strategy.wildLockPenalty && meld.wildsNeeded > 0 && meld.score < 25) { meld.score -= strategy.wildLockPenalty; }
+            });
+
+            return melds.sort((a, b) => b.score - a.score);
         }
 
         function canLayOff(card, melds, round) {
@@ -406,13 +410,13 @@
             return false;
         }
         
-        function canGoOut(player, round) { return getBestMelds(player.hand, round).deadwoodValue === 0; }
+        function canGoOut(player, round) { return getBestMelds(player.hand, round, player.strategy).deadwoodValue === 0; }
 
         function chooseDrawSource(player, game) {
             const topDiscard = game.discardPile[game.discardPile.length - 1];
             if (!topDiscard) return 'deck';
-            const currentScore = getBestMelds(player.hand, game.round).deadwoodValue;
-            const potentialScore = getBestMelds([...player.hand, topDiscard], game.round).deadwoodValue;
+            const currentScore = getBestMelds(player.hand, game.round, player.strategy).deadwoodValue;
+            const potentialScore = getBestMelds([...player.hand, topDiscard], game.round, player.strategy).deadwoodValue;
             if ((potentialScore - currentScore) < player.strategy.takeDiscardThreshold && Math.random() < player.strategy.meldGreed) {
                 return 'discard';
             }
@@ -424,9 +428,19 @@
             if (player.hand.length <= game.round) return player.hand[0];
             for (const card of player.hand) {
                 const tempHand = player.hand.filter(c => c.id !== card.id);
-                const { deadwoodValue } = getBestMelds(tempHand, game.round);
+                const { deadwoodValue } = getBestMelds(tempHand, game.round, player.strategy);
                 let currentCardScore = card.pointValue(game.round) * player.strategy.discardRisk - deadwoodValue * (1 - player.strategy.discardRisk);
                 if (card.isWild(game.round)) { currentCardScore -= 100; }
+                
+                // Opponent Tracking Logic
+                if (player.strategy.opponentAwareness && player.opponentMemory.length > 0) {
+                    for(const mem of player.opponentMemory) {
+                        if (card.rank === mem.rank || card.suit === mem.suit) {
+                            currentCardScore -= 25 * player.strategy.opponentAwareness; // Heavy penalty for discarding useful cards
+                        }
+                    }
+                }
+
                 if (currentCardScore > maxScore) {
                     maxScore = currentCardScore; bestCardToDiscard = card;
                 }
@@ -450,8 +464,10 @@
         async function startSimulation() {
             const numGames = parseInt(document.getElementById("numGames").value);
             if(numGames <= 0 || numGames > 10000) return;
-            const p1Strategy = STRATEGIES[document.getElementById("p1Strategy").value];
-            const p2Strategy = STRATEGIES[document.getElementById("p2Strategy").value];
+            const p1StrategyName = document.getElementById("p1Strategy").value;
+            const p2StrategyName = document.getElementById("p2Strategy").value;
+            const p1Strategy = STRATEGIES[p1StrategyName];
+            const p2Strategy = STRATEGIES[p2StrategyName];
 
             loadingEl.classList.remove('hidden'); startButtonEl.disabled = true;
             statsEl.classList.add('hidden'); resetSimulation();
@@ -468,7 +484,6 @@
                     meldCounts: { runs: 0, sets: 0, runsWithWilds: 0, setsWithWilds: 0 }
                 };
             }
-
 
             for (let g = 0; g < numGames; g++) {
                 const game = new Game(p1Strategy, p2Strategy);
@@ -499,12 +514,11 @@
                             const percentage = (value * 100 / sum).toFixed(1) + "%";
                             return percentage;
                         },
-                        color: '#fff',
-                        font: { weight: 'bold' }
+                        color: '#fff', font: { weight: 'bold' }
                     }
                 } 
             };
-            const meldLabels = ['Natural Runs', 'Natural Sets', 'Runs with Wilds', 'Sets with Wilds'];
+            const meldLabels = ['Natural Runs', 'Natural Sets', 'Runs w/ Wilds', 'Sets w/ Wilds'];
             const meldColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
             
             const winData = { labels: ["P1 Wins", "P2 Wins", "Ties"], datasets: [{ data: [stats.p1Wins, stats.p2Wins, stats.ties], backgroundColor: ["#4f46e5", "#f43f5e", "#a855f7"] }] };
@@ -528,31 +542,18 @@
                 p2MeldChartInstance.data = p2MeldData; p2MeldChartInstance.update();
             }
 
-            // Populate Summary Table
             const summaryTableBody = document.getElementById('summary-table-body');
             summaryTableBody.innerHTML = '';
             for (let r = 3; r <= 13; r++) {
                 const roundData = stats.roundData[r];
                 if (!roundData || roundData.gameCount === 0) continue;
-
                 const avgTurns = (roundData.totalTurns / roundData.gameCount).toFixed(1);
                 const totalMelds = Object.values(roundData.meldCounts).reduce((a, b) => a + b, 0);
-
                 const pctNaturalRuns = totalMelds > 0 ? (roundData.meldCounts.runs * 100 / totalMelds).toFixed(1) : '0.0';
                 const pctNaturalSets = totalMelds > 0 ? (roundData.meldCounts.sets * 100 / totalMelds).toFixed(1) : '0.0';
                 const pctRunsWithWilds = totalMelds > 0 ? (roundData.meldCounts.runsWithWilds * 100 / totalMelds).toFixed(1) : '0.0';
                 const pctSetsWithWilds = totalMelds > 0 ? (roundData.meldCounts.setsWithWilds * 100 / totalMelds).toFixed(1) : '0.0';
-
-                const row = `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${r}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${avgTurns}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctNaturalRuns}%</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctNaturalSets}%</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctRunsWithWilds}%</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctSetsWithWilds}%</td>
-                    </tr>
-                `;
+                const row = `<tr class="hover:bg-gray-50"><td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${r}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${avgTurns}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctNaturalRuns}%</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctNaturalSets}%</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctRunsWithWilds}%</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pctSetsWithWilds}%</td></tr>`;
                 summaryTableBody.innerHTML += row;
             }
         }
@@ -591,4 +592,3 @@
     </script>
 </body>
 </html>
-
