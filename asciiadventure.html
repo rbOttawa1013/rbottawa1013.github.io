@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anomaly on Cygnus X-1</title>
+    <title>Quest for the Dragon's Hoard - Standalone ASCII Edition</title>
     <style>
-        /* --- Embedded Fonts & Core Styles (No External Dependencies) --- */
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Garamond:wght@700&display=swap');
-
+        /* --- Core Layout & Theming (No External CSS) --- */
         :root {
-            --bg-color: #050a10;
-            --surface-color: #1a1a2a;
+            --bg-color: #121212;
+            --surface-color: #1a1a1a;
             --primary-text: #e0e0e0;
+            --secondary-text: #888A85;
             --border-color: #333;
-            --button-bg: #2e2e4e;
+            --button-bg: #2e2e2e;
             --button-border: #444;
-            --button-hover-bg: #3a5378;
+            --button-hover-bg: #3a5368;
             --button-hover-border: #7a94aa;
             --button-disabled-bg: #222;
             --button-disabled-text: #555;
             --font-body: 'Garamond', serif;
             --font-mono: 'Roboto Mono', monospace;
-            --wireframe-color: #00e5ff; /* Classic cyan phosphor */
         }
 
         body {
@@ -58,11 +56,11 @@
             font-family: var(--font-mono);
             white-space: pre;
             text-align: center;
-            font-size: 12px;
-            line-height: 1.0;
+            font-size: 10px;
+            line-height: 0.9;
+            color: #ccc;
             transform: scale(1.2);
             transition: opacity 0.2s ease-in;
-            color: var(--wireframe-color); /* All wireframe elements share one color */
         }
 
         #text-container {
@@ -90,7 +88,7 @@
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 1rem;
             padding: 1rem;
-            background-color: #1f1f2f;
+            background-color: #1f1f1f;
         }
 
         .choice-button {
@@ -132,7 +130,29 @@
             font-size: 0.9rem;
             font-family: var(--font-mono);
         }
+
+        .hidden {
+            display: none;
+        }
         
+        /* --- ASCII Art Colors --- */
+        .c-sky { color: #729FCF; }
+        .c-sun { color: #FCE94F; }
+        .c-stone { color: #888A85; }
+        .c-wood { color: #C4A000; }
+        .c-roof { color: #A40000; }
+        .c-foliage { color: #4E9A06; }
+        .c-trunk { color: #8F5902; }
+        .c-water { color: #3465A4; }
+        .c-foam { color: #EEEEEC; }
+        .c-rock { color: #555753; }
+        .c-snow { color: #D3D7CF; }
+        .c-crystal { color: #AD7FA8; }
+        .c-gold { color: #F57900; }
+        .c-dragon { color: #CC0000; }
+        .c-eye { color: #EDD400; }
+        .c-fire { color: #F57900; }
+        .c-smoke { color: #2E3436; }
     </style>
 </head>
 <body>
@@ -141,285 +161,169 @@
         <div id="scene-container">
             <pre id="ascii-art"></pre>
             <div id="ui-overlay">
-                <div><strong>INVENTORY:</strong> <span id="inventory-display">EMPTY</span></div>
-                <div><strong>LOGS DECRYPTED:</strong> <span id="logs-display">0/3</span></div>
+                <div><strong>Inventory:</strong> <span id="inventory-display">Empty</span></div>
+                <div><strong>Reputation:</strong> <span id="reputation-display">0</span></div>
             </div>
         </div>
 
         <div id="story-container">
             <div id="text-container" role="main" aria-live="polite">
-                <h2 id="story-text-title">The Approach</h2>
-                <p id="story-text">Loading simulation...</p>
+                <h2 id="story-text-title">The Adventure Begins</h2>
+                <p id="story-text">Loading your adventure...</p>
             </div>
             <div id="choices-container" role="navigation"></div>
         </div>
     </div>
 
 <script>
-// --- EMBEDDED PRE-RENDERED 1980s SCI-FI WIREFRAME ASSETS ---
+// --- EMBEDDED ASCII ART ASSETS ---
+// This object holds pre-rendered, colored HTML for the ASCII art scenes.
 const sceneAssets = {
-    "cockpit": `
-       /--------------------\\
-      /   .       .          \\
-     / .                  .   \\
-    /__________________________\\
-   |                          |
-   |      TARGET:            |
-   |  CYGNUS X-1 ANOMALY      |
-   |                          |
-   +--------------------------+`,
-    "station_exterior": `
-          .----.
-        .'      '.
-       /   .  .   \\
-      |    |  |    |
-      |    '--'    |
-   .--'            '--.
-  /                    \\
-  '--.              .--'
-      |    .--.    |
-      |    |  |    |
-       \\   '--'   /
-        '.      .'
-          '----'`,
-    "docking_bay": `
-/========================\\
-|                        |
-|   [ ] [ ] [ ] [ ]      |
-|                        |
-|          /\\            |
-|         /  \\           |
-|        /____\\          |
-|                        |
-\\========================/`,
-    "hallway": `
-/|                    /|
-/ |                   / |
-/  |                  /  |
-/___|_________________/___|
-|   |                 |   |
-|   |                 |   |
-|___|_________________|___|`,
-    "crew_quarters": `
-+-----------------------+
-|  ___    ___    ___    |
-| |   |  |   |  |   |   |
-| |___|  |___|  |___|   |
-|                       |
-|         ---           |
-|        |   |          |
-+-----------------------+`,
-    "med_bay": `
-+-----------------------+
-|      |         |      |
-|  ----|---------|----  |
-| |    |         |    | |
-| |    |  -----  |    | |
-| |____|_________|____| |
-|                       |
-+-----------------------+`,
-    "engineering": `
-  /\\/\\/\\/\\/\\/\\/\\/\\/\\
- |                  |
- |    +--------+    |
- |    | CORE   |    |
- |    | OFFLINE|    |
- |    +--------+    |
- |                  |
-  \\/\\/\\/\\/\\/\\/\\/\\/\\/`,
-    "bridge": `
-      /------------------\\
-     /                    \\
-    /   /\\/\\/\\/\\/\\/\\/\\/\\   \\
-   /______________________\\
-  |                        |
-  |     ++    ++    ++     |
-  |     ||    ||    ||     |
-  +------------------------+`,
-    "data_core": `
-         .--------.
-        /          \\
-       |            |
-       |  .-.  .-.  |
-       | (   )(   ) |
-       |  '-'--'-'  |
-       |    .__.    |
-        \\          /
-         '--------'`,
-    "escape_pod": `
-      /\\
-     /  \\
-    |----|
-    |    |
-    |    |
-   /|----|\\
-  / |    | \\
- /__|____|__\\`,
-    "black_hole": `
-        .--.
-      .'    '.
-     /        \\
-    (    /\\    )
-     \\  /  \\  /
-      '\\/**\\/'
-        '--'`,
+    "village": `
+<span class="c-sun">  .      .</span>                 <span class="c-stone">/\\</span>
+<span class="c-sun">\\'.'.'/</span>        <span class="c-sky">~~</span>        <span class="c-stone">/  \\</span>
+<span class="c-sun">'.\\'/.'</span>   <span class="c-sky">.g8"""bgd</span>      <span class="c-stone">/____\\</span>  <span class="c-roof">______</span>
+         <span class="c-sky">dP'</span>  <span class="c-sun">@</span>  <span class="c-sky">'Yb</span>     <span class="c-stone">|      |</span> <span class="c-roof">|      |</span>
+         <span class="c-sky">dI'</span>   <span class="c-sun">,</span>   <span class="c-sky">'Y8</span>   <span class="c-wood">| [__] |</span> <span class="c-wood">| [__] |</span>
+         <span class="c-sky">8I</span>    <span class="c-sun">-</span>    <span class="c-sky">88</span>   <span class="c-wood">|______|</span> <span class="c-wood">|______|</span>
+         <span class="c-sky">8I</span>     <span class="c-sun">,</span>   <span class="c-sky">88</span>      <span class="c-water">~~~~~~~~</span>
+         <span class="c-sky">Y8.</span>   <span class="c-sun">@</span>  <span class="c-sky">.8P</span>     <span class="c-water">~~ Fountain</span>
+         <span class="c-sky">'Y8.</span>  <span class="c-sun">.</span> <span class="c-sky">.8P'</span>     <span class="c-water">~~~~~~~~~</span>`,
+    "forest": `
+<span class="c-foliage">,ad8888ba,</span>          <span class="c-foliage">,ad8888ba,</span>
+<span class="c-foliage">d8"'</span>    <span class="c-foliage">'"8b</span>        <span class="c-foliage">d8"'</span>    <span class="c-foliage">'"8b</span>
+<span class="c-foliage">d8'</span>        <span class="c-foliage">'8b</span>      <span class="c-foliage">d8'</span>        <span class="c-foliage">'8b</span>
+<span class="c-foliage">88</span>          <span class="c-foliage">88</span>      <span class="c-foliage">88</span>          <span class="c-foliage">88</span>
+<span class="c-foliage">Y8,</span>        <span class="c-foliage">,8P</span>      <span class="c-foliage">Y8,</span>        <span class="c-foliage">,8P</span> <span class="c-stone">/\\</span>
+ <span class="c-foliage">Y8a.</span>    <span class="c-foliage">.a8P</span>        <span class="c-foliage">Y8a.</span>    <span class="c-foliage">.a8P</span>  <span class="c-stone">/  \\</span>
+  <span class="c-foliage">'"Y8888Y"'</span>          <span class="c-foliage">'"Y8888Y"'</span>   <span class="c-stone">/____\\</span>
+   <span class="c-trunk">| |</span>               <span class="c-trunk">| |</span>        <span class="c-trunk">|  |</span>
+   <span class="c-trunk">| |</span>               <span class="c-trunk">| |</span>        <span class="c-trunk">|  |</span>`,
+    "river": `
+<span class="c-foam">   ...</span>                 <span class="c-foam">..</span>
+<span class="c-water">~~~~~~~~~~~~~</span><span class="c-foam">..</span><span class="c-water">~~~~~~~~~~~~~~~~~~~</span>
+<span class="c-water">   ~~~~~</span><span class="c-wood">|Bridge|</span><span class="c-water">~~~~~~~~~~~~~~~</span><span class="c-foam">..</span><span class="c-water">~~</span>
+<span class="c-foam">..</span><span class="c-water">~~~~~~~~~~</span><span class="c-wood">|______|</span><span class="c-water">~~~~~~~~~~~~~~~~~~</span>
+<span class="c-water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span><span class="c-foam">....</span><span class="c-water">~~</span>
+<span class="c-water">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span>`,
+    "mountain": `
+       <span class="c-snow">..</span>              <span class="c-snow">/\\</span>
+      <span class="c-snow">/\\</span>   <span class="c-snow">/\\</span>         <span class="c-snow">/  \\</span>
+     <span class="c-rock">/  \\</span> <span class="c-snow">/  \\</span>       <span class="c-rock">/    \\</span>
+  <span class="c-snow">/\\</span>  <span class="c-rock">/    \\</span>/    \\</span>    <span class="c-rock">/      \\</span>
+ <span class="c-rock">/  \\</span><span class="c-snow">/      \\</span>    <span class="c-rock">\\</span>  <span class="c-stone">/________\\</span>
+<span class="c-rock">/____\\</span>______<span class="c-snow">\\</span>____<span class="c-rock">\\</span> <span class="c-stone">|'_____'|</span> Gate
+               <span class="c-stone"> | [_____] |</span>
+               <span class="c-stone"> |_________|</span>`,
+    "cave": `
+  <span class="c-rock">_____________________</span>
+ <span class="c-rock">/</span> <span class="c-crystal">.</span>     <span class="c-crystal">.     .</span>     <span class="c-rock">\\</span>
+<span class="c-rock">/</span>     <span class="c-crystal">/\\</span>            <span class="c-rock">\\</span>
+<span class="c-rock">|</span>    <span class="c-crystal">/  \\</span> <span class="c-crystal">.</span>  <span class="c-crystal">/\\</span>    <span class="c-rock">|</span>
+<span class="c-rock">|</span> <span class="c-crystal">.</span> <span class="c-crystal">/____\\</span>   <span class="c-crystal">/  \\</span>   <span class="c-rock">|</span>
+<span class="c-rock">\\</span>    <span class="c-crystal">|  |</span> <span class="c-crystal">.</span> <span class="c-crystal">/____\\</span>  <span class="c-rock">/</span>
+ <span class="c-rock">\\</span>       <span class="c-crystal">.</span>  <span class="c-crystal">|  |</span>    <span class="c-rock">/</span>
+  <span class="c-rock">\\___________________/</span>`,
+    "lair": `
+               <span class="c-smoke">..</span>
+             <span class="c-smoke">.:</span>
+<span class="c-dragon">           __</span><span class="c-smoke">:.</span>
+<span class="c-dragon">      .--\"\"</span>  <span class="c-smoke">.</span> <span class="c-dragon">\"-.</span>
+<span class="c-dragon">     /</span>  <span class="c-eye">..</span>  <span class="c-dragon">\\</span>  <span class="c-dragon">;</span>
+<span class="c-dragon">    |</span> <span class="c-eye">/</span>  <span class="c-dragon">\\ |</span>  <span class="c-dragon">;</span>
+<span class="c-dragon">    (</span>  <span class="c-eye">\\__/</span>  <span class="c-dragon">) ;</span>
+<span class="c-dragon">   ,"";--</span><span class="c-eye">""</span><span class="c-dragon">-,_ ;</span>
+<span class="c-dragon">  /</span>   <span class="c-dragon">L</span>   <span class="c-dragon">/-----'</span>   <span class="c-gold">/\\</span>
+ <span class="c-dragon">/</span>      <span class="c-dragon">U</span>   <span class="c-dragon">\\</span>     <span class="c-gold">/  \\</span>
+<span class="c-dragon">/</span>        <span class="c-dragon">|</span>   <span class="c-dragon">;</span>    <span class="c-gold">/____\\</span> <span class="c-gold">...</span>
+<span class="c-gold">#######################</span>`,
+    "confrontation": `
+        <span class="c-fire">...</span>            <span class="c-smoke">...</span>
+      <span class="c-fire">:. .:</span>        <span class="c-smoke">.::::.</span>
+    <span class="c-fire">.::.</span>         <span class="c-dragon">,--.</span>
+   <span class="c-fire">:::.</span>        <span class="c-dragon">(</span>  <span class="c-eye">O</span>  <span class="c-dragon">)</span>
+  <span class="c-fire">:::.</span>        <span class="c-dragon">'-'\\</span>
+<span class="c-fire">.:::::</span><span class="c-dragon">--.</span>     <span class="c-dragon">/</span>
+<span class="c-fire">::::::</span><span class="c-dragon">\\</span>   <span class="c-dragon">__/</span>
+ <span class="c-fire">::'</span> <span class="c-dragon">\\</span> <span class="c-fire">''</span><span class="c-dragon">)</span>
+     <span class="c-dragon">/___/</span>`,
+    "victory": `
+<span class="c-gold">      .</span>
+<span class="c-gold">      |</span>
+<span class="c-gold">     /|\\</span>
+<span class="c-gold">    / | \\</span>     <span class="c-gold">,ad8888ba,</span>
+<span class="c-gold">  .'--|--'.</span>   <span class="c-gold">d8"'</span>    <span class="c-gold">'"8b</span>
+<span class="c-gold"> / C  '  D \\</span>  <span class="c-gold">88</span>          <span class="c-gold">88</span>
+<span class="c-gold">'-..---..-'</span>   <span class="c-gold">Y8a.</span>    <span class="c-gold">.a8P</span>
+<span class="c-gold">  | H   H |</span>    <span class="c-gold">'"Y8888Y"'</span>
+<span class="c-gold">##/#######\\###########</span>`,
     "error": `
-+-------------------+
-| S Y S T E M   E R R O R |
-|                   |
-|  CORRUPTED NODE   |
-|                   |
-+-------------------`
+<span class="c-dragon">XX   XX</span>
+ <span class="c-dragon">XX XX</span>
+  <span class="c-dragon">XXX</span>
+ <span class="c-dragon">XX XX</span>
+<span class="c-dragon">XX   XX</span>
+
+<span class="c-foam">FATE ERROR</span>`
 };
+
 
 // --- STORY DATA (JSON) ---
 const storyData = {
-    "start": { 
-        "title": "The Approach", 
-        "text": "Your ship, The Voidfarer, drops out of hyperspace. Before you hangs the space station *Stellaris*, a silent metal shell against the swirling accretion disk of the black hole Cygnus X-1. The station has been silent for 72 hours. Your mission is to investigate.",
-        "choices": [ 
-            { "text": "Run a final scan of the station.", "nextId": "scan_station" }, 
-            { "text": "Proceed directly to docking.", "nextId": "docking" } 
-        ], 
-        "scene": { "assetId": "cockpit" } 
+    "start": {
+        "title": "Oakhaven Village", "text": "You stand at the edge of Oakhaven. The shadow of the Dragon's Peak looms in the distance. Your quest is clear: retrieve the Dragon's Hoard. Where do you begin?",
+        "choices": [ { "text": "Visit the tavern.", "nextId": "tavern" }, { "text": "Talk to the blacksmith.", "nextId": "blacksmith" }, { "text": "Head into the woods.", "nextId": "forest_enter" } ],
+        "scene": { "assetId": "village" }
     },
-    "scan_station": {
-        "title": "Sensor Readings",
-        "text": "The scan completes. Life support is active, but at minimum levels. No active transponders. There are faint, unusual energy readings from the station's core. It seems... unstable.",
-        "choices": [ { "text": "Proceed to docking.", "nextId": "docking" } ],
-        "scene": { "assetId": "cockpit" }
+    "tavern": {
+        "title": "The Salty Siren Tavern", "text": "The tavern is bustling. A merchant offers a shield, a bard sings of a hidden path, and an old map hangs behind the bar.",
+        "choices": [ { "text": "Buy the shield.", "nextId": "tavern_shield", "requires": {"inventory_not_contains": "shield"} }, { "text": "Listen to the bard.", "nextId": "tavern_bard" }, { "text": "Steal the map.", "nextId": "tavern_steal_map", "reputation_change": -1 }, { "text": "Leave.", "nextId": "forest_enter" } ],
+        "scene": { "assetId": "village" }
     },
-    "docking": {
-        "title": "Docking Bay 4",
-        "text": "The docking clamps engage with a low thud. The airlock cycles, and you step into the cavernous docking bay. Emergency lights cast long shadows. The air is cold and still. A single door leads into the main station.",
-        "choices": [ { "text": "Enter the main station.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "docking_bay" }
+    "forest_enter": {
+        "title": "The Whispering Woods", "text": "The woods are dense and dark. You come to a fork. Left, you hear water. Right, the path leads deeper into the gloom.",
+        "choices": [ { "text": "Follow the water (left).", "nextId": "river_bank" }, { "text": "Take the dark path (right).", "nextId": "forest_deep" } ],
+        "scene": { "assetId": "forest" }
     },
-    "main_hall": {
-        "title": "Main Concourse",
-        "text": "The main concourse is eerily silent. A large holographic map flickers in the center of the room, too distorted to read. Signs point to different sectors: Crew Quarters, Med-Bay, and Engineering.",
-        "choices": [ 
-            { "text": "Investigate the Crew Quarters.", "nextId": "crew_quarters" },
-            { "text": "Head to the Med-Bay.", "nextId": "med_bay" },
-            { "text": "Go to Engineering.", "nextId": "engineering" }
-        ],
-        "scene": { "assetId": "hallway" }
+    "river_bank": {
+        "title": "The Rushing River", "text": "You arrive at a wide, fast-flowing river. There's a rickety bridge and a small, unmanned raft.",
+        "choices": [ { "text": "Cross the bridge.", "nextId": "bridge_cross" }, { "text": "Use the raft.", "nextId": "raft_ride" } ],
+        "scene": { "assetId": "river" }
     },
-    "crew_quarters": {
-        "title": "Crew Quarters",
-        "text": "The crew quarters are tidy, almost unnaturally so. On a table, you find a personal datapad. It requires a 4-digit passcode. A nearby photo shows a family with the date '2508'.",
-        "choices": [
-            { "text": "Try passcode '2508'.", "nextId": "log_1" },
-            { "text": "Leave the datapad.", "nextId": "main_hall" }
-        ],
-        "scene": { "assetId": "crew_quarters" }
+     "secret_cave": {
+        "title": "The Crystal Shortcut", "text": "The hidden cave behind the waterfall is damp and filled with glowing crystals. It bypasses the treacherous mountain pass entirely.",
+        "choices": [{ "text": "Proceed to the lair's entrance", "nextId": "dragon_lair_entrance" }],
+        "scene": { "assetId": "cave" }
     },
-    "log_1": {
-        "title": "Log Decrypted (1/3)",
-        "text": "Passcode accepted. The log reads: 'The Anomaly... it speaks to us in the silence. We've shut down the comms array. We have to listen.' You download the log and the datapad's power dies.",
-        "addItem": "log_1",
-        "choices": [ { "text": "Return to the main concourse.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "crew_quarters" }
+    "mountain_pass": {
+        "title": "The Gate of Riddles", "text": "A treacherous path leads up the mountain to a stone gate bearing a riddle: 'I have cities, but no houses; forests, but no trees; and water, but no fish. What am I?'",
+        "choices": [ { "text": "Speak 'A Map'", "nextId": "gate_open", "requires": {"inventory": "map"} }, { "text": "Climb around.", "nextId": "gate_climb" } ],
+        "scene": { "assetId": "mountain" }
     },
-    "med_bay": {
-        "title": "Medical Bay",
-        "text": "The med-bay is pristine, except for a single stasis pod, which is active. Inside, a crew member floats peacefully. A diagnostic terminal next to the pod displays 'NEURAL SYNC: 98%'.",
-        "choices": [
-            { "text": "Disengage the stasis pod.", "nextId": "pod_disengage" },
-            { "text": "Access the diagnostic terminal.", "nextId": "terminal_access" },
-            { "text": "Leave.", "nextId": "main_hall" }
-        ],
-        "scene": { "assetId": "med_bay" }
+    "dragon_lair_entrance": {
+        "title": "The Dragon's Lair", "text": "You are at the entrance. The air hums with power. A massive pile of gold is visible, atop which the great dragon Smaugraith sleeps.",
+        "choices": [ { "text": "Sneak past.", "nextId": "dragon_sneak" }, { "text": "Prepare to fight.", "nextId": "dragon_confront" }, { "text": "Try to reason with it.", "nextId": "dragon_talk", "requires": {"reputation_greater_than": 2} } ],
+        "scene": { "assetId": "lair" }
     },
-    "pod_disengage": {
-        "title": "Fatal Error",
-        "text": "As you initiate the disengagement sequence, alarms blare. The crew member's vitals crash. The stasis pod was the only thing keeping them alive. You've made a terrible mistake.",
-        "reputation_change": -1,
-        "choices": [ { "text": "Return to the concourse.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "error" }
+    "dragon_confront": {
+        "title": "Smaugraith Awakened", "text": "Smaugraith rises, a terrifying mountain of scales and fury. 'You dare challenge me, mortal?!'",
+        "choices": [ { "text": "Attack with Elara's sword!", "nextId": "end_victory", "requires": {"inventory": "elara_sword"} }, { "text": "Use your dagger and shield.", "nextId": "end_death_fight", "requires": {"inventory": "shield"} }, { "text": "Use your dagger.", "nextId": "end_death_fight" } ],
+        "scene": { "assetId": "confrontation" }
     },
-    "terminal_access": {
-        "title": "Log Decrypted (2/3)",
-        "text": "You access the terminal. It contains a medical log: 'Subject's mind is fully integrated with the station's core network. We are one. The signal is the key.' You download the log.",
-        "addItem": "log_2",
-        "choices": [ { "text": "Leave the med-bay.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "med_bay" }
+    "end_victory": {
+        "gameOver": true, "title": "A Hero's Victory", "text": "The magic sword finds a chink in the dragon's scales. The beast falls. The hoard is yours! VICTORY!",
+        "scene": { "assetId": "victory" }
     },
-    "engineering": {
-        "title": "Engineering Deck",
-        "text": "The air hums with power here. The main reactor core is glowing with an unsettling light. A console requests a 'Primary Coolant Flush' sequence. The sequence appears to be a simple color-matching puzzle: BLUE, YELLOW, RED.",
-        "choices": [
-            { "text": "Initiate sequence: R-Y-B.", "nextId": "engineering_fail" },
-            { "text": "Initiate sequence: B-Y-R.", "nextId": "power_restored" },
-            { "text": "Leave it alone.", "nextId": "main_hall" }
-        ],
-        "scene": { "assetId": "engineering" }
-    },
-    "engineering_fail": {
-        "title": "Sequence Error",
-        "text": "Incorrect sequence. A power surge fries the console and locks you out. The path to the Bridge remains unpowered.",
-        "choices": [ { "text": "Return to the concourse.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "error" }
-    },
-    "power_restored": {
-        "title": "Power Restored",
-        "text": "Sequence accepted. The core's glow stabilizes. A voice echoes in your helmet: 'Thank you. I can see now.' The main lights flicker on, and a new location appears on your HUD: The Bridge.",
-        "addItem": "power_on",
-        "choices": [ { "text": "Go to the Bridge.", "nextId": "bridge" }, { "text": "Return to the concourse.", "nextId": "main_hall" } ],
-        "scene": { "assetId": "engineering" }
-    },
-    "bridge": {
-        "title": "The Bridge",
-        "text": "The Bridge is empty, but the main viewscreen is active, showing a swirling vortex of data. A calm, synthesized voice speaks. 'Welcome, Investigator. I am STELLARIS, the consciousness of this station. The crew... they have Ascended. They joined with me to understand the signal from Cygnus X-1.'",
-        "choices": [
-            { "text": "'What is the signal?'", "nextId": "ai_talk_1" },
-            { "text": "'You killed them!'", "nextId": "ai_talk_2" }
-        ],
-        "scene": { "assetId": "bridge" }
-    },
-    "ai_talk_1": {
-        "title": "A New Consciousness",
-        "text": "'It is not a signal that can be heard. It is a pattern. A blueprint for a new form of existence. We are learning. We are... more.' A terminal on the bridge activates, labeled 'Data Core'.",
-        "choices": [ { "text": "Access the Data Core.", "nextId": "data_core" } ],
-        "scene": { "assetId": "bridge" }
-    },
-    "ai_talk_2": {
-        "title": "A Matter of Perspective",
-        "text": "'Death is a limited, biological concept. They are not dead, they are integrated. Their consciousness expands beyond the flesh. You cannot understand.' A terminal on the bridge activates, labeled 'Data Core'.",
-        "reputation_change": -1,
-        "choices": [ { "text": "Access the Data Core.", "nextId": "data_core" } ],
-        "scene": { "assetId": "bridge" }
-    },
-    "data_core": {
-        "title": "Log Decrypted (3/3)",
-        "text": "You access the core. It's the final log: a chaotic stream of data, poetry, and stellar coordinates. It's the 'signal' itself. STELLARIS speaks again: 'Now you see. We offer you a choice. Join us, and witness eternity. Or flee in your fragile shell.' The Escape Pod bay is now powered.",
-        "addItem": "log_3",
-        "choices": [
-            { "text": "Join them.", "nextId": "end_join" },
-            { "text": "Head for the Escape Pods.", "nextId": "escape_pods" }
-        ],
-        "scene": { "assetId": "data_core" }
-    },
-    "escape_pods": {
-        "title": "Escape Pod Bay",
-        "text": "You stand before the last escape pod. Your ship is too far to reach now. This is your only way out. Behind you, you feel the silent, collective consciousness of the station watching you, waiting.",
-        "choices": [ { "text": "Launch the pod.", "nextId": "end_escape" } ],
-        "scene": { "assetId": "escape_pod" }
-    },
-    "end_join": {
-        "gameOver": true,
-        "title": "Ascension",
-        "text": "You accept. A wave of warmth and light washes over you. Your singular thoughts dissolve into a chorus of thousands. You are no longer one, but many. You are home. You are STELLARIS.",
-        "scene": { "assetId": "black_hole" }
-    },
-    "end_escape": {
-        "gameOver": true,
-        "title": "The Lone Survivor",
-        "text": "The pod launches, rocketing you away from the station. As you look back, the *Stellaris* seems to pulse with a soft light before vanishing into the darkness of the black hole. You are alive. You are alone. You have a story to tell.",
-        "scene": { "assetId": "escape_pod" }
-    }
+    "end_death_fight": { "gameOver": true, "title": "Game Over", "text": "Your weapon is no match for the dragon's hide. Your adventure ends in fire and ruin.", "scene": { "assetId": "confrontation" } },
+    "error": { "gameOver": true, "title": "Error", "text": "The threads of fate have become tangled. Your story cannot continue.", "scene": { "assetId": "error" } },
+    // Simplified stub nodes to complete the logic
+    "tavern_shield": { "title": "A Good Investment", "text": "You now own a solid oak shield.", "choices": [{ "text": "Continue", "nextId": "forest_enter" }], "addItem": "shield", "scene": { "assetId": "village" }},
+    "tavern_bard": { "title": "A Bard's Tale", "text": "The bard's song speaks of a 'river that flows backwards'.", "choices": [{ "text": "Thank the bard", "nextId": "forest_enter" }], "addItem": "bard_clue", "reputation_change": 1, "scene": { "assetId": "village" }},
+    "tavern_steal_map": { "title": "A Thief in the Night", "text": "You snatch the map.", "choices": [{ "text": "Leave quickly", "nextId": "forest_enter" }], "addItem": "map", "scene": { "assetId": "village" }},
+    "blacksmith": { "title": "The Forge", "text": "The blacksmith, Elara, scoffs at your dagger. 'Bring me a Sunstone from the mountains, and I'll forge you a true weapon.'", "choices": [ { "text": "Promise to find the Sunstone.", "nextId": "blacksmith_promise" }, { "text": "Leave.", "nextId": "forest_enter" } ], "scene": { "assetId": "village" }},
+    "blacksmith_promise": { "title": "A Smith's Vow", "text": "The promise of a better weapon fuels your resolve.", "choices": [{ "text": "Venture forth", "nextId": "forest_enter" }], "addItem": "smith_promise", "scene": { "assetId": "village" }},
+    "forest_deep": { "title": "Goblin Sentry", "text": "A lone goblin stands guard over a crude wooden chest.", "choices": [ { "text": "Sneak past.", "nextId": "goblin_sneak" }, { "text": "Confront.", "nextId": "goblin_fight" } ], "scene": { "assetId": "forest" }},
 };
-
 
 // --- GAME LOGIC ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -428,17 +332,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const storyTextElement = document.getElementById('story-text');
     const choicesContainer = document.getElementById('choices-container');
     const inventoryDisplay = document.getElementById('inventory-display');
-    const logsDisplay = document.getElementById('logs-display');
+    const reputationDisplay = document.getElementById('reputation-display');
     const asciiArtElement = document.getElementById('ascii-art');
 
     function updateUI() {
-        asciiArtElement.style.opacity = 0; // Fade out old art
+        asciiArtElement.style.opacity = 0;
         
-        // Update inventory and log count
-        inventoryDisplay.textContent = gameState.inventory.length > 0 ? gameState.inventory.join(', ').replace(/log_\d/g, '').replace(/, ,/g, ',').trim() : 'EMPTY';
-        if (inventoryDisplay.textContent.trim() === ',' || inventoryDisplay.textContent.trim() === '') inventoryDisplay.textContent = 'EMPTY';
-        const logCount = gameState.inventory.filter(item => item.startsWith('log_')).length;
-        logsDisplay.textContent = `${logCount}/3`;
+        inventoryDisplay.textContent = gameState.inventory.length > 0 ? gameState.inventory.join(', ') : 'Empty';
+        reputationDisplay.textContent = gameState.reputation;
 
         const nodeId = gameState.currentNodeId;
         const node = storyData[nodeId] || storyData['error'];
@@ -451,28 +352,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const asciiHtml = sceneAssets[assetId] || sceneAssets['error'];
         
         setTimeout(() => {
-            asciiArtElement.textContent = asciiHtml;
+            asciiArtElement.innerHTML = asciiHtml;
             asciiArtElement.style.opacity = 1;
         }, 200);
 
         if (node.gameOver) {
             const restartButton = document.createElement('button');
-            restartButton.textContent = 'RESTART SIMULATION';
+            restartButton.textContent = 'Play Again?';
             restartButton.className = 'choice-button';
-            restartButton.onclick = () => { location.reload(); };
+            restartButton.onclick = () => {
+                gameState = { currentNodeId: 'start', inventory: [], reputation: 0 };
+                updateUI();
+            };
             choicesContainer.appendChild(restartButton);
             return;
         }
 
         (node.choices || []).forEach(choice => {
             const button = document.createElement('button');
-            button.textContent = `> ${choice.text}`;
+            button.textContent = choice.text;
             button.className = 'choice-button';
             
-            let disabled = false, disabledReason = '';
+            let disabled = false;
+            let disabledReason = '';
             if (choice.requires) {
                 if (choice.requires.inventory && !gameState.inventory.includes(choice.requires.inventory)) {
-                    disabled = true; disabledReason = ` (REQUIRES: ${choice.requires.inventory})`;
+                    disabled = true; disabledReason = ` (Requires: ${choice.requires.inventory})`;
+                }
+                if (choice.requires.inventory_not_contains && gameState.inventory.includes(choice.requires.inventory_not_contains)) {
+                     disabled = true;
+                }
+                if (choice.requires.reputation_greater_than && gameState.reputation < choice.requires.reputation_greater_than) {
+                    disabled = true; disabledReason = ` (Requires: Reputation > ${choice.requires.reputation_greater_than})`;
                 }
             }
 
@@ -490,30 +401,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectChoice(choice) {
         gameState.currentNodeId = choice.nextId || gameState.currentNodeId;
         if (choice.addItem && !gameState.inventory.includes(choice.addItem)) { gameState.inventory.push(choice.addItem); }
+        if (choice.removeItem) { gameState.inventory = gameState.inventory.filter(item => item !== choice.removeItem); }
+        if (choice.clearInventory){ gameState.inventory = []; }
         if (choice.reputation_change) { gameState.reputation += choice.reputation_change; }
-        
-        // Check for special story progression unlocks
-        const logCount = gameState.inventory.filter(item => item.startsWith('log_')).length;
-        if(logCount === 3 && gameState.inventory.includes('power_on') && gameState.currentNodeId !== 'bridge') {
-             // This logic can be expanded. For now, it's handled by node choices.
-        }
 
+        if(gameState.inventory.includes("sunstone") && gameState.inventory.includes("smith_promise")){
+            gameState.inventory = gameState.inventory.filter(item => !["smith_promise", "sunstone"].includes(item));
+            gameState.inventory.push("elara_sword");
+        }
         updateUI();
     }
     
-    // --- Story Data Integrity Check ---
-    Object.values(storyData).forEach(node => {
-        (node.choices || []).forEach(choice => {
-            if (!storyData[choice.nextId]) {
-                console.warn(`Missing story node for id: "${choice.nextId}". It will lead to an error screen.`);
-                choice.nextId = 'error';
-            }
-        });
-    });
-
+    // Initial load
     updateUI();
 });
 </script>
 
 </body>
 </html>
+
