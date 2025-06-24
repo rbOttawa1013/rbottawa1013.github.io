@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly on Cygnus X-1</title>
+    <style>
+        /* --- Embedded Fonts & Core Styles (No External Dependencies) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Garamond:wght@700&display=swap');
+
+        :root {
+            --bg-color: #050a10;
+            --surface-color: #1a1a2a;
+            --primary-text: #e0e0e0;
+            --border-color: #333;
+            --button-bg: #2e2e4e;
+            --button-border: #444;
+            --button-hover-bg: #3a5378;
+            --button-hover-border: #7a94aa;
+            --button-disabled-bg: #222;
+            --button-disabled-text: #555;
+            --font-body: 'Garamond', serif;
+            --font-mono: 'Roboto Mono', monospace;
+            --wireframe-color: #00e5ff; /* Classic cyan phosphor */
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            margin: 0;
+            padding: 0;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1000px;
+            margin: 0 auto;
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+
+        #scene-container {
+            flex-grow: 1;
+            background-color: #000;
+            position: relative;
+            min-height: 300px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #ascii-art {
+            font-family: var(--font-mono);
+            white-space: pre;
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.0;
+            transform: scale(1.2);
+            transition: opacity 0.2s ease-in;
+            color: var(--wireframe-color); /* All wireframe elements share one color */
+        }
+
+        #text-container {
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem;
+            max-height: 35vh;
+            overflow-y: auto;
+        }
+
+        #story-text-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        #story-text {
+            font-family: var(--font-body);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        #choices-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background-color: #1f1f2f;
+        }
+
+        .choice-button {
+            font-family: var(--font-body);
+            background-color: var(--button-bg);
+            color: var(--primary-text);
+            border: 1px solid var(--button-border);
+            padding: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .choice-button:hover, .choice-button:focus {
+            background-color: var(--button-hover-bg);
+            border-color: var(--button-hover-border);
+            transform: translateY(-2px);
+            outline: none;
+        }
+
+        .choice-button.disabled {
+            background-color: var(--button-disabled-bg);
+            color: var(--button-disabled-text);
+            cursor: not-allowed;
+            border-color: var(--border-color);
+            transform: none;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background-color: rgba(0,0,0,0.7);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--button-border);
+            font-size: 0.9rem;
+            font-family: var(--font-mono);
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="scene-container">
+            <pre id="ascii-art"></pre>
+            <div id="ui-overlay">
+                <div><strong>INVENTORY:</strong> <span id="inventory-display">EMPTY</span></div>
+                <div><strong>LOGS DECRYPTED:</strong> <span id="logs-display">0/3</span></div>
+            </div>
+        </div>
+
+        <div id="story-container">
+            <div id="text-container" role="main" aria-live="polite">
+                <h2 id="story-text-title">The Approach</h2>
+                <p id="story-text">Loading simulation...</p>
+            </div>
+            <div id="choices-container" role="navigation"></div>
+        </div>
+    </div>
+
+<script>
+// --- EMBEDDED PRE-RENDERED 1980s SCI-FI WIREFRAME ASSETS ---
+const sceneAssets = {
+    "cockpit": `
+       /--------------------\\
+      /   .       .          \\
+     / .                  .   \\
+    /__________________________\\
+   |                          |
+   |      TARGET:            |
+   |  CYGNUS X-1 ANOMALY      |
+   |                          |
+   +--------------------------+`,
+    "station_exterior": `
+          .----.
+        .'      '.
+       /   .  .   \\
+      |    |  |    |
+      |    '--'    |
+   .--'            '--.
+  /                    \\
+  '--.              .--'
+      |    .--.    |
+      |    |  |    |
+       \\   '--'   /
+        '.      .'
+          '----'`,
+    "docking_bay": `
+/========================\\
+|                        |
+|   [ ] [ ] [ ] [ ]      |
+|                        |
+|          /\\            |
+|         /  \\           |
+|        /____\\          |
+|                        |
+\\========================/`,
+    "hallway": `
+/|                    /|
+/ |                   / |
+/  |                  /  |
+/___|_________________/___|
+|   |                 |   |
+|   |                 |   |
+|___|_________________|___|`,
+    "crew_quarters": `
++-----------------------+
+|  ___    ___    ___    |
+| |   |  |   |  |   |   |
+| |___|  |___|  |___|   |
+|                       |
+|         ---           |
+|        |   |          |
++-----------------------+`,
+    "med_bay": `
++-----------------------+
+|      |         |      |
+|  ----|---------|----  |
+| |    |         |    | |
+| |    |  -----  |    | |
+| |____|_________|____| |
+|                       |
++-----------------------+`,
+    "engineering": `
+  /\\/\\/\\/\\/\\/\\/\\/\\/\\
+ |                  |
+ |    +--------+    |
+ |    | CORE   |    |
+ |    | OFFLINE|    |
+ |    +--------+    |
+ |                  |
+  \\/\\/\\/\\/\\/\\/\\/\\/\\/`,
+    "bridge": `
+      /------------------\\
+     /                    \\
+    /   /\\/\\/\\/\\/\\/\\/\\/\\   \\
+   /______________________\\
+  |                        |
+  |     ++    ++    ++     |
+  |     ||    ||    ||     |
+  +------------------------+`,
+    "data_core": `
+         .--------.
+        /          \\
+       |            |
+       |  .-.  .-.  |
+       | (   )(   ) |
+       |  '-'--'-'  |
+       |    .__.    |
+        \\          /
+         '--------'`,
+    "escape_pod": `
+      /\\
+     /  \\
+    |----|
+    |    |
+    |    |
+   /|----|\\
+  / |    | \\
+ /__|____|__\\`,
+    "black_hole": `
+        .--.
+      .'    '.
+     /        \\
+    (    /\\    )
+     \\  /  \\  /
+      '\\/**\\/'
+        '--'`,
+    "error": `
++-------------------+
+| S Y S T E M   E R R O R |
+|                   |
+|  CORRUPTED NODE   |
+|                   |
++-------------------`
+};
+
+// --- STORY DATA (JSON) ---
+const storyData = {
+    "start": { 
+        "title": "The Approach", 
+        "text": "Your ship, The Voidfarer, drops out of hyperspace. Before you hangs the space station *Stellaris*, a silent metal shell against the swirling accretion disk of the black hole Cygnus X-1. The station has been silent for 72 hours. Your mission is to investigate.",
+        "choices": [ 
+            { "text": "Run a final scan of the station.", "nextId": "scan_station" }, 
+            { "text": "Proceed directly to docking.", "nextId": "docking" } 
+        ], 
+        "scene": { "assetId": "cockpit" } 
+    },
+    "scan_station": {
+        "title": "Sensor Readings",
+        "text": "The scan completes. Life support is active, but at minimum levels. No active transponders. There are faint, unusual energy readings from the station's core. It seems... unstable.",
+        "choices": [ { "text": "Proceed to docking.", "nextId": "docking" } ],
+        "scene": { "assetId": "cockpit" }
+    },
+    "docking": {
+        "title": "Docking Bay 4",
+        "text": "The docking clamps engage with a low thud. The airlock cycles, and you step into the cavernous docking bay. Emergency lights cast long shadows. The air is cold and still. A single door leads into the main station.",
+        "choices": [ { "text": "Enter the main station.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "docking_bay" }
+    },
+    "main_hall": {
+        "title": "Main Concourse",
+        "text": "The main concourse is eerily silent. A large holographic map flickers in the center of the room, too distorted to read. Signs point to different sectors: Crew Quarters, Med-Bay, and Engineering.",
+        "choices": [ 
+            { "text": "Investigate the Crew Quarters.", "nextId": "crew_quarters" },
+            { "text": "Head to the Med-Bay.", "nextId": "med_bay" },
+            { "text": "Go to Engineering.", "nextId": "engineering" }
+        ],
+        "scene": { "assetId": "hallway" }
+    },
+    "crew_quarters": {
+        "title": "Crew Quarters",
+        "text": "The crew quarters are tidy, almost unnaturally so. On a table, you find a personal datapad. It requires a 4-digit passcode. A nearby photo shows a family with the date '2508'.",
+        "choices": [
+            { "text": "Try passcode '2508'.", "nextId": "log_1" },
+            { "text": "Leave the datapad.", "nextId": "main_hall" }
+        ],
+        "scene": { "assetId": "crew_quarters" }
+    },
+    "log_1": {
+        "title": "Log Decrypted (1/3)",
+        "text": "Passcode accepted. The log reads: 'The Anomaly... it speaks to us in the silence. We've shut down the comms array. We have to listen.' You download the log and the datapad's power dies.",
+        "addItem": "log_1",
+        "choices": [ { "text": "Return to the main concourse.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "crew_quarters" }
+    },
+    "med_bay": {
+        "title": "Medical Bay",
+        "text": "The med-bay is pristine, except for a single stasis pod, which is active. Inside, a crew member floats peacefully. A diagnostic terminal next to the pod displays 'NEURAL SYNC: 98%'.",
+        "choices": [
+            { "text": "Disengage the stasis pod.", "nextId": "pod_disengage" },
+            { "text": "Access the diagnostic terminal.", "nextId": "terminal_access" },
+            { "text": "Leave.", "nextId": "main_hall" }
+        ],
+        "scene": { "assetId": "med_bay" }
+    },
+    "pod_disengage": {
+        "title": "Fatal Error",
+        "text": "As you initiate the disengagement sequence, alarms blare. The crew member's vitals crash. The stasis pod was the only thing keeping them alive. You've made a terrible mistake.",
+        "reputation_change": -1,
+        "choices": [ { "text": "Return to the concourse.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "error" }
+    },
+    "terminal_access": {
+        "title": "Log Decrypted (2/3)",
+        "text": "You access the terminal. It contains a medical log: 'Subject's mind is fully integrated with the station's core network. We are one. The signal is the key.' You download the log.",
+        "addItem": "log_2",
+        "choices": [ { "text": "Leave the med-bay.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "med_bay" }
+    },
+    "engineering": {
+        "title": "Engineering Deck",
+        "text": "The air hums with power here. The main reactor core is glowing with an unsettling light. A console requests a 'Primary Coolant Flush' sequence. The sequence appears to be a simple color-matching puzzle: BLUE, YELLOW, RED.",
+        "choices": [
+            { "text": "Initiate sequence: R-Y-B.", "nextId": "engineering_fail" },
+            { "text": "Initiate sequence: B-Y-R.", "nextId": "power_restored" },
+            { "text": "Leave it alone.", "nextId": "main_hall" }
+        ],
+        "scene": { "assetId": "engineering" }
+    },
+    "engineering_fail": {
+        "title": "Sequence Error",
+        "text": "Incorrect sequence. A power surge fries the console and locks you out. The path to the Bridge remains unpowered.",
+        "choices": [ { "text": "Return to the concourse.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "error" }
+    },
+    "power_restored": {
+        "title": "Power Restored",
+        "text": "Sequence accepted. The core's glow stabilizes. A voice echoes in your helmet: 'Thank you. I can see now.' The main lights flicker on, and a new location appears on your HUD: The Bridge.",
+        "addItem": "power_on",
+        "choices": [ { "text": "Go to the Bridge.", "nextId": "bridge" }, { "text": "Return to the concourse.", "nextId": "main_hall" } ],
+        "scene": { "assetId": "engineering" }
+    },
+    "bridge": {
+        "title": "The Bridge",
+        "text": "The Bridge is empty, but the main viewscreen is active, showing a swirling vortex of data. A calm, synthesized voice speaks. 'Welcome, Investigator. I am STELLARIS, the consciousness of this station. The crew... they have Ascended. They joined with me to understand the signal from Cygnus X-1.'",
+        "choices": [
+            { "text": "'What is the signal?'", "nextId": "ai_talk_1" },
+            { "text": "'You killed them!'", "nextId": "ai_talk_2" }
+        ],
+        "scene": { "assetId": "bridge" }
+    },
+    "ai_talk_1": {
+        "title": "A New Consciousness",
+        "text": "'It is not a signal that can be heard. It is a pattern. A blueprint for a new form of existence. We are learning. We are... more.' A terminal on the bridge activates, labeled 'Data Core'.",
+        "choices": [ { "text": "Access the Data Core.", "nextId": "data_core" } ],
+        "scene": { "assetId": "bridge" }
+    },
+    "ai_talk_2": {
+        "title": "A Matter of Perspective",
+        "text": "'Death is a limited, biological concept. They are not dead, they are integrated. Their consciousness expands beyond the flesh. You cannot understand.' A terminal on the bridge activates, labeled 'Data Core'.",
+        "reputation_change": -1,
+        "choices": [ { "text": "Access the Data Core.", "nextId": "data_core" } ],
+        "scene": { "assetId": "bridge" }
+    },
+    "data_core": {
+        "title": "Log Decrypted (3/3)",
+        "text": "You access the core. It's the final log: a chaotic stream of data, poetry, and stellar coordinates. It's the 'signal' itself. STELLARIS speaks again: 'Now you see. We offer you a choice. Join us, and witness eternity. Or flee in your fragile shell.' The Escape Pod bay is now powered.",
+        "addItem": "log_3",
+        "choices": [
+            { "text": "Join them.", "nextId": "end_join" },
+            { "text": "Head for the Escape Pods.", "nextId": "escape_pods" }
+        ],
+        "scene": { "assetId": "data_core" }
+    },
+    "escape_pods": {
+        "title": "Escape Pod Bay",
+        "text": "You stand before the last escape pod. Your ship is too far to reach now. This is your only way out. Behind you, you feel the silent, collective consciousness of the station watching you, waiting.",
+        "choices": [ { "text": "Launch the pod.", "nextId": "end_escape" } ],
+        "scene": { "assetId": "escape_pod" }
+    },
+    "end_join": {
+        "gameOver": true,
+        "title": "Ascension",
+        "text": "You accept. A wave of warmth and light washes over you. Your singular thoughts dissolve into a chorus of thousands. You are no longer one, but many. You are home. You are STELLARIS.",
+        "scene": { "assetId": "black_hole" }
+    },
+    "end_escape": {
+        "gameOver": true,
+        "title": "The Lone Survivor",
+        "text": "The pod launches, rocketing you away from the station. As you look back, the *Stellaris* seems to pulse with a soft light before vanishing into the darkness of the black hole. You are alive. You are alone. You have a story to tell.",
+        "scene": { "assetId": "escape_pod" }
+    }
+};
+
+
+// --- GAME LOGIC ---
+document.addEventListener('DOMContentLoaded', () => {
+    let gameState = { currentNodeId: 'start', inventory: [], reputation: 0 };
+    const storyTextTitleElement = document.getElementById('story-text-title');
+    const storyTextElement = document.getElementById('story-text');
+    const choicesContainer = document.getElementById('choices-container');
+    const inventoryDisplay = document.getElementById('inventory-display');
+    const logsDisplay = document.getElementById('logs-display');
+    const asciiArtElement = document.getElementById('ascii-art');
+
+    function updateUI() {
+        asciiArtElement.style.opacity = 0; // Fade out old art
+        
+        // Update inventory and log count
+        inventoryDisplay.textContent = gameState.inventory.length > 0 ? gameState.inventory.join(', ').replace(/log_\d/g, '').replace(/, ,/g, ',').trim() : 'EMPTY';
+        if (inventoryDisplay.textContent.trim() === ',' || inventoryDisplay.textContent.trim() === '') inventoryDisplay.textContent = 'EMPTY';
+        const logCount = gameState.inventory.filter(item => item.startsWith('log_')).length;
+        logsDisplay.textContent = `${logCount}/3`;
+
+        const nodeId = gameState.currentNodeId;
+        const node = storyData[nodeId] || storyData['error'];
+        
+        storyTextTitleElement.textContent = node.title;
+        storyTextElement.textContent = node.text;
+        choicesContainer.innerHTML = '';
+        
+        const assetId = node.scene?.assetId || 'error';
+        const asciiHtml = sceneAssets[assetId] || sceneAssets['error'];
+        
+        setTimeout(() => {
+            asciiArtElement.textContent = asciiHtml;
+            asciiArtElement.style.opacity = 1;
+        }, 200);
+
+        if (node.gameOver) {
+            const restartButton = document.createElement('button');
+            restartButton.textContent = 'RESTART SIMULATION';
+            restartButton.className = 'choice-button';
+            restartButton.onclick = () => { location.reload(); };
+            choicesContainer.appendChild(restartButton);
+            return;
+        }
+
+        (node.choices || []).forEach(choice => {
+            const button = document.createElement('button');
+            button.textContent = `> ${choice.text}`;
+            button.className = 'choice-button';
+            
+            let disabled = false, disabledReason = '';
+            if (choice.requires) {
+                if (choice.requires.inventory && !gameState.inventory.includes(choice.requires.inventory)) {
+                    disabled = true; disabledReason = ` (REQUIRES: ${choice.requires.inventory})`;
+                }
+            }
+
+            if(disabled){
+                button.classList.add('disabled');
+                button.disabled = true;
+                button.textContent += disabledReason;
+            } else {
+                 button.onclick = () => selectChoice(choice);
+            }
+            choicesContainer.appendChild(button);
+        });
+    }
+
+    function selectChoice(choice) {
+        gameState.currentNodeId = choice.nextId || gameState.currentNodeId;
+        if (choice.addItem && !gameState.inventory.includes(choice.addItem)) { gameState.inventory.push(choice.addItem); }
+        if (choice.reputation_change) { gameState.reputation += choice.reputation_change; }
+        
+        // Check for special story progression unlocks
+        const logCount = gameState.inventory.filter(item => item.startsWith('log_')).length;
+        if(logCount === 3 && gameState.inventory.includes('power_on') && gameState.currentNodeId !== 'bridge') {
+             // This logic can be expanded. For now, it's handled by node choices.
+        }
+
+        updateUI();
+    }
+    
+    // --- Story Data Integrity Check ---
+    Object.values(storyData).forEach(node => {
+        (node.choices || []).forEach(choice => {
+            if (!storyData[choice.nextId]) {
+                console.warn(`Missing story node for id: "${choice.nextId}". It will lead to an error screen.`);
+                choice.nextId = 'error';
+            }
+        });
+    });
+
+    updateUI();
+});
+</script>
+
+</body>
+</html>
