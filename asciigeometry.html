@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive ASCII 3D Scene (Modular)</title>
+    <style>
+        :root {
+            --bg-color: #0d0221;
+            --main-text-color: #e0e0e0;
+            --accent-color: #ff00ff;
+            --ui-bg-color: #251e3e;
+            --border-color: #4c426e;
+            --accent-color-translucent: rgba(255, 0, 255, 0.15);
+        }
+
+        /* --- Basic Setup --- */
+        body {
+            background-color: var(--bg-color);
+            color: var(--main-text-color);
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            padding: 1rem;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- Main Layout --- */
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 1200px;
+            align-items: center;
+        }
+
+        /* --- ASCII Renderer Container --- */
+        #renderer {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 0 25px var(--accent-color-translucent);
+            letter-spacing: 1px;
+            line-height: 1.0;
+            white-space: pre;
+            text-align: center;
+            font-size: 12px;
+            color: var(--accent-color);
+            overflow: hidden;
+            width: 100%;
+            min-height: 300px;
+            transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+        }
+        
+        /* --- Controls Container --- */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            background-color: var(--ui-bg-color);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            justify-content: center;
+            width: 100%;
+            box-sizing: border-box;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .control-group button, .control-group select {
+            background-color: #333;
+            color: var(--main-text-color);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .control-group button:hover, .control-group select:hover {
+            border-color: var(--accent-color);
+        }
+        
+        .control-group button.active {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            font-weight: bold;
+        }
+
+        /* --- On-Screen Controls --- */
+        .info {
+            display: flex;
+            gap: 5px;
+            user-select: none;
+        }
+        
+        .key-btn {
+            background-color: #333;
+            color: #fff;
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            border: 1px solid #555;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .key-btn:active {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <pre id="renderer">Loading...</pre>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="shapeSelector" data-translate="shape">Shape</label>
+                <select id="shapeSelector">
+                    <option value="torus">Torus</option>
+                    <option value="sphere">Sphere</option>
+                    <option value="cube">Cube</option>
+                    <option value="cylinder">Cylinder</option>
+                    <option value="cone">Cone</option>
+                    <option value="tetrahedron">Tetrahedron</option>
+                    <option value="octahedron">Octahedron</option>
+                    <option value="icosahedron">Icosahedron</option>
+                </select>
+            </div>
+             <div class="control-group">
+                <label for="renderModeSelector" data-translate="mode">Render Mode</label>
+                <select id="renderModeSelector">
+                    <option value="shaded">Shaded</option>
+                    <option value="solid">Solid</option>
+                    <option value="wireframe">Wireframe</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="rotationSpeed" data-translate="speed">Rotation Speed</label>
+                <input type="range" id="rotationSpeed" min="0" max="5" value="0" step="0.1">
+            </div>
+            <div class="control-group">
+                <label for="zoomSlider" data-translate="zoom">Zoom</label>
+                <input type="range" id="zoomSlider" min="3" max="20" value="8" step="0.1">
+            </div>
+            <div class="control-group">
+                <label data-translate="playback">Playback</label>
+                <div>
+                    <button id="startButton" data-translate="start">Start</button>
+                    <button id="stopButton" data-translate="stop">Stop</button>
+                </div>
+            </div>
+             <div class="control-group">
+                <label data-translate="language">Language</label>
+                <div>
+                    <button id="langEn">EN</button>
+                    <button id="langFr">FR</button>
+                </div>
+            </div>
+             <div class="control-group">
+                <label data-translate="resetview">View</label>
+                 <div>
+                    <button id="resetButton" data-translate="reset">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="info">
+            <button class="key-btn" id="keyLeft" title="Rotate Left">&larr;</button>
+            <button class="key-btn" id="keyUp" title="Rotate Up">&uarr;</button>
+            <button class="key-btn" id="keyDown" title="Rotate Down">&darr;</button>
+            <button class="key-btn" id="keyRight" title="Rotate Right">&rarr;</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- MODULES -----------------------------------------------------------------
+        const State = {
+            screenWidth: 120, screenHeight: 50, screenBuffer: [], zBuffer: [], colorBuffer: [],
+            camX: 0, camY: 0, cameraZoom: 8,
+            objA: 0, objB: 0,
+            currentShape: 'torus', renderMode: 'shaded', rotationSpeedFactor: 0.0, isAnimating: false,
+            keys: {},
+            math: { cosA:1, sinA:0, cosB:1, sinB:0, cosCamX:1, sinCamX:0, cosCamY:1, sinCamY:0 }
+        };
+
+        const Config = {
+            cameraRotationSpeed: 0.03, 
+            luminanceChars: ".,-~:;=!*#$@", 
+            solidFaceChars: ['@', '#', '*', '=', '-', '+'],
+            faceColors: ['#ff00ff', '#00ffff', '#ffff00', '#ff8c00', '#00ff00', '#ff4500'],
+            shadedGradient: ['#663399','#8A2BE2','#9932CC','#BA55D3','#DA70D6','#DB7093','#FF1493','#FF69B4','#FFB6C1','#FFFFFF','#00FFFF','#00FFFF'],
+            wireframeChar: '#',
+            lightSource: { x: 0.3, y: 0.7, z: -0.6 }
+        };
+        
+        const UI = {
+            elements: {},
+            translations: {
+                en: { shape:'Shape', mode:'Render Mode', speed:'Rotation Speed', zoom:'Zoom', playback:'Playback', start:'Start', stop:'Stop', reset:'Reset', resetview:'View', language:'Language' },
+                fr: { shape:'Forme', mode:'Mode Rendu', speed:'Vitesse', zoom:'Zoom', playback:'Lecture', start:'Démarrer', stop:'Arrêter', reset:'Réinitialiser', resetview:'Vue', language:'Langue' }
+            },
+            
+            init() {
+                const ids=['renderer','shapeSelector','renderModeSelector','rotationSpeed','zoomSlider','startButton','stopButton','resetButton','langEn','langFr','keyLeft','keyUp','keyDown','keyRight'];
+                ids.forEach(id => this.elements[id] = document.getElementById(id));
+                this.attachEventListeners();
+                this.setLanguage('en');
+                this.updatePlaybackButtons();
+            },
+            attachEventListeners() {
+                this.elements.shapeSelector.addEventListener('change', e => State.currentShape = e.target.value);
+                this.elements.renderModeSelector.addEventListener('change', e => State.renderMode = e.target.value);
+                this.elements.rotationSpeed.addEventListener('input', e => State.rotationSpeedFactor = parseFloat(e.target.value));
+                this.elements.zoomSlider.addEventListener('input', e => State.cameraZoom = parseFloat(e.target.value));
+                this.elements.startButton.addEventListener('click', () => { State.isAnimating = true; this.updatePlaybackButtons(); });
+                this.elements.stopButton.addEventListener('click', () => { State.isAnimating = false; this.updatePlaybackButtons(); });
+                this.elements.resetButton.addEventListener('click', () => {
+                    State.camX=0; State.camY=0; State.objA=0; State.objB=0; State.cameraZoom=8; State.rotationSpeedFactor=0;
+                    this.elements.rotationSpeed.value=0; this.elements.zoomSlider.value=8;
+                });
+                this.elements.langEn.addEventListener('click',()=>this.setLanguage('en'));
+                this.elements.langFr.addEventListener('click',()=>this.setLanguage('fr'));
+                document.addEventListener('keydown', e => State.keys[e.key.toLowerCase()] = true);
+                document.addEventListener('keyup', e => State.keys[e.key.toLowerCase()] = false);
+                
+                const keyMap = {'keyLeft':'arrowleft', 'keyRight':'arrowright', 'keyUp':'arrowup', 'keyDown':'arrowdown'};
+                Object.keys(keyMap).forEach(btnId => this.setupKeyBtn(this.elements[btnId], keyMap[btnId]));
+            },
+            setupKeyBtn(btn, key){
+                const setKey = (val) => (e) => { e.preventDefault(); State.keys[key] = val; };
+                btn.addEventListener('mousedown', setKey(true));
+                btn.addEventListener('mouseup', setKey(false));
+                btn.addEventListener('mouseleave', setKey(false));
+                btn.addEventListener('touchstart', setKey(true), {passive: false});
+                btn.addEventListener('touchend', setKey(false), {passive: false});
+            },
+            setLanguage(lang) {
+                Object.keys(this.translations.en).forEach(key => {
+                    const el = document.querySelector(`[data-translate="${key}"]`);
+                    if(el) el.innerHTML = this.translations[lang][key];
+                });
+                this.elements.langEn.classList.toggle('active', lang === 'en');
+                this.elements.langFr.classList.toggle('active', lang === 'fr');
+            },
+            updatePlaybackButtons() {
+                this.elements.startButton.classList.toggle('active', State.isAnimating);
+                this.elements.stopButton.classList.toggle('active', !State.isAnimating);
+            }
+        };
+
+        const Shapes = {
+            data: {
+                tetrahedron:{v:[{x:1,y:1,z:1},{x:1,y:-1,z:-1},{x:-1,y:1,z:-1},{x:-1,y:-1,z:1}],e:[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]},
+                octahedron:{v:[{x:1,y:0,z:0},{x:-1,y:0,z:0},{x:0,y:1,z:0},{x:0,y:-1,z:0},{x:0,y:0,z:1},{x:0,y:0,z:-1}],e:[[0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],[2,4],[2,5],[3,4],[3,5]]},
+                icosahedron:{v:(()=>{const t=(1+Math.sqrt(5))/2;return[{x:-1,y:t,z:0},{x:1,y:t,z:0},{x:-1,y:-t,z:0},{x:1,y:-t,z:0},{x:0,y:-1,z:t},{x:0,y:1,z:t},{x:0,y:-1,z:-t},{x:0,y:1,z:-t},{x:t,y:0,z:-1},{x:t,y:0,z:1},{x:-t,y:0,z:-1},{x:-t,y:0,z:1}]})(),e:[[0,11],[0,5],[0,1],[0,7],[0,10],[1,5],[1,7],[1,8],[1,9],[2,3],[2,4],[2,6],[2,10],[2,11],[3,4],[3,6],[3,8],[3,9],[4,5],[4,9],[4,11],[5,9],[5,11],[6,8],[6,10],[7,8],[7,10],[8,9],[10,11]]},
+                cube:{v:[{x:-1,y:-1,z:-1},{x:1,y:-1,z:-1},{x:1,y:1,z:-1},{x:-1,y:1,z:-1},{x:-1,y:-1,z:1},{x:1,y:-1,z:1},{x:1,y:1,z:1},{x:-1,y:1,z:1}],e:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]}
+            },
+            getRenderInfo(lum, faceIndex = 0){
+                if(lum<=0)return null;
+                const lumIndex = Math.min(Math.floor(lum*12),11);
+                if (State.renderMode === 'solid') {
+                    return {
+                        char: Config.solidFaceChars[faceIndex % Config.solidFaceChars.length],
+                        color: Config.faceColors[faceIndex % Config.faceColors.length]
+                    };
+                }
+                // Shaded mode
+                return {
+                    char: Config.luminanceChars[lumIndex],
+                    color: Config.shadedGradient[lumIndex]
+                };
+            },
+            render: {
+                torus:()=>{const R1=1,R2=2;for(let th=0;th<6.28;th+=0.07)for(let ph=0;ph<6.28;ph+=0.02){const c_th=Math.cos(th),s_th=Math.sin(th),c_ph=Math.cos(ph),s_ph=Math.sin(ph);const cX=R2+R1*c_th,cY=R1*s_th;const x=cX*(State.math.cosB*c_ph+State.math.sinA*State.math.sinB*s_ph)-cY*State.math.cosA*State.math.sinB,y=cX*(State.math.sinB*c_ph-State.math.sinA*State.math.cosB*s_ph)+cY*State.math.cosA*State.math.cosB,z=State.cameraZoom+State.math.cosA*cX*s_ph+cY*State.math.sinA;const Nx=c_th*(State.math.cosB*c_ph+State.math.sinA*State.math.sinB*s_ph)-s_th*State.math.cosA*State.math.sinB,Ny=c_th*(State.math.sinB*c_ph-State.math.sinA*State.math.cosB*s_ph)+s_th*State.math.cosA*State.math.cosB,Nz=State.math.cosA*c_th*s_ph+s_th*State.math.sinA;const lum=Nx*Config.lightSource.x+Ny*Config.lightSource.y+Nz*Config.lightSource.z,info=Shapes.getRenderInfo(lum);if(info)Renderer.projectAndRender(x,y,z-State.cameraZoom,info.char,info.color);}},
+                sphere:()=>{const R=2.5;for(let th=0;th<6.28;th+=0.05)for(let ph=0;ph<6.28;ph+=0.05){const c_ph=Math.cos(ph),s_ph=Math.sin(ph),c_th=Math.cos(th),s_th=Math.sin(th);const px=R*c_ph*c_th,py=R*s_ph,pz=R*c_ph*s_th;const x=px*State.math.cosB*State.math.cosA-py*State.math.sinA+pz*State.math.sinB*State.math.cosA,y=px*State.math.sinB+pz*State.math.cosB,z=State.cameraZoom-px*State.math.cosB*State.math.sinA+py*State.math.cosA+pz*State.math.sinB*State.math.sinA;const lum=c_ph*c_th*Config.lightSource.x+s_ph*Config.lightSource.y+c_ph*s_th*Config.lightSource.z,info=Shapes.getRenderInfo(lum);if(info)Renderer.projectAndRender(x,y,z-State.cameraZoom,info.char,info.color);}},
+                cube:()=>{if(State.renderMode==='wireframe')return Shapes.render.wireframe(Shapes.data.cube);const s=1.5,n=[[0,0,1],[0,0,-1],[0,1,0],[0,-1,0],[1,0,0],[-1,0,0]];for(let i=-s;i<=s;i+=0.2)for(let j=-s;j<=s;j+=0.2)n.forEach((v,faceIndex)=>{const p={x:v[0]==0?i:v[0]*s,y:v[1]==0?j:v[1]*s,z:v[2]==0?(v[0]==0?j:i):v[2]*s};if(v[0]!==0)p.z=j;if(v[1]!==0)p.z=i;const r_Nx=v[0]*State.math.cosB*State.math.cosA-v[1]*State.math.sinA+v[2]*State.math.sinB*State.math.cosA,r_Ny=v[0]*State.math.sinB+v[2]*State.math.cosB,r_Nz=-v[0]*State.math.cosB*State.math.sinA+v[1]*State.math.cosA+v[2]*State.math.sinB*State.math.sinA;const lum=r_Nx*Config.lightSource.x+r_Ny*Config.lightSource.y+r_Nz*Config.lightSource.z,info=Shapes.getRenderInfo(lum,faceIndex);if(info){const r_x=p.x*State.math.cosB-p.z*State.math.sinB,r_z=p.x*State.math.sinB+p.z*State.math.cosB;Renderer.projectAndRender(r_x*State.math.cosA-p.y*State.math.sinA,r_x*State.math.sinA+p.y*State.math.cosA,State.cameraZoom+r_z,info.char,info.color);}});},
+                cylinder:()=>{if(State.renderMode==='wireframe')return Shapes.render.wireframeCylinder();const h=2.5,r=1.5;for(let th=0;th<6.28;th+=0.1){const c_th=Math.cos(th),s_th=Math.sin(th);for(let y=-h/2;y<h/2;y+=0.2){const px=r*c_th,pz=r*s_th,x=px*State.math.cosB-pz*State.math.sinB,z_=px*State.math.sinB+pz*State.math.cosB;const lum=c_th*Config.lightSource.x+s_th*Config.lightSource.z,info=Shapes.getRenderInfo(lum,0);if(info)Renderer.projectAndRender(x*State.math.cosA-y*State.math.sinA,x*State.math.sinA+y*State.math.cosA,State.cameraZoom+z_,info.char,info.color);}}for(let y_sign=-1;y_sign<=1;y_sign+=2){const faceIndex=y_sign>0?1:2;const normal_y=y_sign,r_Ny=normal_y*State.math.cosA,r_Nz=normal_y*State.math.sinA,lum=r_Ny*Config.lightSource.y+r_Nz*Config.lightSource.z,info=Shapes.getRenderInfo(lum,faceIndex);if(info)for(let R=0;R<r;R+=0.2)for(let th=0;th<6.28;th+=0.2/Math.max(R,0.1)){const y=y_sign*h/2,px=R*Math.cos(th),pz=R*Math.sin(th),x=px*State.math.cosB-pz*State.math.sinB,z_=px*State.math.sinB+pz*State.math.cosB;Renderer.projectAndRender(x*State.math.cosA-y*State.math.sinA,x*State.math.sinA+y*State.math.cosA,State.cameraZoom+z_,info.char,info.color);}}},
+                cone:()=>{if(State.renderMode==='wireframe')return Shapes.render.wireframeCone();const h=2.5,rb=2;for(let y=0;y<h;y+=0.1){let r=rb*(1-y/h);for(let th=0;th<6.28;th+=0.15/Math.max(r,0.1)){const px=r*Math.cos(th),pz=r*Math.sin(th);const x=px*State.math.cosB-pz*State.math.sinB,z_=px*State.math.sinB+pz*State.math.cosB,y_=y-h/2;Renderer.projectAndRender(x*State.math.cosA-y_*State.math.sinA,x*State.math.sinA+y_*State.math.cosA,State.cameraZoom+z_,Config.solidFaceChars[0],Config.faceColors[0]);}}},
+                wireframe:(shape)=>{const points=shape.v.map(v=>{const s=1.5,rx=v.x*State.math.cosB-v.z*State.math.sinB,rz=v.x*State.math.sinB+v.z*State.math.cosB;return{x:(rx*State.math.cosA-v.y*State.math.sinA)*s,y:(rx*State.math.sinA+v.y*State.math.cosA)*s,z:(State.cameraZoom+rz)}});shape.e.forEach(e=>Renderer.drawLine(points[e[0]],points[e[1]],Config.wireframeChar));},
+                wireframeCylinder:()=>{const h=2.5,r=1.5,segs=16;let topPts=[],botPts=[];for(let i=0;i<=segs;i++){const th=i/segs*6.28,px=r*Math.cos(th),pz=r*Math.sin(th),x=px*State.math.cosB-pz*State.math.sinB,z_=px*State.math.sinB+pz*State.math.cosB;topPts.push({x:x*State.math.cosA-h/2*State.math.sinA,y:x*State.math.sinA+h/2*State.math.cosA,z:State.cameraZoom+z_});botPts.push({x:x*State.math.cosA-(-h/2)*State.math.sinA,y:x*State.math.sinA+(-h/2)*State.math.cosA,z:State.cameraZoom+z_});}for(let i=0;i<segs;i++){Renderer.drawLine(topPts[i],topPts[i+1],Config.wireframeChar);Renderer.drawLine(botPts[i],botPts[i+1],Config.wireframeChar);Renderer.drawLine(topPts[i],botPts[i],Config.wireframeChar);}},
+                wireframeCone:()=>{const h=2.5,r=2,segs=16,apex={y:h/2};let basePts=[];for(let i=0;i<=segs;i++){const th=i/segs*6.28,px=r*Math.cos(th),pz=r*Math.sin(th);basePts.push({x:px,y:-h/2,z:pz});}const r_apex={x:apex.y*State.math.sinA,y:apex.y*State.math.cosA,z:State.cameraZoom};for(let i=0;i<segs;i++){const p1=basePts[i],p2=basePts[i+1],r_p1={x:p1.x*State.math.cosB-p1.z*State.math.sinB,z:p1.x*State.math.sinB+p1.z*State.math.cosB},r_p2={x:p2.x*State.math.cosB-p2.z*State.math.sinB,z:p2.x*State.math.sinB+p2.z*State.math.cosB};const f_p1={x:r_p1.x*State.math.cosA-p1.y*State.math.sinA,y:r_p1.x*State.math.sinA+p1.y*State.math.cosA,z:State.cameraZoom+r_p1.z};const f_p2={x:r_p2.x*State.math.cosA-p2.y*State.math.sinA,y:r_p2.x*State.math.sinA+p2.y*State.math.cosA,z:State.cameraZoom+r_p2.z};Renderer.drawLine(f_p1,f_p2,Config.wireframeChar);Renderer.drawLine(f_p1,r_apex,Config.wireframeChar);}},
+            }
+        };
+
+        const Renderer = {
+            initBuffers(){State.screenBuffer=Array.from({length:State.screenHeight},()=>Array(State.screenWidth).fill(' '));State.zBuffer=Array.from({length:State.screenHeight},()=>Array(State.screenWidth).fill(0));State.colorBuffer=Array.from({length:State.screenHeight},()=>Array(State.screenWidth).fill(null));},
+            updateInput(){if(State.keys['arrowleft'])State.camY-=Config.cameraRotationSpeed;if(State.keys['arrowright'])State.camY+=Config.cameraRotationSpeed;if(State.keys['arrowup'])State.camX-=Config.cameraRotationSpeed;if(State.keys['arrowdown'])State.camX+=Config.cameraRotationSpeed;},
+            projectAndRender(x,y,z,char,color=null){const rX=x*State.math.cosCamY-z*State.math.sinCamY,tZ=x*State.math.sinCamY+z*State.math.cosCamY,rY=y*State.math.cosCamX-tZ*State.math.sinCamX,fZ=y*State.math.sinCamX+tZ*State.math.cosCamX;if(fZ>0){const ooz=1/fZ,K1=State.screenWidth*State.cameraZoom/8,xp=Math.floor(State.screenWidth/2+K1*rX*ooz),yp=Math.floor(State.screenHeight/2-K1*rY*ooz);if(xp>=0&&xp<State.screenWidth&&yp>=0&&yp<State.screenHeight&&ooz>State.zBuffer[yp][xp]){State.zBuffer[yp][xp]=ooz;State.screenBuffer[yp][xp]=char;State.colorBuffer[yp][xp]=color;}}},
+            drawLine(p1,p2,char){let x1=p1.x,y1=p1.y,z1=p1.z,x2=p2.x,y2=p2.y,z2=p2.z;const dx=x2-x1,dy=y2-y1,dz=z2-z1,st=Math.max(Math.abs(dx),Math.abs(dy),Math.abs(dz))*4,xi=dx/st,yi=dy/st,zi=dz/st;let x=x1,y=y1,z=z1;for(let i=0;i<=st;i++){this.projectAndRender(x,y,z,char,document.documentElement.style.getPropertyValue('--accent-color'));x+=xi;y+=yi;z+=zi;}},
+            
+            renderFrame() {
+                this.initBuffers();
+                State.math={cosA:Math.cos(State.objA),sinA:Math.sin(State.objA),cosB:Math.cos(State.objB),sinB:Math.sin(State.objB),cosCamX:Math.cos(State.camX),sinCamX:Math.sin(State.camX),cosCamY:Math.cos(State.camY),sinCamY:Math.sin(State.camY)};
+                const shapeRenderer=Shapes.render[State.currentShape],wireframeData=Shapes.data[State.currentShape];
+                const isWireframeCompatible=!!wireframeData||State.currentShape==='cylinder'||State.currentShape==='cone';
+                if(State.renderMode==='wireframe'&&isWireframeCompatible){if(wireframeData)Shapes.render.wireframe(wireframeData);else Shapes.render[State.currentShape]();}else if(shapeRenderer){shapeRenderer();}
+                
+                if(State.isAnimating){State.objA+=0.02*State.rotationSpeedFactor;State.objB+=0.01*State.rotationSpeedFactor;}
+                
+                let html = '';
+                for (let y = 0; y < State.screenHeight; y++) {
+                    for (let x = 0; x < State.screenWidth; x++) {
+                        const char = State.screenBuffer[y][x];
+                        const color = State.colorBuffer[y][x];
+                        if (char !== ' ') {
+                            if (color) {
+                                html += `<span style="color:${color}">${char}</span>`;
+                            } else {
+                                html += `<span style="color:var(--accent-color)">${char}</span>`;
+                            }
+                        } else {
+                            html += ' ';
+                        }
+                    }
+                    html += '\n';
+                }
+                UI.elements.renderer.innerHTML = html;
+            },
+
+            mainLoop() {
+                this.updateInput();
+                this.renderFrame();
+                requestAnimationFrame(() => this.mainLoop());
+            }
+        };
+        UI.init(); Renderer.mainLoop();
+    });
+    </script>
+</body>
+</html>
