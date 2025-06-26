@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Word Cloud Generator</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- html2canvas for exporting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Google Fonts: Adding multiple families for selection -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lobster&family=Roboto+Mono:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Base styles */
+        body { font-family: 'Inter', sans-serif; background-color: #111827; }
+
+        /* Custom UI element styles */
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #3b82f6; cursor: pointer; border-radius: 50%; margin-top: -6px; }
+        input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #3b82f6; cursor: pointer; border-radius: 50%; }
+        input[type="color"] { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 44px; height: 44px; padding: 0; border: none; background: transparent; cursor: pointer; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border-radius: 8px; border: 2px solid #4b5563; }
+        input[type="color"]::-moz-color-swatch { border-radius: 8px; border: 2px solid #4b5563; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .canvas-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        /* Notification Toast */
+        #notification { position: fixed; bottom: 20px; left: 50%; transform: translate(-50%, 100%); padding: 12px 24px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.4s ease; z-index: 1000; opacity: 0; }
+        #notification.show { transform: translate(-50%, 0); opacity: 1; }
+        #notification.success { background-color: #10b981; }
+        #notification.error { background-color: #ef4444; }
+
+        /* Accordion styles */
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight">Advanced Word Cloud</h1>
+            <p class="text-gray-400 mt-2">Your words, your style. Now with shapes, fonts, and more.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Controls Section -->
+            <section class="lg:col-span-1 bg-gray-800 p-6 rounded-lg shadow-lg">
+                <div class="space-y-2">
+                    <!-- Accordion Item 1: Text & Words -->
+                    <div class="accordion-item">
+                        <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold p-3 bg-gray-700 rounded-md">
+                            <span>Text & Words</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 space-y-4">
+                             <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label for="text-input" class="text-sm font-medium">Your Text</label>
+                                    <button id="import-btn" class="text-sm text-blue-400 hover:text-blue-500">Import File</button>
+                                    <input type="file" id="file-input" class="hidden" accept=".txt">
+                                </div>
+                                <textarea id="text-input" rows="6" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2" placeholder="Paste your text..."></textarea>
+                            </div>
+                            <div>
+                                <label for="density-slider" class="text-sm font-medium">Word Count (<span id="density-value">50</span>)</label>
+                                <input id="density-slider" type="range" min="10" max="300" value="50" class="w-full h-2 bg-gray-600 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accordion Item 2: Font & Style -->
+                    <div class="accordion-item">
+                        <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold p-3 bg-gray-700 rounded-md">
+                            <span>Font & Style</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 space-y-4">
+                            <div>
+                                <label for="font-family-select" class="text-sm font-medium">Font Family</label>
+                                <select id="font-family-select" class="w-full bg-gray-900 border-gray-600 rounded-md p-2 mt-1">
+                                    <option value="Inter">Inter</option>
+                                    <option value="Roboto Mono">Roboto Mono</option>
+                                    <option value="Lobster">Lobster</option>
+                                    <option value="Playfair Display">Playfair Display</option>
+                                </select>
+                            </div>
+                             <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="min-font-size" class="text-sm">Min Size (<span id="min-font-value">12</span>)</label>
+                                    <input id="min-font-size" type="range" min="8" max="50" value="12" class="w-full h-2 bg-gray-600 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="max-font-size" class="text-sm">Max Size (<span id="max-font-value">80</span>)</label>
+                                    <input id="max-font-size" type="range" min="50" max="200" value="80" class="w-full h-2 bg-gray-600 rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accordion Item 3: Colors -->
+                    <div class="accordion-item">
+                        <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold p-3 bg-gray-700 rounded-md">
+                            <span>Colors</span>
+                             <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 space-y-4">
+                             <div class="flex justify-between items-center">
+                                <label for="bg-color-picker" class="text-sm font-medium">Background</label>
+                                <input type="color" id="bg-color-picker" value="#111827">
+                            </div>
+                            <div>
+                                <label for="palette-select" class="text-sm font-medium">Text Palette</label>
+                                <select id="palette-select" class="w-full bg-gray-900 border-gray-600 rounded-md p-2 mt-1">
+                                    <option value="vibrant">Vibrant</option>
+                                    <option value="cool">Cool Blues</option>
+                                    <option value="warm">Warm Sunset</option>
+                                    <option value="grayscale">Grayscale</option>
+                                    <option value="custom">Custom...</option>
+                                </select>
+                            </div>
+                             <div id="custom-palette-container" class="hidden">
+                                 <label class="text-sm font-medium">Custom Colors</label>
+                                 <input type="text" id="custom-palette-input" class="w-full bg-gray-900 border-gray-600 rounded-md p-2 mt-1" placeholder="#ff0000, #00ff00, #0000ff">
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Accordion Item 4: Layout & Shape -->
+                    <div class="accordion-item">
+                        <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold p-3 bg-gray-700 rounded-md">
+                            <span>Layout & Shape</span>
+                            <svg class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="accordion-content p-4 space-y-6">
+                            <div>
+                                <label class="text-sm font-medium">Word Orientation</label>
+                                <div class="flex space-x-4 mt-2">
+                                    <label class="flex items-center"><input type="checkbox" id="orient-h" class="form-checkbox h-5 w-5 bg-gray-900" checked> <span class="ml-2">Horizontal</span></label>
+                                    <label class="flex items-center"><input type="checkbox" id="orient-v" class="form-checkbox h-5 w-5 bg-gray-900"> <span class="ml-2">Vertical</span></label>
+                                </div>
+                            </div>
+                             <div>
+                                <label for="shape-select" class="text-sm font-medium">Shape Mask</label>
+                                <select id="shape-select" class="w-full bg-gray-900 border-gray-600 rounded-md p-2 mt-1">
+                                    <option value="rectangle">Rectangle</option>
+                                    <option value="circle">Circle</option>
+                                    <option value="heart">Heart (SVG)</option>
+                                    <option value="custom">Custom SVG Path</option>
+                                </select>
+                            </div>
+                            <div id="custom-shape-container" class="hidden">
+                                <label class="text-sm font-medium">Custom SVG Path Data</label>
+                                <textarea id="custom-shape-input" rows="3" class="w-full bg-gray-900 border-gray-600 rounded-md p-2 mt-1" placeholder="e.g., M10 80 C 40 10, 65 10, 95 80 S 150 150, 180 80"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-4 pt-6 mt-4 border-t border-gray-700">
+                    <button id="reset-btn" class="w-full bg-red-600 hover:bg-red-700 font-bold py-3 rounded-lg transition-transform hover:scale-105">Reset</button>
+                    <button id="generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded-lg transition-transform hover:scale-105">Generate</button>
+                </div>
+            </section>
+
+            <!-- Canvas/Output Section -->
+            <section class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                    <div class="flex items-center space-x-4">
+                        <h2 class="text-2xl font-bold">Result</h2>
+                        <button id="zoom-out-btn" class="p-1.5 bg-gray-700 rounded-md hover:bg-gray-600" title="Zoom Out">-</button>
+                        <span id="zoom-level-display" class="text-sm font-mono" title="Current Zoom">100%</span>
+                        <button id="zoom-in-btn" class="p-1.5 bg-gray-700 rounded-md hover:bg-gray-600" title="Zoom In">+</button>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="export-svg-btn" class="bg-purple-600 hover:bg-purple-700 font-bold py-2 px-4 rounded-lg transition-transform hover:scale-105">Export SVG</button>
+                        <button id="export-png-btn" class="bg-green-600 hover:bg-green-700 font-bold py-2 px-4 rounded-lg transition-transform hover:scale-105">Export PNG</button>
+                    </div>
+                </div>
+                <div id="canvas-container" class="relative w-full aspect-video rounded-md overflow-hidden bg-gray-900">
+                    <canvas id="word-cloud-canvas"></canvas>
+                    <div id="error-message" class="hidden absolute inset-0 bg-red-900/50 text-white p-4 items-center justify-center">
+                        <p>Your browser does not support the canvas element.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="text-center mt-8 text-gray-500 text-sm"><p>&copy; 2024 Advanced Word Cloud Generator</p></footer>
+    </div>
+    
+    <div id="notification"></div>
+    <canvas id="mask-canvas" class="hidden"></canvas>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element References ---
+        const textInput = document.getElementById('text-input');
+        const densitySlider = document.getElementById('density-slider');
+        const densityValue = document.getElementById('density-value');
+        const generateBtn = document.getElementById('generate-btn');
+        const exportPngBtn = document.getElementById('export-png-btn');
+        const exportSvgBtn = document.getElementById('export-svg-btn');
+        const canvasContainer = document.getElementById('canvas-container');
+        const canvas = document.getElementById('word-cloud-canvas');
+        const errorMessage = document.getElementById('error-message');
+        const importBtn = document.getElementById('import-btn');
+        const fileInput = document.getElementById('file-input');
+        const resetBtn = document.getElementById('reset-btn');
+        const notification = document.getElementById('notification');
+        const bgColorPicker = document.getElementById('bg-color-picker');
+        const paletteSelect = document.getElementById('palette-select');
+        const customPaletteContainer = document.getElementById('custom-palette-container');
+        const customPaletteInput = document.getElementById('custom-palette-input');
+        const fontFamilySelect = document.getElementById('font-family-select');
+        const minFontSizeSlider = document.getElementById('min-font-size');
+        const minFontValue = document.getElementById('min-font-value');
+        const maxFontSizeSlider = document.getElementById('max-font-size');
+        const maxFontValue = document.getElementById('max-font-value');
+        const orientHCheckbox = document.getElementById('orient-h');
+        const orientVCheckbox = document.getElementById('orient-v');
+        const shapeSelect = document.getElementById('shape-select');
+        const customShapeContainer = document.getElementById('custom-shape-container');
+        const customShapeInput = document.getElementById('custom-shape-input');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomLevelDisplay = document.getElementById('zoom-level-display');
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const maskCanvas = document.getElementById('mask-canvas');
+        const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+
+        // --- State ---
+        let currentWords = [];
+        let notificationTimeout;
+        let maskPixelData = null;
+        let zoomLevel = 1.0;
+        
+        // --- Constants ---
+        const DEFAULT_DENSITY = 50;
+        const DEFAULT_MIN_FONT = 12;
+        const DEFAULT_MAX_FONT = 80;
+        const DEFAULT_BG_COLOR = "#111827";
+        const DEFAULT_PALETTE = 'vibrant';
+        const DEFAULT_FONT = 'Inter';
+        const DEFAULT_TEXT = "This is an advanced word cloud generator. You can change fonts, colors, shapes, and word orientation. The size of the word depends on its frequency in the text. Try pasting your own text or importing a file to create a unique and personalized word cloud. The possibilities are endless, from circles and hearts to custom SVG shapes. Experiment with different settings to get the perfect result!";
+        
+        const stopWords = new Set(['i','me','my','myself','we','our','ours','ourselves','you','your','yours','yourself','yourselves','he','him','his','himself','she','her','herself','it','its','itself','they','them','their','theirs','themselves','what','which','who','whom','this','that','these','those','am','is','are','was','were','be','been','being','have','has','had','having','do','does','did','doing','a','an','the','and','but','if','or','because','as','until','while','of','at','by','for','with','about','against','between','into','through','during','before','after','above','below','to','from','up','down','in','out','on','off','over','under','again','further','then','once','here','there','when','where','why','how','all','any','both','each','few','more','most','other','some','such','no','nor','not','only','own','same','so','than','too','very','s','t','can','will','just','don','should','now']);
+        const colorPalettes = {
+            vibrant: ['#3b82f6', '#10b981', '#ef4444', '#f97316', '#8b5cf6', '#ec4899'],
+            cool: ['#0e7490', '#0369a1', '#1d4ed8', '#4338ca', '#6d28d9'],
+            warm: ['#f97316', '#ef4444', '#eab308', '#dc2626', '#d946ef'],
+            grayscale: ['#f9fafb', '#f3f4f6', '#e5e7eb', '#d1d5db', '#9ca3af']
+        };
+        
+        // --- Initial Setup & Event Listeners ---
+        function initialize() {
+            if (!canvas.getContext) {
+                errorMessage.classList.remove('hidden');
+                errorMessage.classList.add('flex');
+                return;
+            }
+            
+            setupAccordion();
+            resetAll(false);
+
+            generateBtn.addEventListener('click', () => {
+                canvasContainer.classList.remove('canvas-fade-in');
+                void canvasContainer.offsetWidth; // Trigger reflow
+                canvasContainer.classList.add('canvas-fade-in');
+                generateWordCloud();
+            });
+            
+            exportPngBtn.addEventListener('click', exportCanvasAsPNG);
+            exportSvgBtn.addEventListener('click', exportAsSVG);
+            resetBtn.addEventListener('click', () => resetAll(true));
+            importBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileImport);
+            
+            densitySlider.addEventListener('input', () => { densityValue.textContent = densitySlider.value; });
+            minFontSizeSlider.addEventListener('input', () => { minFontValue.textContent = minFontSizeSlider.value; });
+            maxFontSizeSlider.addEventListener('input', () => { maxFontValue.textContent = maxFontSizeSlider.value; });
+            
+            const redrawControls = [bgColorPicker, paletteSelect, customPaletteInput, fontFamilySelect, shapeSelect, customShapeInput, orientHCheckbox, orientVCheckbox, minFontSizeSlider, maxFontSizeSlider];
+            redrawControls.forEach(control => control.addEventListener('change', generateWordCloud));
+
+            paletteSelect.addEventListener('change', () => customPaletteContainer.classList.toggle('hidden', paletteSelect.value !== 'custom'));
+            shapeSelect.addEventListener('change', () => customShapeContainer.classList.toggle('hidden', shapeSelect.value !== 'custom'));
+            
+            // Zoom listeners
+            zoomInBtn.addEventListener('click', () => updateZoom(0.2));
+            zoomOutBtn.addEventListener('click', () => updateZoom(-0.2));
+
+            window.addEventListener('resize', debounce(generateWordCloud, 300));
+        }
+
+        // --- Core Logic ---
+
+        /** Main function to orchestrate word cloud generation. */
+        function generateWordCloud() {
+            const text = textInput.value;
+            if (!text.trim()) {
+                clearCanvasAndDrawMessage("Please enter some text to begin.");
+                currentWords = [];
+                return;
+            }
+
+            updateShapeMask().then(() => {
+                const wordFrequencies = processText(text);
+                const wordData = prepareWords(wordFrequencies);
+                
+                if (wordData.length === 0) {
+                    clearCanvasAndDrawMessage("No valid words found to create a cloud.");
+                    currentWords = [];
+                    return;
+                }
+                
+                currentWords = placeWords(wordData);
+                drawOnCanvas();
+            });
+        }
+        
+        /** Takes prepared word data and calculates their final positions. */
+        function placeWords(words) {
+            const placedWords = [];
+            const placedWordBoxes = [];
+            const placementAttempts = 2000;
+            const canvasCenter = { x: canvas.getBoundingClientRect().width / 2, y: canvas.getBoundingClientRect().height / 2 };
+
+            for (const word of words) {
+                let placed = false;
+                for (let i = 0; i < placementAttempts; i++) {
+                    const x = Math.random() * canvasCenter.x * 2;
+                    const y = Math.random() * canvasCenter.y * 2;
+                    
+                    if (maskPixelData && !isPointInShape(x, y)) continue;
+
+                    const angle = getWordAngle();
+                    ctx.font = `bold ${word.size}px "${word.font}"`;
+                    const box = getWordBoundingBox(word.text, x, y, angle, ctx);
+
+                    if (!checkCollision(box, placedWordBoxes)) {
+                        placedWords.push({ ...word, x, y, angle });
+                        placedWordBoxes.push(box);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) console.warn(`Could not place word: "${word.text}"`);
+            }
+            return placedWords;
+        }
+
+        /** Renders the `currentWords` array to the canvas with current zoom. */
+        function drawOnCanvas() {
+            resizeCanvas();
+            ctx.fillStyle = bgColorPicker.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            
+            const scaledWidth = canvas.width / (window.devicePixelRatio || 1);
+            const scaledHeight = canvas.height / (window.devicePixelRatio || 1);
+            
+            // Translate to center for zooming, apply scale, then translate back
+            ctx.translate(scaledWidth / 2, scaledHeight / 2);
+            ctx.scale(zoomLevel, zoomLevel);
+            ctx.translate(-scaledWidth / 2, -scaledHeight / 2);
+
+            for (const word of currentWords) {
+                ctx.save();
+                ctx.translate(word.x, word.y);
+                ctx.rotate(word.angle);
+                ctx.font = `bold ${word.size}px "${word.font}"`;
+                ctx.fillStyle = word.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(word.text, 0, 0);
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        // --- Data Preparation ---
+        function processText(text) { /* ... (no changes) ... */ return new Map(); }
+        function prepareWords(frequencies) { /* ... (no changes) ... */ return []; }
+
+        function processText(text) {
+            const frequencies = new Map();
+            const words = text.toLowerCase().replace(/[^\w\s']/g, ' ').split(/\s+/);
+            words.forEach(word => {
+                if (word && !stopWords.has(word) && word.length > 1) {
+                    frequencies.set(word, (frequencies.get(word) || 0) + 1);
+                }
+            });
+            return frequencies;
+        }
+
+        function prepareWords(frequencies) {
+            const maxWords = parseInt(densitySlider.value, 10);
+            const activePalette = getCurrentPalette();
+            const sortedWords = [...frequencies.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxWords);
+            if (sortedWords.length === 0) return [];
+            
+            const maxFreq = sortedWords[0][1];
+            const minFreq = sortedWords.length > 1 ? sortedWords[sortedWords.length - 1][1] : maxFreq;
+            const minSize = parseInt(minFontSizeSlider.value, 10);
+            const maxSize = parseInt(maxFontSizeSlider.value, 10);
+            
+            return sortedWords.map(([text, freq], index) => ({
+                text,
+                size: mapRange(freq, minFreq, maxFreq, minSize, maxSize),
+                color: activePalette[index % activePalette.length],
+                font: fontFamilySelect.value
+            }));
+        }
+
+
+        // --- Collision & Shape Masking ---
+        function getWordBoundingBox(text, x, y, angle, context) { /* ... (no changes) ... */ return []; }
+        function checkCollision(box1, allBoxes) { /* ... (no changes) ... */ return false; }
+        function doPolygonsIntersect(a, b) { /* ... (no changes) ... */ return false; }
+        async function updateShapeMask() { /* ... (no changes) ... */ }
+        function isPointInShape(x, y) { /* ... (no changes) ... */ return true; }
+
+        function getWordBoundingBox(text, x, y, angle, context) {
+            const metrics = context.measureText(text);
+            const width = metrics.width;
+            const height = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+            const halfWidth = width / 2, halfHeight = height / 2;
+            const corners = [{x: -halfWidth, y: -halfHeight}, {x: halfWidth, y: -halfHeight}, {x: halfWidth, y: halfHeight}, {x: -halfWidth, y: halfHeight}];
+            const cos = Math.cos(angle), sin = Math.sin(angle);
+            return corners.map(c => ({ x: x + c.x * cos - c.y * sin, y: y + c.y * cos + c.x * sin }));
+        }
+
+        function checkCollision(box1, allBoxes) {
+            for (const box2 of allBoxes) if (doPolygonsIntersect(box1, box2)) return true;
+            return false;
+        }
+        
+        function doPolygonsIntersect(a, b) {
+            const polygons = [a, b];
+            for (let i = 0; i < polygons.length; i++) {
+                const polygon = polygons[i];
+                for (let j1 = 0; j1 < polygon.length; j1++) {
+                    const p1 = polygon[j1], p2 = polygon[(j1 + 1) % polygon.length];
+                    const normal = { x: p2.y - p1.y, y: p1.x - p2.x };
+                    let minA, maxA, minB, maxB;
+                    for (const p of a) {
+                        const projected = normal.x * p.x + normal.y * p.y;
+                        if (minA === undefined || projected < minA) minA = projected;
+                        if (maxA === undefined || projected > maxA) maxA = projected;
+                    }
+                    for (const p of b) {
+                        const projected = normal.x * p.x + normal.y * p.y;
+                        if (minB === undefined || projected < minB) minB = projected;
+                        if (maxB === undefined || projected > maxB) maxB = projected;
+                    }
+                    if (maxA < minB || maxB < minA) return false;
+                }
+            }
+            return true;
+        }
+
+        async function updateShapeMask() {
+            const shape = shapeSelect.value;
+            if (shape === 'rectangle') {
+                maskPixelData = null; return;
+            }
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvasContainer.getBoundingClientRect();
+            maskCanvas.width = rect.width * dpr;
+            maskCanvas.height = rect.height * dpr;
+            maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.fillStyle = 'black';
+            const w = rect.width, h = rect.height;
+            maskCtx.beginPath();
+            if (shape === 'circle') maskCtx.arc(w / 2, h / 2, Math.min(w, h) / 2, 0, 2 * Math.PI);
+            else if (shape === 'heart') maskCtx.fill(new Path2D("M " + w/2 + " " + h*0.4 + " C " + w*0.1 + " " + h* -0.2 + " " + w* -0.2 + " " + h*0.7 + " " + w/2 + " " + h*0.9 + " C " + w*1.2 + " " + h*0.7 + " " + w*0.9 + " " + h* -0.2 + " " + w/2 + " " + h*0.4 + " Z"));
+            else if (shape === 'custom') {
+                try { maskCtx.fill(new Path2D(customShapeInput.value)); } 
+                catch (e) { showNotification('Invalid SVG path data.', 'error'); maskPixelData = null; return; }
+            }
+            maskCtx.fill();
+            maskPixelData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data;
+        }
+        
+        function isPointInShape(x, y) {
+            if (!maskPixelData) return true;
+            const dpr = window.devicePixelRatio || 1;
+            const index = (Math.floor(y * dpr) * maskCanvas.width + Math.floor(x * dpr)) * 4;
+            return maskPixelData[index + 3] > 0;
+        }
+
+        // --- UI & Utility Functions ---
+        
+        /** Resets all controls and regenerates the default cloud. */
+        function resetAll(showNotif = true) {
+            textInput.value = DEFAULT_TEXT;
+            densitySlider.value = DEFAULT_DENSITY; densityValue.textContent = DEFAULT_DENSITY;
+            minFontSizeSlider.value = DEFAULT_MIN_FONT; minFontValue.textContent = DEFAULT_MIN_FONT;
+            maxFontSizeSlider.value = DEFAULT_MAX_FONT; maxFontValue.textContent = DEFAULT_MAX_FONT;
+            bgColorPicker.value = DEFAULT_BG_COLOR;
+            paletteSelect.value = DEFAULT_PALETTE;
+            fontFamilySelect.value = DEFAULT_FONT;
+            shapeSelect.value = 'rectangle';
+            orientHCheckbox.checked = true; orientVCheckbox.checked = false;
+            customShapeInput.value = ''; customPaletteInput.value = '';
+            customPaletteContainer.classList.add('hidden');
+            customShapeContainer.classList.add('hidden');
+            updateZoom(null, 1.0); // Reset zoom
+            generateWordCloud();
+            if (showNotif) showNotification('All settings reset to default.', 'success');
+        }
+
+        /** Handles zoom in/out and updates the display. */
+        function updateZoom(amount, absolute = null) {
+            if (absolute !== null) {
+                zoomLevel = absolute;
+            } else {
+                zoomLevel += amount;
+            }
+            zoomLevel = Math.max(0.2, Math.min(zoomLevel, 5)); // Clamp zoom level
+            zoomLevelDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
+            drawOnCanvas(); // Redraw with new zoom
+        }
+
+        function handleFileImport(event) { /* ... (no changes) ... */ }
+        function getCurrentPalette() { /* ... (no changes) ... */ return []; }
+        function getWordAngle() { /* ... (no changes) ... */ return 0; }
+        function resizeCanvas() { /* ... (no changes) ... */ }
+        function clearCanvasAndDrawMessage(message) { /* ... (no changes) ... */ }
+        function mapRange(value, inMin, inMax, outMin, outMax) { /* ... (no changes) ... */ return 0; }
+        function showNotification(message, type = 'success') { /* ... (no changes) ... */ }
+        function setupAccordion() { /* ... (no changes) ... */ }
+        function debounce(func, delay) { /* ... (no changes) ... */ return func; }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.type !== "text/plain") { showNotification('Invalid file type. Please select a .txt file.', 'error'); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => { textInput.value = e.target.result; generateWordCloud(); showNotification('File imported successfully!', 'success'); };
+            reader.onerror = () => showNotification('Error reading file.', 'error');
+            reader.readAsText(file);
+        }
+
+        function getCurrentPalette() {
+            const selection = paletteSelect.value;
+            if (selection === 'custom') {
+                const customColors = customPaletteInput.value.split(',').map(c => c.trim()).filter(c => /^#[0-9a-f]{3,6}$/i.test(c));
+                return customColors.length > 0 ? customColors : colorPalettes.vibrant;
+            }
+            return colorPalettes[selection];
+        }
+
+        function getWordAngle() {
+            const allowH = orientHCheckbox.checked;
+            const allowV = orientVCheckbox.checked;
+            if (allowH && !allowV) return 0;
+            if (!allowH && allowV) return Math.PI / 2;
+            if (allowH && allowV) return Math.random() < 0.7 ? 0 : Math.PI / 2; // Bias for horizontal
+            return 0; // Default if none checked
+        }
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvasContainer.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            ctx.scale(dpr, dpr);
+        }
+        
+        function clearCanvasAndDrawMessage(message) {
+            resizeCanvas();
+            ctx.fillStyle = bgColorPicker.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#9ca3af';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `16px "Inter"`;
+            ctx.fillText(message, canvas.width / (2 * (window.devicePixelRatio || 1)), canvas.height / (2 * (window.devicePixelRatio || 1)));
+        }
+
+        function mapRange(value, inMin, inMax, outMin, outMax) {
+            if (inMin >= inMax) return (outMin + outMax) / 2;
+            return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
+        }
+
+        function showNotification(message, type = 'success') {
+            clearTimeout(notificationTimeout);
+            notification.textContent = message;
+            notification.className = '';
+            notification.classList.add(type, 'show');
+            notificationTimeout = setTimeout(() => { notification.classList.remove('show'); }, 3000);
+        }
+        
+        function setupAccordion() {
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling, icon = header.querySelector('svg');
+                    if (content.style.maxHeight) { content.style.maxHeight = null; icon.style.transform = 'rotate(0deg)'; } 
+                    else {
+                        document.querySelectorAll('.accordion-content').forEach(c => c.style.maxHeight = null);
+                        document.querySelectorAll('.accordion-header svg').forEach(i => i.style.transform = 'rotate(0deg)');
+                        content.style.maxHeight = content.scrollHeight + "px";
+                        icon.style.transform = 'rotate(180deg)';
+                    }
+                });
+            });
+            document.querySelector('.accordion-header').click();
+        }
+
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); };
+        }
+
+        // --- Export Functions ---
+        
+        function exportCanvasAsPNG() {
+            showNotification('Preparing PNG export...', 'success');
+            // Use a temporary canvas to render at 1x zoom for a clean export
+            const exportCanvas = document.createElement('canvas');
+            const exportCtx = exportCanvas.getContext('2d');
+            const dpr = 2; // Render at 2x for high quality
+            const rect = canvas.getBoundingClientRect();
+            exportCanvas.width = rect.width * dpr;
+            exportCanvas.height = rect.height * dpr;
+            exportCtx.scale(dpr, dpr);
+            
+            // Draw background
+            exportCtx.fillStyle = bgColorPicker.value;
+            exportCtx.fillRect(0, 0, rect.width, rect.height);
+            
+            // Draw words
+            for (const word of currentWords) {
+                exportCtx.save();
+                exportCtx.translate(word.x, word.y);
+                exportCtx.rotate(word.angle);
+                exportCtx.font = `bold ${word.size}px "${word.font}"`;
+                exportCtx.fillStyle = word.color;
+                exportCtx.textAlign = 'center';
+                exportCtx.textBaseline = 'middle';
+                exportCtx.fillText(word.text, 0, 0);
+                exportCtx.restore();
+            }
+            
+            const link = document.createElement('a');
+            link.download = 'word-cloud.png';
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function exportAsSVG() {
+            if (currentWords.length === 0) {
+                showNotification('Nothing to export.', 'error');
+                return;
+            }
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            let svgString = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif;">`;
+            // Add background
+            svgString += `<rect width="100%" height="100%" fill="${bgColorPicker.value}" />`;
+            // Add words
+            currentWords.forEach(word => {
+                const angleDeg = word.angle * (180 / Math.PI);
+                svgString += `<text x="${word.x}" y="${word.y}" font-family="${word.font}" font-size="${word.size}" font-weight="bold" fill="${word.color}" text-anchor="middle" dominant-baseline="central" transform="rotate(${angleDeg}, ${word.x}, ${word.y})">${word.text}</text>`;
+            });
+            svgString += `</svg>`;
+            
+            const blob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'word-cloud.svg';
+            link.click();
+            URL.revokeObjectURL(url);
+            showNotification('SVG export started.', 'success');
+        }
+
+        // --- Start the App ---
+        initialize();
+    });
+    </script>
+</body>
+</html>
