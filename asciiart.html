@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced ASCII Art Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .drag-over {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        #ascii-output {
+            font-family: 'SF Mono', 'Courier New', Courier, monospace;
+            white-space: pre;
+            line-height: 0.8;
+            letter-spacing: -0.5px;
+            font-size: 8px; /* Base font size, will be adjusted by JS */
+            background-color: #0a0a0a;
+            color: #f1f1f1;
+        }
+        /* --- Professional Style Enhancements --- */
+        .control-panel {
+            @apply bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm p-5 rounded-xl border border-gray-200 dark:border-gray-700 transition-all;
+        }
+        .control-button {
+            @apply flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-900 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+        }
+        .primary-button {
+             @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+        }
+        .secondary-button {
+            @apply bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500;
+        }
+         .export-button-svg {
+            @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+        }
+        .export-button-png {
+            @apply bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500;
+        }
+        .transform-button {
+            @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600;
+        }
+
+        /* Custom Slider Styles */
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 6px; background: #e5e7eb; /* gray-200 */
+            border-radius: 9999px; outline: none; opacity: 0.8; transition: opacity .2s;
+        }
+        .dark input[type="range"] { background: #4b5563; /* gray-600 */ }
+        input[type="range"]:hover { opacity: 1; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 18px; height: 18px; background: #3b82f6; /* blue-500 */
+            cursor: pointer; border-radius: 50%; border: 3px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; background: #3b82f6; /* blue-500 */
+            cursor: pointer; border-radius: 50%; border: 3px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        /* Custom Select Styles */
+        select {
+            @apply pr-10;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center p-4 transition-colors">
+
+    <div class="w-full max-w-6xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 md:p-8 space-y-8">
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Advanced ASCII Art Generator</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Convert your images into text-based art with fine-tuned controls.</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Panel: Upload and Preview -->
+            <div class="space-y-4">
+                <div id="drop-zone" class="relative w-full h-96 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col justify-center items-center text-center cursor-pointer transition-all duration-300 hover:border-blue-500">
+                    <div id="upload-prompt" class="transition-opacity duration-300">
+                        <svg class="mx-auto h-16 w-16 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        <p class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">Drag & Drop Image</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">or click to select a file</p>
+                    </div>
+                    <img id="image-preview" src="" alt="Image Preview" class="absolute inset-0 w-full h-full object-contain rounded-lg p-2 opacity-0 transition-opacity duration-500"/>
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
+                </div>
+                <div id="error-message" class="hidden text-red-600 dark:text-red-400 text-sm text-center bg-red-100 dark:bg-red-900/30 p-3 rounded-lg"></div>
+            </div>
+
+            <!-- Right Panel: Controls -->
+            <div class="space-y-6">
+                 <!-- Filters Panel -->
+                <div class="control-panel space-y-3">
+                    <label for="filter-select" class="font-semibold text-lg text-gray-800 dark:text-white">Filter</label>
+                    <select id="filter-select" class="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="grayscale">Grayscale Mapping</option>
+                        <option value="color">Color ASCII</option>
+                        <option value="inverse">Inverse</option>
+                        <option value="blocky">Blocky / Mosaic</option>
+                        <option value="edge">Edge Detection</option>
+                        <option value="contrast">High Contrast</option>
+                        <option value="blur">Noise Reduction (Blur)</option>
+                        <option value="posterize">Posterize</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <!-- Manual Controls Panel -->
+                <div class="control-panel space-y-4">
+                    <h3 class="font-semibold text-lg text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Manual Controls</h3>
+                    <div>
+                        <label for="resolution-slider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution: <span id="resolution-value" class="font-semibold">100</span> chars wide</label>
+                        <input id="resolution-slider" type="range" min="30" max="300" value="100">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="charset-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Character Set</label>
+                            <select id="charset-select" class="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="standard">Standard</option>
+                                <option value="simple">Simple</option>
+                                <option value="blocks">Blocks</option>
+                                <option value="binary">Binary</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-around">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="color-toggle" class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-blue-500">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Color</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" id="invert-toggle" class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:ring-blue-500">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Invert</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Adjustments Panel -->
+                <div class="control-panel space-y-4">
+                     <h3 class="font-semibold text-lg text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">Image Adjustments</h3>
+                     <div>
+                        <label for="brightness-slider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Brightness: <span id="brightness-value" class="font-semibold">100</span>%</label>
+                        <input id="brightness-slider" type="range" min="0" max="200" value="100">
+                    </div>
+                     <div>
+                        <label for="contrast-slider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contrast: <span id="contrast-value" class="font-semibold">100</span>%</label>
+                        <input id="contrast-slider" type="range" min="0" max="200" value="100">
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-2">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Transform:</span>
+                        <div class="flex gap-2">
+                            <button id="flip-h-button" class="control-button transform-button">Flip H</button>
+                            <button id="flip-v-button" class="control-button transform-button">Flip V</button>
+                            <button id="rotate-button" class="control-button transform-button">Rotate 90°</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Output Section -->
+        <div class="control-panel">
+            <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">ASCII Output</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button id="copy-button" class="control-button primary-button" disabled>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <span>Copy Text</span>
+                    </button>
+                    <button id="download-button" class="control-button secondary-button" disabled>
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        <span>Download .txt</span>
+                    </button>
+                    <button id="export-svg-button" class="control-button export-button-svg" disabled>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <span>Export .svg</span>
+                    </button>
+                    <button id="export-png-button" class="control-button export-button-png" disabled>
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span>Export .png</span>
+                    </button>
+                </div>
+            </div>
+            <div class="w-full h-96 bg-gray-100 dark:bg-black overflow-auto rounded-lg p-2 border border-gray-200 dark:border-gray-700">
+                <div id="ascii-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const imagePreview = document.getElementById('image-preview');
+            const uploadPrompt = document.getElementById('upload-prompt');
+            const errorMessage = document.getElementById('error-message');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Filters & Controls
+            const filterSelect = document.getElementById('filter-select');
+            const resolutionSlider = document.getElementById('resolution-slider');
+            const resolutionValue = document.getElementById('resolution-value');
+            const charsetSelect = document.getElementById('charset-select');
+            const colorToggle = document.getElementById('color-toggle');
+            const invertToggle = document.getElementById('invert-toggle');
+            const brightnessSlider = document.getElementById('brightness-slider');
+            const brightnessValue = document.getElementById('brightness-value');
+            const contrastSlider = document.getElementById('contrast-slider');
+            const contrastValue = document.getElementById('contrast-value');
+            const flipHButton = document.getElementById('flip-h-button');
+            const flipVButton = document.getElementById('flip-v-button');
+            const rotateButton = document.getElementById('rotate-button');
+
+            // Output
+            const asciiOutput = document.getElementById('ascii-output');
+            const copyButton = document.getElementById('copy-button');
+            const downloadButton = document.getElementById('download-button');
+            const exportPngButton = document.getElementById('export-png-button');
+            const exportSvgButton = document.getElementById('export-svg-button');
+
+            // --- State Management ---
+            let loadedImage = null;
+            let imageState = { brightness: 100, contrast: 100, rotation: 0, scaleX: 1, scaleY: 1 };
+            const charSets = {
+                standard: '`.-_:\',^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@',
+                simple: '@%#*+=-:. ',
+                blocks: '█▇▆▅▄▃▂ ',
+                binary: '10'
+            };
+            
+            // Set initial placeholder text
+            asciiOutput.textContent = 'Select an image to begin...';
+
+            // --- Event Listeners ---
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+            filterSelect.addEventListener('change', (e) => {
+                applyFilterSettings(e.target.value);
+                if (loadedImage) generateAscii();
+            });
+
+            const manualControls = [resolutionSlider, charsetSelect, colorToggle, invertToggle, brightnessSlider, contrastSlider];
+            manualControls.forEach(el => {
+                el.addEventListener('input', () => {
+                    if (el === resolutionSlider) resolutionValue.textContent = el.value;
+                    if (el === brightnessSlider) brightnessValue.textContent = `${el.value}`;
+                    if (el === contrastSlider) contrastValue.textContent = `${el.value}`;
+                    filterSelect.value = 'custom';
+                    if (loadedImage) generateAscii();
+                });
+            });
+            
+            [flipHButton, flipVButton, rotateButton].forEach(button => {
+                button.addEventListener('click', () => {
+                    if (button === flipHButton) imageState.scaleX *= -1;
+                    if (button === flipVButton) imageState.scaleY *= -1;
+                    if (button === rotateButton) imageState.rotation = (imageState.rotation + 90) % 360;
+                    if (loadedImage) generateAscii();
+                });
+            });
+            
+            copyButton.addEventListener('click', copyToClipboard);
+            downloadButton.addEventListener('click', downloadAscii);
+            exportPngButton.addEventListener('click', () => exportImage('png'));
+            exportSvgButton.addEventListener('click', () => exportImage('svg'));
+
+
+            // --- UI & State Functions ---
+            function applyFilterSettings(filterName) {
+                colorToggle.checked = false;
+                invertToggle.checked = false;
+                charsetSelect.value = 'standard';
+                contrastSlider.value = 100;
+                contrastValue.textContent = '100';
+                
+                switch (filterName) {
+                    case 'grayscale': break;
+                    case 'color': colorToggle.checked = true; break;
+                    case 'inverse': invertToggle.checked = true; break;
+                    case 'blocky': charsetSelect.value = 'blocks'; break;
+                    case 'contrast': contrastSlider.value = 150; contrastValue.textContent = '150'; break;
+                    case 'edge': case 'blur': case 'posterize': case 'custom': break;
+                }
+            }
+            
+            function showError(message) { errorMessage.textContent = message; errorMessage.classList.remove('hidden'); }
+            function clearError() { errorMessage.classList.add('hidden'); }
+            
+            function resetOnNewFile() {
+                imageState = { brightness: 100, contrast: 100, rotation: 0, scaleX: 1, scaleY: 1 };
+                brightnessSlider.value = 100;
+                contrastSlider.value = 100;
+                brightnessValue.textContent = '100';
+                contrastValue.textContent = '100';
+                filterSelect.value = 'grayscale';
+                applyFilterSettings('grayscale');
+            }
+
+            function handleFile(file) {
+                clearError();
+                if (!file.type.startsWith('image/')) { showError('Invalid file type.'); return; }
+                if (file.size > 10 * 1024 * 1024) { showError('File is too large (max 10MB).'); return; }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    loadedImage = new Image();
+                    loadedImage.onload = () => {
+                        imagePreview.src = e.target.result;
+                        uploadPrompt.classList.add('opacity-0');
+                        imagePreview.classList.add('opacity-100');
+                        imagePreview.alt = `Preview of ${file.name}`;
+                        resetOnNewFile();
+                        generateAscii();
+                        [copyButton, downloadButton, exportPngButton, exportSvgButton].forEach(b => b.disabled = false);
+                    };
+                    loadedImage.onerror = () => showError("Could not load image file.");
+                    loadedImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // --- Image Processing Kernels (unchanged) ---
+            function applySobelFilter(imageData) { const width = imageData.width, height = imageData.height; const sobelData = new Uint8ClampedArray(imageData.data.length); const grayscaleData = new Uint8ClampedArray(width * height); for (let i = 0; i < imageData.data.length; i += 4) { grayscaleData[i / 4] = 0.299 * imageData.data[i] + 0.587 * imageData.data[i+1] + 0.114 * imageData.data[i+2]; } const Gx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], Gy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]; for (let y = 1; y < height - 1; y++) { for (let x = 1; x < width - 1; x++) { let sumX = 0, sumY = 0; for (let i = -1; i <= 1; i++) { for (let j = -1; j <= 1; j++) { const pixel = grayscaleData[(y + i) * width + (x + j)]; sumX += pixel * Gx[i + 1][j + 1]; sumY += pixel * Gy[i + 1][j + 1]; } } const magnitude = Math.sqrt(sumX * sumX + sumY * sumY); const pixelIndex = (y * width + x) * 4; sobelData.fill(magnitude, pixelIndex, pixelIndex + 3); sobelData[pixelIndex + 3] = 255; } } return new ImageData(sobelData, width, height); }
+            function applyBlurFilter(imageData) { const width = imageData.width, height = imageData.height; const src = imageData.data; const dst = new Uint8ClampedArray(src.length); for (let y = 1; y < height - 1; y++) { for (let x = 1; x < width - 1; x++) { let r = 0, g = 0, b = 0; for (let j = -1; j <= 1; j++) { for (let i = -1; i <= 1; i++) { const p = ((y + j) * width + (x + i)) * 4; r += src[p]; g += src[p+1]; b += src[p+2]; } } const pDst = (y * width + x) * 4; dst[pDst] = r/9; dst[pDst+1] = g/9; dst[pDst+2] = b/9; dst[pDst+3] = 255; } } return new ImageData(dst, width, height); }
+            function applyPosterizeFilter(imageData, levels) { const dst = new Uint8ClampedArray(imageData.data.length); const step = 255 / (levels - 1); for (let i = 0; i < imageData.data.length; i += 4) { dst[i]   = Math.round(Math.round(imageData.data[i] / step) * step); dst[i+1] = Math.round(Math.round(imageData.data[i+1] / step) * step); dst[i+2] = Math.round(Math.round(imageData.data[i+2] / step) * step); dst[i+3] = 255; } return new ImageData(dst, imageData.width, imageData.height); }
+
+            function getCharFromBrightness(brightness) {
+                let charSet = charSets[charsetSelect.value];
+                if (filterSelect.value === 'edge') charSet = ' `.-+=#@';
+                if (invertToggle.checked) charSet = charSet.split('').reverse().join('');
+                const index = Math.max(0, Math.min(charSet.length - 1, Math.floor((brightness / 255) * charSet.length)));
+                return charSet[index];
+            }
+
+            function generateAscii() {
+                if (!loadedImage) return;
+
+                const resolution = parseInt(resolutionSlider.value, 10);
+                const activeFilter = filterSelect.value;
+                const aspectRatio = loadedImage.height / loadedImage.width;
+                const canvasWidth = resolution;
+                const canvasHeight = Math.floor(aspectRatio * canvasWidth * 0.45);
+
+                if (canvasWidth <= 0 || canvasHeight <= 0) return;
+                canvas.width = canvasWidth; canvas.height = canvasHeight;
+
+                ctx.save();
+                ctx.filter = `brightness(${brightnessSlider.value}%) contrast(${contrastSlider.value}%)`;
+                ctx.translate(canvasWidth / 2, canvasHeight / 2);
+                ctx.rotate(imageState.rotation * Math.PI / 180);
+                ctx.scale(imageState.scaleX, imageState.scaleY);
+                ctx.drawImage(loadedImage, -canvasWidth / 2, -canvasHeight / 2, canvasWidth, canvasHeight);
+                ctx.restore();
+                
+                let imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+                
+                if (activeFilter === 'edge') imageData = applySobelFilter(imageData);
+                else if (activeFilter === 'blur') imageData = applyBlurFilter(imageData);
+                else if (activeFilter === 'posterize') imageData = applyPosterizeFilter(imageData, 4);
+
+                const data = imageData.data;
+                let asciiArt = '';
+                const isColor = colorToggle.checked && activeFilter !== 'edge';
+                
+                for (let y = 0; y < canvasHeight; y++) {
+                    for (let x = 0; x < canvasWidth; x++) {
+                        const i = (y * canvasWidth + x) * 4;
+                        const r = data[i], g = data[i+1], b = data[i+2];
+                        const brightness = (r + g + b) / 3;
+                        const char = getCharFromBrightness(brightness);
+                        if (isColor) {
+                            asciiArt += `<span style="color: rgb(${r},${g},${b});">${char.replace(/</g, '&lt;')}</span>`;
+                        } else {
+                            asciiArt += char;
+                        }
+                    }
+                    asciiArt += '\n';
+                }
+
+                asciiOutput[isColor ? 'innerHTML' : 'textContent'] = asciiArt;
+                asciiOutput.style.fontSize = `${Math.max(2, Math.min(12, 1200 / resolution))}px`;
+            }
+
+            // --- Utility Functions ---
+            function copyToClipboard() { const tempTextArea = document.createElement('textarea'); const copySpan = copyButton.querySelector('span'); const originalText = copySpan.textContent; tempTextArea.value = colorToggle.checked ? asciiOutput.innerText : asciiOutput.textContent; document.body.appendChild(tempTextArea); tempTextArea.select(); try { document.execCommand('copy'); copySpan.textContent = 'Copied!'; setTimeout(() => { copySpan.textContent = originalText; }, 2000); } catch (err) { showError('Failed to copy text.'); } document.body.removeChild(tempTextArea); }
+            function downloadAscii() { const isColor = colorToggle.checked && filterSelect.value !== 'edge'; const fileExtension = isColor ? 'html' : 'txt'; const mimeType = isColor ? 'text/html' : 'text/plain'; let fileContent; if (isColor) { fileContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ASCII Art</title><style>body { background-color: #000; font-family: monospace; white-space: pre; line-height: 0.75; letter-spacing: -0.5px; font-size: ${asciiOutput.style.fontSize}; color: #fff; }</style></head><body>${asciiOutput.innerHTML}</body></html>`; } else { fileContent = asciiOutput.textContent; } const blob = new Blob([fileContent], { type: mimeType }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ascii-art.${fileExtension}`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
+            
+            function getSvgString() {
+                const styles = window.getComputedStyle(asciiOutput);
+                const width = asciiOutput.scrollWidth;
+                const height = asciiOutput.scrollHeight;
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:${styles.fontFamily};font-size:${styles.fontSize};line-height:${styles.lineHeight};letter-spacing:${styles.letterSpacing};color:${styles.color};background-color:${styles.backgroundColor};width:100%;height:100%;white-space:pre;">${asciiOutput.innerHTML}</div></foreignObject></svg>`;
+            }
+
+            function exportImage(format) {
+                const svgString = getSvgString();
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                const downloadAndRevoke = (downloadUrl, ext) => { const a = document.createElement('a'); a.href = downloadUrl; a.download = `ascii-art.${ext}`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(downloadUrl); };
+                if (format === 'svg') { downloadAndRevoke(url, 'svg'); } 
+                else if (format === 'png') {
+                    const img = new Image();
+                    img.onload = () => {
+                        const exportCanvas = document.createElement('canvas');
+                        exportCanvas.width = asciiOutput.scrollWidth;
+                        exportCanvas.height = asciiOutput.scrollHeight;
+                        const exportCtx = exportCanvas.getContext('2d');
+                        exportCtx.drawImage(img, 0, 0);
+                        const pngUrl = exportCanvas.toDataURL('image/png');
+                        downloadAndRevoke(pngUrl, 'png');
+                        URL.revokeObjectURL(url); // Revoke object URL after use
+                    };
+                    img.onerror = () => { showError('Failed to create PNG.'); URL.revokeObjectURL(url); };
+                    img.src = url;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
