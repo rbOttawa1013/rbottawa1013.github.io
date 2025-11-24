@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PERC Vettese Retirement Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Lucide Icons (UMD Build) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background-color: #f1f5f9; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800">
+
+    <div id="app" class="flex flex-col h-screen overflow-hidden">
+        
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 p-2 rounded-lg">
+                    <i data-lucide="calculator" class="text-white" size="24"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">Vettese PERC Simulator</h1>
+                    <p class="text-xs text-slate-500">Advanced Sustainable Spending Solver (v2.1)</p>
+                </div>
+            </div>
+            <button id="btn-export" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm" aria-label="Export Data to CSV">
+                <i data-lucide="save" size="18"></i>
+                <span class="hidden sm:inline">Export CSV</span>
+            </button>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            
+            <!-- Sidebar - Inputs -->
+            <div id="input-sidebar" class="w-full md:w-96 bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0 custom-scrollbar">
+                <!-- Inputs rendered by JS -->
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
+                
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 shrink-0 border-b border-slate-200">
+                    <div id="kpi-spend" class="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 border-l-4 border-l-emerald-600"></div>
+                    <div id="kpi-ratio" class="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 border-l-4 border-l-blue-600"></div>
+                    <div id="kpi-terminal" class="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 border-l-4 border-l-red-600"></div>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="h-12 border-b border-slate-200 bg-white flex items-center px-4 justify-start shrink-0 gap-4">
+                    <div class="flex gap-2">
+                        <button id="tab-chart" data-tab="chart" class="text-sm font-medium px-2 py-3 border-b-2 border-emerald-500 text-emerald-700 transition-colors">Income Layer Cake</button>
+                        <button id="tab-table" data-tab="table" class="text-sm font-medium px-2 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">Detailed Data</button>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div class="flex-1 p-6 overflow-hidden flex flex-col">
+                    <div class="flex-1 bg-white rounded-xl shadow-md p-4 flex flex-col overflow-hidden">
+                        <div class="mb-4 flex justify-between items-end">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">Projected Income Sources</h3>
+                                <p class="text-sm text-slate-500">Nominal dollars (indexed to inflation).</p>
+                            </div>
+                            <div class="text-xs text-right text-slate-400 italic">
+                                <span class="inline-block w-3 h-3 bg-orange-500 rounded-full mr-1"></span> Target Spend Line
+                            </div>
+                        </div>
+                        
+                        <!-- Chart View -->
+                        <div id="chart-view" class="flex-1 min-h-0 w-full" style="display: block;">
+                            <canvas id="incomeChart"></canvas>
+                        </div>
+                        
+                        <!-- Table View -->
+                        <div id="table-view" class="flex-1 overflow-auto border border-slate-200 rounded-lg" style="display: none;">
+                            <table class="w-full text-sm text-left text-slate-600">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0" id="table-header"></thead>
+                                <tbody class="divide-y divide-slate-100" id="table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================
+        // 1. CONFIGURATION
+        // =================================================================
+
+        const RRIF_MINIMUMS = {
+            71: 0.0528, 72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598, 77: 0.0617, 78: 0.0636, 79: 0.0658,
+            80: 0.0682, 81: 0.0708, 82: 0.0738, 83: 0.0771, 84: 0.0808, 85: 0.0851, 86: 0.0899, 87: 0.0955, 88: 0.1021, 89: 0.1099,
+            90: 0.1192, 91: 0.1306, 92: 0.1449, 93: 0.1634, 94: 0.1879, 95: 0.2000 
+        };
+
+        const COLORS = {
+            cpp: "#1a7032", oas: "#4cae64", db: "#9cd6ac", rrsp: "#7a1a46",
+            lif: "#b85c88", tfsa: "#f0c2d6", nts: "#0f5c66", rental: "#a6c9d1",
+            annuity: "#4a4a4a", sustainableSpend: "#F97316"
+        };
+        
+        let inputs = {
+            currentAge: 55, retirementAge: 65, lifeExpectancy: 95,
+            employmentIncome: 100000, salaryGrowth: 2.0,
+            cppAmount: 1364, oasAmount: 713,
+            dbPensionAnnual: 0, dbStartAge: 60, dbIndexing: 2.0,
+            rrspBalance: 300000, tfsaBalance: 120000, nonRegBalance: 80000, liraBalance: 0,
+            rrspContribution: 15000, tfsaContribution: 7000, nonRegContribution: 0,
+            rentalIncomeAnnual: 0,
+            investmentReturn: 5.5, inflationRate: 2.1,
+            deferGovt: true, useVetteseDefaults: true
+        };
+
+        let activeTab = 'chart';
+        let incomeChartInstance = null;
+        let lastSimulationData = [];
+        let openSections = { personal: true, assets: true, enhancements: true, assumptions: true };
+
+        // =================================================================
+        // 2. HELPERS
+        // =================================================================
+
+        const formatCurrency = (val) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
+
+        // Simplified progressive tax estimator (2024 Ontario proxy)
+        const estimateTax = (taxableIncome) => {
+            if (taxableIncome <= 15705) return 0;
+            let tax = 0;
+            if (taxableIncome > 55867) tax += (55867 - 15705) * 0.20;
+            else return (taxableIncome - 15705) * 0.20;
+            if (taxableIncome > 111733) tax += (111733 - 55867) * 0.30;
+            else return tax + (taxableIncome - 55867) * 0.30;
+            if (taxableIncome > 173205) tax += (173205 - 111733) * 0.43;
+            else return tax + (taxableIncome - 111733) * 0.43;
+            tax += (taxableIncome - 173205) * 0.48;
+            return tax;
+        };
+
+        // Approximate marginal rate for gross-up logic
+        const getMarginalRate = (income) => {
+            if (income < 55000) return 0.20;
+            if (income < 111000) return 0.30;
+            if (income < 173000) return 0.43;
+            return 0.48;
+        };
+
+        const calculateOASClawback = (netIncome, oasReceived) => {
+            const threshold = 90997;
+            if (netIncome <= threshold) return 0;
+            const clawback = (netIncome - threshold) * 0.15;
+            return Math.min(clawback, oasReceived);
+        };
+
+        // =================================================================
+        // 3. CORE LOGIC (REFACTORED)
+        // =================================================================
+
+        const computeFixedIncome = (age, inputs, inflationMult) => {
+            const { cppAmount, oasAmount, dbPensionAnnual, dbStartAge, dbIndexing, rentalIncomeAnnual, deferGovt, retirementAge } = inputs;
+            
+            // CPP
+            const cppStart = deferGovt ? Math.min(70, Math.max(60, retirementAge)) : Math.max(60, retirementAge);
+            let cpp = 0;
+            if (age >= cppStart) {
+                const monthsDiff = (cppStart - 65) * 12;
+                // Cap deferral benefit at 60 months (age 70)
+                const cappedMonths = Math.min(60, Math.max(-60, monthsDiff));
+                const adjustment = monthsDiff > 0 ? (1 + cappedMonths * 0.007) : (1 + cappedMonths * 0.006); 
+                cpp = (cppAmount * 12) * adjustment * inflationMult;
+            }
+
+            // OAS
+            const oasStart = deferGovt ? 70 : 65;
+            let oas = 0;
+            if (age >= oasStart) {
+                const monthsLate = Math.min(60, Math.max(0, (age - 65) * 12));
+                const adjustment = 1 + (monthsLate * 0.006);
+                oas = (oasAmount * 12) * adjustment * inflationMult;
+            }
+            if (age >= 75) oas *= 1.1; 
+
+            // DB Pension
+            let db = 0;
+            if (age >= dbStartAge) {
+                let base = dbPensionAnnual * Math.pow(1 + dbIndexing/100, age - dbStartAge);
+                // Bridge Benefit (Simple Assumption: Bridge = unreduced CPP)
+                let bridge = (age < 65) ? (cppAmount * 12 * inflationMult) : 0;
+                db = base + bridge;
+            }
+
+            const rental = rentalIncomeAnnual * inflationMult;
+            return { cpp, oas, db, rental, total: cpp + oas + db + rental };
+        };
+
+        const computeMandatoryWithdrawals = (age, balances) => {
+            // Fix: Correctly lookup RRIF factor or default to max age factor
+            const rrifFactor = age >= 71 ? (RRIF_MINIMUMS[age] ?? RRIF_MINIMUMS[95]) : 0;
+            
+            const minRRIF = balances.rrif * rrifFactor;
+            const minLIF = (balances.lira + balances.lif) * rrifFactor; // Simple LIF proxy
+            
+            return { minRRIF, minLIF, total: minRRIF + minLIF };
+        };
+
+        const applyWithdrawalWaterfall = (gap, balances, marginalRate) => {
+            let remainingGap = gap;
+            let withdrawals = { nts: 0, rrsp: 0, rrif: 0, tfsa: 0 };
+
+            // 1. Non-Registered (Tax Efficient Capital Gains)
+            if (remainingGap > 0 && balances.nonReg > 0) {
+                // Gross up needed: We need Net $X. 
+                // Tax is roughly on 50% of withdrawal at marginal rate.
+                // Net = Gross - (Gross * 0.5 * Marginal) => Gross = Net / (1 - 0.5*Marginal)
+                const inclusionRate = 0.5;
+                const grossNeeded = remainingGap / (1 - (inclusionRate * marginalRate));
+                const amount = Math.min(balances.nonReg, grossNeeded);
+                
+                withdrawals.nts = amount;
+                // Net effect on gap
+                const taxPaidApprox = amount * inclusionRate * marginalRate;
+                remainingGap -= (amount - taxPaidApprox); 
+            }
+
+            // 2. Excess RRSP/RRIF (Taxable) - "Meltdown" Strategy
+            // Prioritize depleting taxable accounts to bridge gap before touching tax-free TFSA
+            if (remainingGap > 0) {
+                const grossNeeded = remainingGap / (1 - marginalRate); // Standard gross-up
+                
+                // Check RRSP (Pre-71)
+                if (balances.rrsp > 0) {
+                    const amount = Math.min(balances.rrsp, grossNeeded);
+                    withdrawals.rrsp = amount;
+                    remainingGap -= (amount * (1 - marginalRate));
+                }
+                
+                // Check Excess RRIF (Post-71) - available above minimums?
+                // Note: 'balances.rrif' here assumes minimums already deducted in main loop
+                if (remainingGap > 0 && balances.rrif > 0) {
+                    const amount = Math.min(balances.rrif, remainingGap / (1 - marginalRate));
+                    withdrawals.rrif = amount;
+                    remainingGap -= (amount * (1 - marginalRate));
+                }
+            }
+
+            // 3. TFSA (Tax Free)
+            if (remainingGap > 0 && balances.tfsa > 0) {
+                const amount = Math.min(balances.tfsa, remainingGap);
+                withdrawals.tfsa = amount;
+                remainingGap -= amount;
+            }
+
+            return withdrawals;
+        };
+
+        const calculateProjection = (inputs, targetSpendReal) => {
+            const annualData = [];
+            
+            // Overrides
+            const rReturn = inputs.useVetteseDefaults ? 5.5 : inputs.investmentReturn;
+            const inflation = inputs.useVetteseDefaults ? 2.1 : inputs.inflationRate;
+            const growthFactor = 1 + rReturn / 100;
+            const inflationFactor = 1 + inflation / 100;
+
+            // State
+            let bal = {
+                rrsp: parseFloat(inputs.rrspBalance),
+                rrif: 0,
+                tfsa: parseFloat(inputs.tfsaBalance),
+                nonReg: parseFloat(inputs.nonRegBalance),
+                lira: parseFloat(inputs.liraBalance),
+                lif: 0
+            };
+
+            let employmentIncome = inputs.employmentIncome;
+
+            for (let age = inputs.currentAge; age <= inputs.lifeExpectancy; age++) {
+                const isRetired = age >= inputs.retirementAge;
+                const yearIndex = age - inputs.currentAge;
+                
+                // Optimization: Pre-calculate multipliers
+                const inflationMult = Math.pow(inflationFactor, yearIndex);
+
+                // --- 1. Contributions (Pre-Retirement) ---
+                if (!isRetired) {
+                    bal.rrsp += parseFloat(inputs.rrspContribution);
+                    bal.tfsa += parseFloat(inputs.tfsaContribution);
+                    bal.nonReg += parseFloat(inputs.nonRegContribution);
+                    employmentIncome *= (1 + inputs.salaryGrowth/100); // Grow salary
+                }
+
+                // --- 2. Growth ---
+                bal.rrsp *= growthFactor;
+                bal.rrif *= growthFactor;
+                bal.tfsa *= growthFactor;
+                bal.nonReg *= growthFactor;
+                bal.lira *= growthFactor;
+                bal.lif *= growthFactor;
+
+                // --- 3. Conversions ---
+                if (age === 71) {
+                    bal.rrif += bal.rrsp;
+                    bal.rrsp = 0;
+                    bal.lif += bal.lira;
+                    bal.lira = 0;
+                }
+
+                // --- 4. Income & Withdrawals ---
+                const fixed = computeFixedIncome(age, inputs, inflationMult);
+                
+                let cashFlow = { 
+                    fixed: fixed.total, 
+                    mandatory: 0, 
+                    discretionary: 0,
+                    tax: 0,
+                    clawback: 0 
+                };
+                
+                let withdrawals = { rrsp: 0, rrif: 0, lif: 0, tfsa: 0, nts: 0 };
+
+                if (isRetired) {
+                    const nominalSpend = targetSpendReal * inflationMult;
+                    
+                    // Mandatory
+                    const mandatory = computeMandatoryWithdrawals(age, bal);
+                    bal.rrif -= mandatory.minRRIF; // Deduct immediately
+                    bal.lif -= mandatory.minLIF;   // Deduct immediately
+                    withdrawals.rrif += mandatory.minRRIF;
+                    withdrawals.lif += mandatory.minLIF;
+
+                    // Initial Tax Estimate
+                    let taxableIncome = fixed.total + mandatory.total; 
+                    let marginalRate = getMarginalRate(taxableIncome);
+                    let taxEst = estimateTax(taxableIncome);
+                    
+                    let netIncomeSoFar = (fixed.total + mandatory.total) - taxEst;
+                    let gap = Math.max(0, nominalSpend - netIncomeSoFar);
+
+                    // Waterfall
+                    const discretionary = applyWithdrawalWaterfall(gap, bal, marginalRate);
+                    
+                    // Deduct Discretionary
+                    bal.nonReg -= discretionary.nts;
+                    bal.rrsp -= discretionary.rrsp;
+                    bal.rrif -= discretionary.rrif; // Excess
+                    bal.tfsa -= discretionary.tfsa;
+                    
+                    // Update Withdrawals object for display
+                    withdrawals.nts += discretionary.nts;
+                    withdrawals.rrsp += discretionary.rrsp;
+                    withdrawals.rrif += discretionary.rrif;
+                    withdrawals.tfsa += discretionary.tfsa;
+
+                    // Final Tax Calculation
+                    let taxableNonReg = withdrawals.nts * 0.5; // 50% inclusion
+                    let finalTaxable = fixed.total + withdrawals.rrsp + withdrawals.rrif + withdrawals.lif + taxableNonReg;
+                    
+                    cashFlow.clawback = calculateOASClawback(finalTaxable, fixed.oas);
+                    cashFlow.tax = estimateTax(finalTaxable) + cashFlow.clawback;
+                } else {
+                    cashFlow.tax = estimateTax(employmentIncome);
+                }
+
+                // --- 5. Store Data ---
+                const totalAssets = bal.rrsp + bal.rrif + bal.tfsa + bal.nonReg + bal.lira + bal.lif;
+                
+                annualData.push({
+                    age,
+                    nominalSpend: isRetired ? (targetSpendReal * inflationMult) : 0,
+                    employmentIncome: isRetired ? 0 : employmentIncome,
+                    ...fixed,
+                    rrspWithdrawal: withdrawals.rrsp + withdrawals.rrif,
+                    lifWithdrawal: withdrawals.lif,
+                    tfsaWithdrawal: withdrawals.tfsa,
+                    ntsWithdrawal: withdrawals.nts,
+                    taxesPaid: cashFlow.tax,
+                    oasClawback: cashFlow.clawback,
+                    totalAssets: Math.max(0, totalAssets)
+                });
+
+                // Check for bankruptcy (Stop condition)
+                // Only break if strictly retired and assets are depleted to allow analyzing "when do I run out"
+                if (isRetired && totalAssets < 1) {
+                    // continue loop to show 0 assets, or break? 
+                    // Vettese model usually runs to 95 to show shortfall. 
+                    // We will let it run but assets stay at 0 (handled by Math.max above)
+                }
+            }
+
+            const finalWealth = annualData[annualData.length - 1].totalAssets;
+            return { finalWealth, annualData };
+        };
+
+        const iterativeSolver = (inputs) => {
+            let lowerBound = 0;
+            // Improved Upper Bound: Total Capital / Years + Fixed Income
+            const totalCap = parseFloat(inputs.rrspBalance) + parseFloat(inputs.tfsaBalance) + parseFloat(inputs.nonRegBalance);
+            const years = inputs.lifeExpectancy - inputs.retirementAge;
+            const estFixed = (inputs.cppAmount*12) + (inputs.oasAmount*12) + inputs.dbPensionAnnual;
+            let upperBound = (totalCap / Math.max(1, years)) * 2 + estFixed + 100000; // Generous upper bound
+            
+            let bestSpend = 0;
+
+            for (let i = 0; i < 30; i++) {
+                const testSpend = (lowerBound + upperBound) / 2;
+                if (Math.abs(upperBound - lowerBound) < 5) break; // Convergence tolerance
+
+                const { finalWealth } = calculateProjection(inputs, testSpend);
+
+                if (finalWealth > 1000) {
+                    lowerBound = testSpend; // Too much money left, spend more
+                    bestSpend = testSpend;
+                } else if (finalWealth < -1000) {
+                    upperBound = testSpend; // Ran out, spend less
+                } else {
+                    bestSpend = testSpend;
+                    break; // Close enough
+                }
+            }
+            return bestSpend;
+        };
+
+        // =================================================================
+        // 4. UI RENDERING & EVENT HANDLERS
+        // =================================================================
+
+        const renderInputs = () => {
+            const sidebar = document.getElementById('input-sidebar');
+            sidebar.innerHTML = ''; // Clear
+            
+            const appendHeader = (text) => {
+                const h = document.createElement('div');
+                h.className = "p-4 border-b border-slate-100";
+                h.innerHTML = `<h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">${text}</h2>`;
+                sidebar.appendChild(h);
+            }
+            
+            appendHeader("Plan Parameters");
+
+            const sections = [
+                { id: 'personal', title: 'Profile & Income', icon: 'user', inputs: getPersonalInputs() },
+                { id: 'assets', title: 'Financial Assets', icon: 'pie-chart', inputs: getAssetInputs() },
+                { id: 'enhancements', title: 'Enhancements', icon: 'trending-up', inputs: getEnhancementInputs() },
+                { id: 'assumptions', title: 'Assumptions', icon: 'settings', inputs: getAssumptionInputs() }
+            ];
+
+            sections.forEach(section => {
+                const btn = document.createElement('button');
+                btn.className = "w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors border-b border-slate-200 text-left";
+                btn.setAttribute('aria-expanded', openSections[section.id]);
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-blue-100 text-blue-700 rounded-lg"><i data-lucide="${section.icon}" size="18"></i></div>
+                        <span class="font-semibold text-slate-700">${section.title}</span>
+                    </div>
+                    <i data-lucide="${openSections[section.id] ? 'chevron-up' : 'chevron-down'}" size="18" class="text-slate-400"></i>
+                `;
+                btn.addEventListener('click', () => {
+                    openSections[section.id] = !openSections[section.id];
+                    renderInputs(); // Re-render entire sidebar (simple approach)
+                });
+                sidebar.appendChild(btn);
+
+                const content = document.createElement('div');
+                content.className = `p-4 space-y-2 ${openSections[section.id] ? 'block' : 'hidden'}`;
+                content.innerHTML = section.inputs;
+                sidebar.appendChild(content);
+            });
+
+            // Attach listeners to inputs *after* rendering string HTML
+            document.querySelectorAll('#input-sidebar input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const val = e.target.type === 'checkbox' ? e.target.checked : parseFloat(e.target.value);
+                    inputs[e.target.name] = val;
+                    if(e.target.name === 'useVetteseDefaults') renderInputs(); // Re-render to disable fields
+                    updateModel();
+                });
+            });
+
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        // Input HTML Generators (Sanitized string building)
+        const getPersonalInputs = () => `
+            ${inputHtml('currentAge', 'Current Age', inputs.currentAge, '', '', 18, 90)}
+            ${inputHtml('retirementAge', 'Retirement Age', inputs.retirementAge, '', '', inputs.currentAge, 75)}
+            ${inputHtml('lifeExpectancy', 'Terminal Age', inputs.lifeExpectancy, '', '', 80, 105)}
+            ${inputHtml('employmentIncome', 'Gross Salary', inputs.employmentIncome, '$')}
+            <div class="h-px bg-slate-200 my-2"></div>
+            <h4 class="text-xs font-bold text-slate-500 mb-2">Guaranteed Income Bases</h4>
+            ${inputHtml('dbPensionAnnual', 'DB Pension (Annual)', inputs.dbPensionAnnual, '$')}
+            ${inputHtml('dbStartAge', 'DB Start Age', inputs.dbStartAge)}
+        `;
+
+        const getAssetInputs = () => `
+            ${inputHtml('rrspBalance', 'RRSP/RRIF Balance', inputs.rrspBalance, '$')}
+            ${inputHtml('tfsaBalance', 'TFSA Balance', inputs.tfsaBalance, '$')}
+            ${inputHtml('nonRegBalance', 'Non-Reg Balance', inputs.nonRegBalance, '$')}
+            <div class="h-px bg-slate-200 my-2"></div>
+            <h4 class="text-xs font-bold text-slate-500 mb-2">Annual Savings</h4>
+            ${inputHtml('rrspContribution', 'RRSP Savings/Yr', inputs.rrspContribution, '$')}
+            ${inputHtml('tfsaContribution', 'TFSA Savings/Yr', inputs.tfsaContribution, '$')}
+            ${inputHtml('nonRegContribution', 'Non-Reg Savings/Yr', inputs.nonRegContribution, '$')}
+        `;
+
+        const getEnhancementInputs = () => `
+            <div class="flex items-center gap-3 mb-4 p-2 bg-emerald-50 rounded border border-emerald-100">
+                <input type="checkbox" name="deferGovt" ${inputs.deferGovt ? 'checked' : ''} class="rounded text-emerald-600 w-4 h-4">
+                <div>
+                    <div class="text-sm font-bold text-slate-700">Defer CPP/OAS to 70</div>
+                    <div class="text-xs text-slate-500">Bridge with RRSP assets</div>
+                </div>
+            </div>
+            ${inputHtml('cppAmount', 'Max Monthly CPP', inputs.cppAmount, '$')}
+            ${inputHtml('oasAmount', 'Max Monthly OAS', inputs.oasAmount, '$')}
+        `;
+
+        const getAssumptionInputs = () => `
+            <div class="flex items-center gap-3 mb-4 p-2 bg-blue-50 rounded border border-blue-100">
+                <input type="checkbox" name="useVetteseDefaults" ${inputs.useVetteseDefaults ? 'checked' : ''} class="rounded text-blue-600 w-4 h-4">
+                <div>
+                    <div class="text-sm font-bold text-slate-700">Use Vettese Defaults</div>
+                    <div class="text-xs text-slate-500">5.5% Return, 2.1% Inflation</div>
+                </div>
+            </div>
+            ${inputHtml('investmentReturn', 'Investment Return', inputs.investmentReturn, '', '%', 0, 15, inputs.useVetteseDefaults)}
+            ${inputHtml('inflationRate', 'Inflation Rate', inputs.inflationRate, '', '%', 0, 10, inputs.useVetteseDefaults)}
+        `;
+
+        const inputHtml = (name, label, value, prefix='', suffix='', min=0, max=null, disabled=false) => `
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-500 uppercase mb-1">${label}</label>
+                <div class="relative">
+                    ${prefix ? `<span class="absolute left-3 top-2 text-slate-400 text-sm">${prefix}</span>` : ''}
+                    <input type="number" name="${name}" value="${value}" min="${min}" ${max ? `max="${max}"` : ''} ${disabled ? 'disabled' : ''}
+                        class="w-full py-2 bg-slate-50 border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 text-sm ${prefix ? 'pl-8' : 'pl-3'} ${suffix ? 'pr-8' : 'pr-3'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}">
+                    ${suffix ? `<span class="absolute right-3 top-2 text-slate-400 text-sm">${suffix}</span>` : ''}
+                </div>
+            </div>
+        `;
+
+        const updateModel = () => {
+            const bestSpend = iterativeSolver(inputs);
+            const { annualData } = calculateProjection(inputs, bestSpend);
+            const retirementData = annualData.filter(d => d.age >= inputs.retirementAge);
+            
+            lastSimulationData = retirementData;
+            
+            renderKPIs(bestSpend, retirementData);
+            if (activeTab === 'chart') renderChart(retirementData);
+            else renderTable(retirementData);
+        };
+
+        // --- Visualizations ---
+
+        const renderKPIs = (spend, data) => {
+            const last = data[data.length - 1] || {};
+            const finalWealth = last.totalAssets || 0;
+            
+            document.getElementById('kpi-spend').innerHTML = `
+                <div class="p-3 bg-emerald-100 rounded-full text-emerald-700"><i data-lucide="dollar-sign"></i></div>
+                <div><p class="text-xs font-bold text-slate-500 uppercase">Max Annual Spend ($S)</p><p class="text-xl font-bold">${formatCurrency(spend)}</p></div>`;
+            
+            document.getElementById('kpi-terminal').innerHTML = `
+                <div class="p-3 bg-red-100 rounded-full text-red-700"><i data-lucide="user"></i></div>
+                <div><p class="text-xs font-bold text-slate-500 uppercase">Terminal Wealth</p><p class="text-xl font-bold">${formatCurrency(finalWealth)}</p></div>`;
+            
+            if(window.lucide) window.lucide.createIcons();
+        };
+
+        const renderChart = (data) => {
+            const ctx = document.getElementById('incomeChart').getContext('2d');
+            if (incomeChartInstance) incomeChartInstance.destroy();
+
+            incomeChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.age),
+                    datasets: [
+                        { label: 'CPP', data: data.map(d => d.cpp), backgroundColor: COLORS.cpp, stack: '1' },
+                        { label: 'OAS', data: data.map(d => d.oas), backgroundColor: COLORS.oas, stack: '1' },
+                        { label: 'DB Pension', data: data.map(d => d.db), backgroundColor: COLORS.db, stack: '1' },
+                        { label: 'Non-Reg', data: data.map(d => d.ntsWithdrawal), backgroundColor: COLORS.nts, stack: '1' },
+                        { label: 'RRSP/RRIF', data: data.map(d => d.rrspWithdrawal), backgroundColor: COLORS.rrsp, stack: '1' },
+                        { label: 'TFSA', data: data.map(d => d.tfsaWithdrawal), backgroundColor: COLORS.tfsa, stack: '1' },
+                        { 
+                            type: 'line', label: 'Target Spend', data: data.map(d => d.nominalSpend),
+                            borderColor: COLORS.sustainableSpend, borderWidth: 2, borderDash: [5, 5], pointRadius: 0 
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+            });
+        };
+
+        const renderTable = (data) => {
+            const tbody = document.getElementById('table-body');
+            const thead = document.getElementById('table-header');
+            thead.innerHTML = `<tr><th class="p-2">Age</th><th class="p-2">Target</th><th class="p-2">Fixed Inc</th><th class="p-2">Drawdown</th><th class="p-2">Tax</th><th class="p-2 text-right">Assets</th></tr>`;
+            tbody.innerHTML = data.map(row => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100 text-sm">
+                    <td class="p-2 font-bold">${row.age}</td>
+                    <td class="p-2 text-slate-600">${formatCurrency(row.nominalSpend)}</td>
+                    <td class="p-2 text-emerald-600">${formatCurrency(row.cpp + row.oas + row.db)}</td>
+                    <td class="p-2 text-blue-600">${formatCurrency(row.rrspWithdrawal + row.tfsaWithdrawal + row.ntsWithdrawal)}</td>
+                    <td class="p-2 text-red-500">-${formatCurrency(row.taxesPaid)}</td>
+                    <td class="p-2 text-right font-mono">${formatCurrency(row.totalAssets)}</td>
+                </tr>
+            `).join('');
+        };
+
+        // Export Logic
+        document.getElementById('btn-export').addEventListener('click', () => {
+            if (!lastSimulationData.length) return;
+            const header = Object.keys(lastSimulationData[0]).join(',');
+            const rows = lastSimulationData.map(row => Object.values(row).join(','));
+            const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "perc_plan.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Tabs
+        const setTab = (t) => {
+            activeTab = t;
+            document.getElementById('chart-view').style.display = t === 'chart' ? 'block' : 'none';
+            document.getElementById('table-view').style.display = t === 'table' ? 'block' : 'none';
+            document.getElementById('tab-chart').className = t === 'chart' ? "text-sm font-medium px-2 py-3 border-b-2 border-emerald-500 text-emerald-700" : "text-sm font-medium px-2 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700";
+            document.getElementById('tab-table').className = t === 'table' ? "text-sm font-medium px-2 py-3 border-b-2 border-emerald-500 text-emerald-700" : "text-sm font-medium px-2 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700";
+            updateModel();
+        };
+        document.getElementById('tab-chart').addEventListener('click', () => setTab('chart'));
+        document.getElementById('tab-table').addEventListener('click', () => setTab('table'));
+
+        // Init
+        window.addEventListener('DOMContentLoaded', () => {
+            renderInputs();
+            updateModel();
+        });
+
+    </script>
+</body>
+</html>
