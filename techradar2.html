@@ -1,729 +1,84 @@
-<<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en-CA">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Technology Radar</title>
-    <style>
-        :root {
-            --bg-color: #f3f4f6;
-            --card-bg-color: #ffffff;
-            --text-color: #1f2937;
-            --text-light-color: #6b7280;
-            --border-color: #e5e7eb;
-            --accent-color: #4f46e5;
-            --accent-hover-color: #4338ca;
-            --green-color: #16a34a;
-            --green-hover-color: #15803d;
-            --blue-color: #2563eb;
-            --blue-hover-color: #1d4ed8;
-            --red-color: #ef4444;
-            --red-hover-color: #dc2626;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 1.5rem;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        .container {
-            max-width: 1280px;
-            margin: auto;
-            display: grid;
-            gap: 1.5rem;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .header-meta-container .app-title {
-            font-size: 1.875rem;
-            font-weight: bold;
-            margin: 0;
-        }
-        .header-meta-container .app-meta {
-            font-size: 0.875rem;
-            color: var(--text-light-color);
-        }
-        #lang-toggle-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 0.375rem;
-            font-weight: 600;
-            cursor: pointer;
-            background-color: var(--card-bg-color);
-            color: var(--accent-color);
-            min-width: 50px;
-            text-align: center;
-        }
-        main {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-            align-items: start;
-        }
-        .card {
-            background-color: var(--card-bg-color);
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-        }
-        .card-title {
-            text-align: center;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 1rem;
-        }
-        #radar-title {
-            font-size: 2.25rem;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 1rem;
-            padding: 0.25rem;
-            cursor: text;
-        }
-        #radar-title:focus {
-            outline: 2px solid var(--accent-color);
-            border-radius: 0.25rem;
-        }
-        #radar-container {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1 / 1;
-        }
-        #radar-svg {
-            width: 100%;
-            height: 100%;
-        }
-        .ring, .quadrant-line {
-            stroke: var(--border-color);
-            stroke-width: 1;
-            fill: none;
-        }
-        .quadrant-label {
-            font-size: 16px;
-            font-weight: bold;
-            fill: var(--text-light-color);
-            text-anchor: middle;
-        }
-         .ring-label {
-            font-size: 11px;
-            fill: #9ca3af;
-            text-anchor: middle;
-        }
-        .blip-dot {
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        .blip-dot:hover {
-            r: 10;
-        }
-        .blip-dot.selected {
-            stroke: var(--accent-color);
-            stroke-width: 3px;
-        }
-        .blip-label {
-            font-size: 10px;
-            fill: var(--text-color);
-            pointer-events: none;
-        }
-        .blip-tooltip {
-            position: absolute;
-            background-color: rgba(0,0,0,0.8);
-            color: white;
-            padding: 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.875rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 100;
-        }
-        
-        .form-group { margin-bottom: 1rem; }
-        .form-group label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            border: 1px solid var(--border-color);
-            font-family: inherit;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            justify-content: space-between;
-        }
-        button {
-            padding: 0.5rem 1rem;
-            border: 1px solid transparent;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 0.875rem;
-            color: white;
-        }
-        .btn-primary { background-color: var(--accent-color); }
-        .btn-primary:hover { background-color: var(--accent-hover-color); }
-        .btn-success { background-color: var(--green-color); }
-        .btn-success:hover { background-color: var(--green-hover-color); }
-        .btn-info { background-color: var(--blue-color); }
-        .btn-info:hover { background-color: var(--blue-hover-color); }
-        .btn-danger { background-color: var(--red-color); }
-        .btn-danger:hover { background-color: var(--red-hover-color); }
-        
-        #blips-list-container .card-title { margin-bottom: 1rem; }
-        #blips-list {
-            list-style: none;
-            padding: 0; margin: 0;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        #blips-list li {
-            padding: 0.75rem;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            border: 1px solid transparent;
-            border-bottom: 1px solid var(--border-color);
-        }
-        #blips-list li:last-child { border-bottom: none; }
-        #blips-list li:hover { background-color: var(--bg-color); }
-        #blips-list li.selected {
-            background-color: #e0e7ff;
-            border-color: var(--accent-color);
-        }
-        #blips-list .blip-item-name {
-            font-weight: 600;
-        }
-        #blips-list .blip-item-description {
-            font-size: 0.9rem;
-            color: var(--text-light-color);
-            margin-top: 0.25rem;
-        }
-        #blips-list .blip-item-meta {
-            font-size: 0.8rem;
-            color: var(--text-light-color);
-            margin-top: 0.5rem;
-        }
-
-        #legend, #io-section { margin-top: 1.5rem; }
-        #legend .legend-item { display: flex; align-items: center; gap: 0.5rem; }
-        @media (max-width: 900px) {
-            main { grid-template-columns: 1fr; }
-            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technology Radar</title>
+  <style>
+    :root { --bg:#f8fafc; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#cbd5e1; --accent:#2563eb; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+    header { background:#0f172a; color:white; padding:1.5rem; }
+    main { max-width:1200px; margin:auto; padding:1rem; display:grid; gap:1rem; grid-template-columns:1.3fr .7fr; }
+    .card { background:var(--card); border:1px solid #e2e8f0; border-radius:1rem; box-shadow:0 10px 30px rgba(15,23,42,.08); padding:1rem; }
+    #radarWrap { position:relative; aspect-ratio:1/1; min-height:420px; }
+    svg { width:100%; height:100%; }
+    label { display:grid; gap:.3rem; font-weight:700; margin:.7rem 0; }
+    input, select, textarea, button { font:inherit; border-radius:.55rem; border:1px solid #cbd5e1; padding:.6rem; }
+    button { cursor:pointer; font-weight:800; border:0; background:var(--accent); color:white; }
+    button.secondary { background:#475569; }
+    button.danger { background:#b91c1c; }
+    table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    th, td { padding:.55rem; border-bottom:1px solid #e2e8f0; text-align:left; }
+    .pill { display:inline-block; border-radius:999px; padding:.18rem .55rem; background:#dbeafe; color:#1e40af; font-weight:800; font-size:.78rem; }
+    @media (max-width:900px){ main{grid-template-columns:1fr;} }
+  </style>
 </head>
 <body>
+  <header>
+    <p style="margin:0;color:#bfdbfe;text-transform:uppercase;letter-spacing:.08em;font-size:.8rem">Local-first portfolio tool</p>
+    <h1 style="margin:.25rem 0 0">Technology Radar</h1>
+    <p style="margin:.5rem 0 0;color:#e2e8f0;max-width:75ch">Track technologies across quadrants and maturity rings. Data is saved in this browser and can be exported as JSON.</p>
+  </header>
 
-    <div class="container">
-        <header>
-            <div class="header-meta-container">
-                <h1 class="app-title">Tech Radar App</h1>
-                <p id="app-meta" class="app-meta"></p>
-            </div>
-            <button id="lang-toggle-btn">EN</button>
-        </header>
+  <main>
+    <section class="card" aria-labelledby="radarTitle">
+      <h2 id="radarTitle">Radar view</h2>
+      <div id="radarWrap"><svg id="radar" viewBox="0 0 800 800" role="img" aria-label="Technology radar diagram"></svg></div>
+    </section>
 
-        <main>
-            <section class="radar-visualization">
-                <div class="card">
-                    <h1 id="radar-title" contenteditable="true"></h1>
-                    <div id="radar-container">
-                        <svg id="radar-svg"></svg>
-                        <div id="blip-tooltip" class="blip-tooltip"></div>
-                    </div>
-                     <div id="legend" class="card">
-                        <h3 class="card-title" data-i18n="legend"></h3>
-                        <div id="status-legend-content" style="display: flex; gap: 1rem; flex-wrap: wrap;"></div>
-                    </div>
-                </div>
-            </section>
-            
-            <aside class="editor-column">
-                <div class="blip-editor card">
-                    <h2 class="card-title" data-i18n="blipEditor"></h2>
-                    <form id="blip-form">
-                        <!-- Core Fields -->
-                        <div class="form-group">
-                            <label for="blip-name" data-i18n="blipName"></label>
-                            <input type="text" id="blip-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="blip-description" data-i18n="description"></label>
-                            <textarea id="blip-description" rows="2"></textarea>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="blip-quadrant" data-i18n="quadrant"></label>
-                                <select id="blip-quadrant"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="blip-ring" data-i18n="ring"></label>
-                                <select id="blip-ring"></select>
-                            </div>
-                        </div>
-                        <!-- Extended Fields -->
-                        <div class="form-group">
-                            <label for="blip-commentary" data-i18n="commentary"></label>
-                            <textarea id="blip-commentary" rows="2"></textarea>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="blip-status" data-i18n="status"></label>
-                                <select id="blip-status"></select>
-                            </div>
-                             <div class="form-group">
-                                <label for="blip-movement" data-i18n="movement"></label>
-                                <input type="text" id="blip-movement">
-                            </div>
-                        </div>
-                         <div class="form-grid">
-                            <div class="form-group">
-                                <label for="blip-firstAppeared" data-i18n="firstAppeared"></label>
-                                <input type="text" id="blip-firstAppeared" placeholder="e.g., 2025.1">
-                            </div>
-                             <div class="form-group">
-                                <label for="blip-tags" data-i18n="tags"></label>
-                                <input type="text" id="blip-tags" placeholder="cloud, testing...">
-                            </div>
-                        </div>
-                         <div class="form-grid">
-                            <div class="form-group">
-                                <label for="blip-riskLevel" data-i18n="riskLevel"></label>
-                                <input type="text" id="blip-riskLevel">
-                            </div>
-                             <div class="form-group">
-                                <label for="blip-license" data-i18n="license"></label>
-                                <input type="text" id="blip-license">
-                            </div>
-                        </div>
-                         <div class="form-group">
-                            <label for="blip-owner" data-i18n="owner"></label>
-                            <input type="text" id="blip-owner">
-                        </div>
-                         <div class="form-group">
-                            <label for="blip-resources" data-i18n="resources"></label>
-                            <input type="text" id="blip-resources" placeholder="https://...">
-                        </div>
-                        
-                        <div class="button-group">
-                            <button type="submit" class="btn-primary" data-i18n="saveBlip"></button>
-                            <button type="button" id="new-blip-btn" class="btn-success" data-i18n="addNew"></button>
-                            <button type="button" id="delete-blip-btn" class="btn-danger" data-i18n="delete"></button>
-                        </div>
-                    </form>
-                </div>
-                <div id="io-section" class="card">
-                    <h3 class="card-title" data-i18n="importExport"></h3>
-                    <div class="button-group" style="justify-content: center;">
-                        <button id="import-json-btn" class="btn-info" data-i18n="importJSON"></button>
-                        <input type="file" id="json-file-input" accept=".json" style="display:none;">
-                        <button id="export-json-btn" class="btn-info" data-i18n="exportJSON"></button>
-                        <button id="import-csv-btn" class="btn-info" data-i18n="importCSV"></button>
-                        <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none;">
-                        <button id="export-csv-btn" class="btn-info" data-i18n="exportCSV"></button>
-                        <button id="export-svg-btn" class="btn-info" data-i18n="exportSVG"></button>
-                        <button id="export-png-btn" class="btn-info" data-i18n="exportPNG"></button>
-                    </div>
-                </div>
-            </aside>
-        </main>
-        
-        <section id="blips-list-container" class="card">
-            <h2 class="card-title" data-i18n="blipsList"></h2>
-            <ul id="blips-list"></ul>
-        </section>
+    <aside class="card" aria-labelledby="editorTitle">
+      <h2 id="editorTitle">Blip editor</h2>
+      <form id="blipForm">
+        <label>Name <input id="name" required value="WebAssembly" /></label>
+        <label>Description <textarea id="description" rows="3">High-performance browser and edge runtime option.</textarea></label>
+        <label>Quadrant <select id="quadrant"><option>Techniques</option><option>Tools</option><option selected>Platforms</option><option>Languages & Frameworks</option></select></label>
+        <label>Ring <select id="ring"><option selected>Adopt</option><option>Trial</option><option>Assess</option><option>Hold</option></select></label>
+        <label>Status <select id="status"><option>New</option><option selected>Changed</option><option>Stable</option><option>Deprecated</option></select></label>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">
+          <button type="submit">Save blip</button><button type="button" id="newBtn" class="secondary">New</button><button type="button" id="deleteBtn" class="danger">Delete selected</button>
+        </div>
+      </form>
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:1rem 0" />
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem"><button id="exportBtn" type="button">Export JSON</button><label style="margin:0"><span class="pill">Import JSON</span><input id="importFile" type="file" accept="application/json,.json" style="position:absolute;left:-9999px" /></label></div>
+    </aside>
 
-    </div>
+    <section class="card" style="grid-column:1/-1" aria-labelledby="listTitle">
+      <h2 id="listTitle">Blips</h2>
+      <table><thead><tr><th>Name</th><th>Quadrant</th><th>Ring</th><th>Status</th><th>Description</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+  </main>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-
-        const i18n = {
-            en: {
-                blipEditor: "Blip Editor", blipName: "Name / Title", quadrant: "Quadrant", ring: "Ring",
-                description: "Description", commentary: "Commentary / Rationale", firstAppeared: "First Appeared",
-                movement: "Moved / Status Change", tags: "Tags", riskLevel: "Risk Level", license: "License / Vendor",
-                owner: "Owner / Contributor", resources: "Linked Resources", status: "Status",
-                saveBlip: "Save Blip", addNew: "Add New", delete: "Delete", importExport: "Import / Export",
-                importJSON: "Import JSON", exportJSON: "Export JSON", importCSV: "Import CSV", exportCSV: "Export CSV",
-                exportSVG: "Export SVG", exportPNG: "Export PNG", blipsList: "Blips List", legend: "Legend",
-                new: "New", changed: "Changed", deprecated: "Deprecated", untitledRadar: "Untitled Radar",
-                confirmDelete: "Are you sure you want to delete this blip?", csvParseError: "Error parsing CSV file. Please check the format.",
-            },
-            fr: {
-                blipEditor: "Éditeur de Blip", blipName: "Nom / Titre", quadrant: "Quadrant", ring: "Cercle",
-                description: "Description", commentary: "Commentaire / Justification", firstAppeared: "Première apparition",
-                movement: "Mouvement / Changement de statut", tags: "Étiquettes", riskLevel: "Niveau de risque",
-                license: "Licence / Fournisseur", owner: "Propriétaire / Contributeur", resources: "Ressources liées",
-                status: "Statut", saveBlip: "Sauvegarder", addNew: "Ajouter", delete: "Supprimer",
-                importExport: "Importer / Exporter", importJSON: "Importer JSON", exportJSON: "Exporter JSON",
-                importCSV: "Importer CSV", exportCSV: "Exporter CSV", exportSVG: "Exporter SVG", exportPNG: "Exporter PNG",
-                blipsList: "Liste des Blips", legend: "Légende", new: "Nouveau", changed: "Modifié", deprecated: "Obsolète",
-                untitledRadar: "Radar sans titre", confirmDelete: "Êtes-vous sûr de vouloir supprimer ce blip ?",
-                csvParseError: "Erreur lors de l'analyse du fichier CSV. Veuillez vérifier le format.",
-            }
-        };
-
-        let currentLang = 'en';
-        const langToggleBtn = document.getElementById('lang-toggle-btn');
-        langToggleBtn.addEventListener('click', () => {
-            currentLang = (currentLang === 'en') ? 'fr' : 'en';
-            langToggleBtn.textContent = currentLang.toUpperCase();
-            applyTranslations();
-        });
-
-        const applyTranslations = () => {
-            document.documentElement.lang = currentLang;
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (i18n[currentLang][key]) el.textContent = i18n[currentLang][key];
-            });
-            updateStatusLegend(); populateSelects(); renderBlipsList(); updateRadarMeta();
-        };
-
-        let radarData = {};
-        let selectedBlipId = null;
-
-        const defaultRadarData = {
-            title: "Technology Radar", author: "Innovation Team", version: "2025.1",
-            created: new Date().toISOString().slice(0, 10), modified: new Date().toISOString().slice(0, 10),
-            quadrants: ["Techniques", "Tools", "Platforms", "Languages & Frameworks"],
-            rings: ["Adopt", "Trial", "Assess", "Hold"],
-            statusSymbols: { "🆕": "new", "🔄": "changed", "⛔": "deprecated" },
-            blips: [{
-                id: 1, name: "WebAssembly", quadrant: "Platforms", ring: "Assess", status: "🆕",
-                description: "High-performance client modules", r: 62.5, angle: 200,
-                commentary: "Showing great promise for performance-critical web tasks.", firstAppeared: "2023.2",
-                movement: "New in Assess", tags: "web, performance", riskLevel: "Medium", license: "W3C Standard",
-                owner: "Frontend Guild", resources: "https://webassembly.org/"
-            }]
-        };
-
-        const loadRadarData = (data) => {
-            radarData = data; selectedBlipId = null; updateUIAfterDataLoad();
-        };
-
-        const updateUIAfterDataLoad = () => {
-            updateRadarMeta(); populateSelects(); clearForm(); drawRadar(); renderBlipsList(); applyTranslations();
-        };
-        
-        const updateRadarMeta = () => {
-            document.getElementById('radar-title').textContent = radarData.title || i18n[currentLang].untitledRadar;
-            document.getElementById('app-meta').textContent = `Version ${radarData.version || ''} by ${radarData.author || ''}`;
-        };
-
-        const radarTitleEl = document.getElementById('radar-title');
-        radarTitleEl.addEventListener('blur', () => { radarData.title = radarTitleEl.textContent; });
-        radarTitleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); radarTitleEl.blur(); }});
-
-        const radarContainer = document.getElementById('radar-container');
-        const radarSVG = document.getElementById('radar-svg');
-        const blipForm = document.getElementById('blip-form');
-        const blipsList = document.getElementById('blips-list');
-        const tooltip = document.getElementById('blip-tooltip');
-
-        const formInputs = {
-            name: document.getElementById('blip-name'), quadrant: document.getElementById('blip-quadrant'),
-            ring: document.getElementById('blip-ring'), description: document.getElementById('blip-description'),
-            status: document.getElementById('blip-status'), commentary: document.getElementById('blip-commentary'),
-            firstAppeared: document.getElementById('blip-firstAppeared'), movement: document.getElementById('blip-movement'),
-            tags: document.getElementById('blip-tags'), riskLevel: document.getElementById('blip-riskLevel'),
-            license: document.getElementById('blip-license'), owner: document.getElementById('blip-owner'),
-            resources: document.getElementById('blip-resources'),
-        };
-        
-        const drawRadar = () => {
-            const size = radarSVG.clientWidth; if (size === 0) return;
-            const center = size / 2; radarSVG.innerHTML = '';
-
-            radarData.rings.forEach((ring, i) => {
-                const radius = center * ((radarData.rings.length - i) / radarData.rings.length);
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-                circle.setAttribute('cx', center); circle.setAttribute('cy', center); circle.setAttribute('r', radius);
-                circle.setAttribute('class', 'ring'); radarSVG.appendChild(circle);
-                
-                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
-                label.setAttribute('x', center); label.setAttribute('y', center - radius + 15);
-                label.setAttribute('class', 'ring-label'); label.textContent = ring; radarSVG.appendChild(label);
-            });
-
-            const lines = [[center, 0, center, size], [0, center, size, center]];
-            lines.forEach(l => {
-                const line = document.createElementNS("http://www.w3.org/2000/svg", 'line');
-                line.setAttribute('x1', l[0]); line.setAttribute('y1', l[1]); line.setAttribute('x2', l[2]); line.setAttribute('y2', l[3]);
-                line.setAttribute('class', 'quadrant-line'); radarSVG.appendChild(line);
-            });
-
-            const labelPositions = [
-                { x: center * 1.5, y: center * 0.5 }, { x: center * 0.5, y: center * 0.5 },
-                { x: center * 0.5, y: center * 1.5 }, { x: center * 1.5, y: center * 1.5 }
-            ];
-            radarData.quadrants.forEach((quadrant, i) => {
-                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
-                label.setAttribute('x', labelPositions[i].x); label.setAttribute('y', labelPositions[i].y);
-                label.setAttribute('class', 'quadrant-label'); label.textContent = quadrant; radarSVG.appendChild(label);
-            });
-
-            const blipsGroup = document.createElementNS("http://www.w3.org/2000/svg", 'g');
-            blipsGroup.id = 'blips-group'; radarSVG.appendChild(blipsGroup);
-            renderBlipsOnRadar();
-        };
-
-        const renderBlipsOnRadar = () => {
-            const blipsGroup = document.getElementById('blips-group'); if (!blipsGroup) return;
-            blipsGroup.innerHTML = '';
-            const size = radarSVG.clientWidth; const center = size / 2;
-
-            radarData.blips.forEach(blip => {
-                const angleRad = (blip.angle - 90) * (Math.PI / 180);
-                const radius = (blip.r / 100) * center;
-                const x = center + radius * Math.cos(angleRad); const y = center + radius * Math.sin(angleRad);
-                
-                const g = document.createElementNS("http://www.w3.org/2000/svg", 'g');
-                g.setAttribute('transform', `translate(${x}, ${y})`); g.dataset.blipId = blip.id;
-
-                const dot = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-                dot.setAttribute('r', 7); dot.setAttribute('fill', getStatusColor(blip.status));
-                dot.setAttribute('class', 'blip-dot');
-                if (blip.id === selectedBlipId) dot.classList.add('selected');
-                g.appendChild(dot);
-
-                const label = document.createElementNS("http://www.w3.org/2000/svg", 'text');
-                label.setAttribute('x', 12); label.setAttribute('y', 4);
-                label.setAttribute('class', 'blip-label'); label.textContent = blip.status + ' ' + blip.name;
-                g.appendChild(label);
-
-                g.addEventListener('click', () => selectBlip(blip.id));
-                g.addEventListener('mouseover', (e) => showTooltip(e, blip));
-                g.addEventListener('mouseout', hideTooltip);
-                blipsGroup.appendChild(g);
-            });
-        };
-        
-        const getStatusColor = (status) => {
-            const statusIndex = Object.keys(radarData.statusSymbols).indexOf(status);
-            const colors = ['#3b82f6', '#f97316', '#71717a'];
-            return colors[statusIndex] || '#cccccc';
-        };
-        
-        const populateSelects = () => {
-            const populate = (select, options) => {
-                const currentVal = select.value; select.innerHTML = '';
-                options.forEach(option => {
-                    const opt = document.createElement('option');
-                    opt.value = option; opt.textContent = option; select.appendChild(opt);
-                });
-                select.value = currentVal;
-            };
-            populate(formInputs.quadrant, radarData.quadrants);
-            populate(formInputs.ring, radarData.rings);
-            
-            const currentStatus = formInputs.status.value; formInputs.status.innerHTML = '';
-            Object.entries(radarData.statusSymbols).forEach(([symbol, nameKey]) => {
-                const opt = document.createElement('option');
-                opt.value = symbol; opt.textContent = `${symbol} ${i18n[currentLang][nameKey]}`;
-                formInputs.status.appendChild(opt);
-            });
-            formInputs.status.value = currentStatus;
-        };
-
-        const selectBlip = (id) => {
-            selectedBlipId = id;
-            const blip = radarData.blips.find(b => b.id === id);
-            if (blip) {
-                Object.keys(formInputs).forEach(key => {
-                    if (blip[key] !== undefined) formInputs[key].value = blip[key]; else formInputs[key].value = '';
-                });
-            }
-            renderBlipsOnRadar(); renderBlipsList();
-        };
-        
-        const clearForm = () => {
-            blipForm.reset(); selectedBlipId = null; formInputs.name.focus();
-            renderBlipsOnRadar(); renderBlipsList();
-        };
-
-        blipForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const ringIndex = radarData.rings.indexOf(formInputs.ring.value);
-            const quadrantIndex = radarData.quadrants.indexOf(formInputs.quadrant.value);
-            
-            const blipData = {
-                r: (ringIndex * 25) + 12.5,
-                angle: (quadrantIndex * 90) + 45,
-            };
-            Object.keys(formInputs).forEach(key => { blipData[key] = formInputs[key].value; });
-
-            if (selectedBlipId) {
-                const index = radarData.blips.findIndex(b => b.id === selectedBlipId);
-                radarData.blips[index] = { ...radarData.blips[index], ...blipData };
-            } else {
-                blipData.id = Date.now(); radarData.blips.push(blipData); selectedBlipId = blipData.id;
-            }
-            radarData.modified = new Date().toISOString().slice(0, 10);
-            updateRadarMeta(); drawRadar(); renderBlipsList();
-        });
-
-        document.getElementById('new-blip-btn').addEventListener('click', clearForm);
-        document.getElementById('delete-blip-btn').addEventListener('click', () => {
-            if (!selectedBlipId) return;
-            if (confirm(i18n[currentLang].confirmDelete)) {
-                radarData.blips = radarData.blips.filter(b => b.id !== selectedBlipId);
-                clearForm(); drawRadar(); renderBlipsList();
-            }
-        });
-
-        const renderBlipsList = () => {
-            blipsList.innerHTML = '';
-            radarData.blips.sort((a,b) => a.name.localeCompare(b.name)).forEach(blip => {
-                const li = document.createElement('li');
-                li.dataset.blipId = blip.id;
-                if(blip.id === selectedBlipId) li.className = 'selected';
-                li.innerHTML = `
-                    <div class="blip-item-name">${blip.status} ${blip.name}</div>
-                    <div class="blip-item-description">${blip.description || ''}</div>
-                    <div class="blip-item-meta">${blip.quadrant} / ${blip.ring}</div>`;
-                li.addEventListener('click', () => selectBlip(blip.id));
-                blipsList.appendChild(li);
-            });
-        };
-        
-        const updateStatusLegend = () => {
-            const legendContent = document.getElementById('status-legend-content'); legendContent.innerHTML = '';
-            Object.entries(radarData.statusSymbols).forEach(([symbol, nameKey]) => {
-                const div = document.createElement('div'); div.className = 'legend-item';
-                div.innerHTML = `<span style="color: ${getStatusColor(symbol)}; font-size: 1.5rem; line-height: 1;">${symbol}</span> <span>${i18n[currentLang][nameKey]}</span>`;
-                legendContent.appendChild(div);
-            });
-        };
-        
-        const showTooltip = (e, blip) => {
-            tooltip.innerHTML = `<strong>${blip.name}</strong><br>${blip.description}`;
-            tooltip.style.opacity = 1;
-            const containerRect = radarContainer.getBoundingClientRect();
-            tooltip.style.left = `${e.clientX - containerRect.left + 15}px`;
-            tooltip.style.top = `${e.clientY - containerRect.top + 15}px`;
-        };
-        const hideTooltip = () => { tooltip.style.opacity = 0; };
-        
-        const downloadFile = (content, fileName, contentType) => {
-            const a = document.createElement("a");
-            const file = new Blob([content], {type: contentType});
-            a.href = URL.createObjectURL(file); a.download = fileName; a.click(); URL.revokeObjectURL(a.href);
-        };
-
-        const jsonFileInput = document.getElementById('json-file-input');
-        document.getElementById('import-json-btn').addEventListener('click', () => jsonFileInput.click());
-        jsonFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try { loadRadarData(JSON.parse(event.target.result)); } 
-                catch (err) { alert('Error parsing JSON file.'); }
-            };
-            reader.readAsText(file);
-        });
-        document.getElementById('export-json-btn').addEventListener('click', () => {
-            downloadFile(JSON.stringify(radarData, null, 2), 'tech-radar.json', 'application/json');
-        });
-        
-        const csvFileInput = document.getElementById('csv-file-input');
-        document.getElementById('import-csv-btn').addEventListener('click', () => csvFileInput.click());
-        const CSV_HEADER = ["id", "name","quadrant","ring","status","description", "r", "angle", "commentary", "firstAppeared", "movement", "tags", "riskLevel", "license", "owner", "resources"];
-        
-        document.getElementById('export-csv-btn').addEventListener('click', () => {
-            const escapeCSV = (val) => {
-                if (val === null || val === undefined) return '';
-                let str = String(val);
-                if (str.includes('"') || str.includes(',') || str.includes('\n')) {
-                    str = '"' + str.replace(/"/g, '""') + '"';
-                }
-                return str;
-            };
-            const rows = radarData.blips.map(blip => CSV_HEADER.map(field => escapeCSV(blip[field])).join(','));
-            const csvContent = [CSV_HEADER.map(h => `"${h}"`).join(','), ...rows].join('\n');
-            downloadFile(csvContent, 'tech-radar.csv', 'text/csv;charset=utf-8;');
-        });
-
-        const parseCSV = (text) => {
-            const re_valid = /^\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\S\s][^'\\]*)*'|"[^"\\]*(?:\\[\S\s][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
-            const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\S\s][^'\\]*)*)'|"([^"\\]*(?:\\[\S\s][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-            if (!re_valid.test(text)) return null; const a = [];
-            text.replace(re_value, (m0, m1, m2, m3) => {
-                if (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-                else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-                else if (m3 !== undefined) a.push(m3);
-                return '';
-            });
-            if (/,\s*$/.test(text)) a.push(''); return a;
-        };
-
-        csvFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const lines = event.target.result.trim().split('\n');
-                    const header = parseCSV(lines.shift()); if(!header) throw new Error("Invalid header format");
-                    
-                    const newBlips = lines.map((line, index) => {
-                        const values = parseCSV(line); if(!values) return null;
-                        const blip = {}; header.forEach((key, i) => { blip[key] = values[i]; });
-                        
-                        return { ...blip, id: blip.id ? parseInt(blip.id) : Date.now() + index,
-                            r: parseFloat(blip.r), angle: parseFloat(blip.angle) };
-                    }).filter(Boolean);
-
-                    radarData.blips = newBlips; updateUIAfterDataLoad();
-                } catch (err) { console.error("CSV Parsing Error:", err); alert(i18n[currentLang].csvParseError); }
-            };
-            reader.readAsText(file); e.target.value = '';
-        });
-
-        document.getElementById('export-svg-btn').addEventListener('click', () => {
-            const svgData = new XMLSerializer().serializeToString(radarSVG);
-            downloadFile(svgData, 'tech-radar.svg', 'image/svg+xml;charset=utf-8');
-        });
-        document.getElementById('export-png-btn').addEventListener('click', () => {
-            const svgData = new XMLSerializer().serializeToString(radarSVG);
-            const canvas = document.createElement('canvas'); const size = radarSVG.clientWidth;
-            canvas.width = size; canvas.height = size;
-            const ctx = canvas.getContext('2d'); const img = new Image();
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0); const a = document.createElement('a');
-                a.href = canvas.toDataURL('image/png'); a.download = 'tech-radar.png'; a.click();
-            };
-            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-        });
-
-        loadRadarData(defaultRadarData);
-        const resizeObserver = new ResizeObserver(() => drawRadar());
-        resizeObserver.observe(radarContainer);
-    });
-    </script>
+  <script>
+    const STORAGE_KEY = 'rbottawa-tech-radar-v2';
+    const quadrants = ['Techniques','Tools','Platforms','Languages & Frameworks'];
+    const rings = ['Adopt','Trial','Assess','Hold'];
+    let selectedId = null;
+    const $ = id => document.getElementById(id);
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    function load(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || seed(); } catch { return seed(); } }
+    function save(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+    function seed(){ const items=[{id:crypto.randomUUID(),name:'WebAssembly',description:'High-performance browser and edge runtime option.',quadrant:'Platforms',ring:'Adopt',status:'Changed'}]; save(items); return items; }
+    function colour(status){ return {New:'#2563eb',Changed:'#f97316',Stable:'#16a34a',Deprecated:'#64748b'}[status] || '#334155'; }
+    function position(blip){ const q=quadrants.indexOf(blip.quadrant); const r=rings.indexOf(blip.ring); const angle=(q*90+45) * Math.PI/180; const radius=80 + r*75; return {x:400+Math.cos(angle)*radius, y:400+Math.sin(angle)*radius}; }
+    function render(){ const items=load(); const svg=$('radar'); svg.innerHTML=''; [320,245,170,95].forEach(rad=> svg.insertAdjacentHTML('beforeend',`<circle cx="400" cy="400" r="${rad}" fill="none" stroke="#cbd5e1"/>`)); svg.insertAdjacentHTML('beforeend','<line x1="400" y1="80" x2="400" y2="720" stroke="#cbd5e1"/><line x1="80" y1="400" x2="720" y2="400" stroke="#cbd5e1"/>'); quadrants.forEach((q,i)=>{ const coords=[[600,210],[200,210],[200,610],[600,610]][i]; svg.insertAdjacentHTML('beforeend',`<text x="${coords[0]}" y="${coords[1]}" text-anchor="middle" font-weight="700" fill="#64748b">${q}</text>`); }); items.forEach(blip=>{ const p=position(blip); svg.insertAdjacentHTML('beforeend',`<g tabindex="0" role="button" aria-label="${escapeHtml(blip.name)}" data-id="${blip.id}"><circle cx="${p.x}" cy="${p.y}" r="11" fill="${colour(blip.status)}" stroke="${blip.id===selectedId?'#0f172a':'white'}" stroke-width="4"/><text x="${p.x+15}" y="${p.y+4}" font-size="14">${escapeHtml(blip.name)}</text></g>`); }); document.querySelectorAll('[data-id]').forEach(g=>g.addEventListener('click',()=>select(g.dataset.id))); $('rows').innerHTML=items.map(b=>`<tr><td><button class="secondary" type="button" data-row="${b.id}">${escapeHtml(b.name)}</button></td><td>${escapeHtml(b.quadrant)}</td><td>${escapeHtml(b.ring)}</td><td><span class="pill">${escapeHtml(b.status)}</span></td><td>${escapeHtml(b.description)}</td></tr>`).join(''); document.querySelectorAll('[data-row]').forEach(btn=>btn.addEventListener('click',()=>select(btn.dataset.row))); }
+    function select(id){ const item=load().find(x=>x.id===id); if(!item) return; selectedId=id; ['name','description','quadrant','ring','status'].forEach(k=>$(k).value=item[k]); render(); }
+    $('blipForm').addEventListener('submit', e=>{ e.preventDefault(); const items=load(); const data={ id:selectedId || crypto.randomUUID(), name:$('name').value.trim(), description:$('description').value.trim(), quadrant:$('quadrant').value, ring:$('ring').value, status:$('status').value }; const idx=items.findIndex(x=>x.id===data.id); if(idx>=0) items[idx]=data; else items.push(data); selectedId=data.id; save(items); render(); });
+    $('newBtn').addEventListener('click',()=>{ selectedId=null; $('blipForm').reset(); });
+    $('deleteBtn').addEventListener('click',()=>{ if(!selectedId) return; save(load().filter(x=>x.id!==selectedId)); selectedId=null; $('blipForm').reset(); render(); });
+    $('exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify(load(),null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='technology-radar.json'; a.click(); URL.revokeObjectURL(a.href); });
+    $('importFile').addEventListener('change', e=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{ try{ const data=JSON.parse(reader.result); if(!Array.isArray(data)) throw new Error(); save(data); selectedId=null; render(); } catch { alert('Invalid radar JSON.'); } }; reader.readAsText(file); e.target.value=''; });
+    render();
+  </script>
 </body>
 </html>
