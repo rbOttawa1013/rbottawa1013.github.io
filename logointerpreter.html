@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML Logo Turtle Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -173,13 +173,6 @@ PRINT "Star drawn!"
             if (!turtle.isVisible) return;
             ctx.save();
             ctx.translate(turtle.x, turtle.y);
-            // Adjust angle: Logo 0 is up, Canvas 0 is right. Turtle angle is clockwise.
-            // So, if turtle.angle is 0 (up), canvas rotation should be 0.
-            // If turtle.angle is 90 (right), canvas rotation should be 90 deg.
-            // The turtle icon itself is drawn pointing "up" in its own coordinate system.
-            // The angle needs to be adjusted because canvas rotate() is clockwise from positive x-axis.
-            // Our turtle's 0 angle is "up" (negative y-axis in standard math).
-            // To align: rotate by turtle.angle.
             ctx.rotate(toRadians(turtle.angle));
 
             ctx.beginPath();
@@ -261,10 +254,6 @@ PRINT "Star drawn!"
                     turtle.x = canvas.width / 2;
                     turtle.y = canvas.height / 2;
                     turtle.angle = 0;
-                    // turtle.penDown = true; // CS usually resets pen to down
-                    // turtle.penColor = '#000000';
-                    // turtle.lineWidth = 1;
-                    // turtle.isVisible = true;
                     needsRedraw = true;
                     logToConsole("Screen CLEARED, turtle HOME", "info");
                     break;
