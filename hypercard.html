@@ -1,1646 +1,871 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HyperCard Simulator (Enhanced)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom Retro Theme inspired by HyperCard */
-        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
-
-        body {
-            font-family: 'VT323', monospace;
-            background-color: #c0c0c0;
-            color: #000000;
-            overscroll-behavior: none;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .main-app-area {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-        .hc-window {
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            box-shadow: 5px 5px 0px #000000;
-            width: 512px; /* Classic HyperCard width */
-            height: 342px; /* Classic HyperCard height */
-            margin: 20px auto;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hc-card-area {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            background-color: #ffffff; /* Default card background */
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
-        
-        .hc-toolbar {
-            background-color: #e0e0e0;
-            border-bottom: 2px solid #000000;
-            padding: 4px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            font-size: 16px;
-        }
-
-        .hc-button, .hc-toolbar button, .hc-modal button {
-            font-family: 'VT323', monospace;
-            background-color: #ffffff;
-            border: 1px solid #000000;
-            padding: 2px 8px;
-            cursor: pointer;
-            box-shadow: 2px 2px 0px #888888;
-            text-align: center;
-            font-size: 16px;
-            user-select: none;
-        }
-        .hc-button:disabled, .hc-toolbar button:disabled {
-            background-color: #d0d0d0;
-            color: #777777;
-            cursor: not-allowed;
-            box-shadow: 1px 1px 0px #555555;
-        }
-        .hc-button:not(:disabled):active, 
-        .hc-toolbar button:not(:disabled):active, 
-        .hc-modal button:not(:disabled):active {
-            background-color: #000000;
-            color: #ffffff;
-            box-shadow: none;
-            transform: translate(1px, 1px);
-        }
-        
-        .hc-element {
-            position: absolute;
-            border: 1px dashed transparent;
-            cursor: grab;
-            user-select: none;
-        }
-        
-        .hc-element.selected {
-            border: 1px dashed #0000ff;
-            z-index: 100;
-        }
-        
-        .hc-element-button {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 5px;
-            text-align: center;
-            box-shadow: 2px 2px 0px #888;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .hc-element-button:active {
-             background-color: #000;
-             color: #fff;
-        }
-
-        .hc-element-field {
-            background-color: #ffffff;
-            border: 1px solid #000;
-            padding: 5px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .hc-element-field[contenteditable="true"] {
-            outline: 1px solid #333;
-            user-select: text;
-        }
-
-        .hc-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 10px;
-        }
-        .hc-modal-content {
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            padding: 20px;
-            box-shadow: 5px 5px 0px #000000;
-            min-width: 300px;
-            max-width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .hc-modal textarea {
-            width: 100%;
-            min-height: 150px;
-            border: 1px solid #000;
-            padding: 5px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .hc-modal input[type="text"], .hc-modal input[type="number"], .hc-modal input[type="color"] {
-            width: 100%;
-            border: 1px solid #000;
-            padding: 5px;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-         .hc-modal input[type="color"] {
-            height: 40px; /* Make color picker taller */
-         }
-        .hc-status-bar {
-            font-size: 14px;
-            padding: 2px 5px;
-            background-color: #ddd;
-            border-top: 1px solid #000;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-        }
-
-        .properties-panel {
-            position: fixed; 
-            top: 100px; 
-            right: 10px;
-            width: 250px;
-            background-color: #e0e0e0;
-            border: 1px solid #000;
-            box-shadow: 3px 3px 0px #888;
-            padding: 10px;
-            z-index: 500;
-            max-height: calc(100vh - 120px); /* Adjust for toolbar */
-            overflow-y: auto;
-        }
-        .properties-panel h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 5px;
-        }
-        .properties-panel label {
-            display: block;
-            margin-top: 8px;
-            font-size: 14px;
-        }
-        .properties-panel input, .properties-panel textarea, .properties-panel select {
-            width: 100%;
-            padding: 3px;
-            border: 1px solid #555;
-            margin-top: 3px;
-            font-size: 14px;
-        }
-         .properties-panel textarea {
-            min-height: 80px;
-            font-family: 'Courier New', Courier, monospace;
-         }
-
-        .stack-list-item {
-            padding: 8px;
-            border: 1px solid #ccc;
-            margin-bottom: 5px;
-            cursor: pointer;
-            background-color: #f9f9f9;
-        }
-        .stack-list-item:hover {
-            background-color: #eee;
-        }
-        .stack-list-item.loading {
-            background-color: #e0e0e0;
-            font-style: italic;
-        }
-        
-        .hc-element-tooltip {
-            position: absolute;
-            background-color: black;
-            color: white;
-            padding: 2px 5px;
-            font-size: 10px;
-            border-radius: 3px;
-            bottom: -18px; 
-            left: 0;
-            white-space: nowrap;
-            visibility: hidden; 
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 101;
-        }
-        .hc-element:hover .hc-element-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-        .script-help-content {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            white-space: pre-wrap;
-            max-height: 60vh;
-            overflow-y: auto;
-            background-color: #f9f9f9;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        .script-help-content strong { font-weight: bold; color: #333; }
-        .script-help-content em { font-style: italic; color: #555; }
-        .script-help-content code { background-color: #eee; padding: 1px 3px; border-radius: 3px;}
-
-    </style>
+  <!-- Version-control note: 2026-06-15 v2.0.0 self-contained GitHub Pages HyperCard simulator.
+       Fixes: Firebase demo fallback, inverted mode label, unsafe property rendering, non-sequential ask/answer scripts, unbounded dragging, missing local backup/import/export. -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperCard Simulator</title>
+  <style>
+    :root {
+      --paper: #fff;
+      --ink: #000;
+      --chrome: #d8d8d8;
+      --panel: #efefef;
+      --accent: #111;
+      --focus: #0645ff;
+      --danger: #b00020;
+      --ok: #0a6b20;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-monospace, Menlo, Consolas, "Courier New", monospace;
+      color: var(--ink);
+      background: repeating-linear-gradient(45deg, #c9c9c9 0, #c9c9c9 8px, #bebebe 8px, #bebebe 16px);
+    }
+    header {
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--ink);
+      background: var(--chrome);
+    }
+    h1 { margin: 0; font-size: 1.25rem; }
+    .subhead { margin: 4px 0 0; font-size: .85rem; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+      border-bottom: 2px solid var(--ink);
+      background: var(--panel);
+      align-items: center;
+    }
+    button, input, textarea, select {
+      font: inherit;
+      color: inherit;
+    }
+    button, .file-label {
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      padding: 5px 9px;
+      min-height: 32px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 #777;
+    }
+    button:active, .file-label:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #777; }
+    button:disabled { color: #777; background: #ddd; cursor: not-allowed; box-shadow: none; }
+    button.primary { background: #dff0ff; }
+    button.danger { color: var(--danger); }
+    .mode { background: #dcffd9; }
+    .mode.edit { background: #fff3bd; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) 320px;
+      gap: 12px;
+      padding: 12px;
+      align-items: start;
+    }
+    .stage-wrap { overflow-x: auto; padding-bottom: 8px; }
+    .hc-window {
+      width: 512px;
+      height: 342px;
+      margin: 0 auto;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      box-shadow: 6px 6px 0 var(--ink);
+      position: relative;
+    }
+    .card-area {
+      position: relative;
+      width: 100%;
+      height: 318px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .status {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 24px;
+      border-top: 1px solid var(--ink);
+      background: #e5e5e5;
+      padding: 3px 6px;
+      text-align: center;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .element {
+      position: absolute;
+      border: 1px dashed transparent;
+      min-width: 20px;
+      min-height: 20px;
+      overflow: hidden;
+    }
+    .element.selected { border-color: var(--focus); outline: 1px solid var(--focus); z-index: 20; }
+    .element.button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border: 1px solid var(--ink);
+      box-shadow: 2px 2px 0 #777;
+      text-align: center;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .element.field {
+      background: #fff;
+      border: 1px solid var(--ink);
+      padding: 5px;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    .editing .element { cursor: grab; }
+    .panel {
+      border: 2px solid var(--ink);
+      background: var(--panel);
+      box-shadow: 4px 4px 0 #777;
+      padding: 10px;
+      max-height: calc(100vh - 180px);
+      overflow: auto;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 1.05rem; }
+    .field-row { margin: 8px 0; }
+    label { display: block; font-weight: 700; margin-bottom: 3px; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%;
+      border: 1px solid var(--ink);
+      background: #fff;
+      padding: 5px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .small { font-size: .8rem; }
+    .muted { color: #444; }
+    .hidden { display: none !important; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(0,0,0,.55);
+      z-index: 100;
+      padding: 12px;
+    }
+    .modal {
+      width: min(720px, 96vw);
+      max-height: 90vh;
+      overflow: auto;
+      border: 2px solid var(--ink);
+      background: #fff;
+      box-shadow: 6px 6px 0 #000;
+      padding: 14px;
+    }
+    .modal h2 { margin-top: 0; }
+    .button-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+    .stack-list { display: grid; gap: 8px; }
+    .stack-item { text-align: left; width: 100%; }
+    .help code { background: #eee; padding: 1px 4px; }
+    .help li { margin: 4px 0; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { max-height: none; }
+      .hc-window { transform-origin: top left; }
+    }
+  </style>
 </head>
 <body>
-    <div class="main-app-area">
-        <div id="app-container" class="p-2 md:p-4">
-            <!-- Toolbar -->
-            <div id="toolbar" class="hc-toolbar mb-2">
-                <button id="btnNewStack">New Stack</button>
-                <button id="btnSaveStack">Save Stack</button>
-                <button id="btnLoadStack">Load Stacks</button>
-                <button id="btnCreateDemo">Demo Cards</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnNewCard">New Card</button>
-                <button id="btnPrevCard">&lt; Prev</button>
-                <button id="btnNextCard">Next &gt;</button>
-                <button id="btnDeleteCard">Delete Card</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnNewButton">Add Button</button>
-                <button id="btnNewField">Add Field</button>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <label class="inline-flex items-center">
-                    <input type="checkbox" id="chkEditBackground" class="form-checkbox h-4 w-4 text-black border-black mr-1">
-                    Edit Bkgnd
-                </label>
-                <span class="mx-1 border-l border-black h-6"></span>
-                <button id="btnRunMode" class="bg-green-300">Run Mode</button>
-            </div>
-            
-            <div class="flex flex-col md:flex-row gap-4">
-                <!-- HyperCard Window -->
-                <div id="hypercard-window" class="hc-window">
-                    <div id="card-area" class="hc-card-area">
-                        <!-- Dynamic content will be rendered here -->
-                    </div>
-                    <div id="status-bar" class="hc-status-bar">Card 1 of 1</div>
-                </div>
+  <header>
+    <h1>HyperCard Simulator</h1>
+    <p class="subhead">Self-contained GitHub Pages edition. Stacks save in this browser using localStorage. Use Export for backup.</p>
+  </header>
 
-                <!-- Properties Panel -->
-                <div id="properties-panel" class="properties-panel hidden">
-                    <h3>Properties</h3>
-                    <div id="properties-content">
-                        <p>Select an element or card/background to see its properties.</p>
-                    </div>
-                    <button id="btnDeleteElement" class="hc-button mt-4 bg-red-400 text-white w-full hidden">Delete Selected Element</button>
-                </div>
-            </div>
+  <nav class="toolbar" aria-label="HyperCard tools">
+    <button id="newStackBtn">New Stack</button>
+    <button id="saveBtn" class="primary">Save</button>
+    <button id="loadBtn">Load</button>
+    <button id="exportBtn">Export JSON</button>
+    <label class="file-label" for="importInput">Import JSON</label>
+    <input id="importInput" class="sr-only" type="file" accept="application/json,.json" />
+    <button id="demoBtn">Demo Cards</button>
+    <span aria-hidden="true">|</span>
+    <button id="newCardBtn">New Card</button>
+    <button id="prevBtn">&lt; Prev</button>
+    <button id="nextBtn">Next &gt;</button>
+    <button id="deleteCardBtn" class="danger">Delete Card</button>
+    <span aria-hidden="true">|</span>
+    <button id="addButtonBtn">Add Button</button>
+    <button id="addFieldBtn">Add Field</button>
+    <label style="display:inline-flex;gap:4px;align-items:center;margin:0;font-weight:400">
+      <input type="checkbox" id="backgroundToggle" /> Edit background
+    </label>
+    <button id="modeBtn" class="mode">Switch to Edit Mode</button>
+    <button id="helpBtn">Help</button>
+  </nav>
 
-            <!-- User ID Display -->
-            <div id="user-info" class="mt-4 p-2 border border-black bg-gray-200 text-sm">
-                User ID: <span id="userIdDisplay">Not signed in</span> | App ID: <span id="appIdDisplay">N/A</span>
-            </div>
-        </div>
+  <main class="layout">
+    <section class="stage-wrap" aria-label="HyperCard stage">
+      <div class="hc-window">
+        <div id="cardArea" class="card-area" tabindex="0" aria-label="Current card canvas"></div>
+        <div id="status" class="status">Ready</div>
+      </div>
+    </section>
+
+    <aside id="propertiesPanel" class="panel" aria-label="Properties panel">
+      <h2>Properties</h2>
+      <div id="propertiesContent" class="small muted">Switch to Edit Mode, then select a card, background, button, or field.</div>
+    </aside>
+  </main>
+
+  <div id="dialogBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <div class="modal">
+      <h2 id="dialogTitle">Message</h2>
+      <p id="dialogMessage"></p>
+      <input id="dialogInput" class="hidden" type="text" />
+      <div id="dialogButtons" class="button-row"></div>
     </div>
+  </div>
 
-    <!-- Script Editor Modal -->
-    <div id="scriptEditorModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-1/2 lg:w-2/3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold mb-4">Script Editor</h2>
-                <button id="btnScriptHelp" class="hc-button text-sm mb-4">Scripting Help</button>
-            </div>
-            <p class="text-sm mb-2">Editing script for: <strong id="scriptEditorElementName"></strong></p>
-            <textarea id="scriptEditorTextarea"></textarea>
-            <div class="flex justify-end gap-2 mt-2">
-                <button id="btnApplyScript" class="hc-button">Apply</button>
-                <button id="btnCloseScriptEditor" class="hc-button">Close</button>
-            </div>
-        </div>
+  <div id="scriptBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="scriptTitle">
+    <div class="modal">
+      <h2 id="scriptTitle">Script Editor</h2>
+      <p class="small">Editing: <strong id="scriptTarget">None</strong></p>
+      <textarea id="scriptText" spellcheck="false"></textarea>
+      <div class="button-row">
+        <button id="scriptHelpBtn">Scripting Help</button>
+        <button id="applyScriptBtn" class="primary">Apply</button>
+        <button id="closeScriptBtn">Close</button>
+      </div>
     </div>
+  </div>
 
-    <!-- Scripting Help Modal -->
-    <div id="scriptHelpModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-2/3 lg:w-1/2">
-            <h2 class="text-xl font-bold mb-4">HyperTalk-like Scripting Help</h2>
-            <div id="scriptHelpContent" class="script-help-content">
-                <p><strong>Event Handlers:</strong> Scripts are typically placed inside event handlers.</p>
-                <p><code>on mouseUp</code><br>
-                &nbsp;&nbsp;<code>-- your commands here</code><br>
-                <code>end mouseUp</code></p>
-                <hr class="my-2 border-black">
-                <p><strong>Navigation:</strong></p>
-                <ul>
-                    <li><code>go to next card</code></li>
-                    <li><code>go to prev card</code> <em>(or previous)</em></li>
-                    <li><code>go to first card</code></li>
-                    <li><code>go to last card</code></li>
-                    <li><code>go to card "Card Name"</code></li>
-                    <li><code>go to card id "card-id-string"</code></li>
-                </ul>
-                <hr class="my-2 border-black">
-                <p><strong>Text Manipulation:</strong></p>
-                <ul>
-                    <li><code>put "some text" into field "FieldNameOrID"</code></li>
-                    <li><code>put field "SourceField" into field "TargetField"</code> <em>(SourceField not fully supported yet, use 'it' or literal text)</em></li>
-                    <li><code>put it into field "FieldNameOrID"</code> <em>('it' holds result from 'ask' or 'answer')</em></li>
-                    <li><code>put "prefix " & it into field "FieldNameOrID"</code> <em>(Simple concatenation with 'it')</em></li>
-                </ul>
-                <hr class="my-2 border-black">
-                <p><strong>User Interaction (Dialogs):</strong></p>
-                <ul>
-                    <li><code>answer "Your message here."</code></li>
-                    <li><code>answer "Proceed?" with "Yes" or "No" or "Cancel"</code> <em>(Button text goes into 'it')</em></li>
-                    <li><code>ask "What is your name?"</code> <em>(User input goes into 'it')</em></li>
-                    <li><code>ask "Enter value:" with "Default"</code> <em>(User input or default goes into 'it')</em></li>
-                </ul>
-                 <hr class="my-2 border-black">
-                <p><strong>Element Visibility:</strong></p>
-                <ul>
-                    <li><code>show button "ButtonNameOrID"</code></li>
-                    <li><code>hide field "FieldNameOrID"</code></li>
-                    <li><em>(Applies to buttons and fields on current card or background)</em></li>
-                </ul>
-                 <hr class="my-2 border-black">
-                <p><strong>Comments:</strong></p>
-                <ul>
-                    <li><code>-- This is a comment</code></li>
-                </ul>
-            </div>
-            <div class="flex justify-end mt-4">
-                <button id="btnCloseScriptHelp" class="hc-button">Close</button>
-            </div>
-        </div>
+  <div id="loadBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loadTitle">
+    <div class="modal">
+      <h2 id="loadTitle">Load Stack</h2>
+      <div id="stackList" class="stack-list"></div>
+      <div class="button-row"><button id="closeLoadBtn">Close</button></div>
     </div>
+  </div>
 
-
-    <!-- Load Stack Modal -->
-    <div id="loadStackModal" class="hc-modal hidden">
-        <div class="hc-modal-content w-full md:w-1/2 lg:w-1/3">
-            <h2 class="text-xl font-bold mb-4">Load Stack</h2>
-            <div id="stackListContainer" class="max-h-60 overflow-y-auto mb-4">
-                <p>Loading stacks...</p>
-            </div>
-            <div class="flex justify-end gap-2">
-                <button id="btnCloseLoadStack" class="hc-button">Close</button>
-            </div>
-        </div>
+  <div id="helpBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal help">
+      <h2 id="helpTitle">HyperTalk-like Scripting Help</h2>
+      <p>Scripts run line-by-line inside <code>on mouseUp</code> and <code>end mouseUp</code>.</p>
+      <ul>
+        <li><code>go to next card</code>, <code>go to previous card</code>, <code>go to first card</code>, <code>go to last card</code></li>
+        <li><code>go to card "Card Name"</code> or <code>go to card id "card-id"</code></li>
+        <li><code>answer "Message" with "Yes" or "No"</code>; the clicked button is stored in <code>it</code></li>
+        <li><code>ask "Question" with "Default"</code>; the answer is stored in <code>it</code></li>
+        <li><code>put "Text" into field "FieldName"</code>, <code>put it into field "FieldName"</code></li>
+        <li><code>show field "Name"</code>, <code>hide button "Name"</code></li>
+        <li>Comments begin with <code>--</code></li>
+      </ul>
+      <div class="button-row"><button id="closeHelpBtn">Close</button></div>
     </div>
+  </div>
 
-    <!-- General Purpose Modal (for answer/ask) -->
-    <div id="generalModal" class="hc-modal hidden">
-        <div class="hc-modal-content">
-            <h2 id="generalModalTitle" class="text-xl font-bold mb-4">Message</h2>
-            <p id="generalModalMessage" class="mb-4"></p>
-            <input type="text" id="generalModalInput" class="hidden w-full p-2 border border-black mb-4">
-            <div id="generalModalButtons" class="flex justify-end gap-2">
-            </div>
-        </div>
-    </div>
+  <script>
+    'use strict';
 
+    const STORAGE_PREFIX = 'rbottawa.hypercard.stack.';
+    const INDEX_KEY = 'rbottawa.hypercard.index';
+    const CARD_WIDTH = 512;
+    const CARD_HEIGHT = 318;
+    const DEFAULT_BG = '#f7f7f7';
 
-    <script type="module">
-        // Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    const dom = {
+      cardArea: document.getElementById('cardArea'),
+      status: document.getElementById('status'),
+      propertiesPanel: document.getElementById('propertiesPanel'),
+      propertiesContent: document.getElementById('propertiesContent'),
+      modeBtn: document.getElementById('modeBtn'),
+      backgroundToggle: document.getElementById('backgroundToggle'),
+      dialogBackdrop: document.getElementById('dialogBackdrop'),
+      dialogTitle: document.getElementById('dialogTitle'),
+      dialogMessage: document.getElementById('dialogMessage'),
+      dialogInput: document.getElementById('dialogInput'),
+      dialogButtons: document.getElementById('dialogButtons'),
+      scriptBackdrop: document.getElementById('scriptBackdrop'),
+      scriptTarget: document.getElementById('scriptTarget'),
+      scriptText: document.getElementById('scriptText'),
+      loadBackdrop: document.getElementById('loadBackdrop'),
+      stackList: document.getElementById('stackList'),
+      helpBackdrop: document.getElementById('helpBackdrop')
+    };
 
-        // Firebase configuration
-        // IMPORTANT: Firestore security rules should be configured on the Firebase console
-        // to ensure users can only access their own data (e.g., /artifacts/{appId}/users/{userId}/{...})
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO_PROJECT" }; // Fallback for local dev
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hypercard-simulator-rebuilt'; 
+    const state = {
+      stack: null,
+      cardIndex: 0,
+      runMode: true,
+      editBackground: false,
+      selectedId: null,
+      selectedLayer: 'card',
+      dragging: null,
+      dragOffsetX: 0,
+      dragOffsetY: 0,
+      scriptTarget: null,
+      it: ''
+    };
 
-        let app, auth, db;
-        let currentUserId = null;
-        let isAuthReady = false;
-        
-        // Store the 'it' variable for HyperTalk
-        let hyperTalkItVariable = "";
+    function uid(prefix = 'id') {
+      return `${prefix}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
+    }
 
-        // --- App State ---
-        let state = {
-            currentStack: null, 
-            currentCardIndex: 0,
-            isEditingBackground: false,
-            selectedElementId: null,
-            isRunMode: true, 
-            draggedElement: null,
-            dragOffsetX: 0,
-            dragOffsetY: 0,
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function currentCard() {
+      return state.stack?.cards?.[state.cardIndex] || null;
+    }
+
+    function currentBackground() {
+      const card = currentCard();
+      return card ? state.stack.backgrounds.find(bg => bg.id === card.backgroundId) || null : null;
+    }
+
+    function activeElements() {
+      const layer = state.editBackground ? currentBackground() : currentCard();
+      if (!layer) return [];
+      layer.elements = Array.isArray(layer.elements) ? layer.elements : [];
+      return layer.elements;
+    }
+
+    function createBackground(name = 'Default Background') {
+      return { id: uid('bg'), name, backgroundColor: DEFAULT_BG, script: '', elements: [] };
+    }
+
+    function createCard(backgroundId, number = 1) {
+      return { id: uid('card'), name: `Card ${number}`, backgroundId, backgroundColor: '#ffffff', script: '', elements: [] };
+    }
+
+    function normalizeStack(stack) {
+      if (!stack || typeof stack !== 'object') throw new Error('Invalid stack file.');
+      stack.id = stack.id || uid('stack');
+      stack.name = String(stack.name || 'Untitled Stack');
+      stack.backgrounds = Array.isArray(stack.backgrounds) ? stack.backgrounds : [];
+      stack.cards = Array.isArray(stack.cards) ? stack.cards : [];
+      if (stack.backgrounds.length === 0) stack.backgrounds.push(createBackground());
+      const fallbackBg = stack.backgrounds[0].id;
+      stack.backgrounds.forEach(bg => {
+        bg.id = bg.id || uid('bg');
+        bg.name = String(bg.name || 'Background');
+        bg.backgroundColor = bg.backgroundColor || DEFAULT_BG;
+        bg.script = bg.script || '';
+        bg.elements = normalizeElements(bg.elements);
+      });
+      if (stack.cards.length === 0) stack.cards.push(createCard(fallbackBg, 1));
+      stack.cards.forEach((card, index) => {
+        card.id = card.id || uid('card');
+        card.name = String(card.name || `Card ${index + 1}`);
+        if (!stack.backgrounds.some(bg => bg.id === card.backgroundId)) card.backgroundId = fallbackBg;
+        card.backgroundColor = card.backgroundColor || '#ffffff';
+        card.script = card.script || '';
+        card.elements = normalizeElements(card.elements);
+      });
+      stack.nextElementNumber = Number.isFinite(stack.nextElementNumber) ? stack.nextElementNumber : 1;
+      return stack;
+    }
+
+    function normalizeElements(elements) {
+      return (Array.isArray(elements) ? elements : []).map((el, index) => {
+        const type = el.type === 'field' ? 'field' : 'button';
+        return {
+          id: el.id || uid('el'),
+          type,
+          name: String(el.name || `${type} ${index + 1}`),
+          text: type === 'button' ? String(el.text || 'Button') : undefined,
+          content: type === 'field' ? String(el.content || '') : undefined,
+          script: String(el.script || ''),
+          visible: el.visible !== false && el.isVisible !== false,
+          rect: {
+            x: Number(el.rect?.x) || 10,
+            y: Number(el.rect?.y) || 10,
+            width: Number(el.rect?.width) || (type === 'button' ? 110 : 180),
+            height: Number(el.rect?.height) || (type === 'button' ? 32 : 70)
+          },
+          style: {
+            fontSize: Number(el.style?.fontSize) || 16,
+            color: el.style?.color || '#000000',
+            backgroundColor: el.style?.backgroundColor || (type === 'button' ? '#f5f5f5' : '#ffffff')
+          }
         };
+      });
+    }
 
-        // --- DOM Elements ---
-        const cardArea = document.getElementById('card-area');
-        const statusBar = document.getElementById('status-bar');
-        const chkEditBackground = document.getElementById('chkEditBackground');
-        const scriptEditorModal = document.getElementById('scriptEditorModal');
-        const scriptEditorTextarea = document.getElementById('scriptEditorTextarea');
-        const scriptEditorElementName = document.getElementById('scriptEditorElementName');
-        const propertiesPanel = document.getElementById('properties-panel');
-        const propertiesContent = document.getElementById('properties-content');
-        const btnDeleteElement = document.getElementById('btnDeleteElement');
-        const btnRunMode = document.getElementById('btnRunMode');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const appIdDisplay = document.getElementById('appIdDisplay');
-        const loadStackModal = document.getElementById('loadStackModal');
-        const stackListContainer = document.getElementById('stackListContainer');
-        const generalModal = document.getElementById('generalModal');
-        const generalModalTitle = document.getElementById('generalModalTitle');
-        const generalModalMessage = document.getElementById('generalModalMessage');
-        const generalModalInput = document.getElementById('generalModalInput');
-        const generalModalButtons = document.getElementById('generalModalButtons');
-        const btnSaveStackEl = document.getElementById('btnSaveStack'); 
-        const scriptHelpModal = document.getElementById('scriptHelpModal');
+    function newStack(name = 'Untitled Stack') {
+      const bg = createBackground();
+      state.stack = normalizeStack({ id: uid('stack'), name, backgrounds: [bg], cards: [createCard(bg.id, 1)], nextElementNumber: 1 });
+      state.cardIndex = 0;
+      state.selectedId = null;
+      state.editBackground = false;
+      state.runMode = true;
+      render();
+    }
 
+    function render() {
+      const card = currentCard();
+      const bg = currentBackground();
+      dom.cardArea.innerHTML = '';
+      dom.cardArea.classList.toggle('editing', !state.runMode);
+      dom.backgroundToggle.checked = state.editBackground;
+      dom.backgroundToggle.disabled = state.runMode;
+      dom.modeBtn.textContent = state.runMode ? 'Switch to Edit Mode' : 'Switch to Run Mode';
+      dom.modeBtn.classList.toggle('edit', !state.runMode);
 
-        // --- Helper Functions for Object Creation ---
-        function createDefaultBackground(id = crypto.randomUUID(), name = "Default Background") {
-            return {
-                id: id,
-                name: name,
-                script: "",
-                elements: [], 
-                backgroundColor: '#F0F0F0', 
-            };
+      if (!card || !bg) {
+        dom.cardArea.textContent = 'No card available.';
+        dom.status.textContent = 'No card';
+        return;
+      }
+
+      dom.cardArea.style.background = card.backgroundColor || '#fff';
+      renderLayer(bg.elements, true);
+      renderLayer(card.elements, false);
+      updateStatus();
+      renderProperties();
+      updateToolbar();
+    }
+
+    function renderLayer(elements, isBackground) {
+      elements.forEach(el => {
+        if (el.visible === false) return;
+        const node = document.createElement('div');
+        node.id = `el-${el.id}`;
+        node.className = `element ${el.type}`;
+        node.classList.toggle('selected', state.selectedId === el.id && state.selectedLayer === (isBackground ? 'background' : 'card'));
+        node.style.left = `${el.rect.x}px`;
+        node.style.top = `${el.rect.y}px`;
+        node.style.width = `${el.rect.width}px`;
+        node.style.height = `${el.rect.height}px`;
+        node.style.fontSize = `${el.style.fontSize}px`;
+        node.style.color = el.style.color;
+        node.style.backgroundColor = el.style.backgroundColor;
+        node.dataset.id = el.id;
+        node.dataset.layer = isBackground ? 'background' : 'card';
+        node.textContent = el.type === 'button' ? el.text : el.content;
+        node.title = `${isBackground ? 'Background' : 'Card'} ${el.type}: ${el.name}`;
+
+        if (state.runMode) {
+          node.addEventListener('click', event => {
+            event.stopPropagation();
+            runScript(el.script || '', { element: el }).catch(err => answer(`Script error: ${err.message}`));
+          });
+        } else {
+          node.addEventListener('mousedown', event => beginDrag(event, el, isBackground));
+          node.addEventListener('dblclick', event => {
+            event.stopPropagation();
+            openScript(el);
+          });
         }
+        dom.cardArea.appendChild(node);
+      });
+    }
 
-        function createDefaultCard(id = crypto.randomUUID(), backgroundId, cardNumber = 1) {
-            if (!backgroundId) {
-                console.error("createDefaultCard CRITICAL ERROR: called without a backgroundId!");
-            }
-            return {
-                id: id,
-                name: `Card ${cardNumber}`,
-                script: "",
-                elements: [], 
-                backgroundId: backgroundId,
-                backgroundColor: '#FFFFFF', 
-                isVisible: true, 
-            };
+    function updateStatus() {
+      const card = currentCard();
+      const stackName = state.stack?.name || 'Untitled Stack';
+      const mode = state.runMode ? 'Run Mode' : `Edit Mode: ${state.editBackground ? 'Background' : 'Card'}`;
+      dom.status.textContent = `Card ${state.cardIndex + 1} of ${state.stack.cards.length} | ${card.name} | ${stackName} | ${mode}`;
+    }
+
+    function updateToolbar() {
+      const hasCards = !!currentCard();
+      document.getElementById('prevBtn').disabled = !hasCards || state.cardIndex <= 0;
+      document.getElementById('nextBtn').disabled = !hasCards || state.cardIndex >= state.stack.cards.length - 1;
+      document.getElementById('deleteCardBtn').disabled = !hasCards || state.stack.cards.length <= 1;
+      document.getElementById('addButtonBtn').disabled = state.runMode || !hasCards;
+      document.getElementById('addFieldBtn').disabled = state.runMode || !hasCards;
+    }
+
+    function makeInput(labelText, value, onChange, type = 'text') {
+      const wrap = document.createElement('div');
+      wrap.className = 'field-row';
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      const input = type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+      if (type !== 'textarea') input.type = type;
+      input.value = value ?? '';
+      input.addEventListener('change', () => { onChange(input.value); render(); });
+      wrap.append(label, input);
+      return wrap;
+    }
+
+    function renderProperties() {
+      dom.propertiesContent.innerHTML = '';
+      if (state.runMode) {
+        dom.propertiesContent.textContent = 'Switch to Edit Mode to inspect or change card objects.';
+        return;
+      }
+
+      const selected = findSelectedElement();
+      if (selected) {
+        const el = selected.element;
+        dom.propertiesContent.append(
+          makeInput('Name', el.name, v => el.name = v),
+          makeInput('X', el.rect.x, v => el.rect.x = clamp(parseInt(v, 10) || 0, 0, CARD_WIDTH - el.rect.width), 'number'),
+          makeInput('Y', el.rect.y, v => el.rect.y = clamp(parseInt(v, 10) || 0, 0, CARD_HEIGHT - el.rect.height), 'number'),
+          makeInput('Width', el.rect.width, v => el.rect.width = clamp(parseInt(v, 10) || 20, 20, CARD_WIDTH), 'number'),
+          makeInput('Height', el.rect.height, v => el.rect.height = clamp(parseInt(v, 10) || 20, 20, CARD_HEIGHT), 'number')
+        );
+        if (el.type === 'button') dom.propertiesContent.append(makeInput('Button text', el.text, v => el.text = v));
+        if (el.type === 'field') dom.propertiesContent.append(makeInput('Field content', el.content, v => el.content = v, 'textarea'));
+        dom.propertiesContent.append(
+          makeInput('Font size', el.style.fontSize, v => el.style.fontSize = parseInt(v, 10) || 16, 'number'),
+          makeInput('Text colour', el.style.color, v => el.style.color = v, 'color'),
+          makeInput('Background colour', el.style.backgroundColor, v => el.style.backgroundColor = v, 'color')
+        );
+        const scriptBtn = document.createElement('button');
+        scriptBtn.textContent = 'Edit Script';
+        scriptBtn.addEventListener('click', () => openScript(el));
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete Element';
+        deleteBtn.className = 'danger';
+        deleteBtn.addEventListener('click', () => confirmDialog('Delete selected element?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete') deleteElement(); }));
+        dom.propertiesContent.append(scriptBtn, document.createTextNode(' '), deleteBtn);
+        return;
+      }
+
+      const obj = state.editBackground ? currentBackground() : currentCard();
+      const type = state.editBackground ? 'Background' : 'Card';
+      if (!obj) return;
+      const title = document.createElement('p');
+      title.textContent = `${type} properties`;
+      dom.propertiesContent.append(
+        title,
+        makeInput('Name', obj.name, v => obj.name = v),
+        makeInput('Background colour', obj.backgroundColor, v => obj.backgroundColor = v, 'color')
+      );
+      const scriptBtn = document.createElement('button');
+      scriptBtn.textContent = `Edit ${type} Script`;
+      scriptBtn.addEventListener('click', () => openScript(obj));
+      dom.propertiesContent.append(scriptBtn);
+    }
+
+    function findSelectedElement() {
+      if (!state.selectedId) return null;
+      const layer = state.selectedLayer === 'background' ? currentBackground() : currentCard();
+      const element = layer?.elements?.find(el => el.id === state.selectedId);
+      return element ? { layer, element } : null;
+    }
+
+    function findElement(nameOrId) {
+      const card = currentCard();
+      const bg = currentBackground();
+      const match = el => el.id === nameOrId || el.name.toLowerCase() === String(nameOrId).toLowerCase();
+      return [...(card?.elements || []), ...(bg?.elements || [])].find(match) || null;
+    }
+
+    function addElement(type) {
+      const number = state.stack.nextElementNumber++;
+      const el = {
+        id: uid('el'),
+        type,
+        name: `${type} ${number}`,
+        text: type === 'button' ? 'New Button' : undefined,
+        content: type === 'field' ? 'New Field' : undefined,
+        script: type === 'button' ? 'on mouseUp\n  answer "Button clicked."\nend mouseUp' : '',
+        visible: true,
+        rect: { x: 40, y: 40, width: type === 'button' ? 120 : 180, height: type === 'button' ? 34 : 80 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: type === 'button' ? '#f5f5f5' : '#ffffff' }
+      };
+      activeElements().push(el);
+      state.selectedId = el.id;
+      state.selectedLayer = state.editBackground ? 'background' : 'card';
+      render();
+    }
+
+    function deleteElement() {
+      const selected = findSelectedElement();
+      if (!selected) return;
+      selected.layer.elements = selected.layer.elements.filter(el => el.id !== state.selectedId);
+      state.selectedId = null;
+      render();
+    }
+
+    function beginDrag(event, el, isBackground) {
+      event.preventDefault();
+      event.stopPropagation();
+      const targetLayer = isBackground ? 'background' : 'card';
+      if ((state.editBackground ? 'background' : 'card') !== targetLayer) return;
+      state.selectedId = el.id;
+      state.selectedLayer = targetLayer;
+      state.dragging = el;
+      const rect = event.currentTarget.getBoundingClientRect();
+      state.dragOffsetX = event.clientX - rect.left;
+      state.dragOffsetY = event.clientY - rect.top;
+      render();
+    }
+
+    document.addEventListener('mousemove', event => {
+      if (!state.dragging || state.runMode) return;
+      const parent = dom.cardArea.getBoundingClientRect();
+      const el = state.dragging;
+      el.rect.x = clamp(Math.round(event.clientX - parent.left - state.dragOffsetX), 0, CARD_WIDTH - el.rect.width);
+      el.rect.y = clamp(Math.round(event.clientY - parent.top - state.dragOffsetY), 0, CARD_HEIGHT - el.rect.height);
+      const node = document.getElementById(`el-${el.id}`);
+      if (node) {
+        node.style.left = `${el.rect.x}px`;
+        node.style.top = `${el.rect.y}px`;
+      }
+      renderProperties();
+    });
+
+    document.addEventListener('mouseup', () => { state.dragging = null; });
+
+    async function runScript(script) {
+      const lines = String(script || '').split(/\r?\n/).map(line => line.trim());
+      let active = false;
+      for (const line of lines) {
+        if (!line || line.startsWith('--')) continue;
+        if (/^on\s+mouseup$/i.test(line)) { active = true; continue; }
+        if (/^end\s+mouseup$/i.test(line)) { active = false; continue; }
+        if (!active) continue;
+        await runCommand(line);
+      }
+    }
+
+    async function runCommand(line) {
+      let match;
+      if ((match = line.match(/^go\s+(?:to\s+)?(next|previous|prev|first|last)\s*(?:card)?$/i))) {
+        const cmd = match[1].toLowerCase();
+        if (cmd === 'next') state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
+        if (cmd === 'previous' || cmd === 'prev') state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1);
+        if (cmd === 'first') state.cardIndex = 0;
+        if (cmd === 'last') state.cardIndex = state.stack.cards.length - 1;
+        state.selectedId = null;
+        render();
+        return;
+      }
+      if ((match = line.match(/^go\s+(?:to\s+)?card\s+(?:id\s+)?["'](.+?)["']$/i))) {
+        const target = match[1];
+        const index = state.stack.cards.findIndex(card => card.id === target || card.name.toLowerCase() === target.toLowerCase());
+        if (index < 0) await answer(`Card "${target}" not found.`);
+        else { state.cardIndex = index; state.selectedId = null; render(); }
+        return;
+      }
+      if ((match = line.match(/^answer\s+["'](.+?)["'](?:\s+with\s+["'](.+?)["'](?:\s+or\s+["'](.+?)["'])?(?:\s+or\s+["'](.+?)["'])?)?$/i))) {
+        const buttons = [match[2], match[3], match[4]].filter(Boolean);
+        state.it = await answer(match[1], buttons.length ? buttons : ['OK']) || '';
+        return;
+      }
+      if ((match = line.match(/^ask\s+["'](.+?)["'](?:\s+with\s+["'](.*?)["'])?$/i))) {
+        const result = await ask(match[1], match[2] || '');
+        state.it = result ?? '';
+        return;
+      }
+      if ((match = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?["'](.+?)["']$/i))) {
+        const value = evaluateValue(match[1]);
+        const field = findElement(match[2]);
+        if (!field || field.type !== 'field') await answer(`Field "${match[2]}" not found.`);
+        else { field.content = value; render(); }
+        return;
+      }
+      if ((match = line.match(/^(show|hide)\s+(?:button|field)\s+(?:id\s+)?["'](.+?)["']$/i))) {
+        const el = findElement(match[2]);
+        if (!el) await answer(`Element "${match[2]}" not found.`);
+        else { el.visible = match[1].toLowerCase() === 'show'; render(); }
+        return;
+      }
+      await answer(`Unknown command: ${line}`);
+    }
+
+    function evaluateValue(expression) {
+      const parts = expression.split(/\s*&\s*/).map(part => part.trim());
+      return parts.map(part => {
+        if (/^it$/i.test(part)) return state.it;
+        const quoted = part.match(/^["'](.*)["']$/);
+        return quoted ? quoted[1] : part;
+      }).join('');
+    }
+
+    function confirmDialog(message, buttons) { return answer(message, buttons); }
+
+    function answer(message, buttons = ['OK']) {
+      dom.dialogTitle.textContent = 'Message';
+      dom.dialogMessage.textContent = message;
+      dom.dialogInput.classList.add('hidden');
+      dom.dialogButtons.innerHTML = '';
+      return new Promise(resolve => {
+        buttons.forEach(label => {
+          const btn = document.createElement('button');
+          btn.textContent = label;
+          btn.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(label); });
+          dom.dialogButtons.appendChild(btn);
+        });
+        dom.dialogBackdrop.classList.remove('hidden');
+      });
+    }
+
+    function ask(message, defaultValue = '') {
+      dom.dialogTitle.textContent = 'Question';
+      dom.dialogMessage.textContent = message;
+      dom.dialogInput.value = defaultValue;
+      dom.dialogInput.classList.remove('hidden');
+      dom.dialogButtons.innerHTML = '';
+      return new Promise(resolve => {
+        const ok = document.createElement('button');
+        ok.textContent = 'OK';
+        ok.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(dom.dialogInput.value); });
+        const cancel = document.createElement('button');
+        cancel.textContent = 'Cancel';
+        cancel.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(null); });
+        dom.dialogButtons.append(ok, cancel);
+        dom.dialogBackdrop.classList.remove('hidden');
+        dom.dialogInput.focus();
+      });
+    }
+
+    function openScript(target) {
+      state.scriptTarget = target;
+      dom.scriptTarget.textContent = `${target.name || target.id}`;
+      dom.scriptText.value = target.script || '';
+      dom.scriptBackdrop.classList.remove('hidden');
+      dom.scriptText.focus();
+    }
+
+    function saveScript() {
+      if (state.scriptTarget) state.scriptTarget.script = dom.scriptText.value;
+      dom.scriptBackdrop.classList.add('hidden');
+      state.scriptTarget = null;
+      render();
+    }
+
+    function saveStack() {
+      const name = prompt('Stack name:', state.stack.name || 'Untitled Stack');
+      if (name && name.trim()) state.stack.name = name.trim();
+      const record = { ...state.stack, savedAt: new Date().toISOString() };
+      localStorage.setItem(STORAGE_PREFIX + state.stack.id, JSON.stringify(record));
+      const index = new Set(JSON.parse(localStorage.getItem(INDEX_KEY) || '[]'));
+      index.add(state.stack.id);
+      localStorage.setItem(INDEX_KEY, JSON.stringify([...index]));
+      answer(`Stack "${state.stack.name}" saved in this browser.`);
+      render();
+    }
+
+    function openLoadDialog() {
+      const ids = JSON.parse(localStorage.getItem(INDEX_KEY) || '[]');
+      dom.stackList.innerHTML = '';
+      if (!ids.length) dom.stackList.textContent = 'No locally saved stacks found.';
+      ids.forEach(id => {
+        const raw = localStorage.getItem(STORAGE_PREFIX + id);
+        if (!raw) return;
+        const stack = JSON.parse(raw);
+        const btn = document.createElement('button');
+        btn.className = 'stack-item';
+        btn.textContent = `${stack.name || 'Untitled Stack'} — saved ${stack.savedAt || 'unknown date'}`;
+        btn.addEventListener('click', () => {
+          state.stack = normalizeStack(stack);
+          state.cardIndex = 0;
+          state.selectedId = null;
+          dom.loadBackdrop.classList.add('hidden');
+          render();
+        });
+        dom.stackList.appendChild(btn);
+      });
+      dom.loadBackdrop.classList.remove('hidden');
+    }
+
+    function exportStack() {
+      const blob = new Blob([JSON.stringify(state.stack, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(state.stack.name || 'hypercard-stack').replace(/[^a-z0-9_-]+/gi, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importStack(file) {
+      if (!file) return;
+      try {
+        const text = await file.text();
+        state.stack = normalizeStack(JSON.parse(text));
+        state.stack.id = state.stack.id || uid('stack');
+        state.cardIndex = 0;
+        state.selectedId = null;
+        render();
+        await answer(`Imported stack "${state.stack.name}".`);
+      } catch (err) {
+        await answer(`Import failed: ${err.message}`);
+      }
+    }
+
+    function createDemo() {
+      const bg = createBackground('Shared Background');
+      const card1 = createCard(bg.id, 1);
+      card1.name = 'Welcome Card';
+      card1.elements.push({ id: uid('el'), type: 'field', name: 'WelcomeField', content: 'Welcome to the HyperCard Simulator.\nClick Next Card to test navigation.', script: '', visible: true, rect: { x: 20, y: 20, width: 470, height: 70 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card1.elements.push({ id: uid('el'), type: 'button', name: 'NextButton', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, rect: { x: 190, y: 115, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+
+      const card2 = createCard(bg.id, 2);
+      card2.name = 'Interaction Card';
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'AskButton', text: 'Ask Name', script: 'on mouseUp\n  ask "What is your name?" with "Rick"\n  put "Hello, " & it into field "ResultField"\nend mouseUp', visible: true, rect: { x: 40, y: 40, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'AnswerButton', text: 'Choose', script: 'on mouseUp\n  answer "Pick one" with "Alpha" or "Beta"\n  put it into field "ResultField"\nend mouseUp', visible: true, rect: { x: 40, y: 90, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card2.elements.push({ id: uid('el'), type: 'field', name: 'ResultField', content: 'Dialog results appear here.', script: '', visible: true, rect: { x: 190, y: 40, width: 285, height: 85 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'NextButton2', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, rect: { x: 190, y: 150, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+
+      const card3 = createCard(bg.id, 3);
+      card3.name = 'Visibility Card';
+      card3.elements.push({ id: uid('el'), type: 'field', name: 'SecretField', content: 'Secret field', script: '', visible: true, rect: { x: 180, y: 100, width: 160, height: 50 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'HideSecret', text: 'Hide Secret', script: 'on mouseUp\n  hide field "SecretField"\nend mouseUp', visible: true, rect: { x: 60, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'ShowSecret', text: 'Show Secret', script: 'on mouseUp\n  show field "SecretField"\nend mouseUp', visible: true, rect: { x: 210, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'Home', text: 'Go Home', script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp', visible: true, rect: { x: 180, y: 180, width: 160, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+
+      state.stack = normalizeStack({ id: uid('stack'), name: 'Demo Stack', backgrounds: [bg], cards: [card1, card2, card3], nextElementNumber: 1 });
+      state.cardIndex = 0;
+      state.runMode = true;
+      state.selectedId = null;
+      render();
+    }
+
+    function wireEvents() {
+      document.getElementById('newStackBtn').addEventListener('click', () => confirmDialog('Create a new stack? Unsaved changes will be lost.', ['Create New', 'Cancel']).then(r => { if (r === 'Create New') newStack(); }));
+      document.getElementById('saveBtn').addEventListener('click', saveStack);
+      document.getElementById('loadBtn').addEventListener('click', openLoadDialog);
+      document.getElementById('exportBtn').addEventListener('click', exportStack);
+      document.getElementById('importInput').addEventListener('change', e => importStack(e.target.files[0]));
+      document.getElementById('demoBtn').addEventListener('click', () => confirmDialog('Replace the current stack with demo content?', ['Create Demo', 'Cancel']).then(r => { if (r === 'Create Demo') createDemo(); }));
+      document.getElementById('newCardBtn').addEventListener('click', () => { const bg = currentBackground() || state.stack.backgrounds[0]; state.stack.cards.push(createCard(bg.id, state.stack.cards.length + 1)); state.cardIndex = state.stack.cards.length - 1; state.selectedId = null; render(); });
+      document.getElementById('prevBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
+      document.getElementById('nextBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
+      document.getElementById('deleteCardBtn').addEventListener('click', () => confirmDialog('Delete current card?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete' && state.stack.cards.length > 1) { state.stack.cards.splice(state.cardIndex, 1); state.cardIndex = clamp(state.cardIndex, 0, state.stack.cards.length - 1); state.selectedId = null; render(); } }));
+      document.getElementById('addButtonBtn').addEventListener('click', () => addElement('button'));
+      document.getElementById('addFieldBtn').addEventListener('click', () => addElement('field'));
+      dom.backgroundToggle.addEventListener('change', e => { state.editBackground = e.target.checked; state.selectedId = null; render(); });
+      dom.modeBtn.addEventListener('click', () => { state.runMode = !state.runMode; state.selectedId = null; render(); });
+      document.getElementById('applyScriptBtn').addEventListener('click', saveScript);
+      document.getElementById('closeScriptBtn').addEventListener('click', () => dom.scriptBackdrop.classList.add('hidden'));
+      document.getElementById('scriptHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
+      document.getElementById('helpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
+      document.getElementById('closeHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.add('hidden'));
+      document.getElementById('closeLoadBtn').addEventListener('click', () => dom.loadBackdrop.classList.add('hidden'));
+      dom.cardArea.addEventListener('mousedown', e => { if (!state.runMode && e.target === dom.cardArea) { state.selectedId = null; render(); } });
+      document.addEventListener('keydown', e => {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+        if (!state.runMode && state.selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
+          e.preventDefault();
+          confirmDialog('Delete selected element?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete') deleteElement(); });
         }
-
-        // --- Initialization ---
-        async function initializeAppCore() {
-            appIdDisplay.textContent = appId;
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                // setLogLevel('debug'); // Can be enabled for Firebase debugging if needed
-
-                await setPersistence(auth, browserLocalPersistence); 
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        userIdDisplay.textContent = currentUserId;
-                    } else {
-                        try {
-                            await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Anonymous sign-in error:", error);
-                            userIdDisplay.textContent = "Error signing in";
-                        }
-                    }
-                    isAuthReady = true;
-                    if (!state.currentStack) { 
-                        createNewStack(); 
-                    }
-                    updateUI();
-                });
-                
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else if (!auth.currentUser) { 
-                    if (!auth.currentUser) await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
-                userIdDisplay.textContent = "Firebase Init Error";
-                if (!state.currentStack) {
-                    createNewStack(); 
-                }
-                 updateUI(); 
-            }
-            
-            setupEventListeners();
-            updateUI(); 
-        }
-
-
-        // --- Stack Structure ---
-        function createNewStack(name = "Untitled Stack") {
-            const defaultBackgroundId = crypto.randomUUID();
-            const firstCardId = crypto.randomUUID();
-            
-            state.currentStack = {
-                id: null, 
-                name: name,
-                cards: [createDefaultCard(firstCardId, defaultBackgroundId, 1)],
-                backgrounds: [createDefaultBackground(defaultBackgroundId)],
-                defaultCardWidth: 512,
-                defaultCardHeight: 342,
-                nextElementId: 1, 
-            };
-            state.currentCardIndex = 0;
-            state.selectedElementId = null;
-            state.isEditingBackground = false; 
-            chkEditBackground.checked = false;
-            updateUI();
-        }
-
-        // --- Rendering ---
-        function renderApp() {
-            if (!state.currentStack) {
-                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Stack data is missing. Try creating a new stack.</p>';
-                 statusBar.textContent = "Error: No Stack";
-                 updateToolbarAvailability();
-                 return;
-            }
-            if (!Array.isArray(state.currentStack.cards)) {
-                 state.currentStack.cards = []; 
-                 cardArea.innerHTML = '<p class="p-4 text-center">Error: Card data corrupted. Please create a new stack.</p>';
-                 statusBar.textContent = "Error: Card Data Corrupt";
-                 updateToolbarAvailability();
-                 return;
-            }
-             if (!Array.isArray(state.currentStack.backgrounds)) {
-                state.currentStack.backgrounds = []; 
-            }
-
-
-            if (state.currentStack.cards.length === 0) {
-                cardArea.innerHTML = '<p class="p-4 text-center">Stack is empty. Create a new card.</p>';
-                statusBar.textContent = `Stack: ${state.currentStack.name || "Untitled"} (0 cards)`;
-                if (propertiesPanel) propertiesPanel.classList.add('hidden');
-                updateToolbarAvailability(); 
-                return;
-            }
-            renderCurrentCard();
-            updateStatusBar();
-            updateToolbarAvailability();
-            renderPropertiesPanel();
-        }
-
-        function renderCurrentCard() {
-            cardArea.innerHTML = ''; 
-
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards)) {
-                cardArea.innerHTML = '<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Stack data invalid. Cannot render card.</p>';
-                return;
-            }
-            if (state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) {
-                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card index ${state.currentCardIndex} is out of bounds (Total cards: ${state.currentStack.cards.length}).</p>`;
-                 return;
-            }
-
-            const card = state.currentStack.cards[state.currentCardIndex];
-            if (!card || typeof card !== 'object') { 
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card data at index ${state.currentCardIndex} is missing or invalid.</p>`;
-                return;
-            }
-            if (!Array.isArray(card.elements)) {
-                card.elements = [];
-            }
-
-            if (!card.backgroundId) {
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Card "${card.name}" is missing background information.</p>`;
-                return;
-            }
-             if (!Array.isArray(state.currentStack.backgrounds)) {
-                cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">FATAL ERROR: Background data corrupted.</p>`;
-                return;
-            }
-
-            const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-            if (!background) {
-                 cardArea.innerHTML = `<p class="p-4 text-center text-red-500 font-bold">ERROR: Background for card "${card.name}" not found.</p>`;
-                 return; 
-            }
-             if (!Array.isArray(background.elements)) {
-                background.elements = [];
-            }
-
-            if (state.isEditingBackground && background) {
-                cardArea.style.backgroundColor = background.backgroundColor || '#F0F0F0';
-            } else if (card) { 
-                cardArea.style.backgroundColor = card.backgroundColor || '#FFFFFF';
-            }
-            
-            let contentRenderedOnCard = false;
-
-            if (background) {
-                background.elements.forEach(element => { 
-                    if (element.isVisible !== false) { 
-                        const elDom = renderElement(element, cardArea, true);
-                        if (elDom) contentRenderedOnCard = true;
-                        if(elDom && state.isEditingBackground) {
-                            elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
-                        } else if (elDom) {
-                            elDom.style.pointerEvents = 'auto'; 
-                        }
-                    }
-                });
-            }  
-
-            card.elements.forEach(element => { 
-                 if (element.isVisible !== false) { 
-                    const elDom = renderElement(element, cardArea, false);
-                    if (elDom) contentRenderedOnCard = true;
-                    if(elDom && !state.isEditingBackground) {
-                        elDom.style.pointerEvents = state.isRunMode ? 'auto' : 'all';
-                    } else if (elDom) {
-                        elDom.style.pointerEvents = 'none'; 
-                    }
-                }
-            });
-
-            if (!contentRenderedOnCard && !state.isEditingBackground) { 
-                const emptyMsg = document.createElement('p');
-                emptyMsg.textContent = '(This card is currently empty)';
-                emptyMsg.style.textAlign = 'center';
-                emptyMsg.style.color = '#888';
-                emptyMsg.style.fontSize = '14px';
-                emptyMsg.style.fontStyle = 'italic';
-                emptyMsg.style.position = 'absolute'; 
-                emptyMsg.style.top = '50%';
-                emptyMsg.style.left = '50%';
-                emptyMsg.style.transform = 'translate(-50%, -50%)'; 
-                emptyMsg.style.width = '100%'; 
-                cardArea.appendChild(emptyMsg);
-            }
-        }
-
-        function renderElement(element, parentDom, isBackgroundElement) {
-            if (element.isVisible === false) { 
-                return null; 
-            }
-
-            const el = document.createElement('div');
-            el.id = `el-${element.id}`;
-            el.className = 'hc-element';
-            if (element.id === state.selectedElementId && (state.isEditingBackground === isBackgroundElement)) {
-                el.classList.add('selected');
-            }
-            
-            element.rect = element.rect || {x:10, y:10, width:100, height:30}; 
-
-            el.style.left = `${element.rect.x}px`; 
-            el.style.top = `${element.rect.y}px`;
-            el.style.width = `${element.rect.width}px`;
-            el.style.height = `${element.rect.height}px`;
-            
-            if (!state.isRunMode) {
-                const tooltip = document.createElement('span');
-                tooltip.className = 'hc-element-tooltip';
-                tooltip.textContent = `${element.type} (ID: ${element.id.substring(0,4)})`;
-                el.appendChild(tooltip);
-            }
-
-            if (element.type === 'button') {
-                el.classList.add('hc-element-button');
-                el.textContent = element.text || "Button";
-                if (element.style) { 
-                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
-                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
-                    if(element.style.color) el.style.color = element.style.color;
-                    if(element.style.backgroundColor) el.style.backgroundColor = element.style.backgroundColor;
-                }
-            } else if (element.type === 'field') {
-                el.classList.add('hc-element-field');
-                el.textContent = element.content || "";
-                if (!state.isRunMode && (state.isEditingBackground === isBackgroundElement)) {
-                    el.contentEditable = "true";
-                    el.addEventListener('blur', (e) => {
-                         if (element.content !== e.target.textContent) {
-                            element.content = e.target.textContent;
-                         }
-                    });
-                } else {
-                    el.contentEditable = "false";
-                }
-                if (element.style) { 
-                    if(element.style.fontFamily) el.style.fontFamily = element.style.fontFamily;
-                    if(element.style.fontSize) el.style.fontSize = element.style.fontSize + 'px';
-                    if(element.style.color) el.style.color = element.style.color;
-                }
-            }
-            
-            if (state.isRunMode) { 
-                 el.addEventListener('click', (e) => { 
-                    e.stopPropagation();
-                    executeHyperTalk(element.script, { element, isBackgroundElement });
-                 });
-            } else { 
-                el.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                    if (state.isEditingBackground === isBackgroundElement) { 
-                        state.selectedElementId = element.id;
-                        state.draggedElement = element;
-                        const rect = el.getBoundingClientRect();
-                        state.dragOffsetX = e.clientX - rect.left;
-                        state.dragOffsetY = e.clientY - rect.top;
-                        renderApp(); 
-                    }
-                });
-                 el.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    if (state.isEditingBackground === isBackgroundElement) {
-                        openScriptEditor(element);
-                    }
-                 });
-            }
-            parentDom.appendChild(el);
-            return el;
-        }
-        
-        function updateStatusBar() {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0) {
-                statusBar.textContent = "No Stack / Empty";
-                return;
-            }
-            const cardCount = state.currentStack.cards.length;
-            const currentCardNum = (state.currentCardIndex >= 0 && state.currentCardIndex < cardCount) ? state.currentCardIndex + 1 : "?";
-
-            let mode = state.isRunMode ? "Run Mode" : "Edit Mode";
-            if (!state.isRunMode) {
-                mode += state.isEditingBackground ? " (Background)" : " (Card)";
-            }
-            const stackName = state.currentStack.name || "Untitled Stack";
-            statusBar.textContent = `Card ${currentCardNum} of ${cardCount} | Stack: ${stackName} | ${mode}`;
-        }
-
-        function updateToolbarAvailability() {
-            const hasStack = !!state.currentStack;
-            const hasCards = hasStack && Array.isArray(state.currentStack.cards) && state.currentStack.cards.length > 0;
-            
-            document.getElementById('btnSaveStack').disabled = !hasStack || !currentUserId || btnSaveStackEl.textContent === "Saving..."; 
-            document.getElementById('btnLoadStack').disabled = !currentUserId; 
-            document.getElementById('btnNewCard').disabled = !hasStack; 
-            document.getElementById('btnDeleteCard').disabled = !hasCards || state.currentStack.cards.length <=1; 
-            document.getElementById('btnPrevCard').disabled = !hasCards || state.currentCardIndex === 0;
-            document.getElementById('btnNextCard').disabled = !hasCards || state.currentCardIndex >= state.currentStack.cards.length - 1;
-            document.getElementById('btnNewButton').disabled = !hasCards || state.isRunMode; 
-            document.getElementById('btnNewField').disabled = !hasCards || state.isRunMode; 
-            document.getElementById('chkEditBackground').disabled = !hasCards || state.isRunMode; 
-        }
-
-        function updateUI() {
-            renderApp(); 
-        }
-
-        // --- Element Manipulation ---
-        function getActiveLayerElements() {
-            if (!state.currentStack) return null; 
-            if (state.isEditingBackground) {
-                 if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card || !Array.isArray(state.currentStack.backgrounds)) return null;
-                const background = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-                 if (!background) return null;
-                return background.elements || []; 
-            } else {
-                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card) return null;
-                return card.elements || []; 
-            }
-        }
-
-        function findElementByNameOrId(nameOrId) {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return null;
-            const currentCard = state.currentStack.cards[state.currentCardIndex];
-            if (!currentCard) return null;
-
-            let foundElement = (currentCard.elements || []).find(el => el.id === nameOrId || el.name === nameOrId);
-            if (foundElement) return foundElement;
-
-            if (currentCard.backgroundId && Array.isArray(state.currentStack.backgrounds)) {
-                const background = state.currentStack.backgrounds.find(bg => bg.id === currentCard.backgroundId);
-                if (background && Array.isArray(background.elements)) {
-                    foundElement = background.elements.find(el => el.id === nameOrId || el.name === nameOrId);
-                    if (foundElement) return foundElement;
-                }
-            }
-            return null;
-        }
-
-
-        function addElement(type) {
-            if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length === 0 || state.currentCardIndex === -1) {
-                showAnswerDialog("Please select or create a card first before adding elements.");
-                return;
-            }
-            if (state.isRunMode) {
-                showAnswerDialog("Switch to Edit Mode to add elements.");
-                return;
-            }
-
-            const activeElements = getActiveLayerElements();
-            if (!activeElements) { 
-                showAnswerDialog("Error: Could not find the active layer (card/background) to add the element. Ensure a card is selected and has a background.");
-                return;
-            }
-            
-            const elementName = `${type} ${state.currentStack.nextElementId++}`;
-            const newElement = {
-                id: crypto.randomUUID(),
-                type: type,
-                name: elementName,
-                rect: { x: 50, y: 50, width: (type === 'button' ? 100 : 150), height: (type === 'button' ? 30 : 50) },
-                text: (type === 'button' ? "New Button" : undefined),
-                content: (type === 'field' ? "New Field" : undefined),
-                script: `on mouseUp\n  -- ${type} script for ${elementName}\nend mouseUp`,
-                style: {}, 
-                isVisible: true, 
-            };
-
-            activeElements.push(newElement);
-            state.selectedElementId = newElement.id; 
-            updateUI();
-        }
-        
-        function deleteSelectedElement() {
-            if (!state.selectedElementId || !state.currentStack) return;
-
-            let elementsList;
-            let parentObject; 
-
-            if (state.isEditingBackground) {
-                if (!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
-                const card = state.currentStack.cards[state.currentCardIndex];
-                if (!card || !Array.isArray(state.currentStack.backgrounds)) return;
-                parentObject = state.currentStack.backgrounds.find(b => b.id === card.backgroundId);
-                if (parentObject) elementsList = parentObject.elements;
-            } else {
-                if(!Array.isArray(state.currentStack.cards) || state.currentCardIndex < 0 || state.currentCardIndex >= state.currentStack.cards.length) return;
-                parentObject = state.currentStack.cards[state.currentCardIndex];
-                if (parentObject) elementsList = parentObject.elements;
-            }
-
-            if (elementsList && Array.isArray(elementsList) && parentObject) {
-                const index = elementsList.findIndex(el => el.id === state.selectedElementId);
-                if (index > -1) {
-                    elementsList.splice(index, 1);
-                    state.selectedElementId = null;
-                    updateUI();
-                }
-            }
-        }
-
-
-        // --- Properties Panel ---
-        function renderPropertiesPanel() {
-            if (state.isRunMode || !state.currentStack || !state.currentStack.cards || state.currentStack.cards.length === 0) {
-                propertiesPanel.classList.add('hidden');
-                return;
-            }
-
-            propertiesContent.innerHTML = ''; // Clear previous
-            btnDeleteElement.classList.add('hidden'); // Hide delete button by default
-
-            const currentCardForProps = state.currentStack.cards[state.currentCardIndex];
-            const currentBackgroundForProps = currentCardForProps ? state.currentStack.backgrounds.find(b => b.id === currentCardForProps.backgroundId) : null;
-
-            if (state.selectedElementId) { // Element is selected
-                const elements = getActiveLayerElements();
-                const element = elements ? elements.find(el => el.id === state.selectedElementId) : null;
-
-                if (element) {
-                    propertiesPanel.classList.remove('hidden');
-                    btnDeleteElement.classList.remove('hidden');
-                    let html = `<h3>Element Properties</h3>
-                        <div><label>ID: <input type="text" value="${element.id}" readonly class="bg-gray-100"></label></div>
-                        <div><label>Name: <input type="text" id="propName" value="${element.name || ''}"></label></div>
-                        <div><label>X: <input type="number" id="propX" value="${element.rect?.x || 10}"></label></div>
-                        <div><label>Y: <input type="number" id="propY" value="${element.rect?.y || 10}"></label></div>
-                        <div><label>Width: <input type="number" id="propWidth" value="${element.rect?.width || 100}"></label></div>
-                        <div><label>Height: <input type="number" id="propHeight" value="${element.rect?.height || 30}"></label></div>
-                    `;
-                    if (element.type === 'button') {
-                        html += `<div><label>Text: <input type="text" id="propButtonText" value="${element.text || ''}"></label></div>`;
-                    } else if (element.type === 'field') {
-                        html += `<div><label>Content: <textarea id="propFieldContent">${element.content || ''}</textarea></label></div>`;
-                    }
-                    html += `<h4 class="mt-3 mb-1 font-semibold text-sm">Basic Styling:</h4>
-                             <div><label>Font Size (px): <input type="number" id="propStyleFontSize" value="${element.style?.fontSize || '16'}"></label></div>
-                             <div><label>Text Color: <input type="color" id="propStyleColor" value="${element.style?.color || '#000000'}"></label></div>`;
-                    if (element.type === 'button') {
-                        html += `<div><label>Background Color: <input type="color" id="propStyleBgColor" value="${element.style?.backgroundColor || '#f0f0f0'}"></label></div>`;
-                    }
-                    html += `<button id="btnEditScriptFromProps" class="hc-button w-full mt-3">Edit Script</button>`;
-                    propertiesContent.innerHTML = html;
-                    
-                    element.rect = element.rect || {x:10, y:10, width:100, height:30};
-                    document.getElementById('propName').addEventListener('change', (e) => { element.name = e.target.value; updateUI(); });
-                    document.getElementById('propX').addEventListener('change', (e) => { element.rect.x = parseInt(e.target.value) || 10; updateUI(); });
-                    document.getElementById('propY').addEventListener('change', (e) => { element.rect.y = parseInt(e.target.value) || 10; updateUI(); });
-                    document.getElementById('propWidth').addEventListener('change', (e) => { element.rect.width = parseInt(e.target.value) || 100; updateUI(); });
-                    document.getElementById('propHeight').addEventListener('change', (e) => { element.rect.height = parseInt(e.target.value) || 30; updateUI(); });
-                    if (element.type === 'button') {
-                        document.getElementById('propButtonText').addEventListener('change', (e) => { element.text = e.target.value; updateUI(); });
-                    } else if (element.type === 'field') {
-                        document.getElementById('propFieldContent').addEventListener('change', (e) => { element.content = e.target.value; updateUI(); });
-                    }
-                    element.style = element.style || {}; 
-                    document.getElementById('propStyleFontSize').addEventListener('change', (e) => { element.style.fontSize = parseInt(e.target.value) || 16; updateUI(); });
-                    document.getElementById('propStyleColor').addEventListener('change', (e) => { element.style.color = e.target.value; updateUI(); });
-                    if (element.type === 'button') {
-                        document.getElementById('propStyleBgColor').addEventListener('change', (e) => { element.style.backgroundColor = e.target.value; updateUI(); });
-                    }
-                    document.getElementById('btnEditScriptFromProps').addEventListener('click', () => openScriptEditor(element));
-                } else { 
-                    propertiesPanel.classList.add('hidden');
-                    state.selectedElementId = null; 
-                }
-            } else if (!state.isRunMode && currentCardForProps) { // No element selected, show Card/Background properties
-                propertiesPanel.classList.remove('hidden');
-                let targetObject = state.isEditingBackground ? currentBackgroundForProps : currentCardForProps;
-                let objectType = state.isEditingBackground ? "Background" : "Card";
-
-                if (targetObject) {
-                    let html = `<h3>${objectType} Properties</h3>
-                        <div><label>ID: <input type="text" value="${targetObject.id}" readonly class="bg-gray-100"></label></div>
-                        <div><label>Name: <input type="text" id="propObjectName" value="${targetObject.name || ''}"></label></div>
-                        <div><label>Background Color: <input type="color" id="propObjectBgColor" value="${targetObject.backgroundColor || (objectType === 'Card' ? '#FFFFFF' : '#F0F0F0')}"></label></div>
-                        <button id="btnEditObjectScript" class="hc-button w-full mt-3">Edit ${objectType} Script</button>
-                    `;
-                    propertiesContent.innerHTML = html;
-
-                    document.getElementById('propObjectName').addEventListener('change', (e) => { targetObject.name = e.target.value; updateUI(); });
-                    document.getElementById('propObjectBgColor').addEventListener('change', (e) => { targetObject.backgroundColor = e.target.value; updateUI(); });
-                    document.getElementById('btnEditObjectScript').addEventListener('click', () => openScriptEditor(targetObject));
-                } else {
-                    propertiesContent.innerHTML = `<p>Select an element, or switch layers to edit ${objectType === "Card" ? "Background" : "Card"} properties.</p>`;
-                }
-            } else { // Run mode or no card
-                propertiesPanel.classList.add('hidden');
-            }
-        }
-
-
-        // --- Scripting ---
-        let currentEditingElement = null; 
-
-        function openScriptEditor(objectWithScript) { 
-            if (!objectWithScript) {
-                console.warn("openScriptEditor: No object provided.");
-                return;
-            }
-            currentEditingElement = objectWithScript; 
-            const objectType = objectWithScript.type ? objectWithScript.type : (state.currentStack.cards.includes(objectWithScript) ? "Card" : "Background");
-            scriptEditorElementName.textContent = `${objectWithScript.name || objectType} (ID: ${objectWithScript.id.substring(0,4)})`;
-            scriptEditorTextarea.value = objectWithScript.script || "";
-            scriptEditorModal.classList.remove('hidden');
-            scriptEditorTextarea.focus();
-        }
-
-        function applyScript() {
-            if (currentEditingElement) {
-                currentEditingElement.script = scriptEditorTextarea.value;
-            }
-            closeScriptEditor();
-        }
-
-        function closeScriptEditor() {
-            scriptEditorModal.classList.add('hidden');
-            currentEditingElement = null;
-        }
-
-        function executeHyperTalk(script, context) {
-            if (!script || !state.isRunMode) return;
-            
-            const lines = script.split('\n').map(line => line.trim());
-            let inMouseUpHandler = false; 
-
-            for (const line of lines) {
-                if (line.toLowerCase().startsWith('on mouseup')) {
-                    inMouseUpHandler = true;
-                    continue;
-                }
-                if (line.toLowerCase() === 'end mouseup') {
-                    inMouseUpHandler = false;
-                    continue;
-                }
-
-                if (inMouseUpHandler) {
-                    // Regex for 'go' command. Catches:
-                    //   go next [card]
-                    //   go prev[ious] [card]
-                    //   go first [card]
-                    //   go last [card]
-                    //   go card "Name" / go card id "id"
-                    const goCmd = line.match(/^go\s+(?:to\s+)?((?:next|previous|prev|first|last)(?:\s+card)?|card(?:\s+(?:id\s+|"|')?([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?)?)$/i);
-                    const putCmd = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i); 
-                    const answerCmd = line.match(/^answer\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?(?:\s+or\s+"(.*?)")?(?:\s+or\s+"(.*?)")?)?/i);
-                    const askCmd = line.match(/^ask\s+"(.*?)"(?:(?:\s+with\s+"(.*?)")?)?/i);
-                    const showHideCmd = line.match(/^(show|hide)\s+(?:card\s+button|button|card\s+field|field)\s+(?:id\s+|"|')([\w-]+(?:[\w\s-]*[\w-])?)(?:"|')?/i);
-
-
-                    if (goCmd) {
-                        let commandArgument = goCmd[1].toLowerCase(); 
-                        let cardNameOrIdFromRegex = goCmd[2]; 
-
-                        let actionType;
-                        let specificCardTarget = null;
-
-                        if (commandArgument.startsWith("next")) actionType = "next";
-                        else if (commandArgument.startsWith("prev")) actionType = "previous";
-                        else if (commandArgument.startsWith("first")) actionType = "first";
-                        else if (commandArgument.startsWith("last")) actionType = "last";
-                        else if (commandArgument.startsWith("card") && cardNameOrIdFromRegex) {
-                            actionType = "card_specific";
-                            specificCardTarget = cardNameOrIdFromRegex;
-                        } else if (commandArgument.startsWith("card") && !cardNameOrIdFromRegex) {
-                             showAnswerDialog(`'go to card' needs a card name or ID.`);
-                             return; 
-                        } else {
-                             showAnswerDialog(`Unknown 'go' command structure: ${line}`);
-                             return;
-                        }
-
-                        // Perform navigation
-                        if (actionType === 'next') {
-                            if (state.currentStack.cards && state.currentCardIndex < state.currentStack.cards.length - 1) state.currentCardIndex++;
-                        } else if (actionType === 'previous') {
-                            if (state.currentCardIndex > 0) state.currentCardIndex--;
-                        } else if (actionType === 'first') {
-                            state.currentCardIndex = 0;
-                        } else if (actionType === 'last' && state.currentStack.cards) {
-                            state.currentCardIndex = state.currentStack.cards.length - 1;
-                        } else if (actionType === 'card_specific' && specificCardTarget) {
-                            const foundIndex = state.currentStack.cards.findIndex(c => c.id === specificCardTarget || c.name === specificCardTarget);
-                            if (foundIndex !== -1) state.currentCardIndex = foundIndex;
-                            else {
-                                showAnswerDialog(`Card "${specificCardTarget}" not found.`);
-                            }
-                        }
-                        state.selectedElementId = null; 
-                        updateUI();
-                    } else if (putCmd) {
-                        let valueToPut = putCmd[1];
-                        const targetFieldIdOrName = putCmd[2];
-                        
-                        if (valueToPut.toLowerCase() === 'it') { 
-                            valueToPut = hyperTalkItVariable;
-                        } else if (valueToPut.includes('& it')) { 
-                            valueToPut = valueToPut.replace(/&\s*it\b/gi, hyperTalkItVariable);
-                        } else if (valueToPut.startsWith('"') && valueToPut.endsWith('"')) { 
-                            valueToPut = valueToPut.substring(1, valueToPut.length - 1);
-                        }
-                        
-                        const targetField = findElementByNameOrId(targetFieldIdOrName);
-                        if (targetField && targetField.type === 'field') {
-                            targetField.content = valueToPut;
-                            updateUI(); 
-                        } else {
-                            showAnswerDialog(`Field "${targetFieldIdOrName}" not found to put value.`);
-                        }
-                    } else if (answerCmd) {
-                        const message = answerCmd[1];
-                        const buttons = [answerCmd[2], answerCmd[3], answerCmd[4]].filter(Boolean);
-                        showAnswerDialog(message, buttons.length > 0 ? buttons : ["OK"])
-                            .then(response => { hyperTalkItVariable = response || ""; }); 
-                    } else if (askCmd) {
-                        const question = askCmd[1];
-                        const defaultValue = askCmd[2] || "";
-                        showAskDialog(question, defaultValue)
-                             .then(userInput => {
-                                hyperTalkItVariable = userInput !== null ? userInput : ""; 
-                             });
-                    } else if (showHideCmd) {
-                        const action = showHideCmd[1].toLowerCase(); 
-                        const targetElementNameOrId = showHideCmd[2];
-                        const elementToToggle = findElementByNameOrId(targetElementNameOrId);
-                        if (elementToToggle) {
-                            elementToToggle.isVisible = (action === "show");
-                            updateUI();
-                        } else {
-                            showAnswerDialog(`Element "${targetElementNameOrId}" not found.`);
-                        }
-                    }
-                     else if (line && !line.startsWith('--')) { 
-                        showAnswerDialog(`Unknown command in script: ${line}`);
-                    }
-                }
-            }
-        }
-
-        // --- Dialogs (Answer/Ask) ---
-        let generalModalResolve = null;
-
-        function showAnswerDialog(message, buttons = ["OK"]) {
-            generalModalTitle.textContent = "Alert";
-            generalModalMessage.textContent = message;
-            generalModalInput.classList.add('hidden');
-            generalModalButtons.innerHTML = '';
-            buttons.forEach(btnText => {
-                const button = document.createElement('button');
-                button.className = 'hc-button';
-                button.textContent = btnText;
-                button.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    if(generalModalResolve) generalModalResolve(btnText);
-                };
-                generalModalButtons.appendChild(button);
-            });
-            generalModal.classList.remove('hidden');
-            return new Promise(resolve => { generalModalResolve = resolve; });
-        }
-
-        function showAskDialog(prompt, defaultValue = "") { 
-            generalModalTitle.textContent = "Question";
-            generalModalMessage.textContent = prompt;
-            generalModalInput.classList.remove('hidden');
-            generalModalInput.value = defaultValue;
-            generalModalButtons.innerHTML = '';
-            
-            return new Promise(resolve => {
-                generalModalResolve = resolve; 
-
-                const okButton = document.createElement('button');
-                okButton.className = 'hc-button';
-                okButton.textContent = "OK";
-                okButton.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    resolve(generalModalInput.value);
-                };
-                generalModalButtons.appendChild(okButton);
-
-                const cancelButton = document.createElement('button');
-                cancelButton.className = 'hc-button';
-                cancelButton.textContent = "Cancel";
-                cancelButton.onclick = () => {
-                    generalModal.classList.add('hidden');
-                    resolve(null); 
-                };
-                generalModalButtons.appendChild(cancelButton);
-                
-                generalModal.classList.remove('hidden');
-                generalModalInput.focus();
-            });
-        }
-
-
-        // --- Firebase Operations ---
-        async function saveCurrentStack() {
-            if (!currentUserId || !state.currentStack) {
-                showAnswerDialog("Cannot save: Not signed in or no stack loaded.");
-                return;
-            }
-
-            if ((!state.currentStack.id && state.currentStack.name === "Untitled Stack") || 
-                !state.currentStack.name || state.currentStack.name.trim() === "") {
-                
-                const promptText = (!state.currentStack.id && state.currentStack.name === "Untitled Stack") 
-                                   ? "Enter a name for this new stack:" 
-                                   : "Enter stack name:";
-                const currentNameSuggestion = (state.currentStack.name === "Untitled Stack" && !state.currentStack.id) 
-                                              ? "" 
-                                              : state.currentStack.name || "Untitled Stack";
-                const newName = await showAskDialog(promptText, currentNameSuggestion);
-                
-                if (newName && newName.trim() !== "") {
-                    state.currentStack.name = newName.trim();
-                } else if (!state.currentStack.name || state.currentStack.name.trim() === "") { 
-                    showAnswerDialog("Save cancelled: Stack name cannot be empty.");
-                    updateStatusBar(); 
-                    return;
-                }
-            }
-
-            const stackData = { ...state.currentStack, userId: currentUserId, updatedAt: serverTimestamp() };
-            
-            const originalButtonText = btnSaveStackEl.textContent;
-            btnSaveStackEl.textContent = "Saving...";
-            btnSaveStackEl.disabled = true;
-
-            try {
-                let stackRef;
-                if (state.currentStack.id) { 
-                    stackRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${state.currentStack.id}`);
-                    await setDoc(stackRef, stackData, { merge: true }); 
-                    showAnswerDialog(`Stack "${state.currentStack.name}" updated successfully!`);
-                } else { 
-                    stackData.createdAt = serverTimestamp();
-                    const collectionRef = collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`);
-                    const newDocRef = await addDoc(collectionRef, stackData);
-                    state.currentStack.id = newDocRef.id; 
-                    showAnswerDialog(`Stack "${state.currentStack.name}" saved successfully with ID: ${newDocRef.id}`);
-                }
-            } catch (error) {
-                console.error("Error saving stack to Firestore:", error);
-                let userMessage = "Error saving stack. Please try again.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to save stack. Check Firestore rules.";
-                else if (error.code === 'unavailable') userMessage = "Error: Network unavailable. Please check your connection and try again.";
-                showAnswerDialog(userMessage);
-            } finally {
-                btnSaveStackEl.textContent = originalButtonText;
-                updateToolbarAvailability(); 
-            }
-            updateUI(); 
-        }
-
-        async function listAndLoadStacks() {
-            if (!currentUserId) {
-                 showAnswerDialog("Cannot load stacks: Not signed in.");
-                return;
-            }
-            loadStackModal.classList.remove('hidden');
-            stackListContainer.innerHTML = '<p>Loading your stacks...</p>';
-
-            try {
-                const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks`));
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) {
-                    stackListContainer.innerHTML = '<p>No stacks found. Create and save one first!</p>';
-                    return;
-                }
-                
-                stackListContainer.innerHTML = ''; 
-                querySnapshot.forEach((docSnap) => {
-                    const stack = docSnap.data();
-                    const listItem = document.createElement('div');
-                    listItem.className = 'stack-list-item p-2 border-b cursor-pointer hover:bg-gray-100';
-                    listItem.textContent = `${stack.name || 'Untitled Stack'} (ID: ${docSnap.id.substring(0,8)}...)`;
-                    listItem.onclick = async () => {
-                        listItem.textContent = "Loading selected stack..."; 
-                        listItem.classList.add("loading");
-                        try {
-                            await loadStackFromFirestore(docSnap.id);
-                        } catch (loadError) {
-                             // Error already shown by loadStackFromFirestore
-                        } finally {
-                            loadStackModal.classList.add('hidden'); 
-                        }
-                    };
-                    stackListContainer.appendChild(listItem);
-                });
-            } catch (error) {
-                console.error("Error fetching stacks from Firestore:", error);
-                 let userMessage = "Error fetching stack list.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to list stacks.";
-                stackListContainer.innerHTML = `<p class="text-red-500">${userMessage}</p>`;
-            }
-        }
-        
-        async function loadStackFromFirestore(stackId) {
-            if (!currentUserId) {
-                throw new Error("Not signed in, cannot load stack."); 
-            }
-            
-            const defaultRect = { x: 10, y: 10, width: 100, height: 30 };
-
-            try {
-                const stackDocRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hypercard_stacks/${stackId}`);
-                const docSnap = await getDoc(stackDocRef);
-
-                if (docSnap.exists()) {
-                    const loadedStackData = docSnap.data();
-                    state.currentStack = { id: docSnap.id, ...loadedStackData };
-                    
-                    state.currentStack.cards = Array.isArray(state.currentStack.cards) ? state.currentStack.cards : [];
-                    state.currentStack.backgrounds = Array.isArray(state.currentStack.backgrounds) ? state.currentStack.backgrounds : [];
-                    state.currentStack.nextElementId = state.currentStack.nextElementId || 1;
-
-                    let defaultBgForLoadId;
-                    if (state.currentStack.backgrounds.length === 0) {
-                        const newDefaultBg = createDefaultBackground();
-                        state.currentStack.backgrounds.push(newDefaultBg);
-                        defaultBgForLoadId = newDefaultBg.id;
-                    } else {
-                        state.currentStack.backgrounds.forEach(bg => {
-                            bg.elements = Array.isArray(bg.elements) ? bg.elements : [];
-                            bg.elements.forEach(el => { 
-                                if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
-                                    el.rect = { ...defaultRect };
-                                }
-                                el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
-                            });
-                        });
-                        defaultBgForLoadId = state.currentStack.backgrounds[0].id; 
-                    }
-
-                    state.currentStack.cards.forEach((card, index) => {
-                        card.elements = Array.isArray(card.elements) ? card.elements : [];
-                        card.elements.forEach(el => { 
-                            if (!el.rect || typeof el.rect.x !== 'number' || typeof el.rect.y !== 'number' || typeof el.rect.width !== 'number' || typeof el.rect.height !== 'number') {
-                                el.rect = { ...defaultRect };
-                            }
-                             el.isVisible = typeof el.isVisible === 'boolean' ? el.isVisible : true; 
-                        });
-                        card.backgroundColor = card.backgroundColor || '#FFFFFF';
-                        const bgExists = state.currentStack.backgrounds.some(bg => bg.id === card.backgroundId);
-                        if (!card.backgroundId || !bgExists) {
-                            card.backgroundId = defaultBgForLoadId;
-                        }
-                    });                    
-
-                    state.currentCardIndex = state.currentStack.cards.length > 0 ? 0 : -1; 
-                    state.selectedElementId = null;
-                    state.isEditingBackground = false;
-                    chkEditBackground.checked = false;
-                    showAnswerDialog(`Stack "${state.currentStack.name || 'Untitled Stack'}" loaded.`);
-                    updateUI();
-                } else {
-                    showAnswerDialog("Error: Stack not found.");
-                     throw new Error(`Stack not found: ${stackId}`);
-                }
-            } catch (error) {
-                console.error("Error loading stack from Firestore (detailed):", error);
-                let userMessage = "Error loading stack data.";
-                if (error.code === 'permission-denied') userMessage = "Error: Permission denied to load stack.";
-                else if (error.message.includes("Stack not found")) userMessage = error.message; 
-                showAnswerDialog(userMessage);
-                throw error; 
-            }
-        }
-
-         // --- Demo Stack Content ---
-        function createDemoStack() {
-            showAnswerDialog("This will replace the current stack with demo content. Proceed?", ["Create Demo", "Cancel"])
-                .then(response => {
-                    if (response === "Create Demo") {
-                        createNewStack("Demo Stack"); // Creates a basic stack with 1 card and 1 bg
-
-                        const bgId = state.currentStack.backgrounds[0].id;
-
-                        // Card 1: Navigation and Simple Put
-                        state.currentStack.cards[0].name = "Welcome Card";
-                        state.currentStack.cards[0].elements.push({
-                            id: crypto.randomUUID(), type: 'field', name: 'WelcomeField',
-                            rect: { x: 20, y: 20, width: 472, height: 60 },
-                            content: "Welcome to the HyperCard Demo!\nClick the button below to go to the next card.",
-                            isVisible: true, script: ""
-                        });
-                        state.currentStack.cards[0].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'NextButton1',
-                            rect: { x: 200, y: 100, width: 112, height: 30 },
-                            text: "Next Card", isVisible: true,
-                            script: "on mouseUp\n  go to next card\nend mouseUp"
-                        });
-
-                        // Card 2: Dialogs and Text Manipulation
-                        const card2Id = crypto.randomUUID();
-                        state.currentStack.cards.push(createDefaultCard(card2Id, bgId, 2));
-                        state.currentStack.cards[1].name = "Interaction Card";
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'AnswerButton',
-                            rect: { x: 50, y: 50, width: 120, height: 30 },
-                            text: "Test Answer", isVisible: true,
-                            script: 'on mouseUp\n  answer "This is an answer dialog." with "OK" or "Great!"\n  put it into field "ResultField"\nend mouseUp'
-                        });
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'AskButton',
-                            rect: { x: 50, y: 100, width: 120, height: 30 },
-                            text: "Test Ask", isVisible: true,
-                            script: 'on mouseUp\n  ask "What is your favorite color?" with "Blue"\n  put "You chose: " & it into field "ResultField"\nend mouseUp'
-                        });
-                        state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'field', name: 'ResultField',
-                            rect: { x: 200, y: 50, width: 262, height: 80 },
-                            content: "Results will appear here...", isVisible: true, script: ""
-                        });
-                         state.currentStack.cards[1].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'NextButton2',
-                            rect: { x: 200, y: 150, width: 112, height: 30 },
-                            text: "Next Card", isVisible: true,
-                            script: "on mouseUp\n  go to next card\nend mouseUp"
-                        });
-
-
-                        // Card 3: Show/Hide and Navigation
-                        const card3Id = crypto.randomUUID();
-                        state.currentStack.cards.push(createDefaultCard(card3Id, bgId, 3));
-                        state.currentStack.cards[2].name = "Visibility Card";
-                        const targetElementId = crypto.randomUUID(); // Generate a unique ID for the field to be shown/hidden
-                        state.currentStack.cards[2].elements.push({
-                            id: targetElementId, type: 'field', name: 'SecretField', // Give it a name for easier scripting if preferred, but ID is more robust
-                            rect: { x: 150, y: 100, width: 200, height: 50 },
-                            content: "This is a secret field!", isVisible: true, script: ""
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'ShowButton',
-                            rect: { x: 50, y: 50, width: 120, height: 30 },
-                            text: "Show Secret", isVisible: true,
-                            script: `on mouseUp\n  show field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'HideButton',
-                            rect: { x: 200, y: 50, width: 120, height: 30 },
-                            text: "Hide Secret", isVisible: true,
-                            script: `on mouseUp\n  hide field id "${targetElementId}"\nend mouseUp` // Use ID for show/hide
-                        });
-                        state.currentStack.cards[2].elements.push({
-                            id: crypto.randomUUID(), type: 'button', name: 'BackButton',
-                            rect: { x: 150, y: 180, width: 200, height: 30 },
-                            text: "Go to Welcome Card", isVisible: true,
-                            script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp'
-                        });
-                        
-                        state.currentCardIndex = 0; // Start at the first demo card
-                        updateUI();
-                        showAnswerDialog("Demo stack created with 3 cards!");
-                    }
-                });
-        }
-
-
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            document.getElementById('btnNewStack').addEventListener('click', () => {
-                showAnswerDialog("Create new stack? Unsaved changes to the current stack will be lost.", ["Create New", "Cancel"])
-                    .then(response => { if (response === "Create New") createNewStack(); });
-            });
-            btnSaveStackEl.addEventListener('click', saveCurrentStack); 
-            document.getElementById('btnLoadStack').addEventListener('click', listAndLoadStacks);
-            document.getElementById('btnCreateDemo').addEventListener('click', createDemoStack);
-            
-            document.getElementById('btnNewCard').addEventListener('click', () => {
-                if (!state.currentStack) {
-                    showAnswerDialog("No stack loaded. Please create or load a stack first.");
-                    return;
-                }
-                if (!Array.isArray(state.currentStack.cards)) state.currentStack.cards = [];
-                if (!Array.isArray(state.currentStack.backgrounds)) state.currentStack.backgrounds = [];
-
-                let backgroundToUseId;
-                if (state.currentStack.backgrounds.length === 0) {
-                    const newBg = createDefaultBackground(); 
-                    state.currentStack.backgrounds.push(newBg);
-                    backgroundToUseId = newBg.id;
-                } else {
-                    if (!state.currentStack.backgrounds[0] || !state.currentStack.backgrounds[0].id) {
-                        const newBg = createDefaultBackground();
-                        state.currentStack.backgrounds[0] = newBg; 
-                        backgroundToUseId = newBg.id;
-                    } else {
-                        backgroundToUseId = state.currentStack.backgrounds[0].id; 
-                    }
-                }
-                
-                const newCardNumber = state.currentStack.cards.length + 1;
-                const newCard = createDefaultCard(crypto.randomUUID(), backgroundToUseId, newCardNumber); 
-                state.currentStack.cards.push(newCard);
-                state.currentCardIndex = state.currentStack.cards.length - 1; 
-                state.selectedElementId = null; 
-                updateUI();
-            });
-
-            document.getElementById('btnDeleteCard').addEventListener('click', () => {
-                if (!state.currentStack || !Array.isArray(state.currentStack.cards) || state.currentStack.cards.length <= 1) {
-                    showAnswerDialog("Cannot delete the last card in a stack.");
-                    return;
-                }
-                showAnswerDialog("Delete current card?", ["Delete", "Cancel"])
-                    .then(response => {
-                        if (response === "Delete") {
-                            state.currentStack.cards.splice(state.currentCardIndex, 1);
-                            if (state.currentCardIndex >= state.currentStack.cards.length) {
-                                state.currentCardIndex = state.currentStack.cards.length - 1;
-                            }
-                            if (state.currentStack.cards.length === 0) state.currentCardIndex = -1; 
-                            else if (state.currentCardIndex < 0 && state.currentStack.cards.length > 0) state.currentCardIndex = 0; 
-                            state.selectedElementId = null;
-                            updateUI();
-                        }
-                    });
-
-            });
-            document.getElementById('btnPrevCard').addEventListener('click', () => {
-                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex > 0) {
-                    state.currentCardIndex--;
-                    state.selectedElementId = null;
-                    updateUI();
-                }
-            });
-            document.getElementById('btnNextCard').addEventListener('click', () => {
-                if (state.currentStack && Array.isArray(state.currentStack.cards) && state.currentCardIndex < state.currentStack.cards.length - 1) {
-                    state.currentCardIndex++;
-                     state.selectedElementId = null;
-                    updateUI();
-                }
-            });
-
-            document.getElementById('btnNewButton').addEventListener('click', () => addElement('button'));
-            document.getElementById('btnNewField').addEventListener('click', () => addElement('field'));
-            
-            chkEditBackground.addEventListener('change', (e) => {
-                if (state.isRunMode) {
-                    e.target.checked = state.isEditingBackground; 
-                    showAnswerDialog("Switch to Edit Mode to change layers.");
-                    return;
-                }
-                state.isEditingBackground = e.target.checked;
-                state.selectedElementId = null; 
-                updateUI();
-            });
-
-            btnRunMode.addEventListener('click', () => {
-                state.isRunMode = !state.isRunMode;
-                state.selectedElementId = null; 
-                btnRunMode.textContent = state.isRunMode ? "Edit Mode" : "Run Mode";
-                btnRunMode.classList.toggle('bg-green-300', state.isRunMode);
-                btnRunMode.classList.toggle('bg-yellow-300', !state.isRunMode);
-                if (state.isRunMode) {
-                    propertiesPanel.classList.add('hidden');
-                } else {
-                    // Update properties panel for current card/bg if no element selected
-                    renderPropertiesPanel(); 
-                }
-                updateUI(); 
-            });
-
-            document.getElementById('btnApplyScript').addEventListener('click', applyScript);
-            document.getElementById('btnCloseScriptEditor').addEventListener('click', closeScriptEditor);
-            document.getElementById('btnScriptHelp').addEventListener('click', () => scriptHelpModal.classList.remove('hidden'));
-            document.getElementById('btnCloseScriptHelp').addEventListener('click', () => scriptHelpModal.classList.add('hidden'));
-
-
-            if (btnDeleteElement) {
-                btnDeleteElement.addEventListener('click', () => {
-                    if (state.selectedElementId) {
-                         showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
-                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
-                    } else {
-                        showAnswerDialog("No element selected to delete.");
-                    }
-                });
-            }
-            
-            document.getElementById('btnCloseLoadStack').addEventListener('click', () => {
-                loadStackModal.classList.add('hidden');
-            });
-
-            cardArea.addEventListener('mousedown', (e) => { // Clear selection if clicking on card area itself (not an element)
-                 if (!state.isRunMode && e.target === cardArea) {
-                    state.selectedElementId = null;
-                    renderPropertiesPanel(); // To show card/bg properties
-                 }
-            });
-
-            cardArea.addEventListener('mousemove', (e) => {
-                if (!state.draggedElement || state.isRunMode) return;
-                e.preventDefault();
-                const parentRect = cardArea.getBoundingClientRect();
-                let newX = e.clientX - parentRect.left - state.dragOffsetX;
-                let newY = e.clientY - parentRect.top - state.dragOffsetY;
-                state.draggedElement.rect.x = newX;
-                state.draggedElement.rect.y = newY;
-                const elDom = document.getElementById(`el-${state.draggedElement.id}`);
-                if (elDom) {
-                    elDom.style.left = `${newX}px`;
-                    elDom.style.top = `${newY}px`;
-                }
-                if (!propertiesPanel.classList.contains('hidden') && state.selectedElementId === state.draggedElement.id) {
-                    const propXInput = document.getElementById('propX');
-                    const propYInput = document.getElementById('propY');
-                    if (propXInput) propXInput.value = Math.round(newX);
-                    if (propYInput) propYInput.value = Math.round(newY);
-                }
-            });
-
-            document.addEventListener('mouseup', (e) => { 
-                if (state.draggedElement) {
-                    state.draggedElement.rect.x = Math.round(state.draggedElement.rect.x);
-                    state.draggedElement.rect.y = Math.round(state.draggedElement.rect.y);
-                    state.draggedElement = null;
-                    renderPropertiesPanel(); 
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return; 
-                if (e.key === 'Delete' || e.key === 'Backspace') {
-                    if (!state.isRunMode && state.selectedElementId) {
-                        e.preventDefault();
-                        showAnswerDialog("Delete selected element?", ["Delete", "Cancel"])
-                            .then(response => { if (response === "Delete") deleteSelectedElement(); });
-                    }
-                }
-            });
-        }
-
-        // --- Start the app ---
-        initializeAppCore();
-
-    </script>
+      });
+    }
+
+    wireEvents();
+    newStack();
+  </script>
 </body>
 </html>
-
