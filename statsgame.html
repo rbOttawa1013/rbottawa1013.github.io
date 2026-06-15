@@ -1,652 +1,688 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
-  <!-- Version-control note: 2026-06-15 v2.0.0 QA remediation.
-       Fixes: removes leading pre-doctype whitespace, removes external CDN dependencies, replaces unsafe innerHTML rendering,
-       adds explicit button types, centralizes game reset, stabilizes language switching, fixes selection styling patterns,
-       improves keyboard/ARIA board accessibility, clarifies rules, and uses safe DOM construction throughout. -->
+  <!-- Version-control note: 2026-06-15 v3.0.0 professional GoC-aligned Statistics Canada learning game.
+       Scope: bilingual English/French Canadian UX, accessible keyboard-first gameplay, self-contained CSS/JS, safe DOM rendering,
+       expanded question bank, explanations, glossary, teacher/class mode, badges, print summary, reduced motion/high contrast support,
+       and structured QA-friendly data model. No external dependencies. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stats Adventure Canada</title>
+  <title>Stats Adventure Canada | Aventure statistique Canada</title>
   <style>
     :root {
-      --red: #c8102e;
-      --dark: #1f2937;
-      --light: #f8fafc;
-      --panel: #ffffff;
-      --line: #d1d5db;
-      --blue: #2563eb;
-      --green: #15803d;
-      --yellow: #facc15;
-      --orange: #f97316;
-      --purple: #7c3aed;
-      --shadow: 0 8px 24px rgba(15, 23, 42, .18);
+      --gc-red:#c8102e; --gc-dark:#111827; --gc-blue:#26374a; --gc-link:#284162; --gc-focus:#ffbf47;
+      --bg:#f8fafc; --panel:#ffffff; --border:#cbd5e1; --muted:#475569; --ok:#0f7b35; --warn:#a15c00; --bad:#b91c1c;
+      --shadow:0 10px 28px rgba(15,23,42,.14); --radius:12px;
     }
-    * { box-sizing: border-box; }
-    html, body { min-height: 100%; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--dark);
-      background: linear-gradient(135deg, #fff5f5 0%, #f8fafc 45%, #eef2ff 100%);
-    }
-    header {
-      background: var(--red);
-      color: white;
-      padding: 18px 20px;
-      box-shadow: var(--shadow);
-    }
-    h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.35rem); }
-    .subtitle { margin: 6px 0 0; font-size: .95rem; opacity: .95; }
-    main {
-      width: min(1180px, 96vw);
-      margin: 18px auto 32px;
-      display: grid;
-      gap: 16px;
-    }
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: var(--shadow);
-    }
-    .topbar, .controls, .setup-grid, .stats-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
-    .setup-grid { align-items: end; }
-    label { font-weight: 700; display: block; margin-bottom: 4px; }
-    input, select, button {
-      font: inherit;
-    }
-    input, select {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 9px 10px;
-      min-height: 42px;
-      background: white;
-    }
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 15px;
-      min-height: 42px;
-      cursor: pointer;
-      background: var(--dark);
-      color: white;
-      font-weight: 700;
-    }
-    button.secondary { background: #e5e7eb; color: var(--dark); }
-    button.primary { background: var(--blue); }
-    button.success { background: var(--green); }
-    button.warning { background: var(--orange); }
-    button:disabled { cursor: not-allowed; opacity: .55; }
-    button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
-      outline: 3px solid #60a5fa;
-      outline-offset: 2px;
-    }
-    .hidden { display: none !important; }
-    .muted { color: #64748b; }
-    .small { font-size: .88rem; }
-    .language-toggle { margin-left: auto; }
-    .board-wrap { overflow-x: auto; padding-bottom: 4px; }
-    .board {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(120px, 1fr));
-      gap: 10px;
-      min-width: 760px;
-    }
-    .cell {
-      position: relative;
-      min-height: 112px;
-      border: 2px solid var(--line);
-      border-radius: 14px;
-      background: white;
-      padding: 10px;
-      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
-    }
-    .cell[aria-current="true"] {
-      border-color: var(--red);
-      box-shadow: 0 0 0 4px rgba(200, 16, 46, .18);
-      transform: translateY(-2px);
-    }
-    .cell-title { font-weight: 800; margin: 0 0 4px; }
-    .cell-year { font-size: .8rem; color: #64748b; }
-    .cell-emoji { font-size: 1.8rem; display: block; }
-    .pieces { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-    .piece {
-      width: 24px;
-      height: 24px;
-      display: inline-grid;
-      place-items: center;
-      border-radius: 50%;
-      color: white;
-      font-size: .75rem;
-      font-weight: 800;
-    }
-    .player-0 { background: var(--blue); }
-    .player-1 { background: var(--green); }
-    .player-2 { background: var(--orange); }
-    .player-3 { background: var(--purple); }
-    .challenge-title { margin-top: 0; }
-    .answer-grid { display: grid; gap: 10px; margin-top: 12px; }
-    .answer-option {
-      width: 100%;
-      border-radius: 12px;
-      text-align: left;
-      background: #f1f5f9;
-      color: var(--dark);
-      border: 2px solid transparent;
-    }
-    .answer-option.selected, .answer-option:hover { border-color: var(--blue); background: #dbeafe; }
-    .answer-option.correct { background: #dcfce7; border-color: var(--green); }
-    .answer-option.incorrect { background: #fee2e2; border-color: var(--red); }
-    .status-card {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 10px;
-    }
-    .stat {
-      background: #f8fafc;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-    }
-    .stat strong { display: block; font-size: 1.2rem; }
-    .notice {
-      border-left: 5px solid var(--blue);
-      background: #eff6ff;
-      padding: 12px;
-      border-radius: 10px;
-    }
-    dialog {
-      border: 0;
-      border-radius: 16px;
-      width: min(720px, 94vw);
-      padding: 0;
-      box-shadow: var(--shadow);
-    }
-    dialog::backdrop { background: rgba(15, 23, 42, .45); }
-    .dialog-body { padding: 18px; }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    @media (max-width: 760px) {
-      .language-toggle { margin-left: 0; }
-      .board { grid-template-columns: repeat(4, minmax(110px, 1fr)); min-width: 520px; }
-      .cell { min-height: 104px; }
-    }
+    *{box-sizing:border-box}
+    html{font-size:16px;scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--gc-dark);background:linear-gradient(135deg,#fff 0%,var(--bg) 50%,#eef2ff 100%);line-height:1.5}
+    a{color:var(--gc-link)}
+    a:focus,button:focus,input:focus,select:focus,[tabindex]:focus{outline:3px solid var(--gc-focus);outline-offset:2px}
+    .skip-link{position:absolute;left:-999px;top:auto;background:#000;color:#fff;padding:.75rem;z-index:9999}
+    .skip-link:focus{left:.75rem;top:.75rem}
+    header{background:var(--gc-red);color:#fff;padding:1rem 1.25rem;box-shadow:var(--shadow)}
+    header .top{display:flex;gap:1rem;align-items:start;justify-content:space-between;max-width:1200px;margin:0 auto}
+    h1{margin:.1rem 0;font-size:clamp(1.55rem,3vw,2.35rem);line-height:1.15}
+    .subtitle{margin:.35rem 0 0;font-size:.96rem;max-width:78ch}
+    .lang-toggle{display:flex;gap:.35rem;align-items:center;white-space:nowrap}
+    main{max-width:1200px;margin:0 auto;padding:1rem}
+    .notice{background:#fef9c3;border-left:6px solid #f59e0b;padding:.85rem;margin:1rem 0;border-radius:0 var(--radius) var(--radius) 0}
+    .grid{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:1rem;align-items:start}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1rem}
+    .panel h2,.panel h3{margin-top:0}
+    .controls{display:grid;gap:.85rem}
+    label{font-weight:700;display:block;margin-bottom:.25rem}
+    input,select{width:100%;padding:.6rem;border:1px solid var(--border);border-radius:8px;font:inherit;background:#fff}
+    button{font:inherit;border:1px solid var(--gc-blue);background:#fff;color:var(--gc-blue);border-radius:8px;padding:.6rem .8rem;cursor:pointer;min-height:42px}
+    button:hover{background:#eef2ff}
+    button.primary{background:var(--gc-blue);color:#fff}
+    button.primary:hover{background:#1b2b3b}
+    button.danger{border-color:var(--bad);color:var(--bad)}
+    button.ghost{border-color:var(--border)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .button-row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+    .status-card{border:1px solid var(--border);border-radius:10px;padding:.75rem;background:#f8fafc}
+    .players{display:grid;gap:.55rem;margin:.75rem 0}
+    .player{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:.55rem;background:#fff}
+    .token{display:inline-grid;place-items:center;width:2rem;height:2rem;border-radius:999px;background:#e0e7ff;font-weight:800;margin-right:.35rem}
+    .board-wrap{overflow:auto;padding:.25rem}
+    .board{display:grid;grid-template-columns:repeat(4,minmax(118px,1fr));gap:.55rem;min-width:520px}
+    .square{position:relative;text-align:left;border:2px solid var(--border);background:#fff;border-radius:12px;min-height:112px;padding:.55rem;display:flex;flex-direction:column;justify-content:space-between}
+    .square[aria-current="step"]{border-color:var(--gc-red);box-shadow:0 0 0 3px rgba(200,16,46,.18)}
+    .square .year{font-weight:800;color:var(--gc-red)}
+    .square .topic{font-size:.9rem}
+    .square .tokens{min-height:1.65rem;margin-top:.25rem}
+    .challenge{margin-top:1rem;border-top:4px solid var(--gc-blue)}
+    .question-meta{display:flex;flex-wrap:wrap;gap:.35rem;margin:.3rem 0 .75rem}
+    .tag{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.15rem .55rem;font-size:.82rem;background:#f8fafc}
+    .answers{display:grid;gap:.55rem;margin:.75rem 0}
+    .answer{width:100%;text-align:left}
+    .answer.selected{background:#dbeafe;border-color:#1d4ed8}
+    .feedback{border-radius:10px;padding:.8rem;margin:.75rem 0}
+    .feedback.ok{background:#dcfce7;border:1px solid #86efac}
+    .feedback.bad{background:#fee2e2;border:1px solid #fecaca}
+    .feedback.info{background:#e0f2fe;border:1px solid #7dd3fc}
+    .chart{display:flex;align-items:end;gap:.55rem;height:140px;border-left:2px solid #334155;border-bottom:2px solid #334155;padding:.5rem;margin:.75rem 0;background:#fff}
+    .bar{width:44px;background:#64748b;display:grid;place-items:end center;color:#fff;font-size:.78rem;padding-bottom:.2rem}
+    .order-list{display:grid;gap:.45rem}
+    .order-item{display:flex;gap:.5rem;align-items:center;border:1px solid var(--border);border-radius:8px;padding:.45rem;background:#fff}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}
+    .badge{border:1px solid var(--border);border-radius:10px;padding:.55rem;background:#fff}
+    .badge.earned{background:#dcfce7;border-color:#22c55e}
+    dialog{border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);max-width:min(760px,94vw);width:760px}
+    dialog::backdrop{background:rgba(0,0,0,.55)}
+    .modal-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .live{min-height:1.4rem}
+    .high-contrast{--bg:#000;--panel:#000;--gc-dark:#fff;--border:#fff;--muted:#fff;--gc-link:#9bd4ff;background:#000;color:#fff}
+    .high-contrast .panel,.high-contrast .status-card,.high-contrast .square,.high-contrast .player,.high-contrast input,.high-contrast select,.high-contrast .badge{background:#000;color:#fff;border-color:#fff}
+    .high-contrast button{background:#000;color:#fff;border-color:#fff}
+    @media(max-width:860px){.grid{grid-template-columns:1fr}.board{grid-template-columns:repeat(3,minmax(118px,1fr))}}
+    @media(max-width:560px){main{padding:.55rem}.board{grid-template-columns:repeat(2,minmax(118px,1fr));min-width:0}.button-row{flex-direction:column;align-items:stretch}.lang-toggle{flex-direction:column}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+    @media print{header,.controls,.button-row,.notice,dialog{display:none!important}body{background:#fff}.grid{display:block}.panel{box-shadow:none;border:1px solid #000;margin-bottom:1rem}.board{min-width:0}}
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to main content / Passer au contenu principal</a>
   <header>
-    <h1 id="appTitle">Stats Adventure Canada</h1>
-    <p id="appSubtitle" class="subtitle">A board-game journey through Canadian statistics milestones.</p>
+    <div class="top">
+      <div>
+        <h1 id="appTitle">Stats Adventure Canada</h1>
+        <p id="subtitle" class="subtitle">A bilingual, accessible learning game about official statistics, data quality, privacy, and evidence-based decisions.</p>
+      </div>
+      <div class="lang-toggle" aria-label="Language selection">
+        <button id="enBtn" type="button" class="primary" lang="en-CA">English</button>
+        <button id="frBtn" type="button" lang="fr-CA">Français</button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <section class="panel topbar" aria-label="Game options">
-      <button id="rulesBtn" class="secondary" type="button">Rules</button>
-      <button id="restartBtn" class="secondary" type="button">Restart</button>
-      <div class="language-toggle">
-        <label for="languageSelect" id="languageLabel">Language</label>
-        <select id="languageSelect">
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-        </select>
-      </div>
-    </section>
+  <main id="main" tabindex="-1">
+    <div class="notice" id="notice">
+      <strong>Prototype note:</strong> This is a self-contained educational game inspired by Government of Canada digital principles. It is not an official Statistics Canada product.
+    </div>
 
-    <section id="setupPanel" class="panel" aria-labelledby="setupHeading">
-      <h2 id="setupHeading">Set up players</h2>
-      <div class="setup-grid">
-        <div>
-          <label id="playerCountLabel" for="playerCount">Players</label>
-          <select id="playerCount">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </div>
-        <div id="playerInputs" class="setup-grid" aria-live="polite"></div>
-        <button id="startBtn" class="primary" type="button">Start Game</button>
-      </div>
-      <p id="setupHint" class="muted small">Enter player names or use the defaults.</p>
-    </section>
-
-    <section id="gamePanel" class="hidden" aria-label="Statistics game board">
-      <div class="panel status-card" aria-live="polite">
-        <div class="stat"><span id="turnLabel">Current turn</span><strong id="turnValue">—</strong></div>
-        <div class="stat"><span id="positionLabel">Position</span><strong id="positionValue">—</strong></div>
-        <div class="stat"><span id="accuracyLabel">Accuracy</span><strong id="accuracyValue">0%</strong></div>
-        <div class="stat"><span id="diceLabel">Dice</span><strong id="diceValue">—</strong></div>
-      </div>
-
-      <div class="panel controls">
-        <button id="rollBtn" class="success" type="button">Roll Dice</button>
-        <button id="skipBtn" class="warning" type="button">Skip Challenge</button>
-        <span id="liveStatus" class="notice" role="status" aria-live="polite">Ready.</span>
-      </div>
-
-      <section class="panel board-wrap">
-        <h2 id="boardHeading">Board</h2>
-        <p id="boardSummary" class="muted small" aria-live="polite"></p>
-        <div id="board" class="board" role="grid" aria-label="Statistics Canada timeline board"></div>
-      </section>
-
-      <section id="challengePanel" class="panel hidden" aria-labelledby="challengeHeading">
-        <h2 id="challengeHeading" class="challenge-title">Challenge</h2>
-        <p id="challengeMeta" class="muted"></p>
-        <p id="challengeQuestion"></p>
-        <div id="answerOptions" class="answer-grid"></div>
+    <div class="grid">
+      <aside class="panel" aria-labelledby="setupHeading">
+        <h2 id="setupHeading">Game setup</h2>
         <div class="controls">
-          <button id="submitAnswerBtn" class="primary" type="button">Submit Answer</button>
-          <button id="continueBtn" class="success hidden" type="button">Continue</button>
+          <div>
+            <label id="playerCountLabel" for="playerCount">Number of players</label>
+            <select id="playerCount">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            </select>
+          </div>
+          <div id="playerNames"></div>
+          <div>
+            <label id="audienceLabel" for="audience">Audience</label>
+            <select id="audience">
+              <option value="student">Student / beginner</option>
+              <option value="public">General public</option>
+              <option value="publicServant">Public servant</option>
+              <option value="professional">Data professional</option>
+            </select>
+          </div>
+          <div>
+            <label id="difficultyLabel" for="difficulty">Difficulty</label>
+            <select id="difficulty">
+              <option value="easy">Easy</option>
+              <option value="mixed">Mixed</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div class="button-row">
+            <button id="startBtn" type="button" class="primary">Start game</button>
+            <button id="restartBtn" type="button">Restart</button>
+          </div>
+          <div class="button-row">
+            <button id="rulesBtn" type="button">Rules</button>
+            <button id="glossaryBtn" type="button">Glossary</button>
+            <button id="teacherBtn" type="button">Teacher mode</button>
+          </div>
+          <div class="button-row">
+            <button id="contrastBtn" type="button">High contrast</button>
+            <button id="printBtn" type="button">Print summary</button>
+          </div>
         </div>
-        <p id="feedback" class="notice hidden" role="status" aria-live="polite"></p>
+
+        <section aria-labelledby="playersHeading">
+          <h3 id="playersHeading">Players</h3>
+          <div id="players" class="players"></div>
+        </section>
+
+        <section aria-labelledby="badgesHeading">
+          <h3 id="badgesHeading">Badges</h3>
+          <div id="badges"></div>
+        </section>
+      </aside>
+
+      <section class="panel" aria-labelledby="boardHeading">
+        <h2 id="boardHeading">Timeline board</h2>
+        <p id="boardSummary" class="live" aria-live="polite">Set up the game and press Start.</p>
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-labelledby="boardHeading"></div>
+        </div>
+
+        <section id="challengePanel" class="challenge panel" aria-labelledby="challengeHeading">
+          <h2 id="challengeHeading">Challenge</h2>
+          <div id="challengeContent">Start the game to receive your first challenge.</div>
+        </section>
+
+        <section aria-labelledby="summaryHeading">
+          <h2 id="summaryHeading">Learning summary</h2>
+          <div id="summary" class="summary"></div>
+        </section>
       </section>
-    </section>
+    </div>
   </main>
 
-  <dialog id="rulesDialog">
-    <div class="dialog-body">
-      <h2 id="rulesTitle">Rules</h2>
-      <div id="rulesContent"></div>
-      <div class="controls"><button id="closeRulesBtn" type="button">Close</button></div>
-    </div>
-  </dialog>
+  <dialog id="rulesDialog" aria-labelledby="rulesTitle"><h2 id="rulesTitle"></h2><div id="rulesBody"></div><div class="modal-actions"><button type="button" data-close="rulesDialog">Close</button></div></dialog>
+  <dialog id="glossaryDialog" aria-labelledby="glossaryTitle"><h2 id="glossaryTitle"></h2><div id="glossaryBody"></div><div class="modal-actions"><button type="button" data-close="glossaryDialog">Close</button></div></dialog>
+  <dialog id="teacherDialog" aria-labelledby="teacherTitle"><h2 id="teacherTitle"></h2><div id="teacherBody"></div><div class="modal-actions"><button type="button" data-close="teacherDialog">Close</button></div></dialog>
 
   <script>
     'use strict';
 
-    const ui = {
-      en: {
-        title: 'Stats Adventure Canada',
-        subtitle: 'A board-game journey through Canadian statistics milestones.',
-        rules: 'Rules', restart: 'Restart', language: 'Language', setup: 'Set up players', players: 'Players',
-        start: 'Start Game', hint: 'Enter player names or use the defaults.', player: 'Player', currentTurn: 'Current turn',
-        position: 'Position', accuracy: 'Accuracy', dice: 'Dice', roll: 'Roll Dice', skip: 'Skip Challenge', ready: 'Ready.',
-        board: 'Board', challenge: 'Challenge', submit: 'Submit Answer', cont: 'Continue', close: 'Close',
-        rulesTitle: 'Rules',
-        rulesHtml: [
-          'Roll the die and move along the statistics timeline.',
-          'When you land on a square, answer the challenge to complete your turn.',
-          'The final square requires a correct or completed challenge before the winner is declared.',
-          'Use Tab to move through the board. The current square is also announced below the board heading.'
-        ],
-        correct: 'Correct.', incorrect: 'Not quite.', selectedNeeded: 'Choose an answer first.', winner: 'wins the game!',
-        skipped: 'Challenge skipped.', rolled: 'rolled', onSquare: 'on', defaultName: 'Player', noChallenge: 'No challenge on this square.',
-        finalChallenge: 'Final challenge: complete this to win.'
-      },
-      fr: {
-        title: 'Aventure statistique Canada',
-        subtitle: 'Un jeu de parcours sur les jalons des statistiques canadiennes.',
-        rules: 'Règles', restart: 'Recommencer', language: 'Langue', setup: 'Configurer les joueurs', players: 'Joueurs',
-        start: 'Démarrer', hint: 'Entrez les noms des joueurs ou utilisez les valeurs par défaut.', player: 'Joueur', currentTurn: 'Tour actuel',
-        position: 'Position', accuracy: 'Exactitude', dice: 'Dé', roll: 'Lancer le dé', skip: 'Sauter le défi', ready: 'Prêt.',
-        board: 'Plateau', challenge: 'Défi', submit: 'Soumettre', cont: 'Continuer', close: 'Fermer',
-        rulesTitle: 'Règles',
-        rulesHtml: [
-          'Lancez le dé et avancez sur la ligne du temps statistique.',
-          'Lorsque vous arrivez sur une case, répondez au défi pour terminer votre tour.',
-          'La dernière case exige un défi réussi ou complété avant de déclarer le gagnant.',
-          'Utilisez Tab pour parcourir le plateau. La case actuelle est aussi annoncée sous le titre du plateau.'
-        ],
-        correct: 'Bonne réponse.', incorrect: 'Pas tout à fait.', selectedNeeded: 'Choisissez une réponse d’abord.', winner: 'gagne la partie!',
-        skipped: 'Défi sauté.', rolled: 'a lancé', onSquare: 'sur', defaultName: 'Joueur', noChallenge: 'Aucun défi sur cette case.',
-        finalChallenge: 'Défi final : terminez-le pour gagner.'
-      }
-    };
-
-    const milestones = [
-      { year: '1666', emoji: '📜', en: 'First Census', fr: 'Premier recensement', q: [
-        { en: 'What was an early purpose of a census?', fr: 'Quel était un objectif précoce du recensement?', a: ['Count people', 'Predict weather', 'Draw maps'], af: ['Compter les personnes', 'Prévoir la météo', 'Dessiner des cartes'], c: 0 }
-      ] },
-      { year: '1871', emoji: '🏛️', en: 'National Census', fr: 'Recensement national', q: [
-        { en: 'How often is Canada’s main census conducted?', fr: 'À quelle fréquence le recensement principal du Canada est-il mené?', a: ['Every 5 years', 'Every year', 'Every 20 years'], af: ['Tous les 5 ans', 'Chaque année', 'Tous les 20 ans'], c: 0 }
-      ] },
-      { year: '1918', emoji: '📊', en: 'Dominion Bureau', fr: 'Bureau fédéral', q: [
-        { en: 'Statistics agencies help governments make decisions using what?', fr: 'Les organismes statistiques aident les gouvernements à décider avec quoi?', a: ['Evidence', 'Rumours', 'Coin flips'], af: ['Des données probantes', 'Des rumeurs', 'Des tirages au sort'], c: 0 }
-      ] },
-      { year: '1941', emoji: '🏠', en: 'Housing Data', fr: 'Données logement', q: [
-        { en: 'Which topic is often measured with population statistics?', fr: 'Quel sujet est souvent mesuré par les statistiques démographiques?', a: ['Housing', 'Horoscopes', 'Movie endings'], af: ['Le logement', 'Les horoscopes', 'Les fins de films'], c: 0 }
-      ] },
-      { year: '1971', emoji: '💼', en: 'Labour Force', fr: 'Population active', q: [
-        { en: 'The unemployment rate relates to which subject?', fr: 'Le taux de chômage se rapporte à quel sujet?', a: ['Labour market', 'Astronomy', 'Cooking'], af: ['Marché du travail', 'Astronomie', 'Cuisine'], c: 0 }
-      ] },
-      { year: '1986', emoji: '💻', en: 'Digital Processing', fr: 'Traitement numérique', q: [
-        { en: 'Why do computers help statistics?', fr: 'Pourquoi les ordinateurs aident-ils les statistiques?', a: ['They process large data quickly', 'They remove the need for quality checks', 'They guess everything'], af: ['Ils traitent rapidement de grands ensembles de données', 'Ils éliminent les contrôles de qualité', 'Ils devinent tout'], c: 0 }
-      ] },
-      { year: '2001', emoji: '🌐', en: 'Online Access', fr: 'Accès en ligne', q: [
-        { en: 'Open data improves which public value?', fr: 'Les données ouvertes améliorent quelle valeur publique?', a: ['Transparency', 'Secrecy', 'Confusion'], af: ['Transparence', 'Secret', 'Confusion'], c: 0 }
-      ] },
-      { year: '2011', emoji: '🧮', en: 'National Household Survey', fr: 'Enquête nationale auprès des ménages', q: [
-        { en: 'A survey sample should be designed to reduce what?', fr: 'Un échantillon d’enquête doit être conçu pour réduire quoi?', a: ['Bias', 'Clarity', 'Documentation'], af: ['Le biais', 'La clarté', 'La documentation'], c: 0 }
-      ] },
-      { year: '2016', emoji: '📱', en: 'Digital Census', fr: 'Recensement numérique', q: [
-        { en: 'A good online questionnaire should be:', fr: 'Un bon questionnaire en ligne devrait être :', a: ['Accessible and secure', 'Hard to read', 'Only visual'], af: ['Accessible et sécurisé', 'Difficile à lire', 'Seulement visuel'], c: 0 }
-      ] },
-      { year: '2021', emoji: '🧭', en: 'Pandemic-Era Data', fr: 'Données en pandémie', q: [
-        { en: 'Timely statistics are important during a crisis because they support:', fr: 'Les statistiques actuelles sont importantes en crise parce qu’elles soutiennent :', a: ['Rapid evidence-based decisions', 'Slower communication', 'Less planning'], af: ['Des décisions rapides fondées sur des données probantes', 'Une communication plus lente', 'Moins de planification'], c: 0 }
-      ] },
-      { year: '2026', emoji: '🤖', en: 'AI and Data Quality', fr: 'IA et qualité des données', q: [
-        { en: 'Before using AI with data, what should be checked?', fr: 'Avant d’utiliser l’IA avec des données, que faut-il vérifier?', a: ['Quality, privacy, and bias', 'Only colour', 'Nothing'], af: ['Qualité, confidentialité et biais', 'Seulement la couleur', 'Rien'], c: 0 }
-      ] },
-      { year: 'Finish', emoji: '🏁', en: 'Evidence Champion', fr: 'Champion des données', q: [
-        { en: 'What is the best use of official statistics?', fr: 'Quelle est la meilleure utilisation des statistiques officielles?', a: ['Inform decisions and public understanding', 'Hide uncertainty', 'Replace judgment entirely'], af: ['Éclairer les décisions et la compréhension publique', 'Cacher l’incertitude', 'Remplacer entièrement le jugement'], c: 0 }
-      ] }
-    ];
-
-    const dom = Object.fromEntries([
-      'appTitle','appSubtitle','rulesBtn','restartBtn','languageSelect','languageLabel','setupPanel','setupHeading','playerCountLabel','playerCount','playerInputs','startBtn','setupHint','gamePanel','turnLabel','turnValue','positionLabel','positionValue','accuracyLabel','accuracyValue','diceLabel','diceValue','rollBtn','skipBtn','liveStatus','boardHeading','boardSummary','board','challengePanel','challengeHeading','challengeMeta','challengeQuestion','answerOptions','submitAnswerBtn','continueBtn','feedback','rulesDialog','rulesTitle','rulesContent','closeRulesBtn'
-    ].map(id => [id, document.getElementById(id)]));
-
     const state = {
       lang: 'en',
       started: false,
-      players: [],
       currentPlayer: 0,
       selectedAnswer: null,
-      activeChallenge: null,
-      awaitingChallenge: false,
-      gameOver: false,
-      dice: null,
-      totalAnswers: 0,
-      correctAnswers: 0
+      currentChallenge: null,
+      awaitingFinal: false,
+      players: [],
+      positions: [],
+      scores: [],
+      topicCounts: {},
+      earnedBadges: new Set(),
+      questionHistory: new Set(),
+      highContrast: false
     };
 
-    function t(key) { return ui[state.lang][key]; }
+    const steps = [
+      { id:'s1666', year:'1666', emoji:'📜', topic:{en:'Early census', fr:'Premier recensement'} },
+      { id:'s1871', year:'1871', emoji:'🏛️', topic:{en:'National census', fr:'Recensement national'} },
+      { id:'s1918', year:'1918', emoji:'📊', topic:{en:'Statistics agency', fr:'Organisme statistique'} },
+      { id:'s1941', year:'1941', emoji:'🏠', topic:{en:'Housing data', fr:'Données sur le logement'} },
+      { id:'s1971', year:'1971', emoji:'💼', topic:{en:'Labour market', fr:'Marché du travail'} },
+      { id:'s1986', year:'1986', emoji:'💻', topic:{en:'Digital processing', fr:'Traitement numérique'} },
+      { id:'s2001', year:'2001', emoji:'🌐', topic:{en:'Online access', fr:'Accès en ligne'} },
+      { id:'s2011', year:'2011', emoji:'🧪', topic:{en:'Sampling', fr:'Échantillonnage'} },
+      { id:'s2016', year:'2016', emoji:'♿', topic:{en:'Digital census', fr:'Recensement numérique'} },
+      { id:'s2021', year:'2021', emoji:'⚡', topic:{en:'Crisis data', fr:'Données en situation de crise'} },
+      { id:'s2026', year:'2026', emoji:'🤖', topic:{en:'AI-ready data', fr:'Données prêtes pour l’IA'} },
+      { id:'finish', year:'Finish', emoji:'🏁', topic:{en:'Evidence champion', fr:'Champion des données probantes'} }
+    ];
 
-    function createEl(tag, options = {}, children = []) {
+    const ui = {
+      en: {
+        title:'Stats Adventure Canada',
+        subtitle:'A bilingual, accessible learning game about official statistics, data quality, privacy, and evidence-based decisions.',
+        note:'Prototype note: This is a self-contained educational game inspired by Government of Canada digital principles. It is not an official Statistics Canada product.',
+        setup:'Game setup', playerCount:'Number of players', audience:'Audience', difficulty:'Difficulty', start:'Start game', restart:'Restart',
+        rules:'Rules', glossary:'Glossary', teacher:'Teacher mode', contrast:'High contrast', print:'Print summary',
+        players:'Players', badges:'Badges', board:'Timeline board', challenge:'Challenge', summary:'Learning summary',
+        startPrompt:'Set up the game and press Start.', challengePrompt:'Start the game to receive your first challenge.',
+        roll:'Roll die', submit:'Submit answer', next:'Next player', correct:'Correct.', incorrect:'Not quite.', explanation:'Explanation',
+        source:'Source note', current:'Current player', position:'Position', score:'Score', final:'Final evidence challenge',
+        winner:'Winner', close:'Close', completed:'completed challenge', needAnswer:'Select an answer first.',
+        rulesBody:[
+          'Roll the die and move along the official-statistics timeline.',
+          'When you land on a square, answer a challenge. Feedback includes a short explanation and source note.',
+          'The final square requires a completed final challenge before the winner is declared.',
+          'Use Tab to move through controls and board squares. The current square is marked with aria-current.',
+          'Teacher mode provides classroom prompts and a printable summary.'
+        ],
+        teacherBody:[
+          'Suggested classroom flow: 5 minutes setup, 15 minutes game play, 10 minutes discussion.',
+          'Ask learners to explain why the correct answer is supported by evidence.',
+          'Use the print summary as an answer key and participation record.',
+          'Extension: ask teams to create a one-sentence data story with one limitation.'
+        ]
+      },
+      fr: {
+        title:'Aventure statistique Canada',
+        subtitle:'Un jeu d’apprentissage bilingue et accessible sur les statistiques officielles, la qualité des données, la protection des renseignements personnels et les décisions fondées sur des données probantes.',
+        note:'Note sur le prototype : Il s’agit d’un jeu éducatif autonome inspiré des principes numériques du gouvernement du Canada. Ce n’est pas un produit officiel de Statistique Canada.',
+        setup:'Configuration du jeu', playerCount:'Nombre de joueurs', audience:'Public cible', difficulty:'Niveau de difficulté', start:'Commencer', restart:'Recommencer',
+        rules:'Règles', glossary:'Glossaire', teacher:'Mode enseignant', contrast:'Contraste élevé', print:'Imprimer le résumé',
+        players:'Joueurs', badges:'Insignes', board:'Plateau chronologique', challenge:'Défi', summary:'Résumé d’apprentissage',
+        startPrompt:'Configurez le jeu et appuyez sur Commencer.', challengePrompt:'Commencez le jeu pour recevoir votre premier défi.',
+        roll:'Lancer le dé', submit:'Soumettre la réponse', next:'Joueur suivant', correct:'Bonne réponse.', incorrect:'Pas tout à fait.', explanation:'Explication',
+        source:'Note sur la source', current:'Joueur actuel', position:'Position', score:'Pointage', final:'Défi final sur les données probantes',
+        winner:'Gagnant', close:'Fermer', completed:'défi terminé', needAnswer:'Sélectionnez d’abord une réponse.',
+        rulesBody:[
+          'Lancez le dé et avancez sur la ligne du temps des statistiques officielles.',
+          'Lorsque vous arrivez sur une case, répondez à un défi. La rétroaction comprend une courte explication et une note sur la source.',
+          'La dernière case exige un défi final terminé avant de déclarer le gagnant.',
+          'Utilisez la touche Tab pour parcourir les commandes et les cases du plateau. La case actuelle est indiquée avec aria-current.',
+          'Le mode enseignant fournit des pistes de discussion et un résumé imprimable.'
+        ],
+        teacherBody:[
+          'Déroulement proposé : 5 minutes de configuration, 15 minutes de jeu, 10 minutes de discussion.',
+          'Demandez aux apprenants d’expliquer pourquoi la bonne réponse est appuyée par les données.',
+          'Utilisez le résumé imprimé comme corrigé et comme trace de participation.',
+          'Activité complémentaire : demander aux équipes de formuler une courte histoire de données avec une limite.'
+        ]
+      }
+    };
+
+    const glossary = [
+      { term:{en:'Census',fr:'Recensement'}, def:{en:'A data collection that aims to count every unit in a defined population.',fr:'Collecte de données qui vise à dénombrer toutes les unités d’une population définie.'}},
+      { term:{en:'Survey',fr:'Enquête'}, def:{en:'A data collection that often uses a sample to estimate characteristics of a population.',fr:'Collecte de données qui utilise souvent un échantillon pour estimer les caractéristiques d’une population.'}},
+      { term:{en:'Bias',fr:'Biais'}, def:{en:'A systematic error that can distort results.',fr:'Erreur systématique qui peut fausser les résultats.'}},
+      { term:{en:'Metadata',fr:'Métadonnées'}, def:{en:'Information describing data sources, methods, definitions and quality.',fr:'Information qui décrit les sources, les méthodes, les définitions et la qualité des données.'}},
+      { term:{en:'Percentage point',fr:'Point de pourcentage'}, def:{en:'The arithmetic difference between two percentages.',fr:'Différence arithmétique entre deux pourcentages.'}},
+      { term:{en:'Confidentiality',fr:'Confidentialité'}, def:{en:'Protection of information so individuals or organizations cannot be identified improperly.',fr:'Protection de l’information afin que les personnes ou organisations ne puissent pas être identifiées de façon inappropriée.'}}
+    ];
+
+    const questions = [
+      q('census1','s1666','census','easy','multiple',0,
+        'What is an early purpose of a census?','Quel est un objectif ancien d’un recensement?',
+        ['Count people','Predict the weather','Choose a song'],['Dénombrer la population','Prévoir la météo','Choisir une chanson'],
+        'A census helps describe the size and characteristics of a population.','Un recensement aide à décrire la taille et les caractéristiques d’une population.','Census concepts / Concepts du recensement'),
+      q('census2','s1871','census','easy','multiple',0,
+        'What was important about Canada’s 1871 census?','Pourquoi le recensement canadien de 1871 était-il important?',
+        ['It was the first national census after Confederation','It was completed by smartphone','It used generative AI'],['C’était le premier recensement national après la Confédération','Il a été rempli par téléphone intelligent','Il utilisait l’IA générative'],
+        'It was a foundational national census after Confederation.','Il s’agissait d’un recensement national fondateur après la Confédération.','Canadian census history / Histoire du recensement canadien'),
+      q('agency1','s1918','governance','easy','multiple',0,
+        'Official statistics should support decisions using what?','Les statistiques officielles doivent appuyer les décisions au moyen de quoi?',
+        ['Evidence','Rumours','Coin flips'],['Données probantes','Rumeurs','Pile ou face'],
+        'Official statistics are produced to support evidence-based public understanding and decision-making.','Les statistiques officielles servent à appuyer la compréhension du public et les décisions fondées sur des données probantes.','Official statistics / Statistiques officielles'),
+      q('housing1','s1941','housing','easy','multiple',0,
+        'Which topic is often measured with population and housing statistics?','Quel sujet est souvent mesuré au moyen des statistiques sur la population et le logement?',
+        ['Dwelling type','Horoscopes','Movie endings'],['Type de logement','Horoscopes','Fins de films'],
+        'Housing data can describe dwelling type, tenure, condition and household characteristics.','Les données sur le logement peuvent décrire le type de logement, le mode d’occupation, l’état du logement et les caractéristiques du ménage.','Housing statistics / Statistiques sur le logement'),
+      q('labour1','s1971','labour','easy','multiple',0,
+        'The unemployment rate relates to which subject?','Le taux de chômage se rapporte à quel sujet?',
+        ['Labour market','Astronomy','Cooking'],['Marché du travail','Astronomie','Cuisine'],
+        'The unemployment rate is a labour-market indicator.','Le taux de chômage est un indicateur du marché du travail.','Labour statistics / Statistiques du travail'),
+      q('digital1','s1986','processing','medium','multiple',0,
+        'Why do computers help statistical production?','Pourquoi les ordinateurs aident-ils la production statistique?',
+        ['They process large data quickly','They remove the need for quality checks','They make all data perfect'],['Ils traitent rapidement de grands volumes de données','Ils éliminent les contrôles de qualité','Ils rendent toutes les données parfaites'],
+        'Digital processing increases speed, but quality assurance remains necessary.','Le traitement numérique accroît la rapidité, mais l’assurance de la qualité demeure nécessaire.','Data processing / Traitement des données'),
+      q('metadata1','s1986','metadata','medium','multiple',0,
+        'What are metadata?','Que sont les métadonnées?',
+        ['Data that describe data','Random decoration','A password'],['Des données qui décrivent les données','Une décoration aléatoire','Un mot de passe'],
+        'Metadata describe sources, concepts, methods, classifications and quality.','Les métadonnées décrivent les sources, les concepts, les méthodes, les classifications et la qualité.','Metadata / Métadonnées'),
+      q('open1','s2001','openData','easy','multiple',0,
+        'Open data improves which public value?','Les données ouvertes renforcent quelle valeur publique?',
+        ['Transparency','Secrecy','Confusion'],['Transparence','Secret','Confusion'],
+        'Open data can improve access, transparency and reuse when confidentiality is protected.','Les données ouvertes peuvent améliorer l’accès, la transparence et la réutilisation lorsque la confidentialité est protégée.','Open data / Données ouvertes'),
+      q('privacy1','s2001','privacy','medium','truefalse',0,
+        'True or false: Open data should never reveal confidential personal information.','Vrai ou faux : Les données ouvertes ne doivent jamais révéler de renseignements personnels confidentiels.',
+        ['True','False'],['Vrai','Faux'],
+        'Open data must be screened to protect confidentiality.','Les données ouvertes doivent être vérifiées pour protéger la confidentialité.','Privacy / Confidentialité'),
+      q('sampling1','s2011','sampling','medium','multiple',0,
+        'A survey sample should be designed to reduce what?','Un échantillon d’enquête devrait être conçu pour réduire quoi?',
+        ['Bias','Clarity','Documentation'],['Biais','Clarté','Documentation'],
+        'Good sampling design reduces systematic error and supports valid estimates.','Un bon plan d’échantillonnage réduit l’erreur systématique et soutient des estimations valides.','Survey methodology / Méthodologie d’enquête'),
+      q('bias1','s2011','sampling','hard','scenario',0,
+        'Which survey question is least biased?','Quelle question d’enquête est la moins biaisée?',
+        ['How satisfied are you with the service?','How amazing was the service?','Why did you dislike the service?'],['Dans quelle mesure êtes-vous satisfait du service?','À quel point le service était-il extraordinaire?','Pourquoi avez-vous détesté le service?'],
+        'Neutral wording avoids pushing respondents toward a positive or negative answer.','Une formulation neutre évite d’orienter les répondants vers une réponse positive ou négative.','Questionnaire design / Conception de questionnaire'),
+      q('access1','s2016','accessibility','medium','multiple',0,
+        'A good online questionnaire should be:','Un bon questionnaire en ligne devrait être :',
+        ['Accessible and secure','Hard to read','Only visual'],['Accessible et sécurisé','Difficile à lire','Seulement visuel'],
+        'Accessible and secure forms improve inclusion, privacy and data quality.','Les formulaires accessibles et sécurisés améliorent l’inclusion, la protection des renseignements personnels et la qualité des données.','Digital collection / Collecte numérique'),
+      q('crisis1','s2021','timeliness','medium','multiple',0,
+        'Timely statistics are important during a crisis because they support:','Les statistiques actuelles sont importantes en situation de crise parce qu’elles appuient :',
+        ['Rapid evidence-based decisions','Slower communication','Less planning'],['Des décisions rapides fondées sur des données probantes','Une communication plus lente','Moins de planification'],
+        'During crises, timely data can support response, planning and accountability.','En situation de crise, des données actuelles peuvent appuyer l’intervention, la planification et la reddition de comptes.','Timeliness / Actualité'),
+      q('chart1','s2021','visualization','medium','chart',1,
+        'In the chart, which year has the highest value?','Dans le graphique, quelle année affiche la valeur la plus élevée?',
+        ['2019','2021','2023'],['2019','2021','2023'],
+        'The tallest bar corresponds to 2021.','La barre la plus haute correspond à 2021.','Chart reading / Lecture de graphiques',
+        [{label:'2019',value:40},{label:'2021',value:80},{label:'2023',value:55}]),
+      q('ai1','s2026','ai','medium','multiple',0,
+        'Before using AI with data, what should be checked?','Avant d’utiliser l’IA avec des données, que faut-il vérifier?',
+        ['Quality, privacy and bias','Only colour','Nothing'],['Qualité, confidentialité et biais','Seulement la couleur','Rien'],
+        'AI use should start with data quality, privacy, bias and accountability checks.','L’utilisation de l’IA doit commencer par des vérifications de la qualité, de la confidentialité, des biais et de la responsabilisation.','Responsible AI / IA responsable'),
+      q('ai2','s2026','ai','hard','multiple',0,
+        'What is a risk of poor-quality data in AI?','Quel est un risque associé aux données de mauvaise qualité en IA?',
+        ['Biased or inaccurate outputs','Guaranteed fairness','Perfect decisions'],['Résultats biaisés ou inexacts','Équité garantie','Décisions parfaites'],
+        'AI can amplify defects in training or input data.','L’IA peut amplifier les défauts des données d’entraînement ou d’entrée.','Responsible AI / IA responsable'),
+      q('final1','finish','evidence','hard','multiple',0,
+        'What is the best use of official statistics?','Quelle est la meilleure utilisation des statistiques officielles?',
+        ['Inform decisions and public understanding','Hide uncertainty','Replace judgment entirely'],['Éclairer les décisions et la compréhension du public','Cacher l’incertitude','Remplacer entièrement le jugement'],
+        'Statistics inform decisions; they do not remove the need for interpretation, judgment and context.','Les statistiques éclairent les décisions; elles n’éliminent pas le besoin d’interprétation, de jugement et de contexte.','Statistical literacy / Littératie statistique'),
+      q('final2','finish','evidence','hard','order',0,
+        'Put the data production steps in the best order.','Placez les étapes de production des données dans le meilleur ordre.',
+        ['Design → Collect → Process → Validate → Publish','Publish → Design → Collect → Validate → Process','Collect → Publish → Design → Process → Validate'],['Concevoir → Recueillir → Traiter → Valider → Publier','Publier → Concevoir → Recueillir → Valider → Traiter','Recueillir → Publier → Concevoir → Traiter → Valider'],
+        'A defensible workflow designs first, collects and processes data, validates outputs, then publishes.','Un flux de travail défendable commence par la conception, puis la collecte et le traitement des données, la validation des résultats et la publication.','Data lifecycle / Cycle de vie des données')
+    ];
+
+    const badges = [
+      { id:'census', topic:'census', en:'Census Explorer', fr:'Explorateur du recensement' },
+      { id:'privacy', topic:'privacy', en:'Privacy Guardian', fr:'Gardien de la confidentialité' },
+      { id:'sampling', topic:'sampling', en:'Bias Buster', fr:'Chasseur de biais' },
+      { id:'visualization', topic:'visualization', en:'Chart Detective', fr:'Détective des graphiques' },
+      { id:'ai', topic:'ai', en:'Responsible AI Steward', fr:'Responsable de l’IA responsable' },
+      { id:'evidence', topic:'evidence', en:'Evidence Champion', fr:'Champion des données probantes' }
+    ];
+
+    function q(id, step, topic, difficulty, type, correct, en, fr, answersEn, answersFr, explainEn, explainFr, source, chartData) {
+      return { id, step, topic, difficulty, type, correct, text:{en,fr}, answers:{en:answersEn,fr:answersFr}, explain:{en:explainEn,fr:explainFr}, source, chartData };
+    }
+
+    const $ = id => document.getElementById(id);
+    const t = key => ui[state.lang][key];
+
+    function el(tag, attrs = {}, children = []) {
       const node = document.createElement(tag);
-      Object.entries(options).forEach(([key, value]) => {
-        if (key === 'className') node.className = value;
+      Object.entries(attrs).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        if (key === 'class') node.className = value;
         else if (key === 'text') node.textContent = value;
-        else if (key === 'dataset') Object.assign(node.dataset, value);
-        else if (key.startsWith('aria')) node.setAttribute(key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), value);
+        else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
         else node.setAttribute(key, value);
       });
-      children.forEach(child => node.append(child));
+      (Array.isArray(children) ? children : [children]).forEach(child => {
+        if (child === null || child === undefined) return;
+        node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+      });
       return node;
     }
 
-    function resetGameState() {
-      state.started = false;
-      state.players = [];
-      state.currentPlayer = 0;
-      state.selectedAnswer = null;
-      state.activeChallenge = null;
-      state.awaitingChallenge = false;
-      state.gameOver = false;
-      state.dice = null;
-      state.totalAnswers = 0;
-      state.correctAnswers = 0;
-    }
-
-    function makePlayerInputs() {
-      dom.playerInputs.replaceChildren();
-      const count = Number(dom.playerCount.value);
-      for (let i = 0; i < count; i++) {
-        const wrap = createEl('div');
-        const label = createEl('label', { for: `playerName${i}`, text: `${t('player')} ${i + 1}` });
-        const input = createEl('input', { id: `playerName${i}`, type: 'text', maxlength: '30', value: `${t('defaultName')} ${i + 1}` });
-        wrap.append(label, input);
-        dom.playerInputs.appendChild(wrap);
-      }
-    }
-
-    function applyLanguage() {
-      document.documentElement.lang = state.lang;
-      dom.appTitle.textContent = t('title');
-      dom.appSubtitle.textContent = t('subtitle');
-      dom.rulesBtn.textContent = t('rules');
-      dom.restartBtn.textContent = t('restart');
-      dom.languageLabel.textContent = t('language');
-      dom.setupHeading.textContent = t('setup');
-      dom.playerCountLabel.textContent = t('players');
-      dom.startBtn.textContent = t('start');
-      dom.setupHint.textContent = t('hint');
-      dom.turnLabel.textContent = t('currentTurn');
-      dom.positionLabel.textContent = t('position');
-      dom.accuracyLabel.textContent = t('accuracy');
-      dom.diceLabel.textContent = t('dice');
-      dom.rollBtn.textContent = t('roll');
-      dom.skipBtn.textContent = t('skip');
-      dom.boardHeading.textContent = t('board');
-      dom.challengeHeading.textContent = t('challenge');
-      dom.submitAnswerBtn.textContent = t('submit');
-      dom.continueBtn.textContent = t('cont');
-      dom.rulesTitle.textContent = t('rulesTitle');
-      dom.closeRulesBtn.textContent = t('close');
-      renderRules();
-      if (!state.started) makePlayerInputs();
+    function setLanguage(lang) {
+      state.lang = lang;
+      document.documentElement.lang = lang === 'fr' ? 'fr-CA' : 'en-CA';
+      $('enBtn').classList.toggle('primary', lang === 'en');
+      $('frBtn').classList.toggle('primary', lang === 'fr');
+      renderStaticText();
+      renderPlayerInputs();
       renderAll();
     }
 
-    function renderRules() {
-      const list = createEl('ul');
-      t('rulesHtml').forEach(rule => list.appendChild(createEl('li', { text: rule })));
-      dom.rulesContent.replaceChildren(list);
+    function renderStaticText() {
+      $('appTitle').textContent = t('title');
+      $('subtitle').textContent = t('subtitle');
+      $('notice').textContent = t('note');
+      $('setupHeading').textContent = t('setup');
+      $('playerCountLabel').textContent = t('playerCount');
+      $('audienceLabel').textContent = t('audience');
+      $('difficultyLabel').textContent = t('difficulty');
+      $('startBtn').textContent = t('start');
+      $('restartBtn').textContent = t('restart');
+      $('rulesBtn').textContent = t('rules');
+      $('glossaryBtn').textContent = t('glossary');
+      $('teacherBtn').textContent = t('teacher');
+      $('contrastBtn').textContent = t('contrast');
+      $('printBtn').textContent = t('print');
+      $('playersHeading').textContent = t('players');
+      $('badgesHeading').textContent = t('badges');
+      $('boardHeading').textContent = t('board');
+      $('challengeHeading').textContent = t('challenge');
+      $('summaryHeading').textContent = t('summary');
+      $('rulesTitle').textContent = t('rules');
+      $('glossaryTitle').textContent = t('glossary');
+      $('teacherTitle').textContent = t('teacher');
+    }
+
+    function renderPlayerInputs() {
+      const count = Number($('playerCount').value);
+      const wrap = $('playerNames');
+      wrap.replaceChildren();
+      for (let i=0; i<count; i++) {
+        const labelText = state.lang === 'fr' ? `Nom du joueur ${i+1}` : `Player ${i+1} name`;
+        const input = el('input', { id:`playerName${i}`, type:'text', value: state.players[i]?.name || defaultName(i), 'aria-label': labelText });
+        wrap.appendChild(el('div', {}, [el('label', { for:`playerName${i}`, text: labelText }), input]));
+      }
+    }
+
+    function defaultName(i) {
+      return state.lang === 'fr' ? `Joueur ${i+1}` : `Player ${i+1}`;
+    }
+
+    function resetGameState() {
+      const count = Number($('playerCount').value);
+      state.players = Array.from({length: count}, (_, i) => ({ name: ($(`playerName${i}`)?.value || defaultName(i)).trim() || defaultName(i), token: ['🍁','🦫','🛶','⭐'][i] }));
+      state.positions = Array(count).fill(0);
+      state.scores = Array(count).fill(0);
+      state.currentPlayer = 0;
+      state.selectedAnswer = null;
+      state.currentChallenge = null;
+      state.awaitingFinal = false;
+      state.started = true;
+      state.topicCounts = {};
+      state.earnedBadges = new Set();
+      state.questionHistory = new Set();
     }
 
     function startGame() {
       resetGameState();
-      const count = Number(dom.playerCount.value);
-      for (let i = 0; i < count; i++) {
-        const input = document.getElementById(`playerName${i}`);
-        const safeName = (input?.value || '').trim() || `${t('defaultName')} ${i + 1}`;
-        state.players.push({ name: safeName, position: 0, completed: new Set(), colourClass: `player-${i}` });
-      }
-      state.started = true;
-      dom.setupPanel.classList.add('hidden');
-      dom.gamePanel.classList.remove('hidden');
-      dom.liveStatus.textContent = t('ready');
       renderAll();
+      presentChallengeForCurrentSquare();
     }
 
     function renderAll() {
-      renderStats();
+      renderPlayers();
+      renderBadges();
       renderBoard();
-      renderChallenge();
-      updateControls();
+      renderSummary();
+      if (!state.started) {
+        $('boardSummary').textContent = t('startPrompt');
+        $('challengeContent').textContent = t('challengePrompt');
+      }
     }
 
-    function renderStats() {
-      if (!state.started || !state.players.length) {
-        dom.turnValue.textContent = '—';
-        dom.positionValue.textContent = '—';
-        dom.accuracyValue.textContent = '0%';
-        dom.diceValue.textContent = '—';
-        return;
-      }
-      const player = state.players[state.currentPlayer];
-      const cell = milestones[player.position];
-      dom.turnValue.textContent = player.name;
-      dom.positionValue.textContent = `${player.position + 1}/${milestones.length} — ${cell[state.lang]}`;
-      dom.accuracyValue.textContent = state.totalAnswers ? `${Math.round((state.correctAnswers / state.totalAnswers) * 100)}%` : '0%';
-      dom.diceValue.textContent = state.dice ? String(state.dice) : '—';
-      dom.boardSummary.textContent = `${player.name} ${t('onSquare')} ${cell.year}: ${cell[state.lang]}.`;
+    function renderPlayers() {
+      const wrap = $('players');
+      wrap.replaceChildren();
+      state.players.forEach((p, i) => {
+        const active = i === state.currentPlayer && state.started;
+        wrap.appendChild(el('div', { class:'player', 'aria-current': active ? 'true' : null }, [
+          el('span', {}, [el('span',{class:'token', text:p.token}), `${p.name}`]),
+          el('span', { text: `${t('score')}: ${state.scores[i] || 0}` })
+        ]));
+      });
+    }
+
+    function renderBadges() {
+      const wrap = $('badges');
+      wrap.replaceChildren();
+      badges.forEach(b => wrap.appendChild(el('div', { class:`badge ${state.earnedBadges.has(b.id) ? 'earned' : ''}`, text: `${state.earnedBadges.has(b.id) ? '✓ ' : '○ '}${b[state.lang]}` })));
     }
 
     function renderBoard() {
-      dom.board.replaceChildren();
-      milestones.forEach((cell, index) => {
-        const active = state.players.some(player => player.position === index);
-        const tile = createEl('div', {
-          className: 'cell', role: 'gridcell', tabindex: '0', ariaCurrent: active ? 'true' : 'false',
-          ariaLabel: `${index + 1}. ${cell.year} ${cell[state.lang]}`
-        });
-        tile.append(
-          createEl('span', { className: 'cell-emoji', text: cell.emoji }),
-          createEl('p', { className: 'cell-title', text: cell[state.lang] }),
-          createEl('span', { className: 'cell-year', text: cell.year })
-        );
-        const pieces = createEl('div', { className: 'pieces', ariaLabel: 'Players on this square' });
-        state.players.forEach((player, playerIndex) => {
-          if (player.position === index) pieces.appendChild(createEl('span', { className: `piece ${player.colourClass}`, text: String(playerIndex + 1), title: player.name }));
-        });
-        tile.appendChild(pieces);
-        tile.addEventListener('keydown', event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            dom.liveStatus.textContent = `${cell.year}: ${cell[state.lang]}`;
-          }
-        });
-        dom.board.appendChild(tile);
+      const board = $('board');
+      board.replaceChildren();
+      const currentPos = state.started ? state.positions[state.currentPlayer] : -1;
+      steps.forEach((step, index) => {
+        const tokens = state.players.map((p,i) => state.positions[i] === index ? p.token : '').join(' ');
+        const btn = el('button', {
+          type:'button', class:'square', role:'gridcell', tabindex:'0',
+          'aria-current': index === currentPos ? 'step' : null,
+          'aria-label': `${step.year}, ${step.topic[state.lang]}${tokens ? ', ' + tokens : ''}`,
+          onclick: () => { $('boardSummary').textContent = `${step.year}: ${step.topic[state.lang]}`; }
+        }, [
+          el('span', { class:'year', text: `${step.emoji} ${step.year}` }),
+          el('span', { class:'topic', text: step.topic[state.lang] }),
+          el('span', { class:'tokens', text: tokens })
+        ]);
+        board.appendChild(btn);
       });
-    }
-
-    function currentPlayer() { return state.players[state.currentPlayer]; }
-
-    function rollDice() {
-      if (state.awaitingChallenge || state.gameOver) return;
-      const player = currentPlayer();
-      state.dice = Math.floor(Math.random() * 6) + 1;
-      player.position = Math.min(player.position + state.dice, milestones.length - 1);
-      const cell = milestones[player.position];
-      dom.liveStatus.textContent = `${player.name} ${t('rolled')} ${state.dice}; ${t('onSquare')} ${cell[state.lang]}.`;
-      presentChallenge();
-      renderAll();
-    }
-
-    function presentChallenge() {
-      const player = currentPlayer();
-      const cell = milestones[player.position];
-      const challenge = cell.q[0];
-      state.activeChallenge = { cell, challenge };
-      state.awaitingChallenge = true;
-      state.selectedAnswer = null;
-      if (player.position === milestones.length - 1) dom.liveStatus.textContent = t('finalChallenge');
-    }
-
-    function renderChallenge() {
-      dom.answerOptions.replaceChildren();
-      dom.feedback.classList.add('hidden');
-      dom.continueBtn.classList.add('hidden');
-      dom.submitAnswerBtn.disabled = true;
-
-      if (!state.awaitingChallenge || !state.activeChallenge) {
-        dom.challengePanel.classList.add('hidden');
-        return;
+      if (state.started) {
+        const p = state.players[state.currentPlayer];
+        const step = steps[state.positions[state.currentPlayer]];
+        $('boardSummary').textContent = `${t('current')}: ${p.name}. ${t('position')}: ${step.year} — ${step.topic[state.lang]}.`;
       }
+    }
 
-      const { cell, challenge } = state.activeChallenge;
-      const answers = state.lang === 'fr' ? challenge.af : challenge.a;
-      dom.challengePanel.classList.remove('hidden');
-      dom.challengeMeta.textContent = `${cell.emoji} ${cell.year} — ${cell[state.lang]}`;
-      dom.challengeQuestion.textContent = challenge[state.lang];
+    function rollDie() {
+      const roll = Math.floor(Math.random()*6)+1;
+      const old = state.positions[state.currentPlayer];
+      state.positions[state.currentPlayer] = Math.min(steps.length-1, old + roll);
+      state.selectedAnswer = null;
+      renderAll();
+      presentChallengeForCurrentSquare(roll);
+    }
 
-      answers.forEach((answerText, index) => {
-        const button = createEl('button', { type: 'button', className: 'answer-option', text: answerText, ariaPressed: 'false' });
-        button.addEventListener('click', () => selectAnswer(index));
-        dom.answerOptions.appendChild(button);
+    function chooseChallenge(stepId) {
+      const audience = $('audience').value;
+      const difficulty = $('difficulty').value;
+      let pool = questions.filter(item => item.step === stepId);
+      if (difficulty !== 'mixed') pool = pool.filter(item => difficulty === 'easy' ? item.difficulty !== 'hard' : item.difficulty !== 'easy');
+      if (audience === 'student') pool = pool.filter(item => item.difficulty !== 'hard');
+      if (!pool.length) pool = questions.filter(item => item.step === stepId);
+      const unused = pool.filter(item => !state.questionHistory.has(item.id));
+      const choicePool = unused.length ? unused : pool;
+      const choice = choicePool[Math.floor(Math.random()*choicePool.length)];
+      state.questionHistory.add(choice.id);
+      return choice;
+    }
+
+    function presentChallengeForCurrentSquare(roll = null) {
+      const pos = state.positions[state.currentPlayer];
+      const step = steps[pos];
+      state.currentChallenge = chooseChallenge(step.id);
+      state.selectedAnswer = null;
+      const panel = $('challengeContent');
+      panel.replaceChildren();
+
+      const intro = roll ? `${state.players[state.currentPlayer].name} rolled ${roll}.` : `${state.players[state.currentPlayer].name}:`;
+      panel.appendChild(el('p', { text: `${intro} ${step.year} — ${step.topic[state.lang]}` }));
+      panel.appendChild(el('div', { class:'question-meta' }, [
+        el('span',{class:'tag', text: state.currentChallenge.topic}),
+        el('span',{class:'tag', text: state.currentChallenge.difficulty}),
+        el('span',{class:'tag', text: state.currentChallenge.type})
+      ]));
+      panel.appendChild(el('h3', { text: state.currentChallenge.text[state.lang] }));
+
+      if (state.currentChallenge.type === 'chart') panel.appendChild(renderChart(state.currentChallenge.chartData));
+      if (state.currentChallenge.type === 'order') panel.appendChild(el('p', { class:'muted', text: state.lang === 'fr' ? 'Choisissez la séquence la plus défendable.' : 'Choose the most defensible sequence.' }));
+      if (state.currentChallenge.type === 'scenario') panel.appendChild(el('p', { class:'muted', text: state.lang === 'fr' ? 'Évaluez la formulation et le risque de biais.' : 'Evaluate wording and risk of bias.' }));
+
+      const answers = el('div', { class:'answers', role:'radiogroup', 'aria-label': state.currentChallenge.text[state.lang] });
+      state.currentChallenge.answers[state.lang].forEach((answer, index) => {
+        answers.appendChild(el('button', { type:'button', class:'answer', role:'radio', 'aria-checked':'false', onclick: () => selectAnswer(index) }, `${String.fromCharCode(65+index)}. ${answer}`));
       });
+      panel.appendChild(answers);
+      panel.appendChild(el('div', { class:'button-row' }, [
+        el('button', { type:'button', class:'primary', onclick: submitAnswer }, t('submit')),
+        el('button', { type:'button', onclick: nextPlayer }, t('next'))
+      ]));
+    }
+
+    function renderChart(data) {
+      const max = Math.max(...data.map(d => d.value));
+      const chart = el('div', { class:'chart', role:'img', 'aria-label': data.map(d => `${d.label}: ${d.value}`).join(', ') });
+      data.forEach(d => chart.appendChild(el('div', { class:'bar', style:`height:${Math.round((d.value/max)*110)}px`, text:d.label })));
+      return chart;
     }
 
     function selectAnswer(index) {
       state.selectedAnswer = index;
-      [...dom.answerOptions.children].forEach((button, buttonIndex) => {
-        button.classList.toggle('selected', buttonIndex === index);
-        button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
+      document.querySelectorAll('.answer').forEach((btn, i) => {
+        btn.classList.toggle('selected', i === index);
+        btn.setAttribute('aria-checked', i === index ? 'true' : 'false');
       });
-      dom.submitAnswerBtn.disabled = false;
     }
 
     function submitAnswer() {
-      if (!state.activeChallenge) return;
+      if (!state.currentChallenge) return;
       if (state.selectedAnswer === null) {
-        dom.feedback.textContent = t('selectedNeeded');
-        dom.feedback.classList.remove('hidden');
+        addFeedback(false, t('needAnswer'), '');
         return;
       }
-      const { challenge } = state.activeChallenge;
-      const correct = state.selectedAnswer === challenge.c;
-      state.totalAnswers += 1;
-      if (correct) state.correctAnswers += 1;
-      [...dom.answerOptions.children].forEach((button, index) => {
-        button.disabled = true;
-        if (index === challenge.c) button.classList.add('correct');
-        else if (index === state.selectedAnswer) button.classList.add('incorrect');
-      });
-      dom.feedback.textContent = correct ? t('correct') : t('incorrect');
-      dom.feedback.classList.remove('hidden');
-      dom.submitAnswerBtn.disabled = true;
-      dom.continueBtn.classList.remove('hidden');
-      renderStats();
-    }
-
-    function completeTurn() {
-      const player = currentPlayer();
-      player.completed.add(player.position);
-      state.awaitingChallenge = false;
-      state.activeChallenge = null;
-      state.selectedAnswer = null;
-
-      if (player.position === milestones.length - 1) {
-        state.gameOver = true;
-        dom.liveStatus.textContent = `${player.name} ${t('winner')}`;
-      } else {
-        state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
-        dom.liveStatus.textContent = t('ready');
+      const correct = state.selectedAnswer === state.currentChallenge.correct;
+      if (correct) {
+        state.scores[state.currentPlayer] += 10;
+        state.topicCounts[state.currentChallenge.topic] = (state.topicCounts[state.currentChallenge.topic] || 0) + 1;
+        updateBadges(state.currentChallenge.topic);
       }
+      addFeedback(correct, correct ? t('correct') : t('incorrect'), state.currentChallenge.explain[state.lang], state.currentChallenge.source);
+      renderPlayers();
+      renderBadges();
+      renderSummary();
+      if (state.positions[state.currentPlayer] === steps.length - 1 && correct) {
+        $('challengeContent').appendChild(el('div', { class:'feedback ok' }, [
+          el('strong', { text: `${t('winner')}: ${state.players[state.currentPlayer].name}` })
+        ]));
+      }
+    }
+
+    function addFeedback(ok, msg, explain, source = '') {
+      const box = el('div', { class:`feedback ${ok ? 'ok' : 'bad'}`, role:'status' }, [
+        el('strong', { text: msg }),
+        explain ? el('p', {}, [el('strong', { text: `${t('explanation')}: ` }), explain]) : null,
+        source ? el('p', { class:'muted' }, [el('strong', { text: `${t('source')}: ` }), source]) : null
+      ]);
+      $('challengeContent').appendChild(box);
+    }
+
+    function updateBadges(topic) {
+      badges.filter(b => b.topic === topic).forEach(b => state.earnedBadges.add(b.id));
+      if (topic === 'evidence') state.earnedBadges.add('evidence');
+    }
+
+    function nextPlayer() {
+      if (!state.started) return;
+      state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
+      state.selectedAnswer = null;
       renderAll();
+      presentChallengeForCurrentSquare();
     }
 
-    function skipChallenge() {
-      if (!state.awaitingChallenge) return;
-      dom.liveStatus.textContent = t('skipped');
-      completeTurn();
+    function renderSummary() {
+      const wrap = $('summary');
+      wrap.replaceChildren();
+      if (!state.started) {
+        wrap.appendChild(el('p', { text: state.lang === 'fr' ? 'Aucun résultat pour le moment.' : 'No results yet.' }));
+        return;
+      }
+      state.players.forEach((p,i) => wrap.appendChild(el('div', { class:'status-card' }, [
+        el('strong', { text: `${p.token} ${p.name}` }),
+        el('p', { text: `${t('score')}: ${state.scores[i]}` }),
+        el('p', { text: `${t('position')}: ${steps[state.positions[i]].year}` })
+      ])));
     }
 
-    function updateControls() {
-      const active = state.started && !state.gameOver;
-      dom.rollBtn.disabled = !active || state.awaitingChallenge;
-      dom.skipBtn.disabled = !active || !state.awaitingChallenge;
-      dom.submitAnswerBtn.disabled = !state.awaitingChallenge || state.selectedAnswer === null;
+    function showRules() {
+      const body = $('rulesBody');
+      body.replaceChildren(el('ol', {}, t('rulesBody').map(item => el('li', { text:item }))));
+      $('rulesDialog').showModal();
     }
 
-    function restartGame() {
-      resetGameState();
-      dom.setupPanel.classList.remove('hidden');
-      dom.gamePanel.classList.add('hidden');
-      dom.challengePanel.classList.add('hidden');
-      dom.liveStatus.textContent = t('ready');
-      makePlayerInputs();
-      renderAll();
+    function showGlossary() {
+      const body = $('glossaryBody');
+      body.replaceChildren();
+      glossary.forEach(item => body.appendChild(el('section', {}, [
+        el('h3', { text:item.term[state.lang] }),
+        el('p', { text:item.def[state.lang] })
+      ])));
+      $('glossaryDialog').showModal();
+    }
+
+    function showTeacher() {
+      const body = $('teacherBody');
+      body.replaceChildren(el('ol', {}, t('teacherBody').map(item => el('li', { text:item }))));
+      $('teacherDialog').showModal();
     }
 
     function wireEvents() {
-      dom.playerCount.addEventListener('change', makePlayerInputs);
-      dom.languageSelect.addEventListener('change', event => {
-        state.lang = event.target.value;
-        applyLanguage();
+      $('enBtn').addEventListener('click', () => setLanguage('en'));
+      $('frBtn').addEventListener('click', () => setLanguage('fr'));
+      $('playerCount').addEventListener('change', renderPlayerInputs);
+      $('startBtn').addEventListener('click', startGame);
+      $('restartBtn').addEventListener('click', () => { state.started = false; state.currentChallenge = null; renderAll(); });
+      $('rulesBtn').addEventListener('click', showRules);
+      $('glossaryBtn').addEventListener('click', showGlossary);
+      $('teacherBtn').addEventListener('click', showTeacher);
+      $('contrastBtn').addEventListener('click', () => { state.highContrast = !state.highContrast; document.body.classList.toggle('high-contrast', state.highContrast); });
+      $('printBtn').addEventListener('click', () => window.print());
+      document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => $(btn.dataset.close).close()));
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') document.querySelectorAll('dialog[open]').forEach(d => d.close());
       });
-      dom.startBtn.addEventListener('click', startGame);
-      dom.rollBtn.addEventListener('click', rollDice);
-      dom.submitAnswerBtn.addEventListener('click', submitAnswer);
-      dom.continueBtn.addEventListener('click', completeTurn);
-      dom.skipBtn.addEventListener('click', skipChallenge);
-      dom.restartBtn.addEventListener('click', restartGame);
-      dom.rulesBtn.addEventListener('click', () => dom.rulesDialog.showModal());
-      dom.closeRulesBtn.addEventListener('click', () => dom.rulesDialog.close());
-      dom.rulesDialog.addEventListener('cancel', event => { event.preventDefault(); dom.rulesDialog.close(); });
     }
 
     wireEvents();
-    makePlayerInputs();
-    applyLanguage();
+    renderStaticText();
+    renderPlayerInputs();
+    renderAll();
   </script>
 </body>
 </html>
