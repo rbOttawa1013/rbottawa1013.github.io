@@ -1,1138 +1,652 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stats Adventure Canada</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            overscroll-behavior: none; 
-        }
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); 
-            gap: 8px; 
-            padding: 8px;
-            max-width: 980px; 
-            margin: 0 auto;
-        }
-        .board-step {
-            border: 2px solid #4A5568; 
-            border-radius: 12px; 
-            padding: 6px; 
-            padding-bottom: 28px; 
-            text-align: center;
-            background-color: #F0E68C; 
-            min-height: 120px; 
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start; 
-            align-items: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative; 
-        }
-        .special-board-step { 
-            background-color: #F08080; 
-            border-color: #CD5C5C; 
-        }
-        .board-step.active-step { 
-            background-color: #FFD700; 
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
-            border-color: #DAA520; 
-        }
-        .special-board-step.active-step { 
-             background-color: #FFA07A; 
-        }
-        .player-icons-on-step {
-            position: absolute;
-            bottom: 4px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 22px; 
-        }
-        .player-icon-on-square {
-            font-size: 1.0rem; 
-            margin: 0 1px;
-            transition: transform 0.3s ease;
-        }
-        .player-icon-on-square.current-player-visual {
-            transform: scale(1.3); 
-            color: #C71585; 
-        }
-        .character-icon { font-size: 2.5rem; margin-right: 10px; }
-        .message-box {
-            background-color: #E0FFFF; border: 2px solid #00CED1; padding: 15px;
-            border-radius: 12px; margin-top: 20px; min-height: 100px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .btn {
-            padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease; border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-primary { background-color: #4CAF50; color: white; }
-        .btn-primary:hover { background-color: #45a049; }
-        .btn-secondary { background-color: #FFA500; color: white; }
-        .btn-secondary:hover { background-color: #e69500; }
-        .btn-danger { background-color: #F44336; color: white; } 
-        .btn-danger:hover { background-color: #D32F2F; }
-        .btn-choice { background-color: #87CEEB; color: #2F4F4F; margin: 5px; }
-        .btn-choice:hover { background-color: #76bfe0; }
-        .btn-lang { background-color: #778899; color: white; padding: 6px 12px; font-size: 0.9rem; margin: 0 5px;}
-        .btn-lang.active-lang { background-color: #2F4F4F; font-weight: bold; }
-
-        .dice-area {
-            margin-top:20px; padding: 15px; background-color: #FFFACD; 
-            border-radius: 12px; border: 2px solid #FFDEAD; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .input-field, .player-name-input { 
-            padding: 8px; border-radius: 6px; border: 1px solid #ccc;
-            margin-right: 10px; margin-bottom: 5px;
-        }
-        .player-name-input { width: 80%; margin-left:auto; margin-right:auto;}
-
-        .clickable-image {
-            width: 50px; height: 50px; 
-            border: 2px solid transparent; border-radius: 8px;
-            cursor: pointer; margin: 3px; transition: border-color 0.3s ease; object-fit: cover; 
-        }
-        .clickable-image.selected { border-color: #4CAF50; }
-        .step-number {
-            font-size: 0.75rem; font-weight: bold; color: #555; position: absolute;
-            top: 4px; left: 4px; background-color: rgba(255,255,255,0.7);
-            padding: 1px 3px; border-radius: 4px;
-        }
-        .step-emoji {
-            font-size: 1.4rem; 
-            margin-bottom: 2px;
-        }
-        .step-title { font-size: 0.8rem; font-weight: 600; margin-top: 0; color: #333; line-height: 1.15; } 
-        .step-year { font-size: 0.7rem; color: #666; margin-bottom: 2px; }
-        .special-step-name { font-size: 0.8rem; font-weight: bold; color: #333; margin-top: 3px; line-height: 1.15;}
-
-        .step-marker-text { 
-            font-size: 0.65rem; font-weight: bold; color: #B22222; position: absolute;
-            top: 20px; left: 50%; transform: translateX(-50%);
-        }
-        .accuracy-tracker {
-            margin-top: 20px; padding: 15px; background-color: #F5F5F5;
-            border-radius: 12px; border: 1px solid #DCDCDC;
-        }
-        .accuracy-player { margin-bottom: 5px; font-size: 0.9rem; }
-
-        /* Visually hide elements but keep them accessible to screen readers */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-        }
-
-
-        @media (max-width: 768px) {
-            .board-step { min-height: 125px; } 
-        }
-        @media (max-width: 480px) {
-            .game-board { grid-template-columns: repeat(3, 1fr); }
-            .board-step { min-height: 110px; padding: 4px; padding-bottom:22px; } 
-            .step-title, .special-step-name { font-size: 0.7rem;}
-            .step-year { font-size: 0.65rem;}
-            .step-emoji { font-size: 1.2rem;}
-            .player-icon-on-square { font-size: 0.9rem; }
-            .btn { padding: 8px 12px; font-size: 0.85rem; }
-            .message-box, .dice-area, .accuracy-tracker { padding: 10px; }
-        }
-    </style>
+  <!-- Version-control note: 2026-06-15 v2.0.0 QA remediation.
+       Fixes: removes leading pre-doctype whitespace, removes external CDN dependencies, replaces unsafe innerHTML rendering,
+       adds explicit button types, centralizes game reset, stabilizes language switching, fixes selection styling patterns,
+       improves keyboard/ARIA board accessibility, clarifies rules, and uses safe DOM construction throughout. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stats Adventure Canada</title>
+  <style>
+    :root {
+      --red: #c8102e;
+      --dark: #1f2937;
+      --light: #f8fafc;
+      --panel: #ffffff;
+      --line: #d1d5db;
+      --blue: #2563eb;
+      --green: #15803d;
+      --yellow: #facc15;
+      --orange: #f97316;
+      --purple: #7c3aed;
+      --shadow: 0 8px 24px rgba(15, 23, 42, .18);
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--dark);
+      background: linear-gradient(135deg, #fff5f5 0%, #f8fafc 45%, #eef2ff 100%);
+    }
+    header {
+      background: var(--red);
+      color: white;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.35rem); }
+    .subtitle { margin: 6px 0 0; font-size: .95rem; opacity: .95; }
+    main {
+      width: min(1180px, 96vw);
+      margin: 18px auto 32px;
+      display: grid;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .topbar, .controls, .setup-grid, .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .setup-grid { align-items: end; }
+    label { font-weight: 700; display: block; margin-bottom: 4px; }
+    input, select, button {
+      font: inherit;
+    }
+    input, select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      min-height: 42px;
+      background: white;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 15px;
+      min-height: 42px;
+      cursor: pointer;
+      background: var(--dark);
+      color: white;
+      font-weight: 700;
+    }
+    button.secondary { background: #e5e7eb; color: var(--dark); }
+    button.primary { background: var(--blue); }
+    button.success { background: var(--green); }
+    button.warning { background: var(--orange); }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid #60a5fa;
+      outline-offset: 2px;
+    }
+    .hidden { display: none !important; }
+    .muted { color: #64748b; }
+    .small { font-size: .88rem; }
+    .language-toggle { margin-left: auto; }
+    .board-wrap { overflow-x: auto; padding-bottom: 4px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      min-width: 760px;
+    }
+    .cell {
+      position: relative;
+      min-height: 112px;
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      padding: 10px;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .cell[aria-current="true"] {
+      border-color: var(--red);
+      box-shadow: 0 0 0 4px rgba(200, 16, 46, .18);
+      transform: translateY(-2px);
+    }
+    .cell-title { font-weight: 800; margin: 0 0 4px; }
+    .cell-year { font-size: .8rem; color: #64748b; }
+    .cell-emoji { font-size: 1.8rem; display: block; }
+    .pieces { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .piece {
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      font-size: .75rem;
+      font-weight: 800;
+    }
+    .player-0 { background: var(--blue); }
+    .player-1 { background: var(--green); }
+    .player-2 { background: var(--orange); }
+    .player-3 { background: var(--purple); }
+    .challenge-title { margin-top: 0; }
+    .answer-grid { display: grid; gap: 10px; margin-top: 12px; }
+    .answer-option {
+      width: 100%;
+      border-radius: 12px;
+      text-align: left;
+      background: #f1f5f9;
+      color: var(--dark);
+      border: 2px solid transparent;
+    }
+    .answer-option.selected, .answer-option:hover { border-color: var(--blue); background: #dbeafe; }
+    .answer-option.correct { background: #dcfce7; border-color: var(--green); }
+    .answer-option.incorrect { background: #fee2e2; border-color: var(--red); }
+    .status-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+    .stat {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .stat strong { display: block; font-size: 1.2rem; }
+    .notice {
+      border-left: 5px solid var(--blue);
+      background: #eff6ff;
+      padding: 12px;
+      border-radius: 10px;
+    }
+    dialog {
+      border: 0;
+      border-radius: 16px;
+      width: min(720px, 94vw);
+      padding: 0;
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop { background: rgba(15, 23, 42, .45); }
+    .dialog-body { padding: 18px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 760px) {
+      .language-toggle { margin-left: 0; }
+      .board { grid-template-columns: repeat(4, minmax(110px, 1fr)); min-width: 520px; }
+      .cell { min-height: 104px; }
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 min-h-screen flex flex-col items-center justify-center p-4 text-gray-800">
+<body>
+  <header>
+    <h1 id="appTitle">Stats Adventure Canada</h1>
+    <p id="appSubtitle" class="subtitle">A board-game journey through Canadian statistics milestones.</p>
+  </header>
 
-    <div id="playerSetupScreen" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto my-10 text-center">
-        <div class="flex justify-center mb-4">
-            <button id="langEnSetupBtn" class="btn btn-lang active-lang" aria-label="Switch to English">EN</button>
-            <button id="langFrSetupBtn" class="btn btn-lang" aria-label="Switch to French">FR</button>
+  <main>
+    <section class="panel topbar" aria-label="Game options">
+      <button id="rulesBtn" class="secondary" type="button">Rules</button>
+      <button id="restartBtn" class="secondary" type="button">Restart</button>
+      <div class="language-toggle">
+        <label for="languageSelect" id="languageLabel">Language</label>
+        <select id="languageSelect">
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="setupPanel" class="panel" aria-labelledby="setupHeading">
+      <h2 id="setupHeading">Set up players</h2>
+      <div class="setup-grid">
+        <div>
+          <label id="playerCountLabel" for="playerCount">Players</label>
+          <select id="playerCount">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
         </div>
-        <h2 id="uiWelcomeTitle" class="text-2xl font-bold text-purple-700 mb-4"></h2>
-        <p id="uiHowManyPlayers" class="mb-2 text-gray-600"></p>
-        <div class="mb-4">
-            <label id="uiNumPlayersLabel" for="numPlayersSelect" class="block text-lg font-medium text-gray-700 mb-1"></label>
-            <select id="numPlayersSelect" class="p-2 border border-gray-300 rounded-md w-1/2 mx-auto" aria-labelledby="uiNumPlayersLabel">
-                <option value="1">1 Player</option>
-                <option value="2">2 Players</option>
-                <option value="3">3 Players</option>
-                <option value="4">4 Players</option>
-            </select>
+        <div id="playerInputs" class="setup-grid" aria-live="polite"></div>
+        <button id="startBtn" class="primary" type="button">Start Game</button>
+      </div>
+      <p id="setupHint" class="muted small">Enter player names or use the defaults.</p>
+    </section>
+
+    <section id="gamePanel" class="hidden" aria-label="Statistics game board">
+      <div class="panel status-card" aria-live="polite">
+        <div class="stat"><span id="turnLabel">Current turn</span><strong id="turnValue">—</strong></div>
+        <div class="stat"><span id="positionLabel">Position</span><strong id="positionValue">—</strong></div>
+        <div class="stat"><span id="accuracyLabel">Accuracy</span><strong id="accuracyValue">0%</strong></div>
+        <div class="stat"><span id="diceLabel">Dice</span><strong id="diceValue">—</strong></div>
+      </div>
+
+      <div class="panel controls">
+        <button id="rollBtn" class="success" type="button">Roll Dice</button>
+        <button id="skipBtn" class="warning" type="button">Skip Challenge</button>
+        <span id="liveStatus" class="notice" role="status" aria-live="polite">Ready.</span>
+      </div>
+
+      <section class="panel board-wrap">
+        <h2 id="boardHeading">Board</h2>
+        <p id="boardSummary" class="muted small" aria-live="polite"></p>
+        <div id="board" class="board" role="grid" aria-label="Statistics Canada timeline board"></div>
+      </section>
+
+      <section id="challengePanel" class="panel hidden" aria-labelledby="challengeHeading">
+        <h2 id="challengeHeading" class="challenge-title">Challenge</h2>
+        <p id="challengeMeta" class="muted"></p>
+        <p id="challengeQuestion"></p>
+        <div id="answerOptions" class="answer-grid"></div>
+        <div class="controls">
+          <button id="submitAnswerBtn" class="primary" type="button">Submit Answer</button>
+          <button id="continueBtn" class="success hidden" type="button">Continue</button>
         </div>
-        <div id="playerNameInputsContainer" class="mb-4">
-            </div>
-        <button id="confirmNamesBtn" class="btn btn-secondary mb-4 hidden"></button>
-        <button id="startGameBtn" class="btn btn-primary text-lg hidden"></button>
+        <p id="feedback" class="notice hidden" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="rulesDialog">
+    <div class="dialog-body">
+      <h2 id="rulesTitle">Rules</h2>
+      <div id="rulesContent"></div>
+      <div class="controls"><button id="closeRulesBtn" type="button">Close</button></div>
     </div>
+  </dialog>
 
-    <div id="gameContainer" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-4xl hidden">
-        <header class="text-center mb-2 relative">
-             <div class="absolute top-0 right-0">
-                <button id="langEnGameBtn" class="btn btn-lang" aria-label="Switch to English">EN</button>
-                <button id="langFrGameBtn" class="btn btn-lang" aria-label="Switch to French">FR</button>
-            </div>
-            <h1 id="uiGameTitle" class="text-4xl font-bold text-purple-700"></h1>
-            <p id="uiGameSubtitle" class="text-lg text-gray-600"></p>
-        </header>
+  <script>
+    'use strict';
 
-        <div role="status" aria-live="polite" class="text-center my-2">
-            <h3 id="turnDisplay" class="text-xl font-semibold text-indigo-700"></h3>
-        </div>
+    const ui = {
+      en: {
+        title: 'Stats Adventure Canada',
+        subtitle: 'A board-game journey through Canadian statistics milestones.',
+        rules: 'Rules', restart: 'Restart', language: 'Language', setup: 'Set up players', players: 'Players',
+        start: 'Start Game', hint: 'Enter player names or use the defaults.', player: 'Player', currentTurn: 'Current turn',
+        position: 'Position', accuracy: 'Accuracy', dice: 'Dice', roll: 'Roll Dice', skip: 'Skip Challenge', ready: 'Ready.',
+        board: 'Board', challenge: 'Challenge', submit: 'Submit Answer', cont: 'Continue', close: 'Close',
+        rulesTitle: 'Rules',
+        rulesHtml: [
+          'Roll the die and move along the statistics timeline.',
+          'When you land on a square, answer the challenge to complete your turn.',
+          'The final square requires a correct or completed challenge before the winner is declared.',
+          'Use Tab to move through the board. The current square is also announced below the board heading.'
+        ],
+        correct: 'Correct.', incorrect: 'Not quite.', selectedNeeded: 'Choose an answer first.', winner: 'wins the game!',
+        skipped: 'Challenge skipped.', rolled: 'rolled', onSquare: 'on', defaultName: 'Player', noChallenge: 'No challenge on this square.',
+        finalChallenge: 'Final challenge: complete this to win.'
+      },
+      fr: {
+        title: 'Aventure statistique Canada',
+        subtitle: 'Un jeu de parcours sur les jalons des statistiques canadiennes.',
+        rules: 'Règles', restart: 'Recommencer', language: 'Langue', setup: 'Configurer les joueurs', players: 'Joueurs',
+        start: 'Démarrer', hint: 'Entrez les noms des joueurs ou utilisez les valeurs par défaut.', player: 'Joueur', currentTurn: 'Tour actuel',
+        position: 'Position', accuracy: 'Exactitude', dice: 'Dé', roll: 'Lancer le dé', skip: 'Sauter le défi', ready: 'Prêt.',
+        board: 'Plateau', challenge: 'Défi', submit: 'Soumettre', cont: 'Continuer', close: 'Fermer',
+        rulesTitle: 'Règles',
+        rulesHtml: [
+          'Lancez le dé et avancez sur la ligne du temps statistique.',
+          'Lorsque vous arrivez sur une case, répondez au défi pour terminer votre tour.',
+          'La dernière case exige un défi réussi ou complété avant de déclarer le gagnant.',
+          'Utilisez Tab pour parcourir le plateau. La case actuelle est aussi annoncée sous le titre du plateau.'
+        ],
+        correct: 'Bonne réponse.', incorrect: 'Pas tout à fait.', selectedNeeded: 'Choisissez une réponse d’abord.', winner: 'gagne la partie!',
+        skipped: 'Défi sauté.', rolled: 'a lancé', onSquare: 'sur', defaultName: 'Joueur', noChallenge: 'Aucun défi sur cette case.',
+        finalChallenge: 'Défi final : terminez-le pour gagner.'
+      }
+    };
 
-        <div class="game-board mb-6" id="gameBoard" role="grid" aria-label="Game Board"></div>
+    const milestones = [
+      { year: '1666', emoji: '📜', en: 'First Census', fr: 'Premier recensement', q: [
+        { en: 'What was an early purpose of a census?', fr: 'Quel était un objectif précoce du recensement?', a: ['Count people', 'Predict weather', 'Draw maps'], af: ['Compter les personnes', 'Prévoir la météo', 'Dessiner des cartes'], c: 0 }
+      ] },
+      { year: '1871', emoji: '🏛️', en: 'National Census', fr: 'Recensement national', q: [
+        { en: 'How often is Canada’s main census conducted?', fr: 'À quelle fréquence le recensement principal du Canada est-il mené?', a: ['Every 5 years', 'Every year', 'Every 20 years'], af: ['Tous les 5 ans', 'Chaque année', 'Tous les 20 ans'], c: 0 }
+      ] },
+      { year: '1918', emoji: '📊', en: 'Dominion Bureau', fr: 'Bureau fédéral', q: [
+        { en: 'Statistics agencies help governments make decisions using what?', fr: 'Les organismes statistiques aident les gouvernements à décider avec quoi?', a: ['Evidence', 'Rumours', 'Coin flips'], af: ['Des données probantes', 'Des rumeurs', 'Des tirages au sort'], c: 0 }
+      ] },
+      { year: '1941', emoji: '🏠', en: 'Housing Data', fr: 'Données logement', q: [
+        { en: 'Which topic is often measured with population statistics?', fr: 'Quel sujet est souvent mesuré par les statistiques démographiques?', a: ['Housing', 'Horoscopes', 'Movie endings'], af: ['Le logement', 'Les horoscopes', 'Les fins de films'], c: 0 }
+      ] },
+      { year: '1971', emoji: '💼', en: 'Labour Force', fr: 'Population active', q: [
+        { en: 'The unemployment rate relates to which subject?', fr: 'Le taux de chômage se rapporte à quel sujet?', a: ['Labour market', 'Astronomy', 'Cooking'], af: ['Marché du travail', 'Astronomie', 'Cuisine'], c: 0 }
+      ] },
+      { year: '1986', emoji: '💻', en: 'Digital Processing', fr: 'Traitement numérique', q: [
+        { en: 'Why do computers help statistics?', fr: 'Pourquoi les ordinateurs aident-ils les statistiques?', a: ['They process large data quickly', 'They remove the need for quality checks', 'They guess everything'], af: ['Ils traitent rapidement de grands ensembles de données', 'Ils éliminent les contrôles de qualité', 'Ils devinent tout'], c: 0 }
+      ] },
+      { year: '2001', emoji: '🌐', en: 'Online Access', fr: 'Accès en ligne', q: [
+        { en: 'Open data improves which public value?', fr: 'Les données ouvertes améliorent quelle valeur publique?', a: ['Transparency', 'Secrecy', 'Confusion'], af: ['Transparence', 'Secret', 'Confusion'], c: 0 }
+      ] },
+      { year: '2011', emoji: '🧮', en: 'National Household Survey', fr: 'Enquête nationale auprès des ménages', q: [
+        { en: 'A survey sample should be designed to reduce what?', fr: 'Un échantillon d’enquête doit être conçu pour réduire quoi?', a: ['Bias', 'Clarity', 'Documentation'], af: ['Le biais', 'La clarté', 'La documentation'], c: 0 }
+      ] },
+      { year: '2016', emoji: '📱', en: 'Digital Census', fr: 'Recensement numérique', q: [
+        { en: 'A good online questionnaire should be:', fr: 'Un bon questionnaire en ligne devrait être :', a: ['Accessible and secure', 'Hard to read', 'Only visual'], af: ['Accessible et sécurisé', 'Difficile à lire', 'Seulement visuel'], c: 0 }
+      ] },
+      { year: '2021', emoji: '🧭', en: 'Pandemic-Era Data', fr: 'Données en pandémie', q: [
+        { en: 'Timely statistics are important during a crisis because they support:', fr: 'Les statistiques actuelles sont importantes en crise parce qu’elles soutiennent :', a: ['Rapid evidence-based decisions', 'Slower communication', 'Less planning'], af: ['Des décisions rapides fondées sur des données probantes', 'Une communication plus lente', 'Moins de planification'], c: 0 }
+      ] },
+      { year: '2026', emoji: '🤖', en: 'AI and Data Quality', fr: 'IA et qualité des données', q: [
+        { en: 'Before using AI with data, what should be checked?', fr: 'Avant d’utiliser l’IA avec des données, que faut-il vérifier?', a: ['Quality, privacy, and bias', 'Only colour', 'Nothing'], af: ['Qualité, confidentialité et biais', 'Seulement la couleur', 'Rien'], c: 0 }
+      ] },
+      { year: 'Finish', emoji: '🏁', en: 'Evidence Champion', fr: 'Champion des données', q: [
+        { en: 'What is the best use of official statistics?', fr: 'Quelle est la meilleure utilisation des statistiques officielles?', a: ['Inform decisions and public understanding', 'Hide uncertainty', 'Replace judgment entirely'], af: ['Éclairer les décisions et la compréhension publique', 'Cacher l’incertitude', 'Remplacer entièrement le jugement'], c: 0 }
+      ] }
+    ];
 
-        <div class="dice-area text-center mb-6">
-            <h2 id="uiDiceRollTitle" class="text-xl font-semibold mb-2 text-indigo-600"></h2>
-            <div id="diceResult" class="text-3xl font-bold text-red-500 mb-2" aria-live="polite">🎲</div>
-            <button id="rollDiceBtn" class="btn btn-primary"></button>
-        </div>
+    const dom = Object.fromEntries([
+      'appTitle','appSubtitle','rulesBtn','restartBtn','languageSelect','languageLabel','setupPanel','setupHeading','playerCountLabel','playerCount','playerInputs','startBtn','setupHint','gamePanel','turnLabel','turnValue','positionLabel','positionValue','accuracyLabel','accuracyValue','diceLabel','diceValue','rollBtn','skipBtn','liveStatus','boardHeading','boardSummary','board','challengePanel','challengeHeading','challengeMeta','challengeQuestion','answerOptions','submitAnswerBtn','continueBtn','feedback','rulesDialog','rulesTitle','rulesContent','closeRulesBtn'
+    ].map(id => [id, document.getElementById(id)]));
 
-        <div id="messageBox" class="message-box text-center" role="dialog" aria-labelledby="messageBoxLabel" aria-describedby="characterMessage challengeArea feedbackArea">
-            <h4 id="messageBoxLabel" class="sr-only">Game Interaction Prompt</h4>
-            <div id="characterMessage" class="flex items-center justify-center mb-3" aria-live="polite">
-                </div>
-            <div id="challengeArea" aria-live="polite"></div>
-            <div id="feedbackArea" class="mt-2 font-semibold" aria-live="polite"></div>
-        </div>
+    const state = {
+      lang: 'en',
+      started: false,
+      players: [],
+      currentPlayer: 0,
+      selectedAnswer: null,
+      activeChallenge: null,
+      awaitingChallenge: false,
+      gameOver: false,
+      dice: null,
+      totalAnswers: 0,
+      correctAnswers: 0
+    };
 
-        <div id="accuracyTracker" class="accuracy-tracker" role="region" aria-labelledby="uiAccuracyTitle">
-            <h3 id="uiAccuracyTitle" class="text-lg font-semibold text-center mb-2 text-gray-700"></h3>
-            <div id="accuracyStatsDisplay"></div>
-        </div>
-        
-        <div class="text-center mt-6">
-            <button id="restartGameBtn" class="btn btn-secondary hidden"></button>
-        </div>
-    </div>
+    function t(key) { return ui[state.lang][key]; }
 
-    <script>
-        // --- LANGUAGE DATA ---
-        const uiStrings = {
-            welcomeTitle: { en: "Welcome to Stats Adventure Canada! 🍁", fr: "Bienvenue à Aventure Stats Canada ! 🍁" },
-            howManyPlayers: { en: "How many adventurers are joining?", fr: "Combien d'aventuriers se joignent à nous ?" },
-            numPlayersLabel: { en: "Number of Players (1-4):", fr: "Nombre de joueurs (1-4) :" },
-            confirmNames: { en: "Confirm Names", fr: "Confirmer les noms" },
-            enterPlayerName: { en: "Enter Player {num}'s Name:", fr: "Entrez le nom du joueur {num} :" },
-            playerNameDefault: { en: "Player {num}", fr: "Joueur {num}" },
-            startGame: { en: "Start Adventure!", fr: "Commencer l'aventure !" },
-            gameTitle: { en: "Stats Adventure Canada 🍁", fr: "Aventure Stats Canada 🍁" },
-            gameSubtitle: { en: "A fun journey through Canadian statistics!", fr: "Un voyage amusant à travers les statistiques canadiennes !" },
-            playerTurn: { en: "{name}'s Turn ({token})", fr: "Tour de {name} ({token})" }, 
-            diceRollTitle: { en: "Dice Roll", fr: "Lancer de dé" },
-            rollDice: { en: "Roll Dice!", fr: "Lancer le dé !" },
-            accuracyTitle: { en: "Player Accuracy", fr: "Précision des joueurs" },
-            playerAccuracy: { en: "{name} ({token}): {correct}/{attempted} ({percent}%)", fr: "{name} ({token}): {correct}/{attempted} ({percent}%)" }, 
-            noAttempts: { en: "No attempts yet", fr: "Aucune tentative pour l'instant" },
-            correctFeedback: { en: "Correct! 🎉 Well done!", fr: "Correct ! 🎉 Bravo !" },
-            incorrectFeedback: { en: "Not quite! {answerHint} Keep trying!", fr: "Pas tout à fait ! {answerHint} Continue d'essayer !" },
-            answerHintText: { en: "The answer was related to: {correctAnswer}.", fr: "La réponse était liée à : {correctAnswer}." },
-            challengeCompleted: { en: "Awesome!", fr: "Génial !" },
-            challengeCompletedInfo: { en: "Let's continue!", fr: "Continuons !" },
-            challengeCompletedIdea: { en: "Great idea!", fr: "Bonne idée !" },
-            challengeCompletedCreative: { en: "Great job!", fr: "Super travail !" }, 
-            nextPlayerPrompt: { en: "Great job! {name} ({token}), it's your turn to roll.", fr: "Beau travail ! {name} ({token}), c'est à ton tour de lancer." }, 
-            congratulations: { en: "Congratulations, {name} ({token})! You've completed the Stats Adventure Canada!", fr: "Félicitations, {name} ({token})! Vous avez terminé Aventure Stats Canada !" }, 
-            finalMessage: { en: "Hope everyone had fun!", fr: "Nous espérons que tout le monde s'est amusé !" },
-            restartGame: { en: "Restart Game", fr: "Recommencer le jeu" },
-            startMarker: { en: "START", fr: "DÉPART" },
-            endMarker: { en: "END", fr: "FIN" },
-            submit: { en: "Submit", fr: "Soumettre" },
-            checkSelection: { en: "Check Selection", fr: "Vérifier la sélection" },
-            okay: { en: "Okay!", fr: "D'accord !" },
-            clickMe: { en: "Click me! ({current}/{required})", fr: "Cliquez-moi ! ({current}/{required})" },
-            true: { en: "True", fr: "Vrai" },
-            false: { en: "False", fr: "Faux" },
-            movedBackMessage: { en: "Moved back! Next player's turn.", fr: "Reculé ! Au tour du joueur suivant." },
-            skippedTurnMessage: { en: "Skipped turn! Next player.", fr: "Tour sauté ! Joueur suivant." },
-            waitTurnMessageSuffix: { en: "You wait a turn.", fr: "Vous attendez un tour." },
-            goBackMessageSuffix: { en: "You go back {spaces} spaces.", fr: "Vous reculez de {spaces} cases."},
-            iDrewIt: { en: "I Drew It! 🎨", fr: "Je l'ai dessiné ! 🎨" },
-            iActedItOut: { en: "I Acted It Out! 🎭", fr: "Je l'ai mimé ! 🎭" },
-            errorUnknownChallenge: { en: "Error: Unknown challenge type encountered.", fr: "Erreur : Type de défi inconnu rencontré." },
-            continueAfterError: { en: "Continuing after error.", fr: "Continuation après erreur." }
-        };
-        
-        const milestoneStepsData = [ 
-            { 
-                year: "1666", emoji: "📜", title: {en: "First Census in New France", fr:"Premier recensement en Nouvelle-France"},
-                challenges: [ 
-                    { message: {en:"Jean Talon counted people. Click 3 times to help Stat Moose count settlers!", fr:"Jean Talon a compté les gens. Clique 3 fois pour aider Élan Stats à compter les colons !"}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"True or False: The first census in New France was in 1666.", fr:"Vrai ou Faux : Le premier recensement en Nouvelle-France a eu lieu en 1666."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Who was in charge of this first big count?", fr:"Qui était responsable de ce premier grand décompte ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Jean Talon", fr:"Jean Talon"}, options: [{en:"A King", fr:"Un Roi"}, {en:"Jean Talon", fr:"Jean Talon"}, {en:"A Beaver", fr:"Un Castor"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"What main thing did Jean Talon count? (e.g., people, trees, houses)", fr:"Quelle chose principale Jean Talon a-t-il comptée ? (ex: gens, arbres, maisons)"}, challengeType: "textInput", correctAnswer: {en:"people", fr:"gens"}, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"If you counted 2 families, and each had 4 people, how many people total? Click the answer.", fr:"Si tu as compté 2 familles, et chacune avait 4 personnes, combien de personnes au total ? Clique la réponse."}, challengeType: "multipleChoice", correctAnswer: {en:"8", fr:"8"}, options: [{en:"6", fr:"6"}, {en:"8", fr:"8"}, {en:"10", fr:"10"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Draw a simple boat like the settlers used! Show other players.", fr:"Dessine un bateau simple comme celui des colons ! Montre aux autres."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out counting people one by one! Can others guess?", fr:"Mime compter des gens un par un ! Les autres devinent ?"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "1847", emoji: "🏛️", title: {en:"Board of Registration and Statistics", fr:"Bureau d'enregistrement et de la statistique"},
-                challenges: [ 
-                    { message: {en:"This board started keeping records. Why are records important?", fr:"Ce bureau a commencé à tenir des registres. Pourquoi les registres sont-ils importants ?"}, challengeType: "multipleChoice", correctAnswer: {en:"To learn and plan", fr:"Pour apprendre et planifier"}, options: [{en:"For fun stories", fr:"Pour des histoires amusantes"}, {en:"To learn and plan", fr:"Pour apprendre et planifier"}, {en:"To draw maps", fr:"Pour dessiner des cartes"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: This board was created AFTER Canada became a country.", fr:"Vrai ou Faux : Ce bureau a été créé APRÈS que le Canada soit devenu un pays."}, challengeType: "trueFalse", correctAnswer: {en:"False", fr:"Faux"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"What kind of information do you think they registered? Type one idea (e.g., births, names).", fr:"Quel type d'information penses-tu qu'ils enregistraient ? Tape une idée (ex: naissances, noms)."}, challengeType: "textInputIdea", buttonText: {en:"Share Idea!", fr:"Partager l'idée !"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Click 4 times to 'file' 4 important documents!", fr:"Clique 4 fois pour 'classer' 4 documents importants !"}, challengeType: "clickCounter", clicksRequired: 4, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Which of these is NOT a reason to keep statistics?", fr:"Laquelle de ces raisons N'EST PAS une raison de tenir des statistiques ?"}, challengeType: "multipleChoice", correctAnswer: {en:"To count stars", fr:"Pour compter les étoiles"}, options: [{en:"To count people", fr:"Pour compter les gens"}, {en:"To count stars", fr:"Pour compter les étoiles"}, {en:"To track trade", fr:"Pour suivre le commerce"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Draw a big book where records were kept! Show it off.", fr:"Dessine un grand livre où les registres étaient conservés ! Montre-le."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out carefully writing down an important fact!", fr:"Mime écrire soigneusement un fait important !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "1871", emoji: "🗂️", title: {en:"First National Census", fr:"Premier recensement national"},
-                challenges: [ 
-                    { message: {en:"Canada's first BIG count after becoming a country! What year did Canada become a country?", fr:"Le premier GRAND décompte du Canada après être devenu un pays ! En quelle année le Canada est-il devenu un pays ?"}, challengeType: "multipleChoice", correctAnswer: {en:"1867", fr:"1867"}, options: [{en:"1871", fr:"1871"}, {en:"1867", fr:"1867"}, {en:"1900", fr:"1900"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: A national census tries to count everyone in the country.", fr:"Vrai ou Faux : Un recensement national essaie de compter tout le monde dans le pays."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"What does 'national' mean in 'national census'?", fr:"Que signifie 'national' dans 'recensement national' ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Whole country", fr:"Pays entier"}, options: [{en:"One city", fr:"Une ville"}, {en:"Whole country", fr:"Pays entier"}, {en:"One family", fr:"Une famille"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Imagine drawing a tiny bar chart of 2 provinces. Click to 'draw' 2 bars!", fr:"Imagine dessiner un petit diagramme à barres de 2 provinces. Clique pour 'dessiner' 2 barres !"}, challengeType: "clickCounter", clicksRequired: 2, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Why count everyone? Type one reason.", fr:"Pourquoi compter tout le monde ? Tape une raison."}, challengeType: "textInputIdea", buttonText: {en:"Share Idea!", fr:"Partager l'idée !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a simple map of Canada (just the shape!)", fr:"Dessine une carte simple du Canada (juste la forme !)"}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out a census taker knocking on a door!", fr:"Mime un recenseur frappant à une porte !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "1918", emoji: "🏢", title: {en:"Dominion Bureau of Statistics", fr:"Bureau fédéral de la statistique"},
-                challenges: [ 
-                    { message: {en:"This was the old name for Statistics Canada! What word means 'country' or 'nation'?", fr:"C'était l'ancien nom de Statistique Canada ! Quel mot signifie 'pays' ou 'nation' ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Dominion", fr:"Dominion"}, options: [{en:"Bureau", fr:"Bureau"}, {en:"Statistics", fr:"Statistique"}, {en:"Dominion", fr:"Dominion"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: This office was created during a World War.", fr:"Vrai ou Faux : Ce bureau a été créé pendant une guerre mondiale."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"What does a 'statistician' do? Type a simple guess.", fr:"Que fait un 'statisticien' ? Tape une simple supposition."}, challengeType: "textInputIdea", buttonText: {en:"Share Guess!", fr:"Partager la supposition !"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"This new bureau needed lots of data! Click 5 times to collect 5 data points!", fr:"Ce nouveau bureau avait besoin de beaucoup de données ! Clique 5 fois pour collecter 5 points de données !"}, challengeType: "clickCounter", clicksRequired: 5, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"The Dominion Bureau of Statistics aimed to make data more ____.", fr:"Le Bureau fédéral de la statistique visait à rendre les données plus ____."}, challengeType: "multipleChoice", correctAnswer: {en:"Organized", fr:"Organisées"}, options: [{en:"Organized", fr:"Organisées"}, {en:"Scattered", fr:"Dispersées"}, {en:"Hidden", fr:"Cachées"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Draw a building for the new statistics office!", fr:"Dessine un bâtiment pour le nouveau bureau de statistique !"}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out being a busy statistician with lots of papers!", fr:"Mime un statisticien occupé avec beaucoup de papiers !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} },
-                    { message: {en:"What was the main goal of creating the Dominion Bureau of Statistics?", fr:"Quel était l'objectif principal de la création du Bureau fédéral de la statistique ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Centralize data", fr:"Centraliser les données"}, options: [{en:"Count trees", fr:"Compter les arbres"}, {en:"Centralize data", fr:"Centraliser les données"}, {en:"Predict weather", fr:"Prédire la météo"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} }
-                ]
-            },
-            { 
-                year: "1931", emoji: "📉", title: {en:"Census During Great Depression", fr:"Recensement pendant la Grande Dépression"},
-                challenges: [ 
-                    { message: {en:"The Great Depression was a tough time. Why was a census extra important then?", fr:"La Grande Dépression fut une période difficile. Pourquoi un recensement était-il particulièrement important alors ?"}, challengeType: "multipleChoice", correctAnswer: {en:"To understand needs", fr:"Pour comprendre les besoins"}, options: [{en:"To plan parties", fr:"Pour planifier des fêtes"}, {en:"To understand needs", fr:"Pour comprendre les besoins"}, {en:"To count trees", fr:"Pour compter les arbres"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: The census in 1931 helped show how many people needed jobs.", fr:"Vrai ou Faux : Le recensement de 1931 a aidé à montrer combien de personnes avaient besoin d'un emploi."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"If 3 families needed help and then 2 more, how many total? Click the number.", fr:"Si 3 familles avaient besoin d'aide puis 2 de plus, combien au total ? Clique le nombre."}, challengeType: "multipleChoice", correctAnswer: {en:"5", fr:"5"}, options: [{en:"4", fr:"4"}, {en:"5", fr:"5"}, {en:"6", fr:"6"}], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"What's one job people might have had in the 1930s? Type it.", fr:"Quel métier les gens auraient-ils pu avoir dans les années 1930 ? Tape-le."}, challengeType: "textInputIdea", buttonText: {en:"Share Job!", fr:"Partager le métier !"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"The census data from 1931 helped the government to ____.", fr:"Les données du recensement de 1931 ont aidé le gouvernement à ____."}, challengeType: "multipleChoice", correctAnswer: {en:"Make plans", fr:"Faire des plans"}, options: [{en:"Build playgrounds", fr:"Construire des terrains de jeux"}, {en:"Make plans", fr:"Faire des plans"}, {en:"Count animals", fr:"Compter les animaux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a sad face, then a helping hand.", fr:"Dessine un visage triste, puis une main secourable."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out someone looking for a job, then finding one!", fr:"Mime quelqu'un cherchant un emploi, puis en trouvant un !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            {
-                year: "1945", emoji: "👷", title: {en: "First Labour Force Survey (LFS)", fr: "Première Enquête sur la population active (EPA)"},
-                challenges: [
-                    { message: {en:"The LFS needs many interviewers! Click 5 times to 'hire' 5 interviewers.", fr:"L'EPA a besoin de nombreux enquêteurs ! Clique 5 fois pour 'embaucher' 5 enquêteurs."}, challengeType: "clickCounter", clicksRequired: 5, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"True or False: The LFS helps count how many people have jobs.", fr:"Vrai ou Faux : L'EPA aide à compter combien de personnes ont un emploi."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"What does the Labour Force Survey mainly measure?", fr:"Que mesure principalement l'Enquête sur la population active ?"}, challengeType: "multipleChoice", correctAnswer: {en:"People working or looking for work", fr:"Les personnes qui travaillent ou cherchent un emploi"}, options: [{en:"Number of trees", fr:"Nombre d'arbres"}, {en:"People working or looking for work", fr:"Les personnes qui travaillent ou cherchent un emploi"}, {en:"Amount of rain", fr:"Quantité de pluie"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"What is one type of job the LFS might count? (e.g., teacher, farmer)", fr:"Quel est un type d'emploi que l'EPA pourrait compter ? (ex: enseignant, agriculteur)"}, challengeType: "textInput", correctAnswer: {en:"teacher", fr:"enseignant"}, placeholder: {en:"e.g., teacher", fr:"ex: enseignant"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Why is it important to know how many people are working?", fr:"Pourquoi est-il important de savoir combien de personnes travaillent ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Idea!", fr:"Partager l'idée !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw someone doing a job (e.g., a doctor, a builder).", fr:"Dessine quelqu'un en train de faire un travail (ex: un médecin, un constructeur)."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out being an interviewer asking questions for the LFS.", fr:"Mime un enquêteur posant des questions pour l'EPA."}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} },
-                    { message: {en:"If 100 people are in the labour force and 5 are unemployed, what is the unemployment rate?", fr:"Si 100 personnes font partie de la population active et 5 sont au chômage, quel est le taux de chômage ?"}, challengeType: "multipleChoice", correctAnswer: {en:"5%", fr:"5%"}, options: [{en:"5%", fr:"5%"}, {en:"10%", fr:"10%"}, {en:"95%", fr:"95%"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} }
-                ]
-            },
-            { 
-                year: "1950s", emoji: "📋", title: {en:"Rise of Surveys", fr:"Montée des enquêtes"},
-                challenges: [ 
-                    { message: {en:"Surveys ask questions to a smaller group. Why not ask everyone every time?", fr:"Les enquêtes posent des questions à un groupe plus restreint. Pourquoi ne pas demander à tout le monde à chaque fois ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Faster & cheaper", fr:"Plus rapide et moins cher"}, options: [{en:"It's secret", fr:"C'est secret"}, {en:"Faster & cheaper", fr:"Plus rapide et moins cher"}, {en:"Not enough paper", fr:"Pas assez de papier"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: A survey can give a good idea even if it doesn't ask everyone.", fr:"Vrai ou Faux : Une enquête peut donner une bonne idée même si elle ne demande pas à tout le monde."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"If a survey asks 10 beavers if they like trees, and 9 say yes, is that most of them?", fr:"Si une enquête demande à 10 castors s'ils aiment les arbres, et 9 disent oui, est-ce la majorité ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Yes", fr:"Oui"}, options: [{en:"Yes", fr:"Oui"}, {en:"No", fr:"Non"}, {en:"Maybe", fr:"Peut-être"}], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"What's one question you might ask in a survey about favorite foods?", fr:"Quelle question pourriez-vous poser dans une enquête sur les aliments préférés ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Question!", fr:"Partager la question !"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Click 3 times to 'ask' 3 people in a survey!", fr:"Clique 3 fois pour 'interroger' 3 personnes dans une enquête !"}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Draw a clipboard and a pencil for taking a survey.", fr:"Dessine un presse-papiers et un crayon pour faire un sondage."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out asking someone a survey question politely.", fr:"Mime demander poliment une question de sondage à quelqu'un."}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "1971", emoji: "🇨🇦", title: {en:"Statistics Canada Official", fr:"Statistique Canada officiel"},
-                challenges: [ 
-                    { message: {en:"The Dominion Bureau of Statistics got a new name! What was it?", fr:"Le Bureau fédéral de la statistique a changé de nom ! Quel était-il ?"}, challengeType: "textInput", correctAnswer: {en:"Statistics Canada", fr:"Statistique Canada"}, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"True or False: Statistics Canada is still its name today.", fr:"Vrai ou Faux : Statistique Canada est toujours son nom aujourd'hui."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"What does 'official' mean?", fr:"Que signifie 'officiel' ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Properly recognized", fr:"Reconnu officiellement"}, options: [{en:"Secret", fr:"Secret"}, {en:"Properly recognized", fr:"Reconnu officiellement"}, {en:"Temporary", fr:"Temporaire"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Stat Moose is throwing a party for the new name! Click 4 times for party horns!", fr:"Élan Stats organise une fête pour le nouveau nom ! Clique 4 fois pour les klaxons de fête !"}, challengeType: "clickCounter", clicksRequired: 4, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Statistics Canada's job is to provide information about Canada's ____.", fr:"Le travail de Statistique Canada est de fournir des informations sur ____ du Canada."}, challengeType: "multipleChoice", correctAnswer: {en:"All of the above", fr:"Tout ce qui précède"}, options: [{en:"People", fr:"Les gens"}, {en:"Economy", fr:"L'économie"}, {en:"All of the above", fr:"Tout ce qui précède"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a Canadian flag to celebrate!", fr:"Dessine un drapeau canadien pour célébrer !"}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out a happy dance for the new official name!", fr:"Mime une danse joyeuse pour le nouveau nom officiel !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "1980s", emoji: "💻", title: {en:"Computers in Stats", fr:"Les ordinateurs en statistique"},
-                challenges: [ 
-                    { message: {en:"Computers made counting and sorting data much ____.", fr:"Les ordinateurs ont rendu le comptage et le tri des données beaucoup plus ____."}, challengeType: "multipleChoice", correctAnswer: {en:"Faster", fr:"Rapide"}, options: [{en:"Slower", fr:"Lent"}, {en:"Faster", fr:"Rapide"}, {en:"Harder", fr:"Difficile"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"True or False: Before computers, all stats were done by hand or simple machines.", fr:"Vrai ou Faux : Avant les ordinateurs, toutes les statistiques étaient faites à la main ou avec des machines simples."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Click the 'computer mouse' 3 times to process data!", fr:"Clique sur la 'souris d'ordinateur' 3 fois pour traiter les données !"}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"What's one thing a computer can do with numbers quickly?", fr:"Quelle chose un ordinateur peut-il faire rapidement avec des nombres ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Idea!", fr:"Partager l'idée !"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Computers helped create more detailed ____.", fr:"Les ordinateurs ont aidé à créer des ____ plus détaillés."}, challengeType: "multipleChoice", correctAnswer: {en:"Reports and charts", fr:"Rapports et graphiques"}, options: [{en:"Animal sounds", fr:"Sons d'animaux"}, {en:"Reports and charts", fr:"Rapports et graphiques"}, {en:"Weather forecasts", fr:"Prévisions météo"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw an old-style computer with a big monitor!", fr:"Dessine un ordinateur ancien avec un grand écran !"}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out typing very fast on a computer keyboard!", fr:"Mime taper très vite sur un clavier d'ordinateur !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} },
-                    { message: {en:"Computers helped analyze large ____ of data.", fr:"Les ordinateurs ont aidé à analyser de grandes ____ de données."}, challengeType: "multipleChoice", correctAnswer: {en:"Amounts", fr:"Quantités"}, options: [{en:"Pictures", fr:"Images"}, {en:"Amounts", fr:"Quantités"}, {en:"Songs", fr:"Chansons"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} } 
-                ]
-            },
-            {
-                year: "1990s", emoji: "🗺️", title: {en: "GIS & Spatial Statistics", fr: "SIG et statistiques spatiales"},
-                challenges: [
-                    { message: {en:"GIS uses map layers! Click 3 times to add 3 layers to a map.", fr:"Le SIG utilise des couches de carte ! Clique 3 fois pour ajouter 3 couches à une carte."}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"True or False: GIS stands for 'Great Ice Skating'.", fr:"Vrai ou Faux : SIG signifie 'Super Patinage sur Glace'."}, challengeType: "trueFalse", correctAnswer: {en:"False", fr:"Faux"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"What does GIS (Geographic Information Systems) help us understand?", fr:"Qu'est-ce que le SIG (Systèmes d'Information Géographique) nous aide à comprendre ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Data based on location", fr:"Données basées sur la localisation"}, options: [{en:"Music trends", fr:"Tendances musicales"}, {en:"Data based on location", fr:"Données basées sur la localisation"}, {en:"Animal speeds", fr:"Vitesses des animaux"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"What can you see on a digital map that uses GIS? (e.g., roads, parks)", fr:"Que peux-tu voir sur une carte numérique qui utilise le SIG ? (ex: routes, parcs)"}, challengeType: "textInput", correctAnswer: {en:"roads", fr:"routes"}, placeholder: {en:"e.g., roads", fr:"ex: routes"}, originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"How can maps with data help your community?", fr:"Comment les cartes avec des données peuvent-elles aider ta communauté ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Idea!", fr:"Partager l'idée !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a simple map of your street or neighborhood.", fr:"Dessine une carte simple de ta rue ou de ton quartier."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out using a computer to zoom in on a map!", fr:"Mime utiliser un ordinateur pour zoomer sur une carte !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} },
-                    { message: {en:"If a map shows 3 red dots for parks and 2 blue dots for schools in an area, how many total points of interest are shown?", fr:"Si une carte montre 3 points rouges pour les parcs et 2 points bleus pour les écoles dans une zone, combien de points d'intérêt sont montrés au total ?"}, challengeType: "multipleChoice", correctAnswer: {en:"5", fr:"5"}, options: [{en:"3", fr:"3"}, {en:"2", fr:"2"}, {en:"5", fr:"5"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} }
-                ]
-            },
-            { 
-                year: "1996", emoji: "🌐", title: {en:"Census Goes Online", fr:"Le recensement passe en ligne"},
-                challenges: [ 
-                    { message: {en:"In 1996, some people could fill out the census using the ____.", fr:"En 1996, certaines personnes pouvaient remplir le recensement en utilisant ____."}, challengeType: "textInput", correctAnswer: {en:"internet", fr:"internet"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: Going online made the census faster for some people.", fr:"Vrai ou Faux : Passer en ligne a rendu le recensement plus rapide pour certaines personnes."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"What device do you use to go online most often?", fr:"Quel appareil utilises-tu le plus souvent pour aller en ligne ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Any is fine", fr:"N'importe lequel"}, options: [{en:"Phone", fr:"Téléphone"}, {en:"Tablet", fr:"Tablette"}, {en:"Computer", fr:"Ordinateur"}], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Click 2 times to 'send' your online census form!", fr:"Clique 2 fois pour 'envoyer' ton formulaire de recensement en ligne !"}, challengeType: "clickCounter", clicksRequired: 2, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Why is filling a form online sometimes easier than on paper?", fr:"Pourquoi remplir un formulaire en ligne est-il parfois plus facile que sur papier ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Reason!", fr:"Partager la raison !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a computer screen showing a checkmark for 'submitted'!", fr:"Dessine un écran d'ordinateur avec une coche pour 'soumis' !"}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out someone clicking a mouse to submit a form! Click!", fr:"Mime quelqu'un cliquant sur une souris pour soumettre un formulaire ! Clic !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "2011", emoji: "🏠", title: {en:"National Household Survey", fr:"Enquête nationale auprès des ménages"},
-                challenges: [ 
-                    { message: {en:"This survey replaced the long census form for a while. What does 'household' mean?", fr:"Cette enquête a remplacé le long formulaire de recensement pendant un certain temps. Que signifie 'ménage' ?"}, challengeType: "multipleChoice", correctAnswer: {en:"People living together", fr:"Personnes vivant ensemble"}, options: [{en:"A big house", fr:"Une grande maison"}, {en:"People living together", fr:"Personnes vivant ensemble"}, {en:"A school", fr:"Une école"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"True or False: The National Household Survey was mandatory for everyone.", fr:"Vrai ou Faux : L'Enquête nationale auprès des ménages était obligatoire pour tous."}, challengeType: "trueFalse", correctAnswer: {en:"False", fr:"Faux"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Stat Moose is looking at survey results. Click 3 times to help analyze data!", fr:"Élan Stats examine les résultats de l'enquête. Clique 3 fois pour aider à analyser les données !"}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Why might a survey ask more detailed questions than a short census?", fr:"Pourquoi une enquête pourrait-elle poser des questions plus détaillées qu'un recensement court ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Reason!", fr:"Partager la raison !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"The NHS collected info on things like education and jobs. This helps plan for ____.", fr:"L'ENM a recueilli des informations sur des sujets comme l'éducation et l'emploi. Cela aide à planifier pour ____."}, challengeType: "multipleChoice", correctAnswer: {en:"Community needs", fr:"Les besoins communautaires"}, options: [{en:"Zoo animals", fr:"Les animaux du zoo"}, {en:"Community needs", fr:"Les besoins communautaires"}, {en:"Sports games", fr:"Les matchs de sport"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"Draw a house with a question mark above it.", fr:"Dessine une maison avec un point d'interrogation au-dessus."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out a family filling out a detailed survey together.", fr:"Mime une famille remplissant ensemble un sondage détaillé."}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "2021", emoji: "📲", title: {en:"Digital Census", fr:"Recensement numérique"},
-                challenges: [ 
-                    { message: {en:"Most Canadians filled out the 2021 Census online! Which device would you use?", fr:"La plupart des Canadiens ont rempli le recensement de 2021 en ligne ! Quel appareil utiliserais-tu ?"}, challengeType: "multipleChoice", correctAnswer: {en:"Any is fine", fr:"N'importe lequel"}, options: [{en:"Computer", fr:"Ordinateur"}, {en:"Tablet", fr:"Tablette"}, {en:"Phone", fr:"Téléphone"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"True or False: A digital census is faster to process than a paper one.", fr:"Vrai ou Faux : Un recensement numérique est plus rapide à traiter qu'un recensement papier."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Click all the digital devices Stat Moose might use: Phone, Tablet, Typewriter.", fr:"Clique sur tous les appareils numériques qu'Élan Stats pourrait utiliser : Téléphone, Tablette, Machine à écrire."},
-                      challengeType: "imageClick", correctImages: ["phone.png", "tablet.png"],
-                      images: [
-                          { src: "https://placehold.co/60x60/FFC0CB/000000?text=Phone", id: "phone.png", alt: {en:"Phone", fr:"Téléphone"} },
-                          { src: "https://placehold.co/60x60/ADD8E6/000000?text=Tablet", id: "tablet.png", alt: {en:"Tablet", fr:"Tablette"} },
-                          { src: "https://placehold.co/60x60/D2B48C/000000?text=Writer", id: "typewriter.png", alt: {en:"Typewriter", fr:"Machine à écrire"} }
-                      ], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"What's one benefit of a digital census for the environment?", fr:"Quel est un avantage d'un recensement numérique pour l'environnement ?"}, challengeType: "textInput", correctAnswer: {en:"less paper", fr:"moins de papier"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"In 2021, it was easier than ever to complete the census. Click 1 time for 'easy'!", fr:"En 2021, il était plus facile que jamais de remplir le recensement. Clique 1 fois pour 'facile' !"}, challengeType: "clickCounter", clicksRequired: 1, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Draw a smartphone or tablet showing the census form.", fr:"Dessine un smartphone ou une tablette affichant le formulaire de recensement."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out someone easily tapping through a digital form.", fr:"Mime quelqu'un naviguant facilement sur un formulaire numérique."}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            },
-            { 
-                year: "Future", emoji: "🤖", title: {en:"Future of Stats", fr:"Avenir des statistiques"},
-                challenges: [ 
-                    { message: {en:"Imagine new ways to collect data! What's a futuristic idea?", fr:"Imagine de nouvelles façons de collecter des données ! Quelle est une idée futuriste ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Future Idea!", fr:"Partager l'idée future !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"True or False: In the future, data might help us solve even bigger problems.", fr:"Vrai ou Faux : À l'avenir, les données pourraient nous aider à résoudre des problèmes encore plus importants."}, challengeType: "trueFalse", correctAnswer: {en:"True", fr:"Vrai"}, options: [{en:"True", fr:"Vrai"}, {en:"False", fr:"Faux"}], originalCharacter: {en:"🦦 Data Beaver", fr:"🦦 Castor Données"} },
-                    { message: {en:"What kind of data will be MOST important in 20 years? (e.g., health, space, environment)", fr:"Quel type de données sera LE PLUS important dans 20 ans ? (ex: santé, espace, environnement)"}, challengeType: "multipleChoice", correctAnswer: {en:"Any is fine", fr:"N'importe lequel"}, options: [{en:"Health", fr:"Santé"}, {en:"Environment", fr:"Environnement"}, {en:"Tech", fr:"Technologie"}], originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"Click 3 times to 'beam up' future data to Stat Moose's spaceship!", fr:"Clique 3 fois pour 'téléporter' les données futures vers le vaisseau spatial d'Élan Stats !"}, challengeType: "clickCounter", clicksRequired: 3, originalCharacter: {en:"🦌 Stat Moose", fr:"🦌 Élan Stats"} },
-                    { message: {en:"How can knowing more about the future help us today?", fr:"Comment savoir plus sur l'avenir peut-il nous aider aujourd'hui ?"}, challengeType: "textInputIdea", buttonText: {en:"Share Thought!", fr:"Partager la pensée !"}, originalCharacter: {en:"🦉 History Owl", fr:"🦉 Hibou Histoire"} },
-                    { message: {en:"Draw a friendly robot helping collect data.", fr:"Dessine un robot amical aidant à collecter des données."}, challengeType: "drawingChallenge", originalCharacter: {en:"🎨 Creative Cormorant", fr:"🎨 Cormoran Créatif"} },
-                    { message: {en:"Act out a futuristic way to gather information (e.g., mind-reading)!", fr:"Mime une façon futuriste de recueillir des informations (ex: lecture de pensées) !"}, challengeType: "actingChallenge", originalCharacter: {en:"🎭 Performance Puffin", fr:"🎭 Macareux Performant"} }
-                ]
-            }
-        ];
+    function createEl(tag, options = {}, children = []) {
+      const node = document.createElement(tag);
+      Object.entries(options).forEach(([key, value]) => {
+        if (key === 'className') node.className = value;
+        else if (key === 'text') node.textContent = value;
+        else if (key === 'dataset') Object.assign(node.dataset, value);
+        else if (key.startsWith('aria')) node.setAttribute(key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), value);
+        else node.setAttribute(key, value);
+      });
+      children.forEach(child => node.append(child));
+      return node;
+    }
 
-        const specialSquareTypes = [
-            { name: { en: "Survey Incomplete", fr: "Sondage incomplet" }, message: { en: "Oops! You didn’t finish your survey.", fr: "Oups ! Vous n'avez pas terminé votre sondage." }, effect: { type: "waitTurn" }, emoji: "📝" },
-            { name: { en: "Data Entry Delay", fr: "Retard de saisie" }, message: { en: "Your numbers got stuck in the system!", fr: "Vos chiffres sont coincés dans le système !" }, effect: { type: "waitTurn" }, emoji: "⏳" },
-            { name: { en: "Too Many Typos!", fr: "Trop de fautes !" }, message: { en: "You wrote 202 instead of 2022. Fix it!", fr: "Vous avez écrit 202 au lieu de 2022. Corrigez !" }, effect: { type: "waitTurn" }, emoji: "✏️" },
-            { name: { en: "Internet Glitch!", fr: "Panne d'Internet !" }, message: { en: "The online census crashed. Reloading...", fr: "Le recensement en ligne a planté. Rechargement..." }, effect: { type: "waitTurn" }, emoji: "🚦" },
-            { name: { en: "Non-Respondent", fr: "Non-répondant" }, message: { en: "You forgot to answer the survey!", fr: "Vous avez oublié de répondre au sondage !" }, effect: { type: "goBack", spaces: 1 }, emoji: "🙈" },
-            { name: { en: "Survey Sent to Spam!", fr: "Sondage aux pourriels!" }, message: { en: "Your survey ended up in junk mail.", fr: "Votre sondage a fini dans les pourriels." }, effect: { type: "goBack", spaces: 1 }, emoji: "📬" },
-            { name: { en: "Lost Count!", fr: "Compte perdu !" }, message: { en: "You counted too fast and missed a few.", fr: "Vous avez compté trop vite et en avez manqué." }, effect: { type: "goBack", spaces: 2 }, emoji: "🔢" },
-            { name: { en: "Confused by Graph!", fr: "Graphique confus !" }, message: { en: "That pie chart made you dizzy!", fr: "Ce diagramme circulaire vous a donné le vertige !" }, effect: { type: "goBack", spaces: 2 }, emoji: "📊" },
-            { name: { en: "Dropped Tablet!", fr: "Tablette tombée !" }, message: { en: "Uh-oh! Your digital survey tool broke.", fr: "Oh-oh ! Votre outil de sondage numérique est cassé." }, effect: { type: "goBack", spaces: 3 }, emoji: "💥" },
-            { name: { en: "Misread Question!", fr: "Question mal lue !" }, message: { en: "You thought it asked your age in dog years!", fr: "Vous pensiez que ça demandait votre âge en années de chien !" }, effect: { type: "goBack", spaces: 3 }, emoji: "🤔" }
-        ];
+    function resetGameState() {
+      state.started = false;
+      state.players = [];
+      state.currentPlayer = 0;
+      state.selectedAnswer = null;
+      state.activeChallenge = null;
+      state.awaitingChallenge = false;
+      state.gameOver = false;
+      state.dice = null;
+      state.totalAnswers = 0;
+      state.correctAnswers = 0;
+    }
 
+    function makePlayerInputs() {
+      dom.playerInputs.replaceChildren();
+      const count = Number(dom.playerCount.value);
+      for (let i = 0; i < count; i++) {
+        const wrap = createEl('div');
+        const label = createEl('label', { for: `playerName${i}`, text: `${t('player')} ${i + 1}` });
+        const input = createEl('input', { id: `playerName${i}`, type: 'text', maxlength: '30', value: `${t('defaultName')} ${i + 1}` });
+        wrap.append(label, input);
+        dom.playerInputs.appendChild(wrap);
+      }
+    }
 
-        // --- GAME STATE & LOGIC ---
-        let currentLanguage = 'en';
-        let numberOfPlayers = 1;
-        let currentPlayerIndex = 0;
-        let playerPositions = []; 
-        const playerTokenEmojis = ['🦌', '🐻', '🦊', '🐰']; 
-        let playerTokens = []; 
-        let playerNames = []; 
-        let playerStats = []; 
-        let fullBoardLayout = []; 
+    function applyLanguage() {
+      document.documentElement.lang = state.lang;
+      dom.appTitle.textContent = t('title');
+      dom.appSubtitle.textContent = t('subtitle');
+      dom.rulesBtn.textContent = t('rules');
+      dom.restartBtn.textContent = t('restart');
+      dom.languageLabel.textContent = t('language');
+      dom.setupHeading.textContent = t('setup');
+      dom.playerCountLabel.textContent = t('players');
+      dom.startBtn.textContent = t('start');
+      dom.setupHint.textContent = t('hint');
+      dom.turnLabel.textContent = t('currentTurn');
+      dom.positionLabel.textContent = t('position');
+      dom.accuracyLabel.textContent = t('accuracy');
+      dom.diceLabel.textContent = t('dice');
+      dom.rollBtn.textContent = t('roll');
+      dom.skipBtn.textContent = t('skip');
+      dom.boardHeading.textContent = t('board');
+      dom.challengeHeading.textContent = t('challenge');
+      dom.submitAnswerBtn.textContent = t('submit');
+      dom.continueBtn.textContent = t('cont');
+      dom.rulesTitle.textContent = t('rulesTitle');
+      dom.closeRulesBtn.textContent = t('close');
+      renderRules();
+      if (!state.started) makePlayerInputs();
+      renderAll();
+    }
 
-        let currentClicks = 0;
-        let selectedImages = new Set();
-        let gameEnded = false;
-        let currentSelectedChallengeOrSpecial = null; 
+    function renderRules() {
+      const list = createEl('ul');
+      t('rulesHtml').forEach(rule => list.appendChild(createEl('li', { text: rule })));
+      dom.rulesContent.replaceChildren(list);
+    }
 
-        // --- DOM ELEMENTS ---
-        const playerSetupScreen = document.getElementById('playerSetupScreen');
-        const gameContainer = document.getElementById('gameContainer');
-        const numPlayersSelect = document.getElementById('numPlayersSelect');
-        const playerNameInputsContainer = document.getElementById('playerNameInputsContainer');
-        const confirmNamesBtn = document.getElementById('confirmNamesBtn');
-        const startGameBtn = document.getElementById('startGameBtn');
-        
-        const gameBoard = document.getElementById('gameBoard');
-        const turnDisplay = document.getElementById('turnDisplay');
-        const diceResultDisplay = document.getElementById('diceResult');
-        const rollDiceBtn = document.getElementById('rollDiceBtn');
-        const messageBox = document.getElementById('messageBox');
-        const characterMessageDiv = document.getElementById('characterMessage');
-        const challengeArea = document.getElementById('challengeArea');
-        const feedbackArea = document.getElementById('feedbackArea');
-        const restartGameBtn = document.getElementById('restartGameBtn');
+    function startGame() {
+      resetGameState();
+      const count = Number(dom.playerCount.value);
+      for (let i = 0; i < count; i++) {
+        const input = document.getElementById(`playerName${i}`);
+        const safeName = (input?.value || '').trim() || `${t('defaultName')} ${i + 1}`;
+        state.players.push({ name: safeName, position: 0, completed: new Set(), colourClass: `player-${i}` });
+      }
+      state.started = true;
+      dom.setupPanel.classList.add('hidden');
+      dom.gamePanel.classList.remove('hidden');
+      dom.liveStatus.textContent = t('ready');
+      renderAll();
+    }
 
-        const langEnSetupBtn = document.getElementById('langEnSetupBtn');
-        const langFrSetupBtn = document.getElementById('langFrSetupBtn');
-        const langEnGameBtn = document.getElementById('langEnGameBtn');
-        const langFrGameBtn = document.getElementById('langFrGameBtn');
-        
-        const accuracyTrackerDiv = document.getElementById('accuracyTracker');
-        const accuracyStatsDisplay = document.getElementById('accuracyStatsDisplay');
+    function renderAll() {
+      renderStats();
+      renderBoard();
+      renderChallenge();
+      updateControls();
+    }
 
-        // --- HELPER FUNCTIONS ---
-        function shuffleArray(array) { 
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
+    function renderStats() {
+      if (!state.started || !state.players.length) {
+        dom.turnValue.textContent = '—';
+        dom.positionValue.textContent = '—';
+        dom.accuracyValue.textContent = '0%';
+        dom.diceValue.textContent = '—';
+        return;
+      }
+      const player = state.players[state.currentPlayer];
+      const cell = milestones[player.position];
+      dom.turnValue.textContent = player.name;
+      dom.positionValue.textContent = `${player.position + 1}/${milestones.length} — ${cell[state.lang]}`;
+      dom.accuracyValue.textContent = state.totalAnswers ? `${Math.round((state.correctAnswers / state.totalAnswers) * 100)}%` : '0%';
+      dom.diceValue.textContent = state.dice ? String(state.dice) : '—';
+      dom.boardSummary.textContent = `${player.name} ${t('onSquare')} ${cell.year}: ${cell[state.lang]}.`;
+    }
 
-        function getUIText(key, replacements = {}) {
-            let text = uiStrings[key]?.[currentLanguage] || uiStrings[key]?.['en'] || `MISSING_UI:${key}`;
-            for (const placeholder in replacements) {
-                text = text.replace(`{${placeholder}}`, replacements[placeholder]);
-            }
-            return text;
-        }
-
-        function getDynamicText(textObject) { 
-            if (typeof textObject === 'string') return textObject; 
-            return textObject?.[currentLanguage] || textObject?.['en'] || '';
-        }
-        
-        // --- LANGUAGE SWITCHING ---
-        function setLanguage(lang) {
-            currentLanguage = lang;
-            updateAllUIText();
-            [langEnSetupBtn, langEnGameBtn].forEach(btn => btn.classList.toggle('active-lang', lang === 'en'));
-            [langFrSetupBtn, langFrGameBtn].forEach(btn => btn.classList.toggle('active-lang', lang === 'fr'));
-        }
-
-        function updateAllUIText() {
-            document.getElementById('uiWelcomeTitle').textContent = getUIText('welcomeTitle');
-            document.getElementById('uiHowManyPlayers').textContent = getUIText('howManyPlayers');
-            document.getElementById('uiNumPlayersLabel').textContent = getUIText('numPlayersLabel');
-            confirmNamesBtn.textContent = getUIText('confirmNames');
-            const nameInputs = playerNameInputsContainer.querySelectorAll('input');
-            nameInputs.forEach((input, index) => {
-                input.placeholder = getUIText('playerNameDefault', {num: index + 1});
-                const label = playerNameInputsContainer.querySelector(`label[for='playerName${index+1}']`);
-                if(label) label.textContent = getUIText('enterPlayerName', {num: index + 1});
-            });
-
-            startGameBtn.textContent = getUIText('startGame');
-
-
-            if (!gameContainer.classList.contains('hidden')) { 
-                document.getElementById('uiGameTitle').textContent = getUIText('gameTitle');
-                document.getElementById('uiGameSubtitle').textContent = getUIText('gameSubtitle');
-                updateTurnDisplay(); 
-                document.getElementById('uiDiceRollTitle').textContent = getUIText('diceRollTitle');
-                rollDiceBtn.textContent = getUIText('rollDice');
-                document.getElementById('uiAccuracyTitle').textContent = getUIText('accuracyTitle');
-                restartGameBtn.textContent = getUIText('restartGame');
-                
-                initializeBoardAndSquares(); 
-                if (currentSelectedChallengeOrSpecial) { 
-                    presentStepAction(true); 
-                }
-                updateAccuracyDisplay(); 
-            }
-        }
-
-        langEnSetupBtn.addEventListener('click', () => setLanguage('en'));
-        langFrSetupBtn.addEventListener('click', () => setLanguage('fr'));
-        langEnGameBtn.addEventListener('click', () => setLanguage('en'));
-        langFrGameBtn.addEventListener('click', () => setLanguage('fr'));
-
-        // --- PLAYER SETUP ---
-        numPlayersSelect.addEventListener('change', (event) => {
-            const num = parseInt(event.target.value);
-            playerNameInputsContainer.innerHTML = ''; 
-            for (let i = 1; i <= num; i++) {
-                const label = document.createElement('label');
-                label.htmlFor = `playerName${i}`;
-                label.textContent = getUIText('enterPlayerName', {num: i});
-                label.classList.add('block', 'text-sm', 'font-medium', 'text-gray-700', 'mt-2');
-                
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = `playerName${i}`;
-                input.classList.add('player-name-input', 'mt-1');
-                input.setAttribute('aria-label', getUIText('enterPlayerName', {num: i}));
-                input.placeholder = getUIText('playerNameDefault', {num: i});
-                
-                playerNameInputsContainer.appendChild(label);
-                playerNameInputsContainer.appendChild(input);
-            }
-            if (num > 0) {
-                confirmNamesBtn.classList.remove('hidden');
-                startGameBtn.classList.add('hidden'); 
-            } else {
-                confirmNamesBtn.classList.add('hidden');
-            }
+    function renderBoard() {
+      dom.board.replaceChildren();
+      milestones.forEach((cell, index) => {
+        const active = state.players.some(player => player.position === index);
+        const tile = createEl('div', {
+          className: 'cell', role: 'gridcell', tabindex: '0', ariaCurrent: active ? 'true' : 'false',
+          ariaLabel: `${index + 1}. ${cell.year} ${cell[state.lang]}`
         });
-
-        confirmNamesBtn.addEventListener('click', () => {
-            playerNames = [];
-            const num = parseInt(numPlayersSelect.value);
-            for (let i = 1; i <= num; i++) {
-                const input = document.getElementById(`playerName${i}`);
-                playerNames.push(input.value.trim() || getUIText('playerNameDefault', {num: i}));
-            }
-            startGameBtn.classList.remove('hidden');
-            confirmNamesBtn.classList.add('hidden');
+        tile.append(
+          createEl('span', { className: 'cell-emoji', text: cell.emoji }),
+          createEl('p', { className: 'cell-title', text: cell[state.lang] }),
+          createEl('span', { className: 'cell-year', text: cell.year })
+        );
+        const pieces = createEl('div', { className: 'pieces', ariaLabel: 'Players on this square' });
+        state.players.forEach((player, playerIndex) => {
+          if (player.position === index) pieces.appendChild(createEl('span', { className: `piece ${player.colourClass}`, text: String(playerIndex + 1), title: player.name }));
         });
-
-
-        // --- GAME LOGIC ---
-        function generateFullBoardLayout() {
-            fullBoardLayout = [];
-            const milestones = milestoneStepsData.map(s => ({ type: 'milestone', data: s }));
-            
-            let availableSpecialSquares = [...specialSquareTypes];
-            shuffleArray(availableSpecialSquares);
-            let selectedSpecials = [];
-            let waitTurns = availableSpecialSquares.filter(s => s.effect.type === 'waitTurn');
-            let goBacks = availableSpecialSquares.filter(s => s.effect.type === 'goBack');
-            
-            shuffleArray(waitTurns);
-            shuffleArray(goBacks);
-
-            for(let i=0; i<2 && waitTurns.length > 0; i++) selectedSpecials.push(waitTurns.pop());
-            for(let i=0; i<2 && goBacks.length > 0; i++) selectedSpecials.push(goBacks.pop());
-            
-            let remainingAvailable = availableSpecialSquares.filter(s => !selectedSpecials.map(x => x.emoji).includes(s.emoji)); 
-            shuffleArray(remainingAvailable);
-            while(selectedSpecials.length < 4 && remainingAvailable.length > 0) {
-                let nextPick = remainingAvailable.pop();
-                if (!selectedSpecials.map(x => x.emoji).includes(nextPick.emoji)) { 
-                     selectedSpecials.push(nextPick);
-                }
-            }
-            while(selectedSpecials.length < 4 && availableSpecialSquares.length > 0) { 
-                 let backupPick = availableSpecialSquares.find(s => !selectedSpecials.map(x => x.emoji).includes(s.emoji));
-                 if (backupPick) selectedSpecials.push(backupPick);
-                 else if (availableSpecialSquares.length > 0) selectedSpecials.push(availableSpecialSquares.pop()); 
-            }
-
-            const specialSquareObjects = selectedSpecials.slice(0,4).map(s_data => ({ type: 'special', data: s_data }));
-
-            let insertionSlotIndices = Array.from({length: milestones.length - 1}, (_,k) => k + 1); 
-            shuffleArray(insertionSlotIndices);
-            let chosenSlots = insertionSlotIndices.slice(0, specialSquareObjects.length).sort((a,b) => a - b);
-            
-            for (let i = 0; i < milestones.length; i++) {
-                fullBoardLayout.push(milestones[i]);
-                if (chosenSlots.includes(i + 1) && specialSquareObjects.length > 0) { 
-                    fullBoardLayout.push(specialSquareObjects.shift()); 
-                }
-            }
-        }
-
-
-        startGameBtn.addEventListener('click', () => {
-            numberOfPlayers = playerNames.length; 
-            playerTokens = playerTokenEmojis.slice(0, numberOfPlayers);
-            playerPositions = Array(numberOfPlayers).fill(0);
-            playerStats = Array(numberOfPlayers).fill(null).map(() => ({ attempted: 0, correct: 0, skipNextTurn: false }));
-            currentPlayerIndex = 0;
-            gameEnded = false;
-            currentSelectedChallengeOrSpecial = null;
-
-            generateFullBoardLayout(); 
-
-            playerSetupScreen.classList.add('hidden');
-            gameContainer.classList.remove('hidden');
-            restartGameBtn.classList.add('hidden');
-            diceResultDisplay.textContent = '🎲';
-            
-            updateAllUIText(); 
-            presentStepAction(); 
-            updateAccuracyDisplay();
+        tile.appendChild(pieces);
+        tile.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            dom.liveStatus.textContent = `${cell.year}: ${cell[state.lang]}`;
+          }
         });
+        dom.board.appendChild(tile);
+      });
+    }
 
-        function initializeBoardAndSquares() {
-            gameBoard.innerHTML = ''; 
-            fullBoardLayout.forEach((item, index) => {
-                const stepDiv = document.createElement('div');
-                stepDiv.classList.add('board-step');
-                stepDiv.id = `step-${index}`; 
-                stepDiv.setAttribute('role', 'gridcell');
-                stepDiv.setAttribute('aria-label', `Square ${index + 1}: ${item.type === 'milestone' ? getDynamicText(item.data.title) : getDynamicText(item.data.name)}`);
-                
-                const stepNumber = document.createElement('span');
-                stepNumber.classList.add('step-number');
-                stepNumber.textContent = index + 1; 
-                stepDiv.appendChild(stepNumber);
+    function currentPlayer() { return state.players[state.currentPlayer]; }
 
-                if (item.type === 'milestone') {
-                    const isFirstMilestoneOnBoard = index === 0 && item.data.year === milestoneStepsData[0].year;
-                    const isLastMilestoneOnBoard = index === fullBoardLayout.length - 1 && item.data.year === milestoneStepsData[milestoneStepsData.length - 1].year;
+    function rollDice() {
+      if (state.awaitingChallenge || state.gameOver) return;
+      const player = currentPlayer();
+      state.dice = Math.floor(Math.random() * 6) + 1;
+      player.position = Math.min(player.position + state.dice, milestones.length - 1);
+      const cell = milestones[player.position];
+      dom.liveStatus.textContent = `${player.name} ${t('rolled')} ${state.dice}; ${t('onSquare')} ${cell[state.lang]}.`;
+      presentChallenge();
+      renderAll();
+    }
 
+    function presentChallenge() {
+      const player = currentPlayer();
+      const cell = milestones[player.position];
+      const challenge = cell.q[0];
+      state.activeChallenge = { cell, challenge };
+      state.awaitingChallenge = true;
+      state.selectedAnswer = null;
+      if (player.position === milestones.length - 1) dom.liveStatus.textContent = t('finalChallenge');
+    }
 
-                    if (isFirstMilestoneOnBoard) { 
-                        const startText = document.createElement('span');
-                        startText.classList.add('step-marker-text');
-                        startText.textContent = getUIText('startMarker');
-                        stepDiv.appendChild(startText);
-                    } else if (isLastMilestoneOnBoard) { 
-                        const endText = document.createElement('span');
-                        endText.classList.add('step-marker-text');
-                        endText.textContent = getUIText('endMarker');
-                        stepDiv.appendChild(endText);
-                    }
+    function renderChallenge() {
+      dom.answerOptions.replaceChildren();
+      dom.feedback.classList.add('hidden');
+      dom.continueBtn.classList.add('hidden');
+      dom.submitAnswerBtn.disabled = true;
 
-                    const stepYear = document.createElement('div');
-                    stepYear.classList.add('step-year');
-                    stepYear.textContent = item.data.year; 
-                    stepDiv.appendChild(stepYear);
+      if (!state.awaitingChallenge || !state.activeChallenge) {
+        dom.challengePanel.classList.add('hidden');
+        return;
+      }
 
-                    const stepEmoji = document.createElement('div'); 
-                    stepEmoji.classList.add('step-emoji');
-                    stepEmoji.textContent = item.data.emoji;
-                    stepDiv.appendChild(stepEmoji);
-                    
-                    const stepTitle = document.createElement('div');
-                    stepTitle.classList.add('step-title');
-                    stepTitle.textContent = getDynamicText(item.data.title);
-                    stepDiv.appendChild(stepTitle);
-                } else { 
-                    stepDiv.classList.add('special-board-step');
-                    const stepEmoji = document.createElement('div');
-                    stepEmoji.classList.add('step-emoji');
-                    stepEmoji.textContent = item.data.emoji;
-                    stepDiv.appendChild(stepEmoji);
+      const { cell, challenge } = state.activeChallenge;
+      const answers = state.lang === 'fr' ? challenge.af : challenge.a;
+      dom.challengePanel.classList.remove('hidden');
+      dom.challengeMeta.textContent = `${cell.emoji} ${cell.year} — ${cell[state.lang]}`;
+      dom.challengeQuestion.textContent = challenge[state.lang];
 
-                    const stepName = document.createElement('div');
-                    stepName.classList.add('special-step-name');
-                    stepName.textContent = getDynamicText(item.data.name);
-                    stepDiv.appendChild(stepName);
-                }
+      answers.forEach((answerText, index) => {
+        const button = createEl('button', { type: 'button', className: 'answer-option', text: answerText, ariaPressed: 'false' });
+        button.addEventListener('click', () => selectAnswer(index));
+        dom.answerOptions.appendChild(button);
+      });
+    }
 
-                const iconsContainer = document.createElement('div');
-                iconsContainer.classList.add('player-icons-on-step');
-                iconsContainer.id = `icons-on-step-${index}`;
-                stepDiv.appendChild(iconsContainer);
+    function selectAnswer(index) {
+      state.selectedAnswer = index;
+      [...dom.answerOptions.children].forEach((button, buttonIndex) => {
+        button.classList.toggle('selected', buttonIndex === index);
+        button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
+      });
+      dom.submitAnswerBtn.disabled = false;
+    }
 
-                gameBoard.appendChild(stepDiv);
-            });
-            updateBoardVisuals();
-        }
+    function submitAnswer() {
+      if (!state.activeChallenge) return;
+      if (state.selectedAnswer === null) {
+        dom.feedback.textContent = t('selectedNeeded');
+        dom.feedback.classList.remove('hidden');
+        return;
+      }
+      const { challenge } = state.activeChallenge;
+      const correct = state.selectedAnswer === challenge.c;
+      state.totalAnswers += 1;
+      if (correct) state.correctAnswers += 1;
+      [...dom.answerOptions.children].forEach((button, index) => {
+        button.disabled = true;
+        if (index === challenge.c) button.classList.add('correct');
+        else if (index === state.selectedAnswer) button.classList.add('incorrect');
+      });
+      dom.feedback.textContent = correct ? t('correct') : t('incorrect');
+      dom.feedback.classList.remove('hidden');
+      dom.submitAnswerBtn.disabled = true;
+      dom.continueBtn.classList.remove('hidden');
+      renderStats();
+    }
 
-        function updateBoardVisuals() {
-            document.querySelectorAll('.player-icons-on-step').forEach(container => container.innerHTML = '');
-            document.querySelectorAll('.board-step').forEach(el => el.classList.remove('active-step'));
+    function completeTurn() {
+      const player = currentPlayer();
+      player.completed.add(player.position);
+      state.awaitingChallenge = false;
+      state.activeChallenge = null;
+      state.selectedAnswer = null;
 
-            playerPositions.forEach((pos, pIndex) => {
-                if (pos < fullBoardLayout.length) { 
-                    const iconsContainer = document.getElementById(`icons-on-step-${pos}`);
-                    if (iconsContainer) {
-                        const tokenSpan = document.createElement('span');
-                        tokenSpan.textContent = playerTokens[pIndex];
-                        tokenSpan.classList.add('player-icon-on-square');
-                        tokenSpan.setAttribute('aria-hidden', 'true'); 
-                        if (pIndex === currentPlayerIndex && !gameEnded) {
-                            tokenSpan.classList.add('current-player-visual'); 
-                        }
-                        iconsContainer.appendChild(tokenSpan);
-                    }
-                }
-            });
-            
-            const currentPlayerPos = playerPositions[currentPlayerIndex];
-            if (currentPlayerPos < fullBoardLayout.length && !gameEnded) {
-                const currentStepElement = document.getElementById(`step-${currentPlayerPos}`);
-                if (currentStepElement) {
-                    currentStepElement.classList.add('active-step');
-                }
-            }
-        }
-        
-        function updateTurnDisplay() {
-            if (gameEnded || playerNames.length === 0) return; 
-            const currentName = playerNames[currentPlayerIndex] || getUIText('playerNameDefault', {num: currentPlayerIndex + 1});
-            let turnText = getUIText('playerTurn', {name: currentName, token: playerTokens[currentPlayerIndex]});
-            if (playerStats[currentPlayerIndex]?.skipNextTurn) {
-                 turnText += ` (${getUIText('skippedTurnMessage')})`;
-            }
-            turnDisplay.innerHTML = turnText;
-        }
+      if (player.position === milestones.length - 1) {
+        state.gameOver = true;
+        dom.liveStatus.textContent = `${player.name} ${t('winner')}`;
+      } else {
+        state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
+        dom.liveStatus.textContent = t('ready');
+      }
+      renderAll();
+    }
 
-        rollDiceBtn.addEventListener('click', () => {
-            if (gameEnded) return;
+    function skipChallenge() {
+      if (!state.awaitingChallenge) return;
+      dom.liveStatus.textContent = t('skipped');
+      completeTurn();
+    }
 
-            if (playerStats[currentPlayerIndex].skipNextTurn) {
-                playerStats[currentPlayerIndex].skipNextTurn = false;
-                feedbackArea.textContent = getUIText('skippedTurnMessage');
-                challengeCompleted(getUIText('skippedTurnMessage')); 
-                return;
-            }
+    function updateControls() {
+      const active = state.started && !state.gameOver;
+      dom.rollBtn.disabled = !active || state.awaitingChallenge;
+      dom.skipBtn.disabled = !active || !state.awaitingChallenge;
+      dom.submitAnswerBtn.disabled = !state.awaitingChallenge || state.selectedAnswer === null;
+    }
 
-            const roll = Math.floor(Math.random() * 3) + 1; 
-            diceResultDisplay.textContent = roll;
-            feedbackArea.textContent = ''; 
-            playerPositions[currentPlayerIndex] += roll;
-            if (playerPositions[currentPlayerIndex] >= fullBoardLayout.length -1) { 
-                playerPositions[currentPlayerIndex] = fullBoardLayout.length - 1; 
-            }
-            updateBoardVisuals();
-            presentStepAction();
-            rollDiceBtn.disabled = true; 
-        });
+    function restartGame() {
+      resetGameState();
+      dom.setupPanel.classList.remove('hidden');
+      dom.gamePanel.classList.add('hidden');
+      dom.challengePanel.classList.add('hidden');
+      dom.liveStatus.textContent = t('ready');
+      makePlayerInputs();
+      renderAll();
+    }
 
-        function presentStepAction(isLanguageSwitch = false) { 
-            if (gameEnded) return;
+    function wireEvents() {
+      dom.playerCount.addEventListener('change', makePlayerInputs);
+      dom.languageSelect.addEventListener('change', event => {
+        state.lang = event.target.value;
+        applyLanguage();
+      });
+      dom.startBtn.addEventListener('click', startGame);
+      dom.rollBtn.addEventListener('click', rollDice);
+      dom.submitAnswerBtn.addEventListener('click', submitAnswer);
+      dom.continueBtn.addEventListener('click', completeTurn);
+      dom.skipBtn.addEventListener('click', skipChallenge);
+      dom.restartBtn.addEventListener('click', restartGame);
+      dom.rulesBtn.addEventListener('click', () => dom.rulesDialog.showModal());
+      dom.closeRulesBtn.addEventListener('click', () => dom.rulesDialog.close());
+      dom.rulesDialog.addEventListener('cancel', event => { event.preventDefault(); dom.rulesDialog.close(); });
+    }
 
-            const currentPos = playerPositions[currentPlayerIndex];
-            if (currentPos >= fullBoardLayout.length) { 
-                endGame(currentPlayerIndex);
-                return;
-            }
-
-            const boardItem = fullBoardLayout[currentPos];
-            
-            if (!isLanguageSwitch || !currentSelectedChallengeOrSpecial || 
-                (boardItem.type === 'milestone' && (!currentSelectedChallengeOrSpecial.challengeType && !currentSelectedChallengeOrSpecial.originalCharacter) ) || 
-                (boardItem.type === 'special' && (currentSelectedChallengeOrSpecial.challengeType || currentSelectedChallengeOrSpecial.originalCharacter) ) ) { 
-                currentSelectedChallengeOrSpecial = boardItem.data; 
-            }
-
-
-            challengeArea.innerHTML = ''; 
-            if (!isLanguageSwitch) feedbackArea.textContent = ''; 
-            rollDiceBtn.disabled = true; 
-
-            if (boardItem.type === 'milestone') {
-                const stepChallenges = boardItem.data.challenges;
-                let actualChallengeToPresent;
-
-                if (isLanguageSwitch && currentSelectedChallengeOrSpecial && currentSelectedChallengeOrSpecial.challengeType && currentSelectedChallengeOrSpecial.originalCharacter) { 
-                    actualChallengeToPresent = currentSelectedChallengeOrSpecial;
-                } else { 
-                    actualChallengeToPresent = stepChallenges[Math.floor(Math.random() * stepChallenges.length)];
-                }
-                currentSelectedChallengeOrSpecial = actualChallengeToPresent; 
-
-                const characterEmoji = getDynamicText(actualChallengeToPresent.originalCharacter).split(' ')[0];
-                const characterName = getDynamicText(actualChallengeToPresent.originalCharacter).split(' ').slice(1).join(' ');
-                
-                characterMessageDiv.innerHTML = `<span class="character-icon" aria-hidden="true">${characterEmoji}</span> <p class="text-lg">${characterName} says: ${getDynamicText(actualChallengeToPresent.message)}</p>`;
-                
-                switch (actualChallengeToPresent.challengeType) {
-                    case "clickCounter":
-                        currentClicks = 0;
-                        const clickBtn = document.createElement('button');
-                        clickBtn.classList.add('btn', 'btn-secondary', 'mt-2');
-                        clickBtn.textContent = getUIText('clickMe', {current: currentClicks, required: actualChallengeToPresent.clicksRequired});
-                        clickBtn.onclick = () => {
-                            currentClicks++;
-                            clickBtn.textContent = getUIText('clickMe', {current: currentClicks, required: actualChallengeToPresent.clicksRequired});
-                            if (currentClicks >= actualChallengeToPresent.clicksRequired) {
-                                playerStats[currentPlayerIndex].attempted++;
-                                playerStats[currentPlayerIndex].correct++;
-                                updateAccuracyDisplay();
-                                challengeCompleted(getUIText('correctFeedback'));
-                            }
-                        };
-                        challengeArea.appendChild(clickBtn);
-                        break;
-                    case "trueFalse":
-                    case "multipleChoice":
-                        actualChallengeToPresent.options.forEach(optionObj => {
-                            const choiceBtn = document.createElement('button');
-                            choiceBtn.classList.add('btn', 'btn-choice', 'mt-2');
-                            const optionText = getDynamicText(optionObj);
-                            choiceBtn.textContent = optionText;
-                            choiceBtn.onclick = () => checkAnswer(optionText === getDynamicText(actualChallengeToPresent.correctAnswer) || getDynamicText(actualChallengeToPresent.correctAnswer) === "Any is fine" || getDynamicText(actualChallengeToPresent.correctAnswer) === "N'importe lequel");
-                            challengeArea.appendChild(choiceBtn);
-                        });
-                        break;
-                    case "textInput":
-                        const input = document.createElement('input');
-                        input.type = "text";
-                        input.classList.add('input-field'); 
-                        input.placeholder = getDynamicText(actualChallengeToPresent.placeholder) || "";
-                        input.setAttribute('aria-label', getDynamicText(actualChallengeToPresent.message)); 
-                        const submitBtn = document.createElement('button');
-                        submitBtn.classList.add('btn', 'btn-secondary', 'mt-2');
-                        submitBtn.textContent = getUIText('submit');
-                        submitBtn.onclick = () => {
-                            const isCorrect = input.value.trim().toLowerCase() === getDynamicText(actualChallengeToPresent.correctAnswer).toLowerCase();
-                            checkAnswer(isCorrect);
-                        }
-                        challengeArea.appendChild(input);
-                        challengeArea.appendChild(submitBtn);
-                        break;
-                    case "imageClick":
-                        selectedImages.clear();
-                        const imageContainer = document.createElement('div');
-                        imageContainer.classList.add('flex', 'justify-center', 'items-center', 'flex-wrap', 'mt-2');
-                        imageContainer.setAttribute('role', 'group'); 
-                        imageContainer.setAttribute('aria-label', getDynamicText(actualChallengeToPresent.message));
-
-                        actualChallengeToPresent.images.forEach(imgData => {
-                            const imgButton = document.createElement('button'); 
-                            imgButton.classList.add('clickable-image-btn', 'p-0', 'border-2', 'border-transparent', 'rounded-lg', 'm-1', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
-                            imgButton.dataset.id = imgData.id; 
-                            imgButton.setAttribute('aria-pressed', 'false');
-                            imgButton.setAttribute('aria-label', `Select ${getDynamicText(imgData.alt)}`);
-
-                            const img = document.createElement('img');
-                            img.src = imgData.src;
-                            img.alt = getDynamicText(imgData.alt); 
-                            img.classList.add('clickable-image'); 
-                            img.onerror = () => { img.src = `https://placehold.co/50x50/CCCCCC/000000?text=Error`; }; 
-                            
-                            imgButton.appendChild(img);
-                            imgButton.onclick = () => {
-                                imgButton.classList.toggle('selected'); 
-                                const isPressed = imgButton.getAttribute('aria-pressed') === 'true';
-                                imgButton.setAttribute('aria-pressed', !isPressed);
-
-                                if (selectedImages.has(imgData.id)) {
-                                    selectedImages.delete(imgData.id);
-                                } else {
-                                    selectedImages.add(imgData.id);
-                                }
-                            };
-                            imageContainer.appendChild(imgButton);
-                        });
-                        challengeArea.appendChild(imageContainer);
-                        const checkImgBtn = document.createElement('button');
-                        checkImgBtn.classList.add('btn', 'btn-secondary', 'mt-3');
-                        checkImgBtn.textContent = getUIText('checkSelection');
-                        checkImgBtn.onclick = () => {
-                            let correctCount = 0;
-                            actualChallengeToPresent.correctImages.forEach(correctId => {
-                                if (selectedImages.has(correctId)) correctCount++;
-                            });
-                            const isCorrect = correctCount === actualChallengeToPresent.correctImages.length && selectedImages.size === actualChallengeToPresent.correctImages.length;
-                            checkAnswer(isCorrect);
-                        };
-                        challengeArea.appendChild(checkImgBtn);
-                        break;
-                    case "textInputIdea":
-                    case "info": 
-                        if (actualChallengeToPresent.challengeType === "textInputIdea") {
-                            const ideaInput = document.createElement('input');
-                            ideaInput.type = "text";
-                            ideaInput.classList.add('input-field');
-                            ideaInput.placeholder = getDynamicText(actualChallengeToPresent.placeholder) || "";
-                            ideaInput.setAttribute('aria-label', getDynamicText(actualChallengeToPresent.message));
-                            challengeArea.appendChild(ideaInput);
-                        }
-                        const nextBtnInfo = document.createElement('button'); 
-                        nextBtnInfo.classList.add('btn', 'btn-secondary', 'mt-2');
-                        nextBtnInfo.textContent = getDynamicText(actualChallengeToPresent.buttonText) || getUIText('okay');
-                        nextBtnInfo.onclick = () => {
-                            let completionMessage = getUIText('challengeCompletedInfo');
-                            if (actualChallengeToPresent.challengeType === "textInputIdea") {
-                               completionMessage = getUIText('challengeCompletedIdea');
-                            }
-                            playerStats[currentPlayerIndex].attempted++; 
-                            challengeCompleted(completionMessage);
-                            updateAccuracyDisplay(); 
-                        };
-                        challengeArea.appendChild(nextBtnInfo);
-                        break;
-                    case "drawingChallenge":
-                        const drawBtn = document.createElement('button');
-                        drawBtn.classList.add('btn', 'btn-secondary', 'mt-2');
-                        drawBtn.textContent = getUIText('iDrewIt');
-                        drawBtn.onclick = () => {
-                            playerStats[currentPlayerIndex].attempted++;
-                            updateAccuracyDisplay();
-                            challengeCompleted(getUIText('challengeCompletedCreative'));
-                        };
-                        challengeArea.appendChild(drawBtn);
-                        break;
-                    case "actingChallenge":
-                        const actBtn = document.createElement('button');
-                        actBtn.classList.add('btn', 'btn-secondary', 'mt-2');
-                        actBtn.textContent = getUIText('iActedItOut');
-                        actBtn.onclick = () => {
-                            playerStats[currentPlayerIndex].attempted++;
-                            updateAccuracyDisplay();
-                            challengeCompleted(getUIText('challengeCompletedCreative'));
-                        };
-                        challengeArea.appendChild(actBtn);
-                        break;
-                    default: 
-                        console.error("Unknown challenge type:", actualChallengeToPresent.challengeType, actualChallengeToPresent);
-                        characterMessageDiv.innerHTML = `<span class="character-icon">⚠️</span> <p class="text-lg">${getUIText('errorUnknownChallenge')}</p>`;
-                        feedbackArea.textContent = getUIText('errorUnknownChallenge'); 
-                        const errorContinueBtn = document.createElement('button');
-                        errorContinueBtn.classList.add('btn', 'btn-danger', 'mt-2'); 
-                        errorContinueBtn.textContent = getUIText('okay');
-                        errorContinueBtn.onclick = () => {
-                            challengeCompleted(getUIText('continueAfterError'));
-                        };
-                        challengeArea.appendChild(errorContinueBtn);
-                        break;
-                }
-
-            } else if (boardItem.type === 'special') {
-                const specialData = currentSelectedChallengeOrSpecial; 
-                characterMessageDiv.innerHTML = `<span class="character-icon" aria-hidden="true">${specialData.emoji}</span> <p class="text-lg">${getDynamicText(specialData.message)}</p>`;
-                
-                if (specialData.effect.type === 'waitTurn') {
-                    playerStats[currentPlayerIndex].skipNextTurn = true;
-                    feedbackArea.textContent = getUIText('waitTurnMessageSuffix');
-                    setTimeout(() => { 
-                        challengeCompleted(getUIText('waitTurnMessageSuffix'));
-                    }, 2000);
-                } else if (specialData.effect.type === 'goBack') {
-                    const spaces = specialData.effect.spaces;
-                    feedbackArea.textContent = getUIText('goBackMessageSuffix', {spaces: spaces});
-                    setTimeout(() => {
-                        playerPositions[currentPlayerIndex] = Math.max(0, playerPositions[currentPlayerIndex] - spaces);
-                        updateBoardVisuals();
-                        challengeCompleted(getUIText('movedBackMessage'));
-                    }, 2500); 
-                }
-            }
-        }
-
-        function checkAnswer(isCorrect) {
-            playerStats[currentPlayerIndex].attempted++;
-            if (isCorrect) {
-                playerStats[currentPlayerIndex].correct++;
-                feedbackArea.textContent = getUIText('correctFeedback');
-                feedbackArea.className = 'mt-2 font-semibold text-green-600';
-                challengeCompleted(getUIText('challengeCompleted'));
-            } else {
-                let answerHint = "";
-                const correctAnswerVal = getDynamicText(currentSelectedChallengeOrSpecial.correctAnswer);
-                if (correctAnswerVal && correctAnswerVal !== "Any is fine" && correctAnswerVal !== "N'importe lequel") {
-                    answerHint = getUIText('answerHintText', {correctAnswer: correctAnswerVal});
-                }
-                feedbackArea.textContent = getUIText('incorrectFeedback', {answerHint: answerHint});
-                feedbackArea.className = 'mt-2 font-semibold text-red-600';
-                
-                const continueBtn = document.createElement('button');
-                continueBtn.classList.add('btn', 'btn-secondary', 'mt-2', 'ml-2');
-                continueBtn.textContent = getUIText('okay'); 
-                continueBtn.onclick = () => {
-                    challengeCompleted(getUIText('challengeCompletedInfo')); 
-                }
-                challengeArea.innerHTML = ''; 
-                challengeArea.appendChild(continueBtn);
-            }
-            updateAccuracyDisplay();
-        }
-
-        function challengeCompleted(message) { 
-            if (gameEnded) return;
-            if (message && feedbackArea.textContent === '') { 
-                 feedbackArea.textContent = message;
-            }
-            challengeArea.innerHTML = ''; 
-            
-            if (playerPositions[currentPlayerIndex] === fullBoardLayout.length - 1 && 
-                fullBoardLayout[fullBoardLayout.length -1].type === 'milestone' &&
-                currentSelectedChallengeOrSpecial && currentSelectedChallengeOrSpecial.challengeType) { 
-                    updateAccuracyDisplay(); 
-                    endGame(currentPlayerIndex);
-                    return;
-            }
-            
-            currentPlayerIndex = (currentPlayerIndex + 1) % numberOfPlayers;
-            updateTurnDisplay(); 
-            updateBoardVisuals(); 
-            
-            if (playerStats[currentPlayerIndex].skipNextTurn) {
-                rollDiceBtn.disabled = false; 
-                const skippedPlayerName = playerNames[currentPlayerIndex] || getUIText('playerNameDefault', {num: currentPlayerIndex + 1});
-                characterMessageDiv.innerHTML = `<span class="character-icon">👉</span> <p class="text-lg">${getUIText('playerTurn', {name: skippedPlayerName, token: playerTokens[currentPlayerIndex]})} (${getUIText('skippedTurnMessage')})</p>`;
-            } else {
-                rollDiceBtn.disabled = false; 
-                const nextPlayerName = playerNames[currentPlayerIndex] || getUIText('playerNameDefault', {num: currentPlayerIndex + 1});
-                characterMessageDiv.innerHTML = `<span class="character-icon">👍</span> <p class="text-lg">${getUIText('nextPlayerPrompt', {name: nextPlayerName, token: playerTokens[currentPlayerIndex]})}</p>`;
-            }
-        }
-
-        function updateAccuracyDisplay() {
-            accuracyStatsDisplay.innerHTML = '';
-            playerStats.forEach((stats, index) => {
-                const name = playerNames[index] || getUIText('playerNameDefault', {num: index + 1});
-                const percent = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0;
-                const statText = stats.attempted > 0 ? 
-                    getUIText('playerAccuracy', {name: name, token: playerTokens[index], correct: stats.correct, attempted: stats.attempted, percent: percent }) :
-                    `${name} (${playerTokens[index]}): ${getUIText('noAttempts')}`;
-                
-                const p = document.createElement('p');
-                p.classList.add('accuracy-player');
-                p.textContent = statText;
-                accuracyStatsDisplay.appendChild(p);
-            });
-        }
-
-        function endGame(winnerIndex) {
-            gameEnded = true;
-            const winnerName = playerNames[winnerIndex] || getUIText('playerNameDefault', {num: winnerIndex + 1});
-            turnDisplay.innerHTML = `${winnerName} (${playerTokens[winnerIndex]}) WINS! 🎉`; 
-            characterMessageDiv.innerHTML = `<span class="character-icon">🏆</span> <p class="text-2xl font-bold text-green-600">${getUIText('congratulations', {name: winnerName, token: playerTokens[winnerIndex]})}</p>`;
-            challengeArea.innerHTML = '';
-            feedbackArea.textContent = getUIText('finalMessage');
-            rollDiceBtn.disabled = true;
-            diceResultDisplay.textContent = '🏆';
-            restartGameBtn.classList.remove('hidden');
-            restartGameBtn.textContent = getUIText('restartGame');
-            
-            document.querySelectorAll('.board-step').forEach(el => el.classList.remove('active-step'));
-            const finalStepElement = document.getElementById(`step-${fullBoardLayout.length - 1}`);
-            if (finalStepElement) finalStepElement.classList.add('active-step'); 
-            updateAccuracyDisplay(); 
-        }
-
-        restartGameBtn.addEventListener('click', () => {
-            gameContainer.classList.add('hidden');
-            playerSetupScreen.classList.remove('hidden');
-            numPlayersSelect.disabled = false;
-            numPlayersSelect.value = "1"; 
-            playerNameInputsContainer.innerHTML = ''; 
-            confirmNamesBtn.classList.add('hidden'); 
-            startGameBtn.classList.add('hidden');    
-            numPlayersSelect.dispatchEvent(new Event('change'));
-
-
-            fullBoardLayout = [];
-            currentSelectedChallengeOrSpecial = null;
-            playerNames = []; 
-        });
-        
-        window.onload = () => {
-            setLanguage('en'); 
-            numPlayersSelect.dispatchEvent(new Event('change'));
-        };
-
-    </script>
+    wireEvents();
+    makePlayerInputs();
+    applyLanguage();
+  </script>
 </body>
 </html>
