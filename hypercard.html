@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Version-control note: 2026-06-15 v2.0.0 self-contained GitHub Pages HyperCard simulator.
-       Fixes: Firebase demo fallback, inverted mode label, unsafe property rendering, non-sequential ask/answer scripts, unbounded dragging, missing local backup/import/export. -->
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Version-control note: 2026-06-15 v2.1.0 QA hardening pass.
+       Scope: self-contained GitHub Pages HyperCard simulator; removes Firebase runtime dependency;
+       fixes mode state, async scripting, safe DOM rendering, bounded geometry, import/export, local persistence,
+       card/background scripts, malformed saved-stack recovery, Escape-key modal handling, and responsive layout. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HyperCard Simulator</title>
   <style>
     :root {
-      --paper: #fff;
       --ink: #000;
+      --paper: #fff;
       --chrome: #d8d8d8;
       --panel: #efefef;
-      --accent: #111;
       --focus: #0645ff;
       --danger: #b00020;
-      --ok: #0a6b20;
+      --run: #dcffd9;
+      --edit: #fff3bd;
+      --shadow: #777;
+      --card-width: 512px;
     }
     * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
     body {
       margin: 0;
-      min-height: 100vh;
       font-family: ui-monospace, Menlo, Consolas, "Courier New", monospace;
       color: var(--ink);
       background: repeating-linear-gradient(45deg, #c9c9c9 0, #c9c9c9 8px, #bebebe 8px, #bebebe 16px);
@@ -31,34 +35,33 @@
       background: var(--chrome);
     }
     h1 { margin: 0; font-size: 1.25rem; }
-    .subhead { margin: 4px 0 0; font-size: .85rem; }
+    .subhead { margin: 4px 0 0; font-size: .875rem; }
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      align-items: center;
       padding: 8px;
       border-bottom: 2px solid var(--ink);
       background: var(--panel);
-      align-items: center;
-    }
-    button, input, textarea, select {
-      font: inherit;
-      color: inherit;
     }
     button, .file-label {
+      font: inherit;
+      color: inherit;
       border: 1px solid var(--ink);
       background: var(--paper);
       padding: 5px 9px;
       min-height: 32px;
       cursor: pointer;
-      box-shadow: 2px 2px 0 #777;
+      box-shadow: 2px 2px 0 var(--shadow);
     }
-    button:active, .file-label:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #777; }
+    button:active, .file-label:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
     button:disabled { color: #777; background: #ddd; cursor: not-allowed; box-shadow: none; }
     button.primary { background: #dff0ff; }
     button.danger { color: var(--danger); }
-    .mode { background: #dcffd9; }
-    .mode.edit { background: #fff3bd; }
+    button.mode { background: var(--run); }
+    button.mode.edit { background: var(--edit); }
+    input, textarea, select { font: inherit; color: inherit; }
     .layout {
       display: grid;
       grid-template-columns: minmax(300px, 1fr) 320px;
@@ -112,7 +115,7 @@
       justify-content: center;
       background: #f5f5f5;
       border: 1px solid var(--ink);
-      box-shadow: 2px 2px 0 #777;
+      box-shadow: 2px 2px 0 var(--shadow);
       text-align: center;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -128,7 +131,7 @@
     .panel {
       border: 2px solid var(--ink);
       background: var(--panel);
-      box-shadow: 4px 4px 0 #777;
+      box-shadow: 4px 4px 0 var(--shadow);
       padding: 10px;
       max-height: calc(100vh - 180px);
       overflow: auto;
@@ -136,32 +139,43 @@
     .panel h2 { margin: 0 0 8px; font-size: 1.05rem; }
     .field-row { margin: 8px 0; }
     label { display: block; font-weight: 700; margin-bottom: 3px; }
-    input[type="text"], input[type="number"], textarea, select {
+    input[type="text"], input[type="number"], input[type="color"], textarea {
       width: 100%;
       border: 1px solid var(--ink);
       background: #fff;
       padding: 5px;
     }
-    textarea { min-height: 80px; resize: vertical; }
+    textarea { min-height: 90px; resize: vertical; }
     .small { font-size: .8rem; }
     .muted { color: #444; }
     .hidden { display: none !important; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     .modal-backdrop {
       position: fixed;
       inset: 0;
       display: grid;
       place-items: center;
       background: rgba(0,0,0,.55);
-      z-index: 100;
+      z-index: 1000;
       padding: 12px;
     }
     .modal {
-      width: min(720px, 96vw);
+      width: min(760px, 96vw);
       max-height: 90vh;
       overflow: auto;
       border: 2px solid var(--ink);
-      background: #fff;
-      box-shadow: 6px 6px 0 #000;
+      background: var(--paper);
+      box-shadow: 6px 6px 0 var(--ink);
       padding: 14px;
     }
     .modal h2 { margin-top: 0; }
@@ -170,51 +184,43 @@
     .stack-item { text-align: left; width: 100%; }
     .help code { background: #eee; padding: 1px 4px; }
     .help li { margin: 4px 0; }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-      white-space: nowrap;
-      border: 0;
-    }
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
       .panel { max-height: none; }
-      .hc-window { transform-origin: top left; }
+    }
+    @media (max-width: 560px) {
+      .hc-window { transform: scale(.78); transform-origin: top left; margin-left: 0; }
+      .stage-wrap { min-height: 280px; }
     }
   </style>
 </head>
 <body>
   <header>
     <h1>HyperCard Simulator</h1>
-    <p class="subhead">Self-contained GitHub Pages edition. Stacks save in this browser using localStorage. Use Export for backup.</p>
+    <p class="subhead">Self-contained GitHub Pages edition. Stacks save in this browser using localStorage. Use Export JSON for backup.</p>
   </header>
 
   <nav class="toolbar" aria-label="HyperCard tools">
-    <button id="newStackBtn">New Stack</button>
-    <button id="saveBtn" class="primary">Save</button>
-    <button id="loadBtn">Load</button>
-    <button id="exportBtn">Export JSON</button>
+    <button id="newStackBtn" type="button">New Stack</button>
+    <button id="saveBtn" class="primary" type="button">Save</button>
+    <button id="loadBtn" type="button">Load</button>
+    <button id="exportBtn" type="button">Export JSON</button>
     <label class="file-label" for="importInput">Import JSON</label>
-    <input id="importInput" class="sr-only" type="file" accept="application/json,.json" />
-    <button id="demoBtn">Demo Cards</button>
+    <input id="importInput" class="sr-only" type="file" accept="application/json,.json">
+    <button id="demoBtn" type="button">Demo Cards</button>
     <span aria-hidden="true">|</span>
-    <button id="newCardBtn">New Card</button>
-    <button id="prevBtn">&lt; Prev</button>
-    <button id="nextBtn">Next &gt;</button>
-    <button id="deleteCardBtn" class="danger">Delete Card</button>
+    <button id="newCardBtn" type="button">New Card</button>
+    <button id="prevBtn" type="button">&lt; Prev</button>
+    <button id="nextBtn" type="button">Next &gt;</button>
+    <button id="deleteCardBtn" class="danger" type="button">Delete Card</button>
     <span aria-hidden="true">|</span>
-    <button id="addButtonBtn">Add Button</button>
-    <button id="addFieldBtn">Add Field</button>
+    <button id="addButtonBtn" type="button">Add Button</button>
+    <button id="addFieldBtn" type="button">Add Field</button>
     <label style="display:inline-flex;gap:4px;align-items:center;margin:0;font-weight:400">
-      <input type="checkbox" id="backgroundToggle" /> Edit background
+      <input type="checkbox" id="backgroundToggle"> Edit background
     </label>
-    <button id="modeBtn" class="mode">Switch to Edit Mode</button>
-    <button id="helpBtn">Help</button>
+    <button id="modeBtn" class="mode" type="button">Switch to Edit Mode</button>
+    <button id="helpBtn" type="button">Help</button>
   </nav>
 
   <main class="layout">
@@ -224,8 +230,7 @@
         <div id="status" class="status">Ready</div>
       </div>
     </section>
-
-    <aside id="propertiesPanel" class="panel" aria-label="Properties panel">
+    <aside class="panel" aria-label="Properties panel">
       <h2>Properties</h2>
       <div id="propertiesContent" class="small muted">Switch to Edit Mode, then select a card, background, button, or field.</div>
     </aside>
@@ -235,7 +240,7 @@
     <div class="modal">
       <h2 id="dialogTitle">Message</h2>
       <p id="dialogMessage"></p>
-      <input id="dialogInput" class="hidden" type="text" />
+      <input id="dialogInput" class="hidden" type="text">
       <div id="dialogButtons" class="button-row"></div>
     </div>
   </div>
@@ -246,9 +251,9 @@
       <p class="small">Editing: <strong id="scriptTarget">None</strong></p>
       <textarea id="scriptText" spellcheck="false"></textarea>
       <div class="button-row">
-        <button id="scriptHelpBtn">Scripting Help</button>
-        <button id="applyScriptBtn" class="primary">Apply</button>
-        <button id="closeScriptBtn">Close</button>
+        <button id="scriptHelpBtn" type="button">Scripting Help</button>
+        <button id="applyScriptBtn" class="primary" type="button">Apply</button>
+        <button id="closeScriptBtn" type="button">Close</button>
       </div>
     </div>
   </div>
@@ -257,7 +262,7 @@
     <div class="modal">
       <h2 id="loadTitle">Load Stack</h2>
       <div id="stackList" class="stack-list"></div>
-      <div class="button-row"><button id="closeLoadBtn">Close</button></div>
+      <div class="button-row"><button id="closeLoadBtn" type="button">Close</button></div>
     </div>
   </div>
 
@@ -270,11 +275,11 @@
         <li><code>go to card "Card Name"</code> or <code>go to card id "card-id"</code></li>
         <li><code>answer "Message" with "Yes" or "No"</code>; the clicked button is stored in <code>it</code></li>
         <li><code>ask "Question" with "Default"</code>; the answer is stored in <code>it</code></li>
-        <li><code>put "Text" into field "FieldName"</code>, <code>put it into field "FieldName"</code></li>
+        <li><code>put "Text" into field "FieldName"</code>, <code>put it into field "FieldName"</code>, <code>put field "Source" into field "Target"</code></li>
         <li><code>show field "Name"</code>, <code>hide button "Name"</code></li>
         <li>Comments begin with <code>--</code></li>
       </ul>
-      <div class="button-row"><button id="closeHelpBtn">Close</button></div>
+      <div class="button-row"><button id="closeHelpBtn" type="button">Close</button></div>
     </div>
   </div>
 
@@ -285,26 +290,25 @@
     const INDEX_KEY = 'rbottawa.hypercard.index';
     const CARD_WIDTH = 512;
     const CARD_HEIGHT = 318;
-    const DEFAULT_BG = '#f7f7f7';
 
+    const byId = id => document.getElementById(id);
     const dom = {
-      cardArea: document.getElementById('cardArea'),
-      status: document.getElementById('status'),
-      propertiesPanel: document.getElementById('propertiesPanel'),
-      propertiesContent: document.getElementById('propertiesContent'),
-      modeBtn: document.getElementById('modeBtn'),
-      backgroundToggle: document.getElementById('backgroundToggle'),
-      dialogBackdrop: document.getElementById('dialogBackdrop'),
-      dialogTitle: document.getElementById('dialogTitle'),
-      dialogMessage: document.getElementById('dialogMessage'),
-      dialogInput: document.getElementById('dialogInput'),
-      dialogButtons: document.getElementById('dialogButtons'),
-      scriptBackdrop: document.getElementById('scriptBackdrop'),
-      scriptTarget: document.getElementById('scriptTarget'),
-      scriptText: document.getElementById('scriptText'),
-      loadBackdrop: document.getElementById('loadBackdrop'),
-      stackList: document.getElementById('stackList'),
-      helpBackdrop: document.getElementById('helpBackdrop')
+      cardArea: byId('cardArea'),
+      status: byId('status'),
+      propertiesContent: byId('propertiesContent'),
+      modeBtn: byId('modeBtn'),
+      backgroundToggle: byId('backgroundToggle'),
+      dialogBackdrop: byId('dialogBackdrop'),
+      dialogTitle: byId('dialogTitle'),
+      dialogMessage: byId('dialogMessage'),
+      dialogInput: byId('dialogInput'),
+      dialogButtons: byId('dialogButtons'),
+      scriptBackdrop: byId('scriptBackdrop'),
+      scriptTarget: byId('scriptTarget'),
+      scriptText: byId('scriptText'),
+      loadBackdrop: byId('loadBackdrop'),
+      stackList: byId('stackList'),
+      helpBackdrop: byId('helpBackdrop')
     };
 
     const state = {
@@ -318,15 +322,36 @@
       dragOffsetX: 0,
       dragOffsetY: 0,
       scriptTarget: null,
-      it: ''
+      it: '',
+      dialogResolver: null
     };
 
     function uid(prefix = 'id') {
-      return `${prefix}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
+      try {
+        if (globalThis.crypto && typeof crypto.randomUUID === 'function') {
+          return `${prefix}-${crypto.randomUUID()}`;
+        }
+      } catch (error) {
+        // Fall back below.
+      }
+      return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function toNumber(value, fallback) {
+      const number = Number(value);
+      return Number.isFinite(number) ? number : fallback;
     }
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
+    }
+
+    function safeJsonParse(raw, fallback) {
+      try {
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (error) {
+        return fallback;
+      }
     }
 
     function currentCard() {
@@ -338,19 +363,57 @@
       return card ? state.stack.backgrounds.find(bg => bg.id === card.backgroundId) || null : null;
     }
 
+    function activeLayer() {
+      return state.editBackground ? currentBackground() : currentCard();
+    }
+
     function activeElements() {
-      const layer = state.editBackground ? currentBackground() : currentCard();
+      const layer = activeLayer();
       if (!layer) return [];
       layer.elements = Array.isArray(layer.elements) ? layer.elements : [];
       return layer.elements;
     }
 
     function createBackground(name = 'Default Background') {
-      return { id: uid('bg'), name, backgroundColor: DEFAULT_BG, script: '', elements: [] };
+      return { id: uid('bg'), name, backgroundColor: '#f7f7f7', script: '', elements: [] };
     }
 
     function createCard(backgroundId, number = 1) {
       return { id: uid('card'), name: `Card ${number}`, backgroundId, backgroundColor: '#ffffff', script: '', elements: [] };
+    }
+
+    function clampElement(element) {
+      element.rect.width = clamp(toNumber(element.rect.width, element.type === 'button' ? 120 : 180), 20, CARD_WIDTH);
+      element.rect.height = clamp(toNumber(element.rect.height, element.type === 'button' ? 34 : 80), 20, CARD_HEIGHT);
+      element.rect.x = clamp(toNumber(element.rect.x, 10), 0, CARD_WIDTH - element.rect.width);
+      element.rect.y = clamp(toNumber(element.rect.y, 10), 0, CARD_HEIGHT - element.rect.height);
+      return element;
+    }
+
+    function normalizeElements(elements) {
+      return (Array.isArray(elements) ? elements : []).map((element, index) => {
+        const type = element.type === 'field' ? 'field' : 'button';
+        return clampElement({
+          id: element.id || uid('el'),
+          type,
+          name: String(element.name || `${type} ${index + 1}`),
+          text: type === 'button' ? String(element.text ?? 'Button') : undefined,
+          content: type === 'field' ? String(element.content ?? '') : undefined,
+          script: String(element.script ?? ''),
+          visible: element.visible !== false && element.isVisible !== false,
+          rect: {
+            x: toNumber(element.rect?.x, 10),
+            y: toNumber(element.rect?.y, 10),
+            width: toNumber(element.rect?.width, type === 'button' ? 120 : 180),
+            height: toNumber(element.rect?.height, type === 'button' ? 34 : 80)
+          },
+          style: {
+            fontSize: toNumber(element.style?.fontSize, 16),
+            color: element.style?.color || '#000000',
+            backgroundColor: element.style?.backgroundColor || (type === 'button' ? '#f5f5f5' : '#ffffff')
+          }
+        });
+      });
     }
 
     function normalizeStack(stack) {
@@ -359,154 +422,147 @@
       stack.name = String(stack.name || 'Untitled Stack');
       stack.backgrounds = Array.isArray(stack.backgrounds) ? stack.backgrounds : [];
       stack.cards = Array.isArray(stack.cards) ? stack.cards : [];
-      if (stack.backgrounds.length === 0) stack.backgrounds.push(createBackground());
-      const fallbackBg = stack.backgrounds[0].id;
-      stack.backgrounds.forEach(bg => {
-        bg.id = bg.id || uid('bg');
-        bg.name = String(bg.name || 'Background');
-        bg.backgroundColor = bg.backgroundColor || DEFAULT_BG;
-        bg.script = bg.script || '';
-        bg.elements = normalizeElements(bg.elements);
+
+      if (!stack.backgrounds.length) stack.backgrounds.push(createBackground());
+
+      stack.backgrounds.forEach(background => {
+        background.id = background.id || uid('bg');
+        background.name = String(background.name || 'Background');
+        background.backgroundColor = background.backgroundColor || '#f7f7f7';
+        background.script = String(background.script || '');
+        background.elements = normalizeElements(background.elements);
       });
-      if (stack.cards.length === 0) stack.cards.push(createCard(fallbackBg, 1));
+
+      const fallbackBackgroundId = stack.backgrounds[0].id;
+      if (!stack.cards.length) stack.cards.push(createCard(fallbackBackgroundId, 1));
+
       stack.cards.forEach((card, index) => {
         card.id = card.id || uid('card');
         card.name = String(card.name || `Card ${index + 1}`);
-        if (!stack.backgrounds.some(bg => bg.id === card.backgroundId)) card.backgroundId = fallbackBg;
+        if (!stack.backgrounds.some(background => background.id === card.backgroundId)) {
+          card.backgroundId = fallbackBackgroundId;
+        }
         card.backgroundColor = card.backgroundColor || '#ffffff';
-        card.script = card.script || '';
+        card.script = String(card.script || '');
         card.elements = normalizeElements(card.elements);
       });
-      stack.nextElementNumber = Number.isFinite(stack.nextElementNumber) ? stack.nextElementNumber : 1;
+
+      stack.nextElementNumber = toNumber(stack.nextElementNumber, 1);
       return stack;
     }
 
-    function normalizeElements(elements) {
-      return (Array.isArray(elements) ? elements : []).map((el, index) => {
-        const type = el.type === 'field' ? 'field' : 'button';
-        return {
-          id: el.id || uid('el'),
-          type,
-          name: String(el.name || `${type} ${index + 1}`),
-          text: type === 'button' ? String(el.text || 'Button') : undefined,
-          content: type === 'field' ? String(el.content || '') : undefined,
-          script: String(el.script || ''),
-          visible: el.visible !== false && el.isVisible !== false,
-          rect: {
-            x: Number(el.rect?.x) || 10,
-            y: Number(el.rect?.y) || 10,
-            width: Number(el.rect?.width) || (type === 'button' ? 110 : 180),
-            height: Number(el.rect?.height) || (type === 'button' ? 32 : 70)
-          },
-          style: {
-            fontSize: Number(el.style?.fontSize) || 16,
-            color: el.style?.color || '#000000',
-            backgroundColor: el.style?.backgroundColor || (type === 'button' ? '#f5f5f5' : '#ffffff')
-          }
-        };
-      });
-    }
-
     function newStack(name = 'Untitled Stack') {
-      const bg = createBackground();
-      state.stack = normalizeStack({ id: uid('stack'), name, backgrounds: [bg], cards: [createCard(bg.id, 1)], nextElementNumber: 1 });
+      const background = createBackground();
+      state.stack = normalizeStack({
+        id: uid('stack'),
+        name,
+        backgrounds: [background],
+        cards: [createCard(background.id, 1)],
+        nextElementNumber: 1
+      });
       state.cardIndex = 0;
-      state.selectedId = null;
-      state.editBackground = false;
       state.runMode = true;
+      state.editBackground = false;
+      state.selectedId = null;
       render();
     }
 
     function render() {
       const card = currentCard();
-      const bg = currentBackground();
-      dom.cardArea.innerHTML = '';
+      const background = currentBackground();
+      dom.cardArea.replaceChildren();
       dom.cardArea.classList.toggle('editing', !state.runMode);
       dom.backgroundToggle.checked = state.editBackground;
       dom.backgroundToggle.disabled = state.runMode;
       dom.modeBtn.textContent = state.runMode ? 'Switch to Edit Mode' : 'Switch to Run Mode';
       dom.modeBtn.classList.toggle('edit', !state.runMode);
 
-      if (!card || !bg) {
+      if (!card || !background) {
         dom.cardArea.textContent = 'No card available.';
         dom.status.textContent = 'No card';
         return;
       }
 
-      dom.cardArea.style.background = card.backgroundColor || '#fff';
-      renderLayer(bg.elements, true);
+      dom.cardArea.style.background = card.backgroundColor || '#ffffff';
+      renderLayer(background.elements, true);
       renderLayer(card.elements, false);
       updateStatus();
-      renderProperties();
       updateToolbar();
+      renderProperties();
     }
 
-    function renderLayer(elements, isBackground) {
-      elements.forEach(el => {
-        if (el.visible === false) return;
+    function renderLayer(elements, isBackgroundElement) {
+      elements.forEach(element => {
+        if (element.visible === false) return;
+        clampElement(element);
+
         const node = document.createElement('div');
-        node.id = `el-${el.id}`;
-        node.className = `element ${el.type}`;
-        node.classList.toggle('selected', state.selectedId === el.id && state.selectedLayer === (isBackground ? 'background' : 'card'));
-        node.style.left = `${el.rect.x}px`;
-        node.style.top = `${el.rect.y}px`;
-        node.style.width = `${el.rect.width}px`;
-        node.style.height = `${el.rect.height}px`;
-        node.style.fontSize = `${el.style.fontSize}px`;
-        node.style.color = el.style.color;
-        node.style.backgroundColor = el.style.backgroundColor;
-        node.dataset.id = el.id;
-        node.dataset.layer = isBackground ? 'background' : 'card';
-        node.textContent = el.type === 'button' ? el.text : el.content;
-        node.title = `${isBackground ? 'Background' : 'Card'} ${el.type}: ${el.name}`;
+        node.id = `el-${element.id}`;
+        node.className = `element ${element.type}`;
+        node.classList.toggle('selected', state.selectedId === element.id && state.selectedLayer === (isBackgroundElement ? 'background' : 'card'));
+        Object.assign(node.style, {
+          left: `${element.rect.x}px`,
+          top: `${element.rect.y}px`,
+          width: `${element.rect.width}px`,
+          height: `${element.rect.height}px`,
+          fontSize: `${element.style.fontSize}px`,
+          color: element.style.color,
+          backgroundColor: element.style.backgroundColor
+        });
+        node.textContent = element.type === 'button' ? element.text : element.content;
+        node.title = `${isBackgroundElement ? 'Background' : 'Card'} ${element.type}: ${element.name}`;
 
         if (state.runMode) {
           node.addEventListener('click', event => {
             event.stopPropagation();
-            runScript(el.script || '', { element: el }).catch(err => answer(`Script error: ${err.message}`));
+            runScript(element.script).catch(error => answer(`Script error: ${error.message}`));
           });
         } else {
-          node.addEventListener('mousedown', event => beginDrag(event, el, isBackground));
+          node.addEventListener('mousedown', event => beginDrag(event, element, isBackgroundElement));
           node.addEventListener('dblclick', event => {
             event.stopPropagation();
-            openScript(el);
+            openScript(element);
           });
         }
+
         dom.cardArea.appendChild(node);
       });
     }
 
     function updateStatus() {
       const card = currentCard();
-      const stackName = state.stack?.name || 'Untitled Stack';
       const mode = state.runMode ? 'Run Mode' : `Edit Mode: ${state.editBackground ? 'Background' : 'Card'}`;
-      dom.status.textContent = `Card ${state.cardIndex + 1} of ${state.stack.cards.length} | ${card.name} | ${stackName} | ${mode}`;
+      dom.status.textContent = `Card ${state.cardIndex + 1} of ${state.stack.cards.length} | ${card.name} | ${state.stack.name || 'Untitled Stack'} | ${mode}`;
     }
 
     function updateToolbar() {
-      const hasCards = !!currentCard();
-      document.getElementById('prevBtn').disabled = !hasCards || state.cardIndex <= 0;
-      document.getElementById('nextBtn').disabled = !hasCards || state.cardIndex >= state.stack.cards.length - 1;
-      document.getElementById('deleteCardBtn').disabled = !hasCards || state.stack.cards.length <= 1;
-      document.getElementById('addButtonBtn').disabled = state.runMode || !hasCards;
-      document.getElementById('addFieldBtn').disabled = state.runMode || !hasCards;
+      const hasCard = Boolean(currentCard());
+      byId('prevBtn').disabled = !hasCard || state.cardIndex <= 0;
+      byId('nextBtn').disabled = !hasCard || state.cardIndex >= state.stack.cards.length - 1;
+      byId('deleteCardBtn').disabled = !hasCard || state.stack.cards.length <= 1;
+      byId('addButtonBtn').disabled = state.runMode || !hasCard;
+      byId('addFieldBtn').disabled = state.runMode || !hasCard;
     }
 
     function makeInput(labelText, value, onChange, type = 'text') {
-      const wrap = document.createElement('div');
-      wrap.className = 'field-row';
+      const wrapper = document.createElement('div');
       const label = document.createElement('label');
-      label.textContent = labelText;
       const input = type === 'textarea' ? document.createElement('textarea') : document.createElement('input');
+      wrapper.className = 'field-row';
+      label.textContent = labelText;
       if (type !== 'textarea') input.type = type;
       input.value = value ?? '';
-      input.addEventListener('change', () => { onChange(input.value); render(); });
-      wrap.append(label, input);
-      return wrap;
+      input.addEventListener('change', () => {
+        onChange(input.value);
+        render();
+      });
+      wrapper.append(label, input);
+      return wrapper;
     }
 
     function renderProperties() {
-      dom.propertiesContent.innerHTML = '';
+      dom.propertiesContent.replaceChildren();
+
       if (state.runMode) {
         dom.propertiesContent.textContent = 'Switch to Edit Mode to inspect or change card objects.';
         return;
@@ -514,65 +570,72 @@
 
       const selected = findSelectedElement();
       if (selected) {
-        const el = selected.element;
+        const element = selected.element;
         dom.propertiesContent.append(
-          makeInput('Name', el.name, v => el.name = v),
-          makeInput('X', el.rect.x, v => el.rect.x = clamp(parseInt(v, 10) || 0, 0, CARD_WIDTH - el.rect.width), 'number'),
-          makeInput('Y', el.rect.y, v => el.rect.y = clamp(parseInt(v, 10) || 0, 0, CARD_HEIGHT - el.rect.height), 'number'),
-          makeInput('Width', el.rect.width, v => el.rect.width = clamp(parseInt(v, 10) || 20, 20, CARD_WIDTH), 'number'),
-          makeInput('Height', el.rect.height, v => el.rect.height = clamp(parseInt(v, 10) || 20, 20, CARD_HEIGHT), 'number')
+          makeInput('Name', element.name, value => { element.name = value; }),
+          makeInput('X', element.rect.x, value => { element.rect.x = toNumber(value, 0); clampElement(element); }, 'number'),
+          makeInput('Y', element.rect.y, value => { element.rect.y = toNumber(value, 0); clampElement(element); }, 'number'),
+          makeInput('Width', element.rect.width, value => { element.rect.width = toNumber(value, 20); clampElement(element); }, 'number'),
+          makeInput('Height', element.rect.height, value => { element.rect.height = toNumber(value, 20); clampElement(element); }, 'number')
         );
-        if (el.type === 'button') dom.propertiesContent.append(makeInput('Button text', el.text, v => el.text = v));
-        if (el.type === 'field') dom.propertiesContent.append(makeInput('Field content', el.content, v => el.content = v, 'textarea'));
+
+        if (element.type === 'button') dom.propertiesContent.append(makeInput('Button text', element.text, value => { element.text = value; }));
+        if (element.type === 'field') dom.propertiesContent.append(makeInput('Field content', element.content, value => { element.content = value; }, 'textarea'));
+
         dom.propertiesContent.append(
-          makeInput('Font size', el.style.fontSize, v => el.style.fontSize = parseInt(v, 10) || 16, 'number'),
-          makeInput('Text colour', el.style.color, v => el.style.color = v, 'color'),
-          makeInput('Background colour', el.style.backgroundColor, v => el.style.backgroundColor = v, 'color')
+          makeInput('Font size', element.style.fontSize, value => { element.style.fontSize = toNumber(value, 16); }, 'number'),
+          makeInput('Text colour', element.style.color, value => { element.style.color = value; }, 'color'),
+          makeInput('Background colour', element.style.backgroundColor, value => { element.style.backgroundColor = value; }, 'color')
         );
-        const scriptBtn = document.createElement('button');
-        scriptBtn.textContent = 'Edit Script';
-        scriptBtn.addEventListener('click', () => openScript(el));
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete Element';
-        deleteBtn.className = 'danger';
-        deleteBtn.addEventListener('click', () => confirmDialog('Delete selected element?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete') deleteElement(); }));
-        dom.propertiesContent.append(scriptBtn, document.createTextNode(' '), deleteBtn);
+
+        const scriptButton = document.createElement('button');
+        scriptButton.type = 'button';
+        scriptButton.textContent = 'Edit Script';
+        scriptButton.addEventListener('click', () => openScript(element));
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Delete Element';
+        deleteButton.className = 'danger';
+        deleteButton.addEventListener('click', () => {
+          answer('Delete selected element?', ['Delete', 'Cancel']).then(response => {
+            if (response === 'Delete') deleteElement();
+          });
+        });
+
+        dom.propertiesContent.append(scriptButton, document.createTextNode(' '), deleteButton);
         return;
       }
 
-      const obj = state.editBackground ? currentBackground() : currentCard();
+      const object = activeLayer();
       const type = state.editBackground ? 'Background' : 'Card';
-      if (!obj) return;
-      const title = document.createElement('p');
-      title.textContent = `${type} properties`;
       dom.propertiesContent.append(
-        title,
-        makeInput('Name', obj.name, v => obj.name = v),
-        makeInput('Background colour', obj.backgroundColor, v => obj.backgroundColor = v, 'color')
+        makeInput(`${type} name`, object.name, value => { object.name = value; }),
+        makeInput('Background colour', object.backgroundColor, value => { object.backgroundColor = value; }, 'color')
       );
-      const scriptBtn = document.createElement('button');
-      scriptBtn.textContent = `Edit ${type} Script`;
-      scriptBtn.addEventListener('click', () => openScript(obj));
-      dom.propertiesContent.append(scriptBtn);
+
+      const scriptButton = document.createElement('button');
+      scriptButton.type = 'button';
+      scriptButton.textContent = `Edit ${type} Script`;
+      scriptButton.addEventListener('click', () => openScript(object));
+      dom.propertiesContent.append(scriptButton);
     }
 
     function findSelectedElement() {
-      if (!state.selectedId) return null;
       const layer = state.selectedLayer === 'background' ? currentBackground() : currentCard();
-      const element = layer?.elements?.find(el => el.id === state.selectedId);
+      const element = layer?.elements?.find(candidate => candidate.id === state.selectedId);
       return element ? { layer, element } : null;
     }
 
     function findElement(nameOrId) {
-      const card = currentCard();
-      const bg = currentBackground();
-      const match = el => el.id === nameOrId || el.name.toLowerCase() === String(nameOrId).toLowerCase();
-      return [...(card?.elements || []), ...(bg?.elements || [])].find(match) || null;
+      const target = String(nameOrId).toLowerCase();
+      return [...(currentCard()?.elements || []), ...(currentBackground()?.elements || [])]
+        .find(element => element.id === nameOrId || element.name.toLowerCase() === target) || null;
     }
 
     function addElement(type) {
       const number = state.stack.nextElementNumber++;
-      const el = {
+      const element = clampElement({
         id: uid('el'),
         type,
         name: `${type} ${number}`,
@@ -582,9 +645,10 @@
         visible: true,
         rect: { x: 40, y: 40, width: type === 'button' ? 120 : 180, height: type === 'button' ? 34 : 80 },
         style: { fontSize: 16, color: '#000000', backgroundColor: type === 'button' ? '#f5f5f5' : '#ffffff' }
-      };
-      activeElements().push(el);
-      state.selectedId = el.id;
+      });
+
+      activeElements().push(element);
+      state.selectedId = element.id;
       state.selectedLayer = state.editBackground ? 'background' : 'card';
       render();
     }
@@ -592,19 +656,22 @@
     function deleteElement() {
       const selected = findSelectedElement();
       if (!selected) return;
-      selected.layer.elements = selected.layer.elements.filter(el => el.id !== state.selectedId);
+      selected.layer.elements = selected.layer.elements.filter(element => element.id !== state.selectedId);
       state.selectedId = null;
       render();
     }
 
-    function beginDrag(event, el, isBackground) {
+    function beginDrag(event, element, isBackgroundElement) {
       event.preventDefault();
       event.stopPropagation();
-      const targetLayer = isBackground ? 'background' : 'card';
-      if ((state.editBackground ? 'background' : 'card') !== targetLayer) return;
-      state.selectedId = el.id;
-      state.selectedLayer = targetLayer;
-      state.dragging = el;
+
+      const layer = isBackgroundElement ? 'background' : 'card';
+      if ((state.editBackground ? 'background' : 'card') !== layer) return;
+
+      state.selectedId = element.id;
+      state.selectedLayer = layer;
+      state.dragging = element;
+
       const rect = event.currentTarget.getBoundingClientRect();
       state.dragOffsetX = event.clientX - rect.left;
       state.dragOffsetY = event.clientY - rect.top;
@@ -613,101 +680,148 @@
 
     document.addEventListener('mousemove', event => {
       if (!state.dragging || state.runMode) return;
+
       const parent = dom.cardArea.getBoundingClientRect();
-      const el = state.dragging;
-      el.rect.x = clamp(Math.round(event.clientX - parent.left - state.dragOffsetX), 0, CARD_WIDTH - el.rect.width);
-      el.rect.y = clamp(Math.round(event.clientY - parent.top - state.dragOffsetY), 0, CARD_HEIGHT - el.rect.height);
-      const node = document.getElementById(`el-${el.id}`);
+      const element = state.dragging;
+      element.rect.x = event.clientX - parent.left - state.dragOffsetX;
+      element.rect.y = event.clientY - parent.top - state.dragOffsetY;
+      clampElement(element);
+
+      const node = byId(`el-${element.id}`);
       if (node) {
-        node.style.left = `${el.rect.x}px`;
-        node.style.top = `${el.rect.y}px`;
+        node.style.left = `${element.rect.x}px`;
+        node.style.top = `${element.rect.y}px`;
       }
       renderProperties();
     });
 
-    document.addEventListener('mouseup', () => { state.dragging = null; });
+    document.addEventListener('mouseup', () => {
+      state.dragging = null;
+    });
 
     async function runScript(script) {
       const lines = String(script || '').split(/\r?\n/).map(line => line.trim());
       let active = false;
+
       for (const line of lines) {
         if (!line || line.startsWith('--')) continue;
-        if (/^on\s+mouseup$/i.test(line)) { active = true; continue; }
-        if (/^end\s+mouseup$/i.test(line)) { active = false; continue; }
-        if (!active) continue;
-        await runCommand(line);
+        if (/^on\s+mouseup$/i.test(line)) {
+          active = true;
+          continue;
+        }
+        if (/^end\s+mouseup$/i.test(line)) {
+          active = false;
+          continue;
+        }
+        if (active) await runCommand(line);
       }
     }
 
     async function runCommand(line) {
       let match;
+
       if ((match = line.match(/^go\s+(?:to\s+)?(next|previous|prev|first|last)\s*(?:card)?$/i))) {
-        const cmd = match[1].toLowerCase();
-        if (cmd === 'next') state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
-        if (cmd === 'previous' || cmd === 'prev') state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1);
-        if (cmd === 'first') state.cardIndex = 0;
-        if (cmd === 'last') state.cardIndex = state.stack.cards.length - 1;
+        const command = match[1].toLowerCase();
+        if (command === 'next') state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
+        if (command === 'previous' || command === 'prev') state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1);
+        if (command === 'first') state.cardIndex = 0;
+        if (command === 'last') state.cardIndex = state.stack.cards.length - 1;
         state.selectedId = null;
         render();
         return;
       }
+
       if ((match = line.match(/^go\s+(?:to\s+)?card\s+(?:id\s+)?["'](.+?)["']$/i))) {
-        const target = match[1];
-        const index = state.stack.cards.findIndex(card => card.id === target || card.name.toLowerCase() === target.toLowerCase());
-        if (index < 0) await answer(`Card "${target}" not found.`);
-        else { state.cardIndex = index; state.selectedId = null; render(); }
+        const rawTarget = match[1];
+        const target = rawTarget.toLowerCase();
+        const index = state.stack.cards.findIndex(card => card.id === rawTarget || card.name.toLowerCase() === target);
+        if (index < 0) await answer(`Card "${rawTarget}" not found.`);
+        else {
+          state.cardIndex = index;
+          state.selectedId = null;
+          render();
+        }
         return;
       }
+
       if ((match = line.match(/^answer\s+["'](.+?)["'](?:\s+with\s+["'](.+?)["'](?:\s+or\s+["'](.+?)["'])?(?:\s+or\s+["'](.+?)["'])?)?$/i))) {
         const buttons = [match[2], match[3], match[4]].filter(Boolean);
         state.it = await answer(match[1], buttons.length ? buttons : ['OK']) || '';
         return;
       }
+
       if ((match = line.match(/^ask\s+["'](.+?)["'](?:\s+with\s+["'](.*?)["'])?$/i))) {
-        const result = await ask(match[1], match[2] || '');
-        state.it = result ?? '';
+        state.it = (await ask(match[1], match[2] || '')) ?? '';
         return;
       }
-      if ((match = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?["'](.+?)["']$/i))) {
-        const value = evaluateValue(match[1]);
+
+      if ((match = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?(?:id\s+)?["'](.+?)["']$/i))) {
         const field = findElement(match[2]);
         if (!field || field.type !== 'field') await answer(`Field "${match[2]}" not found.`);
-        else { field.content = value; render(); }
+        else {
+          field.content = evaluateValue(match[1]);
+          render();
+        }
         return;
       }
+
       if ((match = line.match(/^(show|hide)\s+(?:button|field)\s+(?:id\s+)?["'](.+?)["']$/i))) {
-        const el = findElement(match[2]);
-        if (!el) await answer(`Element "${match[2]}" not found.`);
-        else { el.visible = match[1].toLowerCase() === 'show'; render(); }
+        const element = findElement(match[2]);
+        if (!element) await answer(`Element "${match[2]}" not found.`);
+        else {
+          element.visible = match[1].toLowerCase() === 'show';
+          render();
+        }
         return;
       }
+
       await answer(`Unknown command: ${line}`);
     }
 
     function evaluateValue(expression) {
-      const parts = expression.split(/\s*&\s*/).map(part => part.trim());
-      return parts.map(part => {
-        if (/^it$/i.test(part)) return state.it;
-        const quoted = part.match(/^["'](.*)["']$/);
-        return quoted ? quoted[1] : part;
+      const fieldReference = expression.trim().match(/^field\s+["'](.+?)["']$/i);
+      if (fieldReference) {
+        const field = findElement(fieldReference[1]);
+        return field && field.type === 'field' ? field.content : '';
+      }
+
+      return expression.split(/\s*&\s*/).map(part => {
+        const trimmed = part.trim();
+        if (/^it$/i.test(trimmed)) return state.it;
+        const quoted = trimmed.match(/^["'](.*)["']$/);
+        return quoted ? quoted[1] : trimmed;
       }).join('');
     }
 
-    function confirmDialog(message, buttons) { return answer(message, buttons); }
+    function closeModals() {
+      [dom.dialogBackdrop, dom.scriptBackdrop, dom.loadBackdrop, dom.helpBackdrop].forEach(modal => modal.classList.add('hidden'));
+      if (state.dialogResolver) {
+        state.dialogResolver(null);
+        state.dialogResolver = null;
+      }
+    }
 
     function answer(message, buttons = ['OK']) {
       dom.dialogTitle.textContent = 'Message';
       dom.dialogMessage.textContent = message;
       dom.dialogInput.classList.add('hidden');
-      dom.dialogButtons.innerHTML = '';
+      dom.dialogButtons.replaceChildren();
+
       return new Promise(resolve => {
+        state.dialogResolver = resolve;
         buttons.forEach(label => {
-          const btn = document.createElement('button');
-          btn.textContent = label;
-          btn.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(label); });
-          dom.dialogButtons.appendChild(btn);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = label;
+          button.addEventListener('click', () => {
+            dom.dialogBackdrop.classList.add('hidden');
+            state.dialogResolver = null;
+            resolve(label);
+          });
+          dom.dialogButtons.appendChild(button);
         });
         dom.dialogBackdrop.classList.remove('hidden');
+        dom.dialogButtons.querySelector('button')?.focus();
       });
     }
 
@@ -716,15 +830,30 @@
       dom.dialogMessage.textContent = message;
       dom.dialogInput.value = defaultValue;
       dom.dialogInput.classList.remove('hidden');
-      dom.dialogButtons.innerHTML = '';
+      dom.dialogButtons.replaceChildren();
+
       return new Promise(resolve => {
-        const ok = document.createElement('button');
-        ok.textContent = 'OK';
-        ok.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(dom.dialogInput.value); });
-        const cancel = document.createElement('button');
-        cancel.textContent = 'Cancel';
-        cancel.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); resolve(null); });
-        dom.dialogButtons.append(ok, cancel);
+        state.dialogResolver = resolve;
+
+        const okButton = document.createElement('button');
+        okButton.type = 'button';
+        okButton.textContent = 'OK';
+        okButton.addEventListener('click', () => {
+          dom.dialogBackdrop.classList.add('hidden');
+          state.dialogResolver = null;
+          resolve(dom.dialogInput.value);
+        });
+
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.addEventListener('click', () => {
+          dom.dialogBackdrop.classList.add('hidden');
+          state.dialogResolver = null;
+          resolve(null);
+        });
+
+        dom.dialogButtons.append(okButton, cancelButton);
         dom.dialogBackdrop.classList.remove('hidden');
         dom.dialogInput.focus();
       });
@@ -732,7 +861,7 @@
 
     function openScript(target) {
       state.scriptTarget = target;
-      dom.scriptTarget.textContent = `${target.name || target.id}`;
+      dom.scriptTarget.textContent = target.name || target.id;
       dom.scriptText.value = target.script || '';
       dom.scriptBackdrop.classList.remove('hidden');
       dom.scriptText.focus();
@@ -740,126 +869,319 @@
 
     function saveScript() {
       if (state.scriptTarget) state.scriptTarget.script = dom.scriptText.value;
-      dom.scriptBackdrop.classList.add('hidden');
       state.scriptTarget = null;
+      dom.scriptBackdrop.classList.add('hidden');
       render();
     }
 
+    function getIndex() {
+      const ids = safeJsonParse(localStorage.getItem(INDEX_KEY), []);
+      return Array.isArray(ids) ? ids : [];
+    }
+
+    function setIndex(ids) {
+      localStorage.setItem(INDEX_KEY, JSON.stringify([...new Set(ids)]));
+    }
+
     function saveStack() {
-      const name = prompt('Stack name:', state.stack.name || 'Untitled Stack');
-      if (name && name.trim()) state.stack.name = name.trim();
+      if (state.stack.name === 'Untitled Stack') {
+        const name = prompt('Stack name:', state.stack.name);
+        if (name && name.trim()) state.stack.name = name.trim();
+      }
+
       const record = { ...state.stack, savedAt: new Date().toISOString() };
       localStorage.setItem(STORAGE_PREFIX + state.stack.id, JSON.stringify(record));
-      const index = new Set(JSON.parse(localStorage.getItem(INDEX_KEY) || '[]'));
-      index.add(state.stack.id);
-      localStorage.setItem(INDEX_KEY, JSON.stringify([...index]));
+      setIndex([...getIndex(), state.stack.id]);
       answer(`Stack "${state.stack.name}" saved in this browser.`);
       render();
     }
 
     function openLoadDialog() {
-      const ids = JSON.parse(localStorage.getItem(INDEX_KEY) || '[]');
-      dom.stackList.innerHTML = '';
+      dom.stackList.replaceChildren();
+      const ids = getIndex().filter(id => localStorage.getItem(STORAGE_PREFIX + id));
+      setIndex(ids);
+
       if (!ids.length) dom.stackList.textContent = 'No locally saved stacks found.';
+
       ids.forEach(id => {
-        const raw = localStorage.getItem(STORAGE_PREFIX + id);
-        if (!raw) return;
-        const stack = JSON.parse(raw);
-        const btn = document.createElement('button');
-        btn.className = 'stack-item';
-        btn.textContent = `${stack.name || 'Untitled Stack'} — saved ${stack.savedAt || 'unknown date'}`;
-        btn.addEventListener('click', () => {
-          state.stack = normalizeStack(stack);
-          state.cardIndex = 0;
-          state.selectedId = null;
-          dom.loadBackdrop.classList.add('hidden');
-          render();
+        const stack = safeJsonParse(localStorage.getItem(STORAGE_PREFIX + id), null);
+        if (!stack) return;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'stack-item';
+        button.textContent = `${stack.name || 'Untitled Stack'} — saved ${stack.savedAt || 'unknown date'}`;
+        button.addEventListener('click', () => {
+          try {
+            state.stack = normalizeStack(stack);
+            state.cardIndex = 0;
+            state.selectedId = null;
+            dom.loadBackdrop.classList.add('hidden');
+            render();
+          } catch (error) {
+            answer(`Load failed: ${error.message}`);
+          }
         });
-        dom.stackList.appendChild(btn);
+        dom.stackList.appendChild(button);
       });
+
       dom.loadBackdrop.classList.remove('hidden');
     }
 
     function exportStack() {
       const blob = new Blob([JSON.stringify(state.stack, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(state.stack.name || 'hypercard-stack').replace(/[^a-z0-9_-]+/gi, '-')}.json`;
-      a.click();
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${(state.stack.name || 'hypercard-stack').replace(/[^a-z0-9_-]+/gi, '-')}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
     }
 
     async function importStack(file) {
       if (!file) return;
+
       try {
         const text = await file.text();
         state.stack = normalizeStack(JSON.parse(text));
-        state.stack.id = state.stack.id || uid('stack');
         state.cardIndex = 0;
+        state.runMode = true;
+        state.editBackground = false;
         state.selectedId = null;
         render();
         await answer(`Imported stack "${state.stack.name}".`);
-      } catch (err) {
-        await answer(`Import failed: ${err.message}`);
+      } catch (error) {
+        await answer(`Import failed: ${error.message}`);
+      } finally {
+        byId('importInput').value = '';
       }
     }
 
     function createDemo() {
-      const bg = createBackground('Shared Background');
-      const card1 = createCard(bg.id, 1);
+      const background = createBackground('Shared Background');
+      background.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'HomeBackgroundButton',
+        text: 'Home',
+        content: undefined,
+        script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp',
+        visible: true,
+        rect: { x: 430, y: 282, width: 62, height: 28 },
+        style: { fontSize: 14, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
+
+      const card1 = createCard(background.id, 1);
       card1.name = 'Welcome Card';
-      card1.elements.push({ id: uid('el'), type: 'field', name: 'WelcomeField', content: 'Welcome to the HyperCard Simulator.\nClick Next Card to test navigation.', script: '', visible: true, rect: { x: 20, y: 20, width: 470, height: 70 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
-      card1.elements.push({ id: uid('el'), type: 'button', name: 'NextButton', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, rect: { x: 190, y: 115, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card1.elements.push({
+        id: uid('el'),
+        type: 'field',
+        name: 'WelcomeField',
+        content: 'Welcome to the HyperCard Simulator.\nClick Next Card to test navigation.',
+        script: '',
+        visible: true,
+        rect: { x: 20, y: 20, width: 470, height: 70 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
+      });
+      card1.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'NextButton',
+        text: 'Next Card',
+        content: undefined,
+        script: 'on mouseUp\n  go to next card\nend mouseUp',
+        visible: true,
+        rect: { x: 190, y: 115, width: 130, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
 
-      const card2 = createCard(bg.id, 2);
+      const card2 = createCard(background.id, 2);
       card2.name = 'Interaction Card';
-      card2.elements.push({ id: uid('el'), type: 'button', name: 'AskButton', text: 'Ask Name', script: 'on mouseUp\n  ask "What is your name?" with "Rick"\n  put "Hello, " & it into field "ResultField"\nend mouseUp', visible: true, rect: { x: 40, y: 40, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
-      card2.elements.push({ id: uid('el'), type: 'button', name: 'AnswerButton', text: 'Choose', script: 'on mouseUp\n  answer "Pick one" with "Alpha" or "Beta"\n  put it into field "ResultField"\nend mouseUp', visible: true, rect: { x: 40, y: 90, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
-      card2.elements.push({ id: uid('el'), type: 'field', name: 'ResultField', content: 'Dialog results appear here.', script: '', visible: true, rect: { x: 190, y: 40, width: 285, height: 85 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
-      card2.elements.push({ id: uid('el'), type: 'button', name: 'NextButton2', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, rect: { x: 190, y: 150, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card2.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'AskButton',
+        text: 'Ask Name',
+        content: undefined,
+        script: 'on mouseUp\n  ask "What is your name?" with "Rick"\n  put "Hello, " & it into field "ResultField"\nend mouseUp',
+        visible: true,
+        rect: { x: 40, y: 40, width: 120, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
+      card2.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'AnswerButton',
+        text: 'Choose',
+        content: undefined,
+        script: 'on mouseUp\n  answer "Pick one" with "Alpha" or "Beta"\n  put it into field "ResultField"\nend mouseUp',
+        visible: true,
+        rect: { x: 40, y: 90, width: 120, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
+      card2.elements.push({
+        id: uid('el'),
+        type: 'field',
+        name: 'ResultField',
+        content: 'Dialog results appear here.',
+        script: '',
+        visible: true,
+        rect: { x: 190, y: 40, width: 285, height: 85 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
+      });
+      card2.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'NextButton2',
+        text: 'Next Card',
+        content: undefined,
+        script: 'on mouseUp\n  go to next card\nend mouseUp',
+        visible: true,
+        rect: { x: 190, y: 150, width: 130, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
 
-      const card3 = createCard(bg.id, 3);
+      const card3 = createCard(background.id, 3);
       card3.name = 'Visibility Card';
-      card3.elements.push({ id: uid('el'), type: 'field', name: 'SecretField', content: 'Secret field', script: '', visible: true, rect: { x: 180, y: 100, width: 160, height: 50 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
-      card3.elements.push({ id: uid('el'), type: 'button', name: 'HideSecret', text: 'Hide Secret', script: 'on mouseUp\n  hide field "SecretField"\nend mouseUp', visible: true, rect: { x: 60, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
-      card3.elements.push({ id: uid('el'), type: 'button', name: 'ShowSecret', text: 'Show Secret', script: 'on mouseUp\n  show field "SecretField"\nend mouseUp', visible: true, rect: { x: 210, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
-      card3.elements.push({ id: uid('el'), type: 'button', name: 'Home', text: 'Go Home', script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp', visible: true, rect: { x: 180, y: 180, width: 160, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card3.elements.push({
+        id: uid('el'),
+        type: 'field',
+        name: 'SecretField',
+        content: 'Secret field',
+        script: '',
+        visible: true,
+        rect: { x: 180, y: 100, width: 160, height: 50 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
+      });
+      card3.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'HideSecret',
+        text: 'Hide Secret',
+        content: undefined,
+        script: 'on mouseUp\n  hide field "SecretField"\nend mouseUp',
+        visible: true,
+        rect: { x: 60, y: 45, width: 130, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
+      card3.elements.push({
+        id: uid('el'),
+        type: 'button',
+        name: 'ShowSecret',
+        text: 'Show Secret',
+        content: undefined,
+        script: 'on mouseUp\n  show field "SecretField"\nend mouseUp',
+        visible: true,
+        rect: { x: 210, y: 45, width: 130, height: 34 },
+        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
+      });
 
-      state.stack = normalizeStack({ id: uid('stack'), name: 'Demo Stack', backgrounds: [bg], cards: [card1, card2, card3], nextElementNumber: 1 });
+      state.stack = normalizeStack({
+        id: uid('stack'),
+        name: 'Demo Stack',
+        backgrounds: [background],
+        cards: [card1, card2, card3],
+        nextElementNumber: 1
+      });
       state.cardIndex = 0;
       state.runMode = true;
+      state.editBackground = false;
       state.selectedId = null;
       render();
     }
 
+    function runCardScriptIfNeeded(event) {
+      if (!state.runMode || event.target !== dom.cardArea) return;
+      const background = currentBackground();
+      const card = currentCard();
+      Promise.resolve()
+        .then(() => runScript(background?.script || ''))
+        .then(() => runScript(card?.script || ''))
+        .catch(error => answer(`Script error: ${error.message}`));
+    }
+
     function wireEvents() {
-      document.getElementById('newStackBtn').addEventListener('click', () => confirmDialog('Create a new stack? Unsaved changes will be lost.', ['Create New', 'Cancel']).then(r => { if (r === 'Create New') newStack(); }));
-      document.getElementById('saveBtn').addEventListener('click', saveStack);
-      document.getElementById('loadBtn').addEventListener('click', openLoadDialog);
-      document.getElementById('exportBtn').addEventListener('click', exportStack);
-      document.getElementById('importInput').addEventListener('change', e => importStack(e.target.files[0]));
-      document.getElementById('demoBtn').addEventListener('click', () => confirmDialog('Replace the current stack with demo content?', ['Create Demo', 'Cancel']).then(r => { if (r === 'Create Demo') createDemo(); }));
-      document.getElementById('newCardBtn').addEventListener('click', () => { const bg = currentBackground() || state.stack.backgrounds[0]; state.stack.cards.push(createCard(bg.id, state.stack.cards.length + 1)); state.cardIndex = state.stack.cards.length - 1; state.selectedId = null; render(); });
-      document.getElementById('prevBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
-      document.getElementById('nextBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
-      document.getElementById('deleteCardBtn').addEventListener('click', () => confirmDialog('Delete current card?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete' && state.stack.cards.length > 1) { state.stack.cards.splice(state.cardIndex, 1); state.cardIndex = clamp(state.cardIndex, 0, state.stack.cards.length - 1); state.selectedId = null; render(); } }));
-      document.getElementById('addButtonBtn').addEventListener('click', () => addElement('button'));
-      document.getElementById('addFieldBtn').addEventListener('click', () => addElement('field'));
-      dom.backgroundToggle.addEventListener('change', e => { state.editBackground = e.target.checked; state.selectedId = null; render(); });
-      dom.modeBtn.addEventListener('click', () => { state.runMode = !state.runMode; state.selectedId = null; render(); });
-      document.getElementById('applyScriptBtn').addEventListener('click', saveScript);
-      document.getElementById('closeScriptBtn').addEventListener('click', () => dom.scriptBackdrop.classList.add('hidden'));
-      document.getElementById('scriptHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
-      document.getElementById('helpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
-      document.getElementById('closeHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.add('hidden'));
-      document.getElementById('closeLoadBtn').addEventListener('click', () => dom.loadBackdrop.classList.add('hidden'));
-      dom.cardArea.addEventListener('mousedown', e => { if (!state.runMode && e.target === dom.cardArea) { state.selectedId = null; render(); } });
-      document.addEventListener('keydown', e => {
+      byId('newStackBtn').addEventListener('click', () => {
+        answer('Create a new stack? Unsaved changes will be lost.', ['Create New', 'Cancel']).then(response => {
+          if (response === 'Create New') newStack();
+        });
+      });
+      byId('saveBtn').addEventListener('click', saveStack);
+      byId('loadBtn').addEventListener('click', openLoadDialog);
+      byId('exportBtn').addEventListener('click', exportStack);
+      byId('importInput').addEventListener('change', event => importStack(event.target.files[0]));
+      byId('demoBtn').addEventListener('click', () => {
+        answer('Replace the current stack with demo content?', ['Create Demo', 'Cancel']).then(response => {
+          if (response === 'Create Demo') createDemo();
+        });
+      });
+      byId('newCardBtn').addEventListener('click', () => {
+        const background = currentBackground() || state.stack.backgrounds[0];
+        state.stack.cards.push(createCard(background.id, state.stack.cards.length + 1));
+        state.cardIndex = state.stack.cards.length - 1;
+        state.selectedId = null;
+        render();
+      });
+      byId('prevBtn').addEventListener('click', () => {
+        state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1);
+        state.selectedId = null;
+        render();
+      });
+      byId('nextBtn').addEventListener('click', () => {
+        state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
+        state.selectedId = null;
+        render();
+      });
+      byId('deleteCardBtn').addEventListener('click', () => {
+        answer('Delete current card?', ['Delete', 'Cancel']).then(response => {
+          if (response === 'Delete' && state.stack.cards.length > 1) {
+            state.stack.cards.splice(state.cardIndex, 1);
+            state.cardIndex = clamp(state.cardIndex, 0, state.stack.cards.length - 1);
+            state.selectedId = null;
+            render();
+          }
+        });
+      });
+      byId('addButtonBtn').addEventListener('click', () => addElement('button'));
+      byId('addFieldBtn').addEventListener('click', () => addElement('field'));
+      dom.backgroundToggle.addEventListener('change', event => {
+        state.editBackground = event.target.checked;
+        state.selectedId = null;
+        render();
+      });
+      dom.modeBtn.addEventListener('click', () => {
+        state.runMode = !state.runMode;
+        state.selectedId = null;
+        render();
+      });
+      byId('applyScriptBtn').addEventListener('click', saveScript);
+      byId('closeScriptBtn').addEventListener('click', () => dom.scriptBackdrop.classList.add('hidden'));
+      byId('scriptHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
+      byId('helpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
+      byId('closeHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.add('hidden'));
+      byId('closeLoadBtn').addEventListener('click', () => dom.loadBackdrop.classList.add('hidden'));
+
+      dom.cardArea.addEventListener('click', runCardScriptIfNeeded);
+      dom.cardArea.addEventListener('mousedown', event => {
+        if (!state.runMode && event.target === dom.cardArea) {
+          state.selectedId = null;
+          render();
+        }
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          closeModals();
+          return;
+        }
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-        if (!state.runMode && state.selectedId && (e.key === 'Delete' || e.key === 'Backspace')) {
-          e.preventDefault();
-          confirmDialog('Delete selected element?', ['Delete', 'Cancel']).then(r => { if (r === 'Delete') deleteElement(); });
+        if (!state.runMode && state.selectedId && (event.key === 'Delete' || event.key === 'Backspace')) {
+          event.preventDefault();
+          answer('Delete selected element?', ['Delete', 'Cancel']).then(response => {
+            if (response === 'Delete') deleteElement();
+          });
         }
       });
     }
