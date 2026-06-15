@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Version-control note: 2026-06-15 v2.2.0 HyperCard feature-completion pass.
-       Scope: adds modular Message Box, Card List, Duplicate Card, background creation/assignment,
-       duplicate element support, editable run-mode fields, safer modal closure, and expanded demo coverage.
-       Retains v2.1.0 fixes: self-contained localStorage, async scripting, safe DOM rendering, bounded geometry,
-       import/export, malformed saved-stack recovery, card/background scripts, and responsive layout. -->
+  <!-- Version-control note: 2026-06-15 v2.3.0 multi-pass QA remediation.
+       Scope: fixes all identified defects/gaps from 3-11 pass review: HTML semantics, runtime guards,
+       responsive layout, local persistence, import/export, Message Box, Card List, Find, paint layer,
+       object z-order, resize handles, duplicate card/object, background creation/assignment, editable fields,
+       expanded HyperTalk-like commands, and regression demo coverage. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HyperCard Simulator</title>
@@ -21,6 +21,7 @@
       --edit: #fff3bd;
       --shadow: #777;
       --card-width: 512px;
+      --card-height: 318px;
     }
     * { box-sizing: border-box; }
     html, body { min-height: 100%; }
@@ -65,14 +66,14 @@
     input, textarea, select { font: inherit; color: inherit; }
     .layout {
       display: grid;
-      grid-template-columns: minmax(300px, 1fr) 320px;
+      grid-template-columns: minmax(300px, 1fr) 330px;
       gap: 12px;
       padding: 12px;
       align-items: start;
     }
-    .stage-wrap { overflow-x: auto; padding-bottom: 8px; }
+    .stage-wrap { overflow-x: auto; padding: 0 8px 12px 0; }
     .hc-window {
-      width: 512px;
+      width: var(--card-width);
       height: 342px;
       margin: 0 auto;
       background: var(--paper);
@@ -83,10 +84,20 @@
     .card-area {
       position: relative;
       width: 100%;
-      height: 318px;
+      height: var(--card-height);
       overflow: hidden;
       background: #fff;
+      touch-action: none;
     }
+    .paint-layer {
+      position: absolute;
+      inset: 0;
+      width: var(--card-width);
+      height: var(--card-height);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .paint-mode .paint-layer { cursor: crosshair; }
     .status {
       position: absolute;
       left: 0;
@@ -108,8 +119,9 @@
       min-width: 20px;
       min-height: 20px;
       overflow: hidden;
+      z-index: 10;
     }
-    .element.selected { border-color: var(--focus); outline: 1px solid var(--focus); z-index: 20; }
+    .element.selected { border-color: var(--focus); outline: 1px solid var(--focus); z-index: 200 !important; }
     .element.button {
       display: flex;
       align-items: center;
@@ -129,6 +141,17 @@
       overflow: auto;
     }
     .editing .element { cursor: grab; }
+    .resize-handle {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 10px;
+      height: 10px;
+      background: var(--focus);
+      border: 1px solid var(--paper);
+      cursor: nwse-resize;
+      z-index: 250;
+    }
     .panel {
       border: 2px solid var(--ink);
       background: var(--panel);
@@ -140,13 +163,14 @@
     .panel h2 { margin: 0 0 8px; font-size: 1.05rem; }
     .field-row { margin: 8px 0; }
     label { display: block; font-weight: 700; margin-bottom: 3px; }
-    input[type="text"], input[type="number"], input[type="color"], textarea {
+    input[type="text"], input[type="number"], input[type="color"], textarea, select {
       width: 100%;
       border: 1px solid var(--ink);
       background: #fff;
       padding: 5px;
     }
     textarea { min-height: 90px; resize: vertical; }
+    .inline-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .small { font-size: .8rem; }
     .muted { color: #444; }
     .hidden { display: none !important; }
@@ -171,7 +195,7 @@
       padding: 12px;
     }
     .modal {
-      width: min(760px, 96vw);
+      width: min(820px, 96vw);
       max-height: 90vh;
       overflow: auto;
       border: 2px solid var(--ink);
@@ -181,10 +205,10 @@
     }
     .modal h2 { margin-top: 0; }
     .button-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
-    .stack-list { display: grid; gap: 8px; }
-    .stack-item { text-align: left; width: 100%; }
+    .stack-list, .search-list { display: grid; gap: 8px; }
+    .stack-item, .search-item { text-align: left; width: 100%; }
     .card-list-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
-    .card-tile { min-height: 64px; text-align: left; }
+    .card-tile { min-height: 64px; text-align: left; white-space: pre-line; }
     .message-box textarea { min-height: 180px; }
     .element.field[contenteditable="true"] { outline: 1px dotted var(--focus); cursor: text; }
     .help code { background: #eee; padding: 1px 4px; }
@@ -214,6 +238,7 @@
     <input id="importInput" class="sr-only" type="file" accept="application/json,.json">
     <button id="demoBtn" type="button">Demo Cards</button>
     <button id="messageBoxBtn" type="button">Message Box</button>
+    <button id="findBtn" type="button">Find</button>
     <span aria-hidden="true">|</span>
     <button id="newCardBtn" type="button">New Card</button>
     <button id="duplicateCardBtn" type="button">Duplicate Card</button>
@@ -224,6 +249,8 @@
     <span aria-hidden="true">|</span>
     <button id="addButtonBtn" type="button">Add Button</button>
     <button id="addFieldBtn" type="button">Add Field</button>
+    <button id="paintBtn" type="button">Paint Mode</button>
+    <button id="clearPaintBtn" type="button">Clear Paint</button>
     <label style="display:inline-flex;gap:4px;align-items:center;margin:0;font-weight:400">
       <input type="checkbox" id="backgroundToggle"> Edit background
     </label>
@@ -294,10 +321,23 @@
     </div>
   </div>
 
+  <div id="findBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="findTitle">
+    <div class="modal">
+      <h2 id="findTitle">Find</h2>
+      <label for="findInput">Search cards, fields, buttons, and scripts</label>
+      <input id="findInput" type="text">
+      <div id="findResults" class="search-list" aria-live="polite"></div>
+      <div class="button-row">
+        <button id="runFindBtn" class="primary" type="button">Find</button>
+        <button id="closeFindBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div id="helpBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <div class="modal help">
       <h2 id="helpTitle">HyperTalk-like Scripting Help</h2>
-      <p>Scripts run line-by-line inside <code>on mouseUp</code> and <code>end mouseUp</code>.</p>
+      <p>Scripts run line-by-line inside <code>on mouseUp</code> and <code>end mouseUp</code>. The Message Box can run bare commands without a handler.</p>
       <ul>
         <li><code>go to next card</code>, <code>go to previous card</code>, <code>go to first card</code>, <code>go to last card</code></li>
         <li><code>go to card "Card Name"</code> or <code>go to card id "card-id"</code></li>
@@ -306,8 +346,8 @@
         <li><code>put "Text" into field "FieldName"</code>, <code>put it into field "FieldName"</code>, <code>put field "Source" into field "Target"</code></li>
         <li><code>show field "Name"</code>, <code>hide button "Name"</code></li>
         <li><code>set the text of button "Name" to "Label"</code></li>
+        <li><code>set the backgroundColor of field "Name" to "#ffffcc"</code></li>
         <li><code>beep</code></li>
-        <li>The Message Box can run one command at a time without wrapping it in <code>on mouseUp</code>.</li>
         <li>Comments begin with <code>--</code></li>
       </ul>
       <div class="button-row"><button id="closeHelpBtn" type="button">Close</button></div>
@@ -329,6 +369,7 @@
       propertiesContent: byId('propertiesContent'),
       modeBtn: byId('modeBtn'),
       backgroundToggle: byId('backgroundToggle'),
+      paintBtn: byId('paintBtn'),
       dialogBackdrop: byId('dialogBackdrop'),
       dialogTitle: byId('dialogTitle'),
       dialogMessage: byId('dialogMessage'),
@@ -343,6 +384,9 @@
       cardList: byId('cardList'),
       messageBackdrop: byId('messageBackdrop'),
       messageText: byId('messageText'),
+      findBackdrop: byId('findBackdrop'),
+      findInput: byId('findInput'),
+      findResults: byId('findResults'),
       helpBackdrop: byId('helpBackdrop')
     };
 
@@ -351,24 +395,24 @@
       cardIndex: 0,
       runMode: true,
       editBackground: false,
+      paintMode: false,
       selectedId: null,
       selectedLayer: 'card',
       dragging: null,
+      resizing: null,
       dragOffsetX: 0,
       dragOffsetY: 0,
       scriptTarget: null,
       it: '',
-      dialogResolver: null
+      dialogResolver: null,
+      isPainting: false,
+      lastPaintPoint: null
     };
 
     function uid(prefix = 'id') {
       try {
-        if (globalThis.crypto && typeof crypto.randomUUID === 'function') {
-          return `${prefix}-${crypto.randomUUID()}`;
-        }
-      } catch (error) {
-        // Fall back below.
-      }
+        if (globalThis.crypto && typeof crypto.randomUUID === 'function') return `${prefix}-${crypto.randomUUID()}`;
+      } catch (error) {}
       return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     }
 
@@ -377,30 +421,20 @@
       return Number.isFinite(number) ? number : fallback;
     }
 
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 
     function safeJsonParse(raw, fallback) {
-      try {
-        return raw ? JSON.parse(raw) : fallback;
-      } catch (error) {
-        return fallback;
-      }
+      try { return raw ? JSON.parse(raw) : fallback; } catch (error) { return fallback; }
     }
 
-    function currentCard() {
-      return state.stack?.cards?.[state.cardIndex] || null;
-    }
+    function currentCard() { return state.stack?.cards?.[state.cardIndex] || null; }
 
     function currentBackground() {
       const card = currentCard();
       return card ? state.stack.backgrounds.find(bg => bg.id === card.backgroundId) || null : null;
     }
 
-    function activeLayer() {
-      return state.editBackground ? currentBackground() : currentCard();
-    }
+    function activeLayer() { return state.editBackground ? currentBackground() : currentCard(); }
 
     function activeElements() {
       const layer = activeLayer();
@@ -410,14 +444,15 @@
     }
 
     function createBackground(name = 'Default Background') {
-      return { id: uid('bg'), name, backgroundColor: '#f7f7f7', script: '', elements: [] };
+      return { id: uid('bg'), name, backgroundColor: '#f7f7f7', script: '', elements: [], paint: '' };
     }
 
     function createCard(backgroundId, number = 1) {
-      return { id: uid('card'), name: `Card ${number}`, backgroundId, backgroundColor: '#ffffff', script: '', elements: [] };
+      return { id: uid('card'), name: `Card ${number}`, backgroundId, backgroundColor: '#ffffff', script: '', elements: [], paint: '' };
     }
 
     function clampElement(element) {
+      element.rect = element.rect || {};
       element.rect.width = clamp(toNumber(element.rect.width, element.type === 'button' ? 120 : 180), 20, CARD_WIDTH);
       element.rect.height = clamp(toNumber(element.rect.height, element.type === 'button' ? 34 : 80), 20, CARD_HEIGHT);
       element.rect.x = clamp(toNumber(element.rect.x, 10), 0, CARD_WIDTH - element.rect.width);
@@ -437,6 +472,7 @@
           script: String(element.script ?? ''),
           visible: element.visible !== false && element.isVisible !== false,
           editable: type === 'field' ? element.editable === true || element.lockText === false : false,
+          z: toNumber(element.z, index + 10),
           rect: {
             x: toNumber(element.rect?.x, 10),
             y: toNumber(element.rect?.y, 10),
@@ -449,7 +485,7 @@
             backgroundColor: element.style?.backgroundColor || (type === 'button' ? '#f5f5f5' : '#ffffff')
           }
         });
-      });
+      }).sort((a, b) => a.z - b.z);
     }
 
     function normalizeStack(stack) {
@@ -458,47 +494,37 @@
       stack.name = String(stack.name || 'Untitled Stack');
       stack.backgrounds = Array.isArray(stack.backgrounds) ? stack.backgrounds : [];
       stack.cards = Array.isArray(stack.cards) ? stack.cards : [];
-
       if (!stack.backgrounds.length) stack.backgrounds.push(createBackground());
-
       stack.backgrounds.forEach(background => {
         background.id = background.id || uid('bg');
         background.name = String(background.name || 'Background');
         background.backgroundColor = background.backgroundColor || '#f7f7f7';
         background.script = String(background.script || '');
+        background.paint = typeof background.paint === 'string' ? background.paint : '';
         background.elements = normalizeElements(background.elements);
       });
-
       const fallbackBackgroundId = stack.backgrounds[0].id;
       if (!stack.cards.length) stack.cards.push(createCard(fallbackBackgroundId, 1));
-
       stack.cards.forEach((card, index) => {
         card.id = card.id || uid('card');
         card.name = String(card.name || `Card ${index + 1}`);
-        if (!stack.backgrounds.some(background => background.id === card.backgroundId)) {
-          card.backgroundId = fallbackBackgroundId;
-        }
+        if (!stack.backgrounds.some(background => background.id === card.backgroundId)) card.backgroundId = fallbackBackgroundId;
         card.backgroundColor = card.backgroundColor || '#ffffff';
         card.script = String(card.script || '');
+        card.paint = typeof card.paint === 'string' ? card.paint : '';
         card.elements = normalizeElements(card.elements);
       });
-
       stack.nextElementNumber = toNumber(stack.nextElementNumber, 1);
       return stack;
     }
 
     function newStack(name = 'Untitled Stack') {
       const background = createBackground();
-      state.stack = normalizeStack({
-        id: uid('stack'),
-        name,
-        backgrounds: [background],
-        cards: [createCard(background.id, 1)],
-        nextElementNumber: 1
-      });
+      state.stack = normalizeStack({ id: uid('stack'), name, backgrounds: [background], cards: [createCard(background.id, 1)], nextElementNumber: 1 });
       state.cardIndex = 0;
       state.runMode = true;
       state.editBackground = false;
+      state.paintMode = false;
       state.selectedId = null;
       render();
     }
@@ -508,10 +534,12 @@
       const background = currentBackground();
       dom.cardArea.replaceChildren();
       dom.cardArea.classList.toggle('editing', !state.runMode);
+      dom.cardArea.classList.toggle('paint-mode', state.paintMode);
       dom.backgroundToggle.checked = state.editBackground;
       dom.backgroundToggle.disabled = state.runMode;
       dom.modeBtn.textContent = state.runMode ? 'Switch to Edit Mode' : 'Switch to Run Mode';
       dom.modeBtn.classList.toggle('edit', !state.runMode);
+      dom.paintBtn.textContent = state.paintMode ? 'Exit Paint Mode' : 'Paint Mode';
 
       if (!card || !background) {
         dom.cardArea.textContent = 'No card available.';
@@ -520,6 +548,8 @@
       }
 
       dom.cardArea.style.background = card.backgroundColor || '#ffffff';
+      renderPaintCanvas(background.paint, 'background');
+      renderPaintCanvas(card.paint, 'card');
       renderLayer(background.elements, true);
       renderLayer(card.elements, false);
       updateStatus();
@@ -527,11 +557,76 @@
       renderProperties();
     }
 
+    function renderPaintCanvas(dataUrl, layerName) {
+      const canvas = document.createElement('canvas');
+      canvas.width = CARD_WIDTH;
+      canvas.height = CARD_HEIGHT;
+      canvas.className = 'paint-layer';
+      canvas.dataset.layer = layerName;
+      canvas.style.zIndex = layerName === 'background' ? 2 : 3;
+      const context = canvas.getContext('2d');
+      if (dataUrl) {
+        const image = new Image();
+        image.onload = () => context.drawImage(image, 0, 0);
+        image.src = dataUrl;
+      }
+      const isActivePaintLayer = layerName === (state.editBackground ? 'background' : 'card');
+      canvas.style.pointerEvents = state.paintMode && isActivePaintLayer ? 'auto' : 'none';
+      if (isActivePaintLayer) {
+        canvas.addEventListener('pointerdown', beginPaint);
+        canvas.addEventListener('pointermove', continuePaint);
+        canvas.addEventListener('pointerup', endPaint);
+        canvas.addEventListener('pointerleave', endPaint);
+      }
+      dom.cardArea.appendChild(canvas);
+    }
+
+    function paintTargetLayer() { return state.editBackground ? currentBackground() : currentCard(); }
+
+    function canvasPoint(event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      return {
+        x: clamp(Math.round((event.clientX - rect.left) * (CARD_WIDTH / rect.width)), 0, CARD_WIDTH),
+        y: clamp(Math.round((event.clientY - rect.top) * (CARD_HEIGHT / rect.height)), 0, CARD_HEIGHT)
+      };
+    }
+
+    function beginPaint(event) {
+      if (!state.paintMode || state.runMode) return;
+      event.preventDefault();
+      state.isPainting = true;
+      state.lastPaintPoint = canvasPoint(event);
+    }
+
+    function continuePaint(event) {
+      if (!state.isPainting || !state.paintMode || state.runMode) return;
+      event.preventDefault();
+      const point = canvasPoint(event);
+      const canvas = event.currentTarget;
+      const context = canvas.getContext('2d');
+      context.strokeStyle = '#000';
+      context.lineWidth = 2;
+      context.lineCap = 'round';
+      context.beginPath();
+      context.moveTo(state.lastPaintPoint.x, state.lastPaintPoint.y);
+      context.lineTo(point.x, point.y);
+      context.stroke();
+      state.lastPaintPoint = point;
+      const target = paintTargetLayer();
+      if (target) target.paint = canvas.toDataURL('image/png');
+    }
+
+    function endPaint(event) {
+      if (!state.isPainting) return;
+      state.isPainting = false;
+      const target = paintTargetLayer();
+      if (target && event.currentTarget instanceof HTMLCanvasElement) target.paint = event.currentTarget.toDataURL('image/png');
+    }
+
     function renderLayer(elements, isBackgroundElement) {
-      elements.forEach(element => {
+      elements.sort((a, b) => a.z - b.z).forEach(element => {
         if (element.visible === false) return;
         clampElement(element);
-
         const node = document.createElement('div');
         node.id = `el-${element.id}`;
         node.className = `element ${element.type}`;
@@ -543,7 +638,8 @@
           height: `${element.rect.height}px`,
           fontSize: `${element.style.fontSize}px`,
           color: element.style.color,
-          backgroundColor: element.style.backgroundColor
+          backgroundColor: element.style.backgroundColor,
+          zIndex: String(10 + toNumber(element.z, 1))
         });
         node.textContent = element.type === 'button' ? element.text : element.content;
         node.title = `${isBackgroundElement ? 'Background' : 'Card'} ${element.type}: ${element.name}`;
@@ -559,21 +655,24 @@
               runScript(element.script).catch(error => answer(`Script error: ${error.message}`));
             });
           }
-        } else {
+        } else if (!state.paintMode) {
           node.addEventListener('mousedown', event => beginDrag(event, element, isBackgroundElement));
-          node.addEventListener('dblclick', event => {
-            event.stopPropagation();
-            openScript(element);
-          });
+          node.addEventListener('dblclick', event => { event.stopPropagation(); openScript(element); });
+          if (state.selectedId === element.id && state.selectedLayer === (isBackgroundElement ? 'background' : 'card')) {
+            const handle = document.createElement('span');
+            handle.className = 'resize-handle';
+            handle.title = 'Resize';
+            handle.addEventListener('mousedown', event => beginResize(event, element, isBackgroundElement));
+            node.appendChild(handle);
+          }
         }
-
         dom.cardArea.appendChild(node);
       });
     }
 
     function updateStatus() {
       const card = currentCard();
-      const mode = state.runMode ? 'Run Mode' : `Edit Mode: ${state.editBackground ? 'Background' : 'Card'}`;
+      const mode = state.paintMode ? 'Paint Mode' : (state.runMode ? 'Run Mode' : `Edit Mode: ${state.editBackground ? 'Background' : 'Card'}`);
       dom.status.textContent = `Card ${state.cardIndex + 1} of ${state.stack.cards.length} | ${card.name} | ${state.stack.name || 'Untitled Stack'} | ${mode}`;
     }
 
@@ -584,8 +683,11 @@
       byId('deleteCardBtn').disabled = !hasCard || state.stack.cards.length <= 1;
       byId('duplicateCardBtn').disabled = !hasCard;
       byId('cardListBtn').disabled = !hasCard;
-      byId('addButtonBtn').disabled = state.runMode || !hasCard;
-      byId('addFieldBtn').disabled = state.runMode || !hasCard;
+      byId('findBtn').disabled = !hasCard;
+      byId('addButtonBtn').disabled = state.runMode || state.paintMode || !hasCard;
+      byId('addFieldBtn').disabled = state.runMode || state.paintMode || !hasCard;
+      byId('paintBtn').disabled = state.runMode || !hasCard;
+      byId('clearPaintBtn').disabled = state.runMode || !hasCard;
     }
 
     function makeInput(labelText, value, onChange, type = 'text') {
@@ -596,10 +698,7 @@
       label.textContent = labelText;
       if (type !== 'textarea') input.type = type;
       input.value = value ?? '';
-      input.addEventListener('change', () => {
-        onChange(input.value);
-        render();
-      });
+      input.addEventListener('change', () => { onChange(input.value); render(); });
       wrapper.append(label, input);
       return wrapper;
     }
@@ -614,10 +713,7 @@
       label.style.display = 'inline-flex';
       label.style.gap = '6px';
       label.style.alignItems = 'center';
-      input.addEventListener('change', () => {
-        onChange(input.checked);
-        render();
-      });
+      input.addEventListener('change', () => { onChange(input.checked); render(); });
       label.append(input, document.createTextNode(labelText));
       wrapper.append(label);
       return wrapper;
@@ -636,22 +732,22 @@
         select.appendChild(opt);
       });
       select.value = value;
-      select.addEventListener('change', () => {
-        onChange(select.value);
-        render();
-      });
+      select.addEventListener('change', () => { onChange(select.value); render(); });
       wrapper.append(label, select);
       return wrapper;
     }
 
     function renderProperties() {
       dom.propertiesContent.replaceChildren();
-
       if (state.runMode) {
         dom.propertiesContent.textContent = 'Switch to Edit Mode to inspect or change card objects.';
         return;
       }
-
+      if (state.paintMode) {
+        const target = state.editBackground ? 'background' : 'card';
+        dom.propertiesContent.textContent = `Paint Mode is active on the ${target}. Draw directly on the card. Use Clear Paint to erase this layer.`;
+        return;
+      }
       const selected = findSelectedElement();
       if (selected) {
         const element = selected.element;
@@ -660,9 +756,9 @@
           makeInput('X', element.rect.x, value => { element.rect.x = toNumber(value, 0); clampElement(element); }, 'number'),
           makeInput('Y', element.rect.y, value => { element.rect.y = toNumber(value, 0); clampElement(element); }, 'number'),
           makeInput('Width', element.rect.width, value => { element.rect.width = toNumber(value, 20); clampElement(element); }, 'number'),
-          makeInput('Height', element.rect.height, value => { element.rect.height = toNumber(value, 20); clampElement(element); }, 'number')
+          makeInput('Height', element.rect.height, value => { element.rect.height = toNumber(value, 20); clampElement(element); }, 'number'),
+          makeInput('Layer order', element.z, value => { element.z = toNumber(value, 10); }, 'number')
         );
-
         if (element.type === 'button') dom.propertiesContent.append(makeInput('Button text', element.text, value => { element.text = value; }));
         if (element.type === 'field') {
           dom.propertiesContent.append(
@@ -670,59 +766,44 @@
             makeCheckbox('Editable in Run Mode', element.editable, value => { element.editable = value; })
           );
         }
-
         dom.propertiesContent.append(
           makeInput('Font size', element.style.fontSize, value => { element.style.fontSize = toNumber(value, 16); }, 'number'),
           makeInput('Text colour', element.style.color, value => { element.style.color = value; }, 'color'),
           makeInput('Background colour', element.style.backgroundColor, value => { element.style.backgroundColor = value; }, 'color')
         );
-
-        const scriptButton = document.createElement('button');
-        scriptButton.type = 'button';
-        scriptButton.textContent = 'Edit Script';
-        scriptButton.addEventListener('click', () => openScript(element));
-
-        const duplicateButton = document.createElement('button');
-        duplicateButton.type = 'button';
-        duplicateButton.textContent = 'Duplicate Element';
-        duplicateButton.addEventListener('click', duplicateSelectedElement);
-
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.textContent = 'Delete Element';
-        deleteButton.className = 'danger';
-        deleteButton.addEventListener('click', () => {
-          answer('Delete selected element?', ['Delete', 'Cancel']).then(response => {
-            if (response === 'Delete') deleteElement();
-          });
-        });
-
-        dom.propertiesContent.append(scriptButton, document.createTextNode(' '), duplicateButton, document.createTextNode(' '), deleteButton);
+        const tools = document.createElement('div');
+        tools.className = 'inline-tools';
+        tools.append(
+          makeButton('Edit Script', () => openScript(element)),
+          makeButton('Duplicate Element', duplicateSelectedElement),
+          makeButton('Bring Front', () => changeElementOrder(element, 'front')),
+          makeButton('Send Back', () => changeElementOrder(element, 'back')),
+          makeButton('Delete Element', () => answer('Delete selected element?', ['Delete', 'Cancel']).then(response => { if (response === 'Delete') deleteElement(); }), 'danger')
+        );
+        dom.propertiesContent.append(tools);
         return;
       }
-
       const object = activeLayer();
       const type = state.editBackground ? 'Background' : 'Card';
       dom.propertiesContent.append(
         makeInput(`${type} name`, object.name, value => { object.name = value; }),
         makeInput('Background colour', object.backgroundColor, value => { object.backgroundColor = value; }, 'color')
       );
-
       if (!state.editBackground) {
         const backgrounds = state.stack.backgrounds.map(background => ({ value: background.id, label: background.name }));
         dom.propertiesContent.append(makeSelect('Assigned background', object.backgroundId, backgrounds, value => { object.backgroundId = value; }));
-        const newBackgroundButton = document.createElement('button');
-        newBackgroundButton.type = 'button';
-        newBackgroundButton.textContent = 'New Background for Card';
-        newBackgroundButton.addEventListener('click', createBackgroundForCurrentCard);
-        dom.propertiesContent.append(newBackgroundButton, document.createTextNode(' '));
+        dom.propertiesContent.append(makeButton('New Background for Card', createBackgroundForCurrentCard));
       }
+      dom.propertiesContent.append(makeButton(`Edit ${type} Script`, () => openScript(object)));
+    }
 
-      const scriptButton = document.createElement('button');
-      scriptButton.type = 'button';
-      scriptButton.textContent = `Edit ${type} Script`;
-      scriptButton.addEventListener('click', () => openScript(object));
-      dom.propertiesContent.append(scriptButton);
+    function makeButton(text, handler, className = '') {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = text;
+      if (className) button.className = className;
+      button.addEventListener('click', handler);
+      return button;
     }
 
     function findSelectedElement() {
@@ -732,9 +813,10 @@
     }
 
     function findElement(nameOrId) {
-      const target = String(nameOrId).toLowerCase();
+      const raw = String(nameOrId);
+      const target = raw.toLowerCase();
       return [...(currentCard()?.elements || []), ...(currentBackground()?.elements || [])]
-        .find(element => element.id === nameOrId || element.name.toLowerCase() === target) || null;
+        .find(element => element.id === raw || element.name.toLowerCase() === target) || null;
     }
 
     function cloneElement(element, offset = 12) {
@@ -743,6 +825,7 @@
       clone.name = `${element.name || element.type} copy`;
       clone.rect.x = toNumber(clone.rect.x, 10) + offset;
       clone.rect.y = toNumber(clone.rect.y, 10) + offset;
+      clone.z = toNumber(clone.z, 10) + 1;
       return clampElement(clone);
     }
 
@@ -752,6 +835,15 @@
       const clone = cloneElement(selected.element);
       selected.layer.elements.push(clone);
       state.selectedId = clone.id;
+      render();
+    }
+
+    function changeElementOrder(element, direction) {
+      const layer = activeLayer();
+      if (!layer) return;
+      const zValues = layer.elements.map(el => toNumber(el.z, 10));
+      if (direction === 'front') element.z = Math.max(...zValues, 0) + 1;
+      if (direction === 'back') element.z = Math.min(...zValues, 0) - 1;
       render();
     }
 
@@ -781,6 +873,8 @@
 
     function addElement(type) {
       const number = state.stack.nextElementNumber++;
+      const layer = activeLayer();
+      const maxZ = Math.max(0, ...(layer?.elements || []).map(element => toNumber(element.z, 10)));
       const element = clampElement({
         id: uid('el'),
         type,
@@ -790,10 +884,10 @@
         script: type === 'button' ? 'on mouseUp\n  answer "Button clicked."\nend mouseUp' : '',
         visible: true,
         editable: false,
+        z: maxZ + 1,
         rect: { x: 40, y: 40, width: type === 'button' ? 120 : 180, height: type === 'button' ? 34 : 80 },
         style: { fontSize: 16, color: '#000000', backgroundColor: type === 'button' ? '#f5f5f5' : '#ffffff' }
       });
-
       activeElements().push(element);
       state.selectedId = element.id;
       state.selectedLayer = state.editBackground ? 'background' : 'card';
@@ -811,29 +905,44 @@
     function beginDrag(event, element, isBackgroundElement) {
       event.preventDefault();
       event.stopPropagation();
-
       const layer = isBackgroundElement ? 'background' : 'card';
       if ((state.editBackground ? 'background' : 'card') !== layer) return;
-
       state.selectedId = element.id;
       state.selectedLayer = layer;
       state.dragging = element;
-
       const rect = event.currentTarget.getBoundingClientRect();
-      state.dragOffsetX = event.clientX - rect.left;
-      state.dragOffsetY = event.clientY - rect.top;
+      const parent = dom.cardArea.getBoundingClientRect();
+      state.dragOffsetX = (event.clientX - rect.left) * (CARD_WIDTH / parent.width);
+      state.dragOffsetY = (event.clientY - rect.top) * (CARD_HEIGHT / parent.height);
       render();
     }
 
+    function beginResize(event, element, isBackgroundElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      const layer = isBackgroundElement ? 'background' : 'card';
+      if ((state.editBackground ? 'background' : 'card') !== layer) return;
+      state.resizing = element;
+      state.selectedId = element.id;
+      state.selectedLayer = layer;
+    }
+
     document.addEventListener('mousemove', event => {
-      if (!state.dragging || state.runMode) return;
-
+      if (state.runMode) return;
       const parent = dom.cardArea.getBoundingClientRect();
+      if (state.resizing) {
+        const element = state.resizing;
+        element.rect.width = (event.clientX - parent.left) * (CARD_WIDTH / parent.width) - element.rect.x;
+        element.rect.height = (event.clientY - parent.top) * (CARD_HEIGHT / parent.height) - element.rect.y;
+        clampElement(element);
+        render();
+        return;
+      }
+      if (!state.dragging) return;
       const element = state.dragging;
-      element.rect.x = event.clientX - parent.left - state.dragOffsetX;
-      element.rect.y = event.clientY - parent.top - state.dragOffsetY;
+      element.rect.x = (event.clientX - parent.left) * (CARD_WIDTH / parent.width) - state.dragOffsetX;
+      element.rect.y = (event.clientY - parent.top) * (CARD_HEIGHT / parent.height) - state.dragOffsetY;
       clampElement(element);
-
       const node = byId(`el-${element.id}`);
       if (node) {
         node.style.left = `${element.rect.x}px`;
@@ -844,29 +953,22 @@
 
     document.addEventListener('mouseup', () => {
       state.dragging = null;
+      state.resizing = null;
     });
 
     async function runScript(script) {
       const lines = String(script || '').split(/\r?\n/).map(line => line.trim());
       let active = false;
-
       for (const line of lines) {
         if (!line || line.startsWith('--')) continue;
-        if (/^on\s+mouseup$/i.test(line)) {
-          active = true;
-          continue;
-        }
-        if (/^end\s+mouseup$/i.test(line)) {
-          active = false;
-          continue;
-        }
+        if (/^on\s+mouseup$/i.test(line)) { active = true; continue; }
+        if (/^end\s+mouseup$/i.test(line)) { active = false; continue; }
         if (active) await runCommand(line);
       }
     }
 
     async function runCommand(line) {
       let match;
-
       if ((match = line.match(/^go\s+(?:to\s+)?(next|previous|prev|first|last)\s*(?:card)?$/i))) {
         const command = match[1].toLowerCase();
         if (command === 'next') state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
@@ -877,51 +979,35 @@
         render();
         return;
       }
-
       if ((match = line.match(/^go\s+(?:to\s+)?card\s+(?:id\s+)?["'](.+?)["']$/i))) {
         const rawTarget = match[1];
         const target = rawTarget.toLowerCase();
         const index = state.stack.cards.findIndex(card => card.id === rawTarget || card.name.toLowerCase() === target);
         if (index < 0) await answer(`Card "${rawTarget}" not found.`);
-        else {
-          state.cardIndex = index;
-          state.selectedId = null;
-          render();
-        }
+        else { state.cardIndex = index; state.selectedId = null; render(); }
         return;
       }
-
       if ((match = line.match(/^answer\s+["'](.+?)["'](?:\s+with\s+["'](.+?)["'](?:\s+or\s+["'](.+?)["'])?(?:\s+or\s+["'](.+?)["'])?)?$/i))) {
         const buttons = [match[2], match[3], match[4]].filter(Boolean);
         state.it = await answer(match[1], buttons.length ? buttons : ['OK']) || '';
         return;
       }
-
       if ((match = line.match(/^ask\s+["'](.+?)["'](?:\s+with\s+["'](.*?)["'])?$/i))) {
         state.it = (await ask(match[1], match[2] || '')) ?? '';
         return;
       }
-
       if ((match = line.match(/^put\s+(.+?)\s+into\s+(?:field\s+)?(?:id\s+)?["'](.+?)["']$/i))) {
         const field = findElement(match[2]);
         if (!field || field.type !== 'field') await answer(`Field "${match[2]}" not found.`);
-        else {
-          field.content = evaluateValue(match[1]);
-          render();
-        }
+        else { field.content = evaluateValue(match[1]); render(); }
         return;
       }
-
       if ((match = line.match(/^(show|hide)\s+(?:button|field)\s+(?:id\s+)?["'](.+?)["']$/i))) {
         const element = findElement(match[2]);
         if (!element) await answer(`Element "${match[2]}" not found.`);
-        else {
-          element.visible = match[1].toLowerCase() === 'show';
-          render();
-        }
+        else { element.visible = match[1].toLowerCase() === 'show'; render(); }
         return;
       }
-
       if ((match = line.match(/^set\s+the\s+text\s+of\s+(button|field)\s+["'](.+?)["']\s+to\s+(.+)$/i))) {
         const element = findElement(match[2]);
         if (!element) await answer(`Element "${match[2]}" not found.`);
@@ -931,35 +1017,30 @@
         render();
         return;
       }
-
-      if (/^beep$/i.test(line)) {
-        try {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          oscillator.connect(gain);
-          gain.connect(audioContext.destination);
-          oscillator.frequency.value = 880;
-          gain.gain.value = 0.03;
-          oscillator.start();
-          setTimeout(() => { oscillator.stop(); audioContext.close(); }, 120);
-        } catch (error) {
-          await answer('Beep');
+      if ((match = line.match(/^set\s+the\s+(backgroundColor|color|visible)\s+of\s+(button|field)\s+["'](.+?)["']\s+to\s+(.+)$/i))) {
+        const property = match[1];
+        const element = findElement(match[3]);
+        if (!element || element.type !== match[2].toLowerCase()) await answer(`Element "${match[3]}" not found.`);
+        else {
+          const value = evaluateValue(match[4]);
+          if (property === 'visible') element.visible = /^true|yes|show$/i.test(value);
+          else element.style[property] = value;
+          render();
         }
         return;
       }
-
+      if (/^beep$/i.test(line)) { await beep(); return; }
       await answer(`Unknown command: ${line}`);
     }
 
     function evaluateValue(expression) {
-      const fieldReference = expression.trim().match(/^field\s+["'](.+?)["']$/i);
+      const trimmedExpression = expression.trim();
+      const fieldReference = trimmedExpression.match(/^field\s+["'](.+?)["']$/i);
       if (fieldReference) {
         const field = findElement(fieldReference[1]);
         return field && field.type === 'field' ? field.content : '';
       }
-
-      return expression.split(/\s*&\s*/).map(part => {
+      return trimmedExpression.split(/\s*&\s*/).map(part => {
         const trimmed = part.trim();
         if (/^it$/i.test(trimmed)) return state.it;
         const quoted = trimmed.match(/^["'](.*)["']$/);
@@ -967,12 +1048,27 @@
       }).join('');
     }
 
-    function closeModals() {
-      [dom.dialogBackdrop, dom.scriptBackdrop, dom.loadBackdrop, dom.cardListBackdrop, dom.messageBackdrop, dom.helpBackdrop].forEach(modal => modal.classList.add('hidden'));
-      if (state.dialogResolver) {
-        state.dialogResolver(null);
-        state.dialogResolver = null;
+    async function beep() {
+      try {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) throw new Error('AudioContext unsupported');
+        const audioContext = new AudioCtor();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.frequency.value = 880;
+        gain.gain.value = 0.03;
+        oscillator.start();
+        setTimeout(() => { oscillator.stop(); audioContext.close(); }, 120);
+      } catch (error) {
+        await answer('Beep');
       }
+    }
+
+    function closeModals() {
+      [dom.dialogBackdrop, dom.scriptBackdrop, dom.loadBackdrop, dom.cardListBackdrop, dom.messageBackdrop, dom.findBackdrop, dom.helpBackdrop].forEach(modal => modal.classList.add('hidden'));
+      if (state.dialogResolver) { state.dialogResolver(null); state.dialogResolver = null; }
     }
 
     function answer(message, buttons = ['OK']) {
@@ -980,18 +1076,13 @@
       dom.dialogMessage.textContent = message;
       dom.dialogInput.classList.add('hidden');
       dom.dialogButtons.replaceChildren();
-
       return new Promise(resolve => {
         state.dialogResolver = resolve;
         buttons.forEach(label => {
           const button = document.createElement('button');
           button.type = 'button';
           button.textContent = label;
-          button.addEventListener('click', () => {
-            dom.dialogBackdrop.classList.add('hidden');
-            state.dialogResolver = null;
-            resolve(label);
-          });
+          button.addEventListener('click', () => { dom.dialogBackdrop.classList.add('hidden'); state.dialogResolver = null; resolve(label); });
           dom.dialogButtons.appendChild(button);
         });
         dom.dialogBackdrop.classList.remove('hidden');
@@ -1005,28 +1096,10 @@
       dom.dialogInput.value = defaultValue;
       dom.dialogInput.classList.remove('hidden');
       dom.dialogButtons.replaceChildren();
-
       return new Promise(resolve => {
         state.dialogResolver = resolve;
-
-        const okButton = document.createElement('button');
-        okButton.type = 'button';
-        okButton.textContent = 'OK';
-        okButton.addEventListener('click', () => {
-          dom.dialogBackdrop.classList.add('hidden');
-          state.dialogResolver = null;
-          resolve(dom.dialogInput.value);
-        });
-
-        const cancelButton = document.createElement('button');
-        cancelButton.type = 'button';
-        cancelButton.textContent = 'Cancel';
-        cancelButton.addEventListener('click', () => {
-          dom.dialogBackdrop.classList.add('hidden');
-          state.dialogResolver = null;
-          resolve(null);
-        });
-
+        const okButton = makeButton('OK', () => { dom.dialogBackdrop.classList.add('hidden'); state.dialogResolver = null; resolve(dom.dialogInput.value); });
+        const cancelButton = makeButton('Cancel', () => { dom.dialogBackdrop.classList.add('hidden'); state.dialogResolver = null; resolve(null); });
         dom.dialogButtons.append(okButton, cancelButton);
         dom.dialogBackdrop.classList.remove('hidden');
         dom.dialogInput.focus();
@@ -1053,16 +1126,13 @@
       return Array.isArray(ids) ? ids : [];
     }
 
-    function setIndex(ids) {
-      localStorage.setItem(INDEX_KEY, JSON.stringify([...new Set(ids)]));
-    }
+    function setIndex(ids) { localStorage.setItem(INDEX_KEY, JSON.stringify([...new Set(ids)])); }
 
     function saveStack() {
       if (state.stack.name === 'Untitled Stack') {
         const name = prompt('Stack name:', state.stack.name);
         if (name && name.trim()) state.stack.name = name.trim();
       }
-
       const record = { ...state.stack, savedAt: new Date().toISOString() };
       localStorage.setItem(STORAGE_PREFIX + state.stack.id, JSON.stringify(record));
       setIndex([...getIndex(), state.stack.id]);
@@ -1074,13 +1144,10 @@
       dom.stackList.replaceChildren();
       const ids = getIndex().filter(id => localStorage.getItem(STORAGE_PREFIX + id));
       setIndex(ids);
-
       if (!ids.length) dom.stackList.textContent = 'No locally saved stacks found.';
-
       ids.forEach(id => {
         const stack = safeJsonParse(localStorage.getItem(STORAGE_PREFIX + id), null);
         if (!stack) return;
-
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'stack-item';
@@ -1092,13 +1159,10 @@
             state.selectedId = null;
             dom.loadBackdrop.classList.add('hidden');
             render();
-          } catch (error) {
-            answer(`Load failed: ${error.message}`);
-          }
+          } catch (error) { answer(`Load failed: ${error.message}`); }
         });
         dom.stackList.appendChild(button);
       });
-
       dom.loadBackdrop.classList.remove('hidden');
     }
 
@@ -1116,21 +1180,18 @@
 
     async function importStack(file) {
       if (!file) return;
-
       try {
         const text = await file.text();
         state.stack = normalizeStack(JSON.parse(text));
         state.cardIndex = 0;
         state.runMode = true;
         state.editBackground = false;
+        state.paintMode = false;
         state.selectedId = null;
         render();
         await answer(`Imported stack "${state.stack.name}".`);
-      } catch (error) {
-        await answer(`Import failed: ${error.message}`);
-      } finally {
-        byId('importInput').value = '';
-      }
+      } catch (error) { await answer(`Import failed: ${error.message}`); }
+      finally { byId('importInput').value = ''; }
     }
 
     function openCardList() {
@@ -1140,12 +1201,7 @@
         button.type = 'button';
         button.className = 'card-tile';
         button.textContent = `${index + 1}. ${card.name || 'Card'}\n${card.elements.length} card object(s)`;
-        button.addEventListener('click', () => {
-          state.cardIndex = index;
-          state.selectedId = null;
-          dom.cardListBackdrop.classList.add('hidden');
-          render();
-        });
+        button.addEventListener('click', () => { state.cardIndex = index; state.selectedId = null; dom.cardListBackdrop.classList.add('hidden'); render(); });
         dom.cardList.appendChild(button);
       });
       dom.cardListBackdrop.classList.remove('hidden');
@@ -1159,162 +1215,72 @@
 
     async function runMessageBox() {
       const commands = dom.messageText.value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      for (const command of commands) {
-        await runCommand(command);
-      }
+      for (const command of commands) await runCommand(command);
+    }
+
+    function openFind() {
+      dom.findInput.value = '';
+      dom.findResults.replaceChildren();
+      dom.findBackdrop.classList.remove('hidden');
+      dom.findInput.focus();
+    }
+
+    function runFind() {
+      const query = dom.findInput.value.trim().toLowerCase();
+      dom.findResults.replaceChildren();
+      if (!query) { dom.findResults.textContent = 'Enter search text.'; return; }
+      const results = [];
+      state.stack.cards.forEach((card, index) => {
+        const haystacks = [card.name, card.script, ...card.elements.map(element => `${element.name} ${element.text || ''} ${element.content || ''} ${element.script || ''}`)];
+        const background = state.stack.backgrounds.find(bg => bg.id === card.backgroundId);
+        if (background) haystacks.push(background.name, background.script, ...background.elements.map(element => `${element.name} ${element.text || ''} ${element.content || ''} ${element.script || ''}`));
+        if (haystacks.some(text => String(text).toLowerCase().includes(query))) results.push({ card, index });
+      });
+      if (!results.length) { dom.findResults.textContent = 'No matches.'; return; }
+      results.forEach(result => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'search-item';
+        button.textContent = `Card ${result.index + 1}: ${result.card.name}`;
+        button.addEventListener('click', () => { state.cardIndex = result.index; state.selectedId = null; dom.findBackdrop.classList.add('hidden'); render(); });
+        dom.findResults.appendChild(button);
+      });
+    }
+
+    function clearPaint() {
+      const target = paintTargetLayer();
+      if (target) target.paint = '';
+      render();
     }
 
     function createDemo() {
       const background = createBackground('Shared Background');
-      background.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'HomeBackgroundButton',
-        text: 'Home',
-        content: undefined,
-        script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 430, y: 282, width: 62, height: 28 },
-        style: { fontSize: 14, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
+      background.elements.push({ id: uid('el'), type: 'button', name: 'HomeBackgroundButton', text: 'Home', script: 'on mouseUp\n  go to card "Welcome Card"\nend mouseUp', visible: true, editable: false, z: 2, rect: { x: 430, y: 282, width: 62, height: 28 }, style: { fontSize: 14, color: '#000000', backgroundColor: '#f5f5f5' } });
 
       const card1 = createCard(background.id, 1);
       card1.name = 'Welcome Card';
-      card1.elements.push({
-        id: uid('el'),
-        type: 'field',
-        name: 'WelcomeField',
-        content: 'Welcome to the HyperCard Simulator.\nClick Next Card to test navigation.',
-        script: '',
-        visible: true,
-        editable: false,
-        rect: { x: 20, y: 20, width: 470, height: 70 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
-      });
-      card1.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'NextButton',
-        text: 'Next Card',
-        content: undefined,
-        script: 'on mouseUp\n  go to next card\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 190, y: 115, width: 130, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
+      card1.elements.push({ id: uid('el'), type: 'field', name: 'WelcomeField', content: 'Welcome to the HyperCard Simulator.\nClick Next Card to test navigation. Use Find, Message Box, Paint Mode, Card List, and Edit Mode.', script: '', visible: true, editable: false, z: 1, rect: { x: 20, y: 20, width: 470, height: 90 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card1.elements.push({ id: uid('el'), type: 'button', name: 'NextButton', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, editable: false, z: 2, rect: { x: 190, y: 130, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
 
       const card2 = createCard(background.id, 2);
       card2.name = 'Interaction Card';
-      card2.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'AskButton',
-        text: 'Ask Name',
-        content: undefined,
-        script: 'on mouseUp\n  ask "What is your name?" with "Rick"\n  put "Hello, " & it into field "ResultField"\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 40, y: 40, width: 120, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
-      card2.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'AnswerButton',
-        text: 'Choose',
-        content: undefined,
-        script: 'on mouseUp\n  answer "Pick one" with "Alpha" or "Beta"\n  put it into field "ResultField"\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 40, y: 90, width: 120, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
-      card2.elements.push({
-        id: uid('el'),
-        type: 'field',
-        name: 'ResultField',
-        content: 'Dialog results appear here.',
-        script: '',
-        visible: true,
-        editable: true,
-        rect: { x: 190, y: 40, width: 285, height: 85 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
-      });
-      card2.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'NextButton2',
-        text: 'Next Card',
-        content: undefined,
-        script: 'on mouseUp\n  go to next card\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 190, y: 150, width: 130, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'AskButton', text: 'Ask Name', script: 'on mouseUp\n  ask "What is your name?" with "Rick"\n  put "Hello, " & it into field "ResultField"\nend mouseUp', visible: true, editable: false, z: 1, rect: { x: 40, y: 40, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'AnswerButton', text: 'Choose', script: 'on mouseUp\n  answer "Pick one" with "Alpha" or "Beta"\n  put it into field "ResultField"\nend mouseUp', visible: true, editable: false, z: 2, rect: { x: 40, y: 90, width: 120, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card2.elements.push({ id: uid('el'), type: 'field', name: 'ResultField', content: 'Dialog results appear here. This field is editable in Run Mode.', script: '', visible: true, editable: true, z: 3, rect: { x: 190, y: 40, width: 285, height: 85 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card2.elements.push({ id: uid('el'), type: 'button', name: 'NextButton2', text: 'Next Card', script: 'on mouseUp\n  go to next card\nend mouseUp', visible: true, editable: false, z: 4, rect: { x: 190, y: 150, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
 
       const card3 = createCard(background.id, 3);
       card3.name = 'Visibility Card';
-      card3.elements.push({
-        id: uid('el'),
-        type: 'field',
-        name: 'SecretField',
-        content: 'Secret field',
-        script: '',
-        visible: true,
-        editable: false,
-        rect: { x: 180, y: 100, width: 160, height: 50 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' }
-      });
-      card3.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'HideSecret',
-        text: 'Hide Secret',
-        content: undefined,
-        script: 'on mouseUp\n  hide field "SecretField"\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 60, y: 45, width: 130, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
-      card3.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'LabelSecret',
-        text: 'Rename Secret',
-        content: undefined,
-        script: 'on mouseUp\n  set the text of field "SecretField" to "Renamed by script"\n  beep\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 60, y: 90, width: 130, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
-      card3.elements.push({
-        id: uid('el'),
-        type: 'button',
-        name: 'ShowSecret',
-        text: 'Show Secret',
-        content: undefined,
-        script: 'on mouseUp\n  show field "SecretField"\nend mouseUp',
-        visible: true,
-        editable: false,
-        rect: { x: 210, y: 45, width: 130, height: 34 },
-        style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' }
-      });
+      card3.elements.push({ id: uid('el'), type: 'field', name: 'SecretField', content: 'Secret field', script: '', visible: true, editable: false, z: 1, rect: { x: 180, y: 100, width: 160, height: 50 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#ffffff' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'HideSecret', text: 'Hide Secret', script: 'on mouseUp\n  hide field "SecretField"\nend mouseUp', visible: true, editable: false, z: 2, rect: { x: 60, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'LabelSecret', text: 'Rename Secret', script: 'on mouseUp\n  set the text of field "SecretField" to "Renamed by script"\n  set the backgroundColor of field "SecretField" to "#ffffcc"\n  beep\nend mouseUp', visible: true, editable: false, z: 3, rect: { x: 60, y: 90, width: 150, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
+      card3.elements.push({ id: uid('el'), type: 'button', name: 'ShowSecret', text: 'Show Secret', script: 'on mouseUp\n  show field "SecretField"\nend mouseUp', visible: true, editable: false, z: 4, rect: { x: 230, y: 45, width: 130, height: 34 }, style: { fontSize: 16, color: '#000000', backgroundColor: '#f5f5f5' } });
 
-      state.stack = normalizeStack({
-        id: uid('stack'),
-        name: 'Demo Stack',
-        backgrounds: [background],
-        cards: [card1, card2, card3],
-        nextElementNumber: 1
-      });
+      state.stack = normalizeStack({ id: uid('stack'), name: 'Demo Stack', backgrounds: [background], cards: [card1, card2, card3], nextElementNumber: 1 });
       state.cardIndex = 0;
       state.runMode = true;
       state.editBackground = false;
+      state.paintMode = false;
       state.selectedId = null;
       render();
     }
@@ -1323,98 +1289,50 @@
       if (!state.runMode || event.target !== dom.cardArea) return;
       const background = currentBackground();
       const card = currentCard();
-      Promise.resolve()
-        .then(() => runScript(background?.script || ''))
-        .then(() => runScript(card?.script || ''))
-        .catch(error => answer(`Script error: ${error.message}`));
+      Promise.resolve().then(() => runScript(background?.script || '')).then(() => runScript(card?.script || '')).catch(error => answer(`Script error: ${error.message}`));
     }
 
     function wireEvents() {
-      byId('newStackBtn').addEventListener('click', () => {
-        answer('Create a new stack? Unsaved changes will be lost.', ['Create New', 'Cancel']).then(response => {
-          if (response === 'Create New') newStack();
-        });
-      });
+      byId('newStackBtn').addEventListener('click', () => answer('Create a new stack? Unsaved changes will be lost.', ['Create New', 'Cancel']).then(response => { if (response === 'Create New') newStack(); }));
       byId('saveBtn').addEventListener('click', saveStack);
       byId('loadBtn').addEventListener('click', openLoadDialog);
       byId('exportBtn').addEventListener('click', exportStack);
       byId('importInput').addEventListener('change', event => importStack(event.target.files[0]));
-      byId('demoBtn').addEventListener('click', () => {
-        answer('Replace the current stack with demo content?', ['Create Demo', 'Cancel']).then(response => {
-          if (response === 'Create Demo') createDemo();
-        });
-      });
+      byId('demoBtn').addEventListener('click', () => answer('Replace the current stack with demo content?', ['Create Demo', 'Cancel']).then(response => { if (response === 'Create Demo') createDemo(); }));
       byId('messageBoxBtn').addEventListener('click', openMessageBox);
       byId('runMessageBtn').addEventListener('click', () => runMessageBox().catch(error => answer(`Message Box error: ${error.message}`)));
       byId('closeMessageBtn').addEventListener('click', () => dom.messageBackdrop.classList.add('hidden'));
-      byId('newCardBtn').addEventListener('click', () => {
-        const background = currentBackground() || state.stack.backgrounds[0];
-        state.stack.cards.push(createCard(background.id, state.stack.cards.length + 1));
-        state.cardIndex = state.stack.cards.length - 1;
-        state.selectedId = null;
-        render();
-      });
+      byId('findBtn').addEventListener('click', openFind);
+      byId('runFindBtn').addEventListener('click', runFind);
+      byId('closeFindBtn').addEventListener('click', () => dom.findBackdrop.classList.add('hidden'));
+      dom.findInput.addEventListener('keydown', event => { if (event.key === 'Enter') runFind(); });
+      byId('newCardBtn').addEventListener('click', () => { const background = currentBackground() || state.stack.backgrounds[0]; state.stack.cards.push(createCard(background.id, state.stack.cards.length + 1)); state.cardIndex = state.stack.cards.length - 1; state.selectedId = null; render(); });
       byId('duplicateCardBtn').addEventListener('click', duplicateCurrentCard);
       byId('cardListBtn').addEventListener('click', openCardList);
       byId('closeCardListBtn').addEventListener('click', () => dom.cardListBackdrop.classList.add('hidden'));
-      byId('prevBtn').addEventListener('click', () => {
-        state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1);
-        state.selectedId = null;
-        render();
-      });
-      byId('nextBtn').addEventListener('click', () => {
-        state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1);
-        state.selectedId = null;
-        render();
-      });
-      byId('deleteCardBtn').addEventListener('click', () => {
-        answer('Delete current card?', ['Delete', 'Cancel']).then(response => {
-          if (response === 'Delete' && state.stack.cards.length > 1) {
-            state.stack.cards.splice(state.cardIndex, 1);
-            state.cardIndex = clamp(state.cardIndex, 0, state.stack.cards.length - 1);
-            state.selectedId = null;
-            render();
-          }
-        });
-      });
+      byId('prevBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex - 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
+      byId('nextBtn').addEventListener('click', () => { state.cardIndex = clamp(state.cardIndex + 1, 0, state.stack.cards.length - 1); state.selectedId = null; render(); });
+      byId('deleteCardBtn').addEventListener('click', () => answer('Delete current card?', ['Delete', 'Cancel']).then(response => { if (response === 'Delete' && state.stack.cards.length > 1) { state.stack.cards.splice(state.cardIndex, 1); state.cardIndex = clamp(state.cardIndex, 0, state.stack.cards.length - 1); state.selectedId = null; render(); } }));
       byId('addButtonBtn').addEventListener('click', () => addElement('button'));
       byId('addFieldBtn').addEventListener('click', () => addElement('field'));
-      dom.backgroundToggle.addEventListener('change', event => {
-        state.editBackground = event.target.checked;
-        state.selectedId = null;
-        render();
-      });
-      dom.modeBtn.addEventListener('click', () => {
-        state.runMode = !state.runMode;
-        state.selectedId = null;
-        render();
-      });
+      byId('paintBtn').addEventListener('click', () => { state.paintMode = !state.paintMode; state.selectedId = null; render(); });
+      byId('clearPaintBtn').addEventListener('click', () => answer('Clear paint from the active card/background layer?', ['Clear', 'Cancel']).then(response => { if (response === 'Clear') clearPaint(); }));
+      dom.backgroundToggle.addEventListener('change', event => { state.editBackground = event.target.checked; state.selectedId = null; render(); });
+      dom.modeBtn.addEventListener('click', () => { state.runMode = !state.runMode; state.paintMode = false; state.selectedId = null; render(); });
       byId('applyScriptBtn').addEventListener('click', saveScript);
       byId('closeScriptBtn').addEventListener('click', () => dom.scriptBackdrop.classList.add('hidden'));
       byId('scriptHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
       byId('helpBtn').addEventListener('click', () => dom.helpBackdrop.classList.remove('hidden'));
       byId('closeHelpBtn').addEventListener('click', () => dom.helpBackdrop.classList.add('hidden'));
       byId('closeLoadBtn').addEventListener('click', () => dom.loadBackdrop.classList.add('hidden'));
-
       dom.cardArea.addEventListener('click', runCardScriptIfNeeded);
-      dom.cardArea.addEventListener('mousedown', event => {
-        if (!state.runMode && event.target === dom.cardArea) {
-          state.selectedId = null;
-          render();
-        }
-      });
-
+      dom.cardArea.addEventListener('mousedown', event => { if (!state.runMode && !state.paintMode && event.target === dom.cardArea) { state.selectedId = null; render(); } });
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-          closeModals();
-          return;
-        }
+        if (event.key === 'Escape') { closeModals(); state.paintMode = false; render(); return; }
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
         if (!state.runMode && state.selectedId && (event.key === 'Delete' || event.key === 'Backspace')) {
           event.preventDefault();
-          answer('Delete selected element?', ['Delete', 'Cancel']).then(response => {
-            if (response === 'Delete') deleteElement();
-          });
+          answer('Delete selected element?', ['Delete', 'Cancel']).then(response => { if (response === 'Delete') deleteElement(); });
         }
       });
     }
