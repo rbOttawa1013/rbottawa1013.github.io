@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en-CA">
 <head>
-  <!-- Version-control note: 2026-06-15 v3.0.0 professional GoC-aligned Statistics Canada learning game.
+  <!-- Version-control note: 2026-06-15 v3.0.1 professional GoC-aligned Statistics Canada learning game.
        Scope: bilingual English/French Canadian UX, accessible keyboard-first gameplay, self-contained CSS/JS, safe DOM rendering,
        expanded question bank, explanations, glossary, teacher/class mode, badges, print summary, reduced motion/high contrast support,
-       and structured QA-friendly data model. No external dependencies. -->
+       and structured QA-friendly data model, and corrected answer-before-roll turn flow. No external dependencies. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stats Adventure Canada | Aventure statistique Canada</title>
@@ -191,6 +191,7 @@
       currentPlayer: 0,
       selectedAnswer: null,
       currentChallenge: null,
+      challengeAnswered: false,
       awaitingFinal: false,
       players: [],
       positions: [],
@@ -444,6 +445,7 @@
       state.currentPlayer = 0;
       state.selectedAnswer = null;
       state.currentChallenge = null;
+      state.challengeAnswered = false;
       state.awaitingFinal = false;
       state.started = true;
       state.topicCounts = {};
@@ -512,10 +514,15 @@
     }
 
     function rollDie() {
+      if (!state.challengeAnswered) {
+        addFeedback(false, state.lang === 'fr' ? 'Répondez au défi avant de lancer le dé.' : 'Answer the challenge before rolling the die.', '');
+        return;
+      }
       const roll = Math.floor(Math.random()*6)+1;
       const old = state.positions[state.currentPlayer];
       state.positions[state.currentPlayer] = Math.min(steps.length-1, old + roll);
       state.selectedAnswer = null;
+      state.challengeAnswered = false;
       renderAll();
       presentChallengeForCurrentSquare(roll);
     }
@@ -539,6 +546,7 @@
       const step = steps[pos];
       state.currentChallenge = chooseChallenge(step.id);
       state.selectedAnswer = null;
+      state.challengeAnswered = false;
       const panel = $('challengeContent');
       panel.replaceChildren();
 
@@ -561,7 +569,8 @@
       });
       panel.appendChild(answers);
       panel.appendChild(el('div', { class:'button-row' }, [
-        el('button', { type:'button', class:'primary', onclick: submitAnswer }, t('submit')),
+        el('button', { type:'button', class:'primary', id:'submitAnswerBtn', onclick: submitAnswer }, t('submit')),
+        el('button', { type:'button', id:'rollBtn', disabled:'true', onclick: rollDie }, t('roll')),
         el('button', { type:'button', onclick: nextPlayer }, t('next'))
       ]));
     }
@@ -593,6 +602,11 @@
         state.topicCounts[state.currentChallenge.topic] = (state.topicCounts[state.currentChallenge.topic] || 0) + 1;
         updateBadges(state.currentChallenge.topic);
       }
+      state.challengeAnswered = true;
+      const submitBtn = $('submitAnswerBtn');
+      const rollBtn = $('rollBtn');
+      if (submitBtn) submitBtn.disabled = true;
+      if (rollBtn) rollBtn.disabled = false;
       addFeedback(correct, correct ? t('correct') : t('incorrect'), state.currentChallenge.explain[state.lang], state.currentChallenge.source);
       renderPlayers();
       renderBadges();
@@ -622,6 +636,7 @@
       if (!state.started) return;
       state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
       state.selectedAnswer = null;
+      state.challengeAnswered = false;
       renderAll();
       presentChallengeForCurrentSquare();
     }
@@ -667,7 +682,7 @@
       $('frBtn').addEventListener('click', () => setLanguage('fr'));
       $('playerCount').addEventListener('change', renderPlayerInputs);
       $('startBtn').addEventListener('click', startGame);
-      $('restartBtn').addEventListener('click', () => { state.started = false; state.currentChallenge = null; renderAll(); });
+      $('restartBtn').addEventListener('click', () => { state.started = false; state.currentChallenge = null; state.challengeAnswered = false; renderAll(); });
       $('rulesBtn').addEventListener('click', showRules);
       $('glossaryBtn').addEventListener('click', showGlossary);
       $('teacherBtn').addEventListener('click', showTeacher);
