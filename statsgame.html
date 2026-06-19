@@ -1,69 +1,852 @@
 <!DOCTYPE html>
 <html lang="en-CA">
 <head>
-  <!-- Version-control note: 2026-06-15 v3.2.4 single-player QA hardening pass.
-       Scope: preserves single-player-only play; fixes START-square question fallback, duplicate scoring,
-       answer-skipping before roll, predictable first-option answers, difficulty/topic alignment, full-board display,
-       bilingual English/French Canadian UI, large emoji board cells, and accessible answer-table feedback.
-       Teacher mode and glossary mode remain removed. -->
+  <!-- Version-control note: 2026-06-19 v3.3.0 gameplay repair.
+       Scope: fixes JavaScript execution, movement return logic, answer navigation, shuffled answer table,
+       duplicate scoring, bilingual rendering, full-board display, and accessible controls. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stats Adventure Canada | Aventure statistique Canada</title>
   <style>
-    :root{--red:#c8102e;--blue:#26374a;--ink:#111827;--muted:#475569;--bg:#f8fafc;--panel:#fff;--border:#cbd5e1;--ok:#0f7b35;--bad:#b91c1c;--focus:#ffbf47;--shadow:0 10px 28px rgba(15,23,42,.14)}
-    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:linear-gradient(135deg,#fff,var(--bg));line-height:1.5}button,input,select{font:inherit}button{border:1px solid var(--blue);background:#fff;color:var(--blue);border-radius:9px;padding:.6rem .8rem;min-height:42px;cursor:pointer}button.primary{background:var(--blue);color:#fff}button:disabled{opacity:.55;cursor:not-allowed}button:focus,input:focus,select:focus,[tabindex]:focus{outline:3px solid var(--focus);outline-offset:2px}.skip{position:absolute;left:-999px;background:#000;color:#fff;padding:.7rem;z-index:9}.skip:focus{left:.75rem;top:.75rem}header{background:var(--red);color:#fff;padding:1rem 1.25rem;box-shadow:var(--shadow)}header .top{display:flex;justify-content:space-between;gap:1rem;max-width:1440px;margin:auto}h1{margin:.1rem 0;font-size:clamp(1.5rem,3vw,2.25rem)}main{max-width:1440px;margin:auto;padding:1rem}.notice{border-left:6px solid #f59e0b;background:#fef9c3;padding:.8rem;border-radius:0 12px 12px 0;margin-bottom:1rem}.grid{display:grid;grid-template-columns:minmax(240px,280px) 1fr;gap:1rem;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:var(--shadow)}.controls{display:grid;gap:.75rem}.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}label{display:block;font-weight:700;margin-bottom:.2rem}input,select{width:100%;padding:.55rem;border:1px solid var(--border);border-radius:8px}.player{display:flex;justify-content:space-between;gap:.5rem;border:1px solid var(--border);border-radius:10px;padding:.6rem;background:#fff}.token{font-size:2.2rem}.board-wrap{overflow:visible}.board{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:.55rem;width:100%;min-width:0}.cell{position:relative;min-height:145px;padding:.5rem;border:2px solid var(--border);border-radius:14px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;text-align:left}.cell[aria-current="step"]{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.2)}.emoji{font-size:3.8rem;line-height:1;text-align:center}.year{font-weight:800;color:var(--red)}.topic{font-size:.92rem;font-weight:800}.kind{font-size:.78rem;color:var(--muted)}.pieces{min-height:2rem}.pieces span{font-size:2.1rem}.challenge{margin-top:1rem;border-top:4px solid var(--blue);padding-top:1rem}.meta{display:flex;flex-wrap:wrap;gap:.35rem}.tag{border:1px solid var(--border);border-radius:999px;background:#f8fafc;padding:.12rem .55rem;font-size:.82rem}.answers{display:grid;gap:.5rem;margin:.7rem 0}.answer{text-align:left}.answer.selected{background:#dbeafe;border-color:#1d4ed8}.feedback{border-radius:10px;padding:.75rem;margin:.75rem 0;border:1px solid var(--border)}.ok{background:#dcfce7;border-color:#86efac}.bad{background:#fee2e2;border-color:#fecaca}.info{background:#e0f2fe;border-color:#7dd3fc}.turn{border-top:1px solid var(--border);padding-top:.75rem;margin-top:.75rem}.answer-table{width:100%;border-collapse:collapse;margin:.75rem 0;background:#fff}.answer-table caption{text-align:left;font-weight:800;margin-bottom:.35rem}.answer-table th,.answer-table td{border:1px solid var(--border);padding:.5rem;vertical-align:top}.answer-table th{background:#f1f5f9}.correct{color:var(--ok);font-weight:800}.live{min-height:1.4rem}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.65rem}.card{border:1px solid var(--border);border-radius:10px;padding:.6rem;background:#fff}.high-contrast{--bg:#000;--panel:#000;--ink:#fff;--border:#fff;--muted:#fff;background:#000;color:#fff}.high-contrast .panel,.high-contrast .cell,.high-contrast .card,.high-contrast .player,.high-contrast input,.high-contrast select{background:#000;color:#fff;border-color:#fff}.high-contrast button{background:#000;color:#fff;border-color:#fff}@media(max-width:1100px){.grid{grid-template-columns:1fr}.board{grid-template-columns:repeat(4,minmax(115px,1fr))}}@media(max-width:640px){main{padding:.55rem}.board{grid-template-columns:repeat(2,minmax(120px,1fr))}.row,header .top{flex-direction:column;align-items:stretch}}@media print{header,.controls,.notice,.turn{display:none}.grid{display:block}.panel{box-shadow:none;margin-bottom:1rem}.board{grid-template-columns:repeat(4,1fr)}}
+    :root {
+      --red: #c8102e;
+      --blue: #26374a;
+      --ink: #111827;
+      --muted: #475569;
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #cbd5e1;
+      --ok: #0f7b35;
+      --bad: #b91c1c;
+      --focus: #ffbf47;
+      --shadow: 0 10px 28px rgba(15, 23, 42, .14);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(135deg, #fff, var(--bg));
+      line-height: 1.5;
+    }
+    button, input, select { font: inherit; }
+    button {
+      border: 1px solid var(--blue);
+      background: #fff;
+      color: var(--blue);
+      border-radius: 9px;
+      padding: .6rem .8rem;
+      min-height: 42px;
+      cursor: pointer;
+    }
+    button.primary { background: var(--blue); color: #fff; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    button:focus, input:focus, select:focus, [tabindex]:focus {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .skip {
+      position: absolute;
+      left: -999px;
+      background: #000;
+      color: #fff;
+      padding: .7rem;
+      z-index: 9;
+    }
+    .skip:focus { left: .75rem; top: .75rem; }
+    header {
+      background: var(--red);
+      color: #fff;
+      padding: 1rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    header .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      max-width: 1440px;
+      margin: auto;
+    }
+    h1 { margin: .1rem 0; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+    main { max-width: 1440px; margin: auto; padding: 1rem; }
+    .notice {
+      border-left: 6px solid #f59e0b;
+      background: #fef9c3;
+      padding: .8rem;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 280px) 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .controls { display: grid; gap: .75rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    label { display: block; font-weight: 700; margin-bottom: .2rem; }
+    input, select { width: 100%; padding: .55rem; border: 1px solid var(--border); border-radius: 8px; }
+    .player {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .6rem;
+      background: #fff;
+    }
+    .token { font-size: 2.2rem; }
+    .board-wrap { overflow: visible; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+      gap: .55rem;
+      width: 100%;
+      min-width: 0;
+    }
+    .cell {
+      position: relative;
+      min-height: 145px;
+      padding: .5rem;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: left;
+    }
+    .cell[aria-current="step"] {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(200, 16, 46, .2);
+    }
+    .emoji { font-size: 3.8rem; line-height: 1; text-align: center; }
+    .year { font-weight: 800; color: var(--red); }
+    .topic { font-size: .92rem; font-weight: 800; }
+    .kind { font-size: .78rem; color: var(--muted); }
+    .pieces { min-height: 2rem; }
+    .pieces span { font-size: 2.1rem; }
+    .challenge { margin-top: 1rem; border-top: 4px solid var(--blue); padding-top: 1rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .tag { border: 1px solid var(--border); border-radius: 999px; background: #f8fafc; padding: .12rem .55rem; font-size: .82rem; }
+    .answers { display: grid; gap: .5rem; margin: .7rem 0; }
+    .answer { text-align: left; }
+    .answer.selected { background: #dbeafe; border-color: #1d4ed8; }
+    .feedback { border-radius: 10px; padding: .75rem; margin: .75rem 0; border: 1px solid var(--border); }
+    .ok { background: #dcfce7; border-color: #86efac; }
+    .bad { background: #fee2e2; border-color: #fecaca; }
+    .info { background: #e0f2fe; border-color: #7dd3fc; }
+    .turn { border-top: 1px solid var(--border); padding-top: .75rem; margin-top: .75rem; }
+    .answer-table { width: 100%; border-collapse: collapse; margin: .75rem 0; background: #fff; }
+    .answer-table caption { text-align: left; font-weight: 800; margin-bottom: .35rem; }
+    .answer-table th, .answer-table td { border: 1px solid var(--border); padding: .5rem; vertical-align: top; }
+    .answer-table th { background: #f1f5f9; }
+    .correct { color: var(--ok); font-weight: 800; }
+    .live { min-height: 1.4rem; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .65rem; }
+    .card { border: 1px solid var(--border); border-radius: 10px; padding: .6rem; background: #fff; }
+    .high-contrast {
+      --bg: #000;
+      --panel: #000;
+      --ink: #fff;
+      --border: #fff;
+      --muted: #fff;
+      background: #000;
+      color: #fff;
+    }
+    .high-contrast .panel,
+    .high-contrast .cell,
+    .high-contrast .card,
+    .high-contrast .player,
+    .high-contrast input,
+    .high-contrast select,
+    .high-contrast .answer-table,
+    .high-contrast .answer-table th,
+    .high-contrast .tag {
+      background: #000;
+      color: #fff;
+      border-color: #fff;
+    }
+    .high-contrast button { background: #000; color: #fff; border-color: #fff; }
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+      .board { grid-template-columns: repeat(4, minmax(115px, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      main { padding: .55rem; }
+      .board { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .row, header .top { flex-direction: column; align-items: stretch; }
+    }
+    @media print {
+      header, .controls, .notice, .turn { display: none; }
+      .grid { display: block; }
+      .panel { box-shadow: none; margin-bottom: 1rem; }
+      .board { grid-template-columns: repeat(4, 1fr); }
+    }
   </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content / Passer au contenu principal</a>
-<header><div class="top"><div><h1 id="title"></h1><p id="subtitle"></p></div><div class="row" aria-label="Language"><button id="enBtn" type="button" class="primary">English</button><button id="frBtn" type="button">Français</button></div></div></header>
+<header>
+  <div class="top">
+    <div>
+      <h1 id="title"></h1>
+      <p id="subtitle"></p>
+    </div>
+    <div class="row" aria-label="Language / Langue">
+      <button id="enBtn" type="button" class="primary">English</button>
+      <button id="frBtn" type="button">Français</button>
+    </div>
+  </div>
+</header>
 <main id="main" tabindex="-1">
   <p id="notice" class="notice"></p>
   <div class="grid">
-    <aside class="panel"><h2 id="setupH"></h2><div class="controls">
-      <div><label id="playerNameL" for="playerName"></label><input id="playerName" value="Alex" autocomplete="name"></div>
-      <div><label id="difficultyL" for="difficulty"></label><select id="difficulty"><option value="low"></option><option value="medium"></option><option value="high"></option><option value="mixed"></option></select></div>
-      <div class="row"><button id="startBtn" type="button" class="primary"></button><button id="restartBtn" type="button"></button></div>
-      <div class="row"><button id="rulesBtn" type="button"></button><button id="contrastBtn" type="button"></button><button id="printBtn" type="button"></button></div>
-      <div id="playerCard" class="player" aria-live="polite"></div><div class="live" id="live" aria-live="polite"></div>
-    </div></aside>
-    <section class="panel"><h2 id="boardH"></h2><p id="rulesText"></p><p id="boardSummary" class="live" aria-live="polite"></p><div class="board-wrap"><div id="board" class="board" role="grid" aria-labelledby="boardH"></div></div><section class="challenge" aria-labelledby="challengeH"><h2 id="challengeH"></h2><div id="challenge"></div></section></section>
+    <aside class="panel">
+      <h2 id="setupH"></h2>
+      <div class="controls">
+        <div>
+          <label id="playerNameL" for="playerName"></label>
+          <input id="playerName" value="Alex" autocomplete="name">
+        </div>
+        <div>
+          <label id="difficultyL" for="difficulty"></label>
+          <select id="difficulty">
+            <option value="low"></option>
+            <option value="medium"></option>
+            <option value="high"></option>
+            <option value="mixed"></option>
+          </select>
+        </div>
+        <div class="row">
+          <button id="startBtn" type="button" class="primary"></button>
+          <button id="restartBtn" type="button"></button>
+        </div>
+        <div class="row">
+          <button id="rulesBtn" type="button"></button>
+          <button id="contrastBtn" type="button"></button>
+          <button id="printBtn" type="button"></button>
+        </div>
+        <div id="playerCard" class="player" aria-live="polite"></div>
+        <div class="live" id="live" aria-live="polite"></div>
+      </div>
+    </aside>
+    <section class="panel">
+      <h2 id="boardH"></h2>
+      <p id="rulesText"></p>
+      <p id="boardSummary" class="live" aria-live="polite"></p>
+      <div class="board-wrap"><div id="board" class="board" role="grid" aria-labelledby="boardH"></div></div>
+      <section class="challenge" aria-labelledby="challengeH">
+        <h2 id="challengeH"></h2>
+        <div id="challenge"></div>
+      </section>
+    </section>
   </div>
-  <section class="panel"><h2 id="summaryH"></h2><div id="summary" class="summary"></div></section>
+  <section class="panel">
+    <h2 id="summaryH"></h2>
+    <div id="summary" class="summary"></div>
+  </section>
 </main>
 <script>
 'use strict';
-const $=id=>document.getElementById(id);
-function el(tag,attrs={},kids=[]){const n=document.createElement(tag);Object.entries(attrs).forEach(([k,v])=>{if(v==null||v===false)return;if(k==='text')n.textContent=v;else if(k==='class')n.className=v;else if(k.startsWith('on'))n.addEventListener(k.slice(2),v);else n.setAttribute(k,String(v));});(Array.isArray(kids)?kids:[kids]).filter(Boolean).forEach(c=>n.append(c.nodeType?c:document.createTextNode(String(c))));return n}
-const I18N={en:{title:'Stats Adventure Canada',sub:'A single-player bilingual board game about official statistics, data quality, privacy and evidence-based decisions.',setup:'Game setup',playerName:'Player name',difficulty:'Difficulty',start:'Start game',restart:'Restart',rules:'Rules',contrast:'High contrast',print:'Print summary',board:'Game board',rulesText:'Choose a level. The game rolls 1 to 3 spaces, lands on a square, then asks a question matching that square title and difficulty. Answer before rolling again.',question:'Current question',summary:'Learning summary',submit:'Submit response',prev:'Previous question',next:'Next question + roll',need:'Select an answer first. You must submit before rolling again.',correct:'Correct',incorrect:'Not quite',explain:'Explanation',source:'Source note',answerTable:'Answer table for current question',option:'Option',answer:'Answer',selected:'Selected',right:'Correct answer',score:'Score',position:'Position',level:'Level',rolled:'rolled',mystery:'Mystery question',skip:'Skip ahead',back:'Go back',finishNeed:'Answer the final question correctly to win.',winner:'Winner',notStarted:'Start the game to roll from START and receive the first question.',prototype:'Prototype note: This self-contained educational prototype is inspired by Government of Canada digital principles. It is not an official Statistics Canada product.',low:'Low',medium:'Medium',high:'High',mixed:'Mixed',rulesBody:'Single-player mode. Choose low, medium, high or mixed. The game rolls 1 to 3 spaces. Each normal square has questions aligned to that square title and difficulty. Skip-ahead and go-back squares move first; the destination square then supplies the question. Mystery squares use a data-literacy pool. The final square requires a correct evidence question to win.'},fr:{title:'Aventure statistique Canada',sub:'Un jeu de société bilingue solo sur les statistiques officielles, la qualité des données, la protection des renseignements personnels et les décisions fondées sur des données probantes.',setup:'Configuration du jeu',playerName:'Nom du joueur',difficulty:'Niveau de difficulté',start:'Commencer',restart:'Recommencer',rules:'Règles',contrast:'Contraste élevé',print:'Imprimer le résumé',board:'Plateau de jeu',rulesText:'Choisissez un niveau. Le jeu lance un dé de 1 à 3 cases, arrive sur une case, puis pose une question correspondant au titre de la case et au niveau. Répondez avant de relancer.',question:'Question actuelle',summary:'Sommaire d’apprentissage',submit:'Soumettre la réponse',prev:'Question précédente',next:'Question suivante + dé',need:'Sélectionnez d’abord une réponse. Vous devez soumettre avant de relancer.',correct:'Bonne réponse',incorrect:'Pas tout à fait',explain:'Explication',source:'Note sur la source',answerTable:'Tableau des réponses pour la question actuelle',option:'Option',answer:'Réponse',selected:'Sélectionnée',right:'Bonne réponse',score:'Pointage',position:'Position',level:'Niveau',rolled:'a lancé',mystery:'Question mystère',skip:'Avancer',back:'Reculer',finishNeed:'Répondez correctement à la question finale pour gagner.',winner:'Gagnant',notStarted:'Commencez le jeu pour lancer le dé à partir de DÉPART et recevoir la première question.',prototype:'Note sur le prototype : Ce prototype éducatif autonome s’inspire des principes numériques du gouvernement du Canada. Il ne s’agit pas d’un produit officiel de Statistique Canada.',low:'Faible',medium:'Moyen',high:'Élevé',mixed:'Mixte',rulesBody:'Mode solo. Choisissez le niveau faible, moyen, élevé ou mixte. Le jeu lance un dé de 1 à 3 cases. Chaque case normale contient des questions alignées avec le titre de la case et le niveau choisi. Les cases Avancer et Reculer déplacent d’abord le pion; la case de destination fournit ensuite la question. Les cases Mystère utilisent une banque de littératie des données. La case finale exige une bonne réponse sur les données probantes pour gagner.'}};
-const CELLS=[['start','start','START','🚩','Start','Départ'],['census','normal','1666','📜','First census','Premier recensement'],['national','normal','1871','🏛️','National census','Recensement national'],['quality','normal','1918','✅','Quality and trust','Qualité et confiance'],['housing','normal','1941','🏠','Housing data','Données sur le logement'],['mystery','mystery','?','❓','Mystery question','Question mystère'],['labour','normal','1971','💼','Labour market','Marché du travail'],['back','back','OOPS','🔙','Sampling bias setback','Recul lié au biais d’échantillonnage',-1],['digital','normal','1986','💾','Digital processing','Traitement numérique'],['open','normal','2001','🌐','Online access','Accès en ligne'],['survey','normal','2011','🧪','Survey design','Conception d’enquête'],['skip','skip','BONUS','🚀','Metadata shortcut','Raccourci métadonnées',1],['online','normal','2016','🖥️','Digital census','Recensement numérique'],['crisis','normal','2021','🛡️','Crisis data','Données en temps de crise'],['ai','normal','2026','🤖','AI and data','IA et données'],['finish','finish','FINISH','🏁','Evidence champion','Champion des données probantes']].map(r=>({id:r[0],kind:r[1],year:r[2],emoji:r[3],topic:{en:r[4],fr:r[5]},move:r[6]||0}));
-const TOPICS={census:['First census','Premier recensement','population counts and households','les chiffres de population et les ménages','coverage and scope','la couverture et le champ','historical comparability','la comparabilité historique'],national:['National census','Recensement national','community-level population information','l’information démographique à l’échelle locale','definitions and geography notes','les définitions et les notes géographiques','boundary or method changes','les changements de limites ou de méthode'],quality:['Quality and trust','Qualité et confiance','evidence, transparency and confidentiality','les données probantes, la transparence et la confidentialité','methods and quality review','les méthodes et l’examen de la qualité','fitness for use','l’adéquation à l’utilisation'],housing:['Housing data','Données sur le logement','dwellings and living conditions','les logements et les conditions de vie','household and dwelling concepts','les concepts de ménage et de logement','affordability or comparability limits','les limites liées à l’abordabilité ou à la comparabilité'],labour:['Labour market','Marché du travail','employment and unemployment indicators','les indicateurs d’emploi et de chômage','labour-force definitions','les définitions de la population active','participation-rate context','le contexte du taux d’activité'],digital:['Digital processing','Traitement numérique','large data processing','le traitement de grands volumes de données','validation and audit trails','la validation et les pistes de vérification','automation risks at scale','les risques d’automatisation à grande échelle'],open:['Online access','Accès en ligne','transparent public access to data','l’accès public transparent aux données','metadata and machine-readable formats','les métadonnées et les formats lisibles par machine','confidentiality in open data','la confidentialité dans les données ouvertes'],survey:['Survey design','Conception d’enquête','samples and response patterns','les échantillons et les profils de réponse','bias and non-response','les biais et la non-réponse','methodology limits','les limites méthodologiques'],online:['Digital census','Recensement numérique','secure and accessible online questionnaires','les questionnaires en ligne sécurisés et accessibles','usability, privacy and testing','la convivialité, la confidentialité et les essais','digital inclusion risks','les risques liés à l’inclusion numérique'],crisis:['Crisis data','Données en temps de crise','timely evidence during emergencies','les données probantes opportunes en situation d’urgence','clear caveats and revisions','les mises en garde et les révisions claires','timeliness versus precision','l’actualité par rapport à la précision'],ai:['AI and data','IA et données','quality, privacy and bias checks','les vérifications de qualité, de confidentialité et de biais','data provenance and human review','la provenance des données et l’examen humain','responsible AI governance','la gouvernance responsable de l’IA'],finish:['Evidence champion','Champion des données probantes','evidence-based decisions and public understanding','les décisions fondées sur des données probantes et la compréhension du public','methods, context and uncertainty','les méthodes, le contexte et l’incertitude','balanced evidence synthesis','la synthèse équilibrée des données probantes'],mystery:['Mystery question','Question mystère','data curiosity and chart/source checks','la curiosité statistique et la vérification des graphiques et des sources','denominators and context','les dénominateurs et le contexte','correlation, causation and overclaiming','la corrélation, la causalité et les conclusions excessives']};
-function buildQuestions(id){const a=TOPICS[id]||TOPICS.finish,[en,fr,bEn,bFr,mEn,mFr,hEn,hFr]=a;return[['low',en,fr,`Which idea best matches ${en}?`,`Quelle idée correspond le mieux à « ${fr} »?`,[bEn,'a random guess','a decorative label'],[bFr,'une supposition au hasard','un libellé décoratif'],`This square is about ${bEn}.`,`Cette case porte sur ${bFr}.`],['low',en,fr,`Why does ${en} matter?`,`Pourquoi « ${fr} » est-il important?`,['It supports better public understanding','It hides all uncertainty','It replaces judgment'],['Cela soutient une meilleure compréhension du public','Cela cache toute l’incertitude','Cela remplace le jugement'],`${en} helps users interpret official statistics in context.`,`« ${fr} » aide les utilisateurs à interpréter les statistiques officielles en contexte.`],['medium',en,fr,`What should users check when using ${en}?`,`Que devraient vérifier les utilisateurs lorsqu’ils utilisent « ${fr} »?`,[mEn,'the button colour only','whether the number is popular'],[mFr,'seulement la couleur du bouton','si le nombre est populaire'],`Responsible use requires checking ${mEn}.`,`Une utilisation responsable exige de vérifier ${mFr}.`],['medium',en,fr,`Which action improves quality for ${en}?`,`Quelle action améliore la qualité pour « ${fr} »?`,['Review definitions, sources and limitations','Remove all notes','Avoid documentation'],['Examiner les définitions, les sources et les limites','Supprimer toutes les notes','Éviter la documentation'],`Quality improves when definitions, sources and limitations are clear.`,`La qualité s’améliore lorsque les définitions, les sources et les limites sont claires.`],['high',en,fr,`What is a higher-risk interpretation issue for ${en}?`,`Quel est un enjeu d’interprétation plus risqué pour « ${fr} »?`,[hEn,'font size','the presence of a title'],[hFr,'la taille de la police','la présence d’un titre'],`Advanced interpretation must consider ${hEn}.`,`Une interprétation avancée doit tenir compte de ${hFr}.`],['high',en,fr,`What makes a conclusion about ${en} stronger?`,`Qu’est-ce qui renforce une conclusion au sujet de « ${fr} »?`,['Relevant evidence, transparent methods and stated limits','A louder claim','A missing source'],['Des données pertinentes, des méthodes transparentes et des limites énoncées','Une affirmation plus forte','Une source absente'],`Strong conclusions connect evidence, method and limits.`,`Les conclusions solides relient les données probantes, la méthode et les limites.`]].map(q=>({difficulty:q[0],square:{en:q[1],fr:q[2]},text:{en:q[3],fr:q[4]},answers:{en:q[5],fr:q[6]},correct:0,explain:{en:q[7],fr:q[8]},source:`${q[1]} learning objective`}))}
-const BANK={};Object.keys(TOPICS).forEach(id=>BANK[id]=buildQuestions(id));
-let S={lang:'en',started:false,name:'Alex',token:'🦫',pos:0,score:0,challenge:null,pool:[],qIndex:0,selected:null,answered:false,won:false,lastRoll:null,qCursor:{},optionOrder:[]};
-const tr=k=>I18N[S.lang][k]||k, cell=()=>CELLS[S.pos], label=d=>tr(d);
-function shuffle(n){const a=Array.from({length:n},(_,i)=>i);for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function poolFor(id){if(id==='start')return[];const base=id==='mystery'?BANK.mystery:(BANK[id]||BANK.finish);const d=$('difficulty').value;return d==='mixed'?base:(base.filter(q=>q.difficulty===d).length?base.filter(q=>q.difficulty===d):base)}
-function keyFor(c){return `${c.id}:${$('difficulty').value}`}
-function renderText(){document.documentElement.lang=S.lang==='fr'?'fr-CA':'en-CA';$('title').textContent=tr('title');$('subtitle').textContent=tr('sub');$('notice').textContent=tr('prototype');$('setupH').textContent=tr('setup');$('playerNameL').textContent=tr('playerName');$('difficultyL').textContent=tr('difficulty');$('startBtn').textContent=tr('start');$('restartBtn').textContent=tr('restart');$('rulesBtn').textContent=tr('rules');$('contrastBtn').textContent=tr('contrast');$('printBtn').textContent=tr('print');$('boardH').textContent=tr('board');$('rulesText').textContent=tr('rulesText');$('challengeH').textContent=tr('question');$('summaryH').textContent=tr('summary');$('enBtn').classList.toggle('primary',S.lang==='en');$('frBtn').classList.toggle('primary',S.lang==='fr');[...$('difficulty').options].forEach(o=>o.textContent=label(o.value))}
-function renderPlayer(){$('playerCard').replaceChildren(el('span',{},[el('span',{class:'token','aria-hidden':'true',text:S.token}),' ',S.name]),el('span',{text:`${tr('score')}: ${S.score} | ${cell().year}`}))}
-function renderBoard(){const b=$('board');b.replaceChildren();CELLS.forEach((c,i)=>{const special=c.kind==='skip'?`${tr('skip')} +${c.move}`:c.kind==='back'?`${tr('back')} ${c.move}`:c.kind==='mystery'?tr('mystery'):c.kind==='finish'?'FINISH':c.kind==='start'?'START':'';b.append(el('button',{type:'button',class:'cell',role:'gridcell','aria-current':S.started&&S.pos===i?'step':null,'aria-label':`${c.year} ${c.topic[S.lang]} ${special}`,onclick:()=>{$('live').textContent=`${c.year}: ${c.topic[S.lang]}`}},[el('div',{class:'emoji','aria-hidden':'true',text:c.emoji}),el('div',{class:'year',text:c.year}),el('div',{class:'topic',text:c.topic[S.lang]}),el('div',{class:'kind',text:special}),el('div',{class:'pieces'},S.started&&S.pos===i?[el('span',{'aria-hidden':'true',text:S.token})]:[])]))});$('boardSummary').textContent=S.started?`${S.token} ${S.name}: ${cell().year} — ${cell().topic[S.lang]}${S.lastRoll?` | ${tr('rolled')} ${S.lastRoll}`:''}`:tr('notStarted')}
-function renderSummary(){const w=$('summary');w.replaceChildren();if(!S.started){w.append(el('p',{text:S.lang==='fr'?'Aucun résultat pour le moment.':'No results yet.'}));return}w.append(el('div',{class:'card'},[el('strong',{text:`${S.token} ${S.name}`}),el('p',{text:`${tr('score')}: ${S.score}`}),el('p',{text:`${tr('position')}: ${cell().year} — ${cell().topic[S.lang]}`}),el('p',{text:`${tr('level')}: ${label($('difficulty').value)}`})]))}
-function renderAll(){renderText();renderPlayer();renderBoard();renderSummary()}
-function roll(){return Math.floor(Math.random()*3)+1}
-function move(r){S.lastRoll=r;S.pos=Math.min(CELLS.length-1,S.pos+r);let c=cell();if(c.kind==='skip'||c.kind==='back'){const from=c;S.pos=Math.max(0,Math.min(CELLS.length-1,S.pos+c.move));c=cell();$('live').textContent=`${from.topic[S.lang]}: ${from.move>0?'+':''}${from.move}. ${S.name} ${c.year} — ${c.topic[S.lang]}`}return c}
-function present(dir=0,feedback=null){const c=cell();S.pool=poolFor(c.id);const key=keyFor(c);const panel=$('challenge');panel.replaceChildren();if(feedback)panel.append(feedback);if(!S.pool.length){panel.append(el('p',{class:'feedback info',text:tr('notStarted')}));return}if(dir)S.qCursor[key]=((S.qCursor[key]??S.qIndex)+dir+S.pool.length)%S.pool.length;else S.qCursor[key]=(S.qCursor[key]??0)%S.pool.length;S.qIndex=S.qCursor[key];S.challenge=S.pool[S.qIndex];S.selected=null;S.answered=false;S.optionOrder=shuffle(S.challenge.answers[S.lang].length);panel.append(el('div',{class:'meta'},[el('span',{class:'tag',text:c.year}),el('span',{class:'tag',text:c.topic[S.lang]}),el('span',{class:'tag',text:`${tr('level')}: ${label(S.challenge.difficulty)}`}),c.kind==='mystery'?el('span',{class:'tag',text:tr('mystery')}):null]));if(c.kind==='finish')panel.append(el('p',{class:'feedback info',text:tr('finishNeed')}));panel.append(el('h3',{text:`${S.challenge.square[S.lang]}: ${S.challenge.text[S.lang]}`}));const answers=el('div',{class:'answers',role:'radiogroup','aria-label':S.challenge.text[S.lang]});S.optionOrder.forEach((answerIndex,displayIndex)=>answers.append(el('button',{type:'button',class:'answer',role:'radio','aria-checked':'false',onclick:()=>select(answerIndex)},`${String.fromCharCode(65+displayIndex)}. ${S.challenge.answers[S.lang][answerIndex]}`)));panel.append(answers,controls())}
-function controls(){return el('div',{class:'row turn'},[el('button',{type:'button',class:'primary',onclick:submit,text:tr('submit')}),el('button',{type:'button',onclick:()=>present(-1),text:tr('prev')}),el('button',{type:'button',onclick:()=>nextRoll(),text:tr('next')})])}
-function select(i){if(S.answered)return;S.selected=i;document.querySelectorAll('.answer').forEach((b,n)=>{const active=S.optionOrder[n]===i;b.classList.toggle('selected',active);b.setAttribute('aria-checked',active?'true':'false')})}
-function submit(){if(!S.challenge||S.answered)return;if(S.selected==null){$('live').textContent=tr('need');return}S.answered=true;document.querySelectorAll('#challenge .answer').forEach(b=>b.disabled=true);document.querySelectorAll('#challenge .turn button').forEach(b=>{if(b.textContent===tr('submit'))b.disabled=true});const q=S.challenge,ok=S.selected===q.correct;if(ok)S.score+=10;$('challenge').append(answerTable(q),el('div',{class:`feedback ${ok?'ok':'bad'}`,role:'status'},[el('strong',{text:ok?tr('correct'):tr('incorrect')}),el('p',{},[el('strong',{text:tr('explain')+': '}),q.explain[S.lang]]),el('p',{},[el('strong',{text:tr('source')+': '}),q.source])]));const k=keyFor(cell());S.qCursor[k]=((S.qCursor[k]??S.qIndex)+1)%S.pool.length;if(cell().kind==='finish'&&ok){S.won=true;$('challenge').append(el('div',{class:'feedback ok'},el('strong',{text:`${tr('winner')}: ${S.token} ${S.name}`})))}renderPlayer();renderSummary()}
-function answerTable(q){return el('table',{class:'answer-table'},[el('caption',{text:tr('answerTable')}),el('thead',{},el('tr',{},[el('th',{scope:'col',text:tr('option')}),el('th',{scope:'col',text:tr('answer')}),el('th',{scope:'col',text:tr('selected')}),el('th',{scope:'col',text:tr('right')})])),el('tbody',{},q.answers[S.lang].map((a,i)=>el('tr',{},[el('th',{scope:'row',text:String.fromCharCode(65+i)}),el('td',{text:a}),el('td',{text:i===S.selected?'✓':''}),el('td',{class:i===q.correct?'correct':'',text:i===q.correct?'✓':''})]))),el('tfoot',{},el('tr',{},el('td',{colspan:'4'},`${tr('explain')}: ${q.explain[S.lang]} | ${tr('source')}: ${q.source}`)))])}
-function nextRoll(fromStart=false){if(!S.started||S.won)return;if(!fromStart&&S.challenge&&!S.answered){$('live').textContent=tr('need');return}const r=roll();const c=move(r);renderAll();present(0,el('div',{class:'feedback info',text:`${S.name} ${tr('rolled')} ${r}. ${c.year} — ${c.topic[S.lang]}`}))}
-function start(){S.name=($('playerName').value||'Alex').trim();S.started=true;S.won=false;S.score=0;S.pos=0;S.lastRoll=null;S.challenge=null;S.answered=true;S.qCursor={};renderAll();nextRoll(true)}
-function restart(){S.started=false;S.won=false;S.score=0;S.pos=0;S.lastRoll=null;S.challenge=null;S.selected=null;S.answered=false;S.qCursor={};renderAll();$('challenge').textContent=tr('notStarted');$('live').textContent=''}
-function setLang(lang){S.lang=lang;renderAll();if(S.started&&S.challenge&&!S.won)present()}
-function validateContent(){const issues=[];CELLS.forEach(c=>{if(['start','skip','back'].includes(c.kind))return;const pool=poolFor(c.id);['low','medium','high'].forEach(d=>{if((c.id==='mystery'?BANK.mystery:BANK[c.id]||BANK.finish).filter(q=>q.difficulty===d).length<2)issues.push(`${c.id}:${d}`)});pool.forEach(q=>{if(q.square.en!==c.topic.en||q.square.fr!==c.topic.fr)issues.push(`${c.id}:title`);if(q.correct<0||q.correct>=q.answers.en.length||q.answers.en.length!==q.answers.fr.length)issues.push(`${c.id}:answer`)})});return issues}
-$('enBtn').onclick=()=>setLang('en');$('frBtn').onclick=()=>setLang('fr');$('difficulty').onchange=()=>{if(S.started&&S.challenge&&!S.won)present();renderAll()};$('startBtn').onclick=start;$('restartBtn').onclick=restart;$('rulesBtn').onclick=()=>alert(tr('rulesBody'));$('contrastBtn').onclick=()=>document.body.classList.toggle('high-contrast');$('printBtn').onclick=()=>window.print();
-const contentIssues=validateContent();renderAll();$('challenge').textContent=contentIssues.length?`Content validation issue: ${contentIssues.join(', ')}`:tr('notStarted');
+
+const $ = id => document.getElementById(id);
+
+function el(tag, attrs = {}, kids = []) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === false) return;
+    if (key === 'text') node.textContent = value;
+    else if (key === 'class') node.className = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, String(value));
+  });
+  (Array.isArray(kids) ? kids : [kids])
+    .filter(child => child !== null && child !== undefined && child !== false)
+    .forEach(child => node.append(child.nodeType ? child : document.createTextNode(String(child))));
+  return node;
+}
+
+const I18N = {
+  en: {
+    title: 'Stats Adventure Canada',
+    sub: 'A single-player bilingual board game about official statistics, data quality, privacy and evidence-based decisions.',
+    setup: 'Game setup',
+    playerName: 'Player name',
+    difficulty: 'Difficulty',
+    start: 'Start game',
+    restart: 'Restart',
+    rules: 'Rules',
+    contrast: 'High contrast',
+    print: 'Print summary',
+    board: 'Game board',
+    rulesText: 'Choose a level. The game rolls 1 to 3 spaces, lands on a square, then asks a question matching that square title and difficulty. Answer before rolling again.',
+    question: 'Current question',
+    summary: 'Learning summary',
+    submit: 'Submit response',
+    prev: 'Previous question',
+    next: 'Next question + roll',
+    need: 'Select an answer and submit before rolling or changing questions.',
+    correct: 'Correct',
+    incorrect: 'Not quite',
+    explain: 'Explanation',
+    source: 'Source note',
+    answerTable: 'Answer table for current question',
+    option: 'Option',
+    answer: 'Answer',
+    selected: 'Selected',
+    right: 'Correct answer',
+    score: 'Score',
+    position: 'Position',
+    level: 'Level',
+    rolled: 'rolled',
+    mystery: 'Mystery question',
+    skip: 'Skip ahead',
+    back: 'Go back',
+    finishNeed: 'Answer the final question correctly to win.',
+    winner: 'Winner',
+    alreadyAnswered: 'Already answered. Score is not added twice.',
+    notStarted: 'Start the game to roll from START and receive the first question.',
+    noResults: 'No results yet.',
+    prototype: 'Prototype note: This self-contained educational prototype is inspired by Government of Canada digital principles. It is not an official Statistics Canada product.',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    mixed: 'Mixed',
+    rulesBody: 'Single-player mode. Choose low, medium, high or mixed. The game rolls 1 to 3 spaces. Each normal square has questions aligned to that square title and difficulty. Skip-ahead and go-back squares move first; the destination square then supplies the question. Mystery squares use a data-literacy pool. The final square requires a correct evidence question to win.'
+  },
+  fr: {
+    title: 'Aventure statistique Canada',
+    sub: 'Un jeu de société bilingue solo sur les statistiques officielles, la qualité des données, la protection des renseignements personnels et les décisions fondées sur des données probantes.',
+    setup: 'Configuration du jeu',
+    playerName: 'Nom du joueur',
+    difficulty: 'Niveau de difficulté',
+    start: 'Commencer',
+    restart: 'Recommencer',
+    rules: 'Règles',
+    contrast: 'Contraste élevé',
+    print: 'Imprimer le résumé',
+    board: 'Plateau de jeu',
+    rulesText: 'Choisissez un niveau. Le jeu lance un dé de 1 à 3 cases, arrive sur une case, puis pose une question correspondant au titre de la case et au niveau. Répondez avant de relancer.',
+    question: 'Question actuelle',
+    summary: 'Sommaire d’apprentissage',
+    submit: 'Soumettre la réponse',
+    prev: 'Question précédente',
+    next: 'Question suivante + dé',
+    need: 'Sélectionnez une réponse et soumettez-la avant de relancer ou de changer de question.',
+    correct: 'Bonne réponse',
+    incorrect: 'Pas tout à fait',
+    explain: 'Explication',
+    source: 'Note sur la source',
+    answerTable: 'Tableau des réponses pour la question actuelle',
+    option: 'Option',
+    answer: 'Réponse',
+    selected: 'Sélectionnée',
+    right: 'Bonne réponse',
+    score: 'Pointage',
+    position: 'Position',
+    level: 'Niveau',
+    rolled: 'a lancé',
+    mystery: 'Question mystère',
+    skip: 'Avancer',
+    back: 'Reculer',
+    finishNeed: 'Répondez correctement à la question finale pour gagner.',
+    winner: 'Gagnant',
+    alreadyAnswered: 'Question déjà répondue. Le pointage n’est pas ajouté deux fois.',
+    notStarted: 'Commencez le jeu pour lancer le dé à partir de DÉPART et recevoir la première question.',
+    noResults: 'Aucun résultat pour le moment.',
+    prototype: 'Note sur le prototype : Ce prototype éducatif autonome s’inspire des principes numériques du gouvernement du Canada. Il ne s’agit pas d’un produit officiel de Statistique Canada.',
+    low: 'Faible',
+    medium: 'Moyen',
+    high: 'Élevé',
+    mixed: 'Mixte',
+    rulesBody: 'Mode solo. Choisissez le niveau faible, moyen, élevé ou mixte. Le jeu lance un dé de 1 à 3 cases. Chaque case normale contient des questions alignées avec le titre de la case et le niveau choisi. Les cases Avancer et Reculer déplacent d’abord le pion; la case de destination fournit ensuite la question. Les cases Mystère utilisent une banque de littératie des données. La case finale exige une bonne réponse sur les données probantes pour gagner.'
+  }
+};
+
+const CELLS = [
+  ['start', 'start', 'START', '🚩', 'Start', 'Départ'],
+  ['census', 'normal', '1666', '📜', 'First census', 'Premier recensement'],
+  ['national', 'normal', '1871', '🏛️', 'National census', 'Recensement national'],
+  ['quality', 'normal', '1918', '✅', 'Quality and trust', 'Qualité et confiance'],
+  ['housing', 'normal', '1941', '🏠', 'Housing data', 'Données sur le logement'],
+  ['mystery', 'mystery', '?', '❓', 'Mystery question', 'Question mystère'],
+  ['labour', 'normal', '1971', '💼', 'Labour market', 'Marché du travail'],
+  ['back', 'back', 'OOPS', '🔙', 'Sampling bias setback', 'Recul lié au biais d’échantillonnage', -1],
+  ['digital', 'normal', '1986', '💾', 'Digital processing', 'Traitement numérique'],
+  ['open', 'normal', '2001', '🌐', 'Online access', 'Accès en ligne'],
+  ['survey', 'normal', '2011', '🧪', 'Survey design', 'Conception d’enquête'],
+  ['skip', 'skip', 'BONUS', '🚀', 'Metadata shortcut', 'Raccourci métadonnées', 1],
+  ['online', 'normal', '2016', '🖥️', 'Digital census', 'Recensement numérique'],
+  ['crisis', 'normal', '2021', '🛡️', 'Crisis data', 'Données en temps de crise'],
+  ['ai', 'normal', '2026', '🤖', 'AI and data', 'IA et données'],
+  ['finish', 'finish', 'FINISH', '🏁', 'Evidence champion', 'Champion des données probantes']
+].map(row => ({ id: row[0], kind: row[1], year: row[2], emoji: row[3], topic: { en: row[4], fr: row[5] }, move: row[6] || 0 }));
+
+const TOPICS = {
+  census: ['First census', 'Premier recensement', 'population counts and households', 'les chiffres de population et les ménages', 'coverage and scope', 'la couverture et le champ', 'historical comparability', 'la comparabilité historique'],
+  national: ['National census', 'Recensement national', 'community-level population information', 'l’information démographique à l’échelle locale', 'definitions and geography notes', 'les définitions et les notes géographiques', 'boundary or method changes', 'les changements de limites ou de méthode'],
+  quality: ['Quality and trust', 'Qualité et confiance', 'evidence, transparency and confidentiality', 'les données probantes, la transparence et la confidentialité', 'methods and quality review', 'les méthodes et l’examen de la qualité', 'fitness for use', 'l’adéquation à l’utilisation'],
+  housing: ['Housing data', 'Données sur le logement', 'dwellings and living conditions', 'les logements et les conditions de vie', 'household and dwelling concepts', 'les concepts de ménage et de logement', 'affordability or comparability limits', 'les limites liées à l’abordabilité ou à la comparabilité'],
+  labour: ['Labour market', 'Marché du travail', 'employment and unemployment indicators', 'les indicateurs d’emploi et de chômage', 'labour-force definitions', 'les définitions de la population active', 'participation-rate context', 'le contexte du taux d’activité'],
+  digital: ['Digital processing', 'Traitement numérique', 'large data processing', 'le traitement de grands volumes de données', 'validation and audit trails', 'la validation et les pistes de vérification', 'automation risks at scale', 'les risques d’automatisation à grande échelle'],
+  open: ['Online access', 'Accès en ligne', 'transparent public access to data', 'l’accès public transparent aux données', 'metadata and machine-readable formats', 'les métadonnées et les formats lisibles par machine', 'confidentiality in open data', 'la confidentialité dans les données ouvertes'],
+  survey: ['Survey design', 'Conception d’enquête', 'samples and response patterns', 'les échantillons et les profils de réponse', 'bias and non-response', 'les biais et la non-réponse', 'methodology limits', 'les limites méthodologiques'],
+  online: ['Digital census', 'Recensement numérique', 'secure and accessible online questionnaires', 'les questionnaires en ligne sécurisés et accessibles', 'usability, privacy and testing', 'la convivialité, la confidentialité et les essais', 'digital inclusion risks', 'les risques liés à l’inclusion numérique'],
+  crisis: ['Crisis data', 'Données en temps de crise', 'timely evidence during emergencies', 'les données probantes opportunes en situation d’urgence', 'clear caveats and revisions', 'les mises en garde et les révisions claires', 'timeliness versus precision', 'l’actualité par rapport à la précision'],
+  ai: ['AI and data', 'IA et données', 'quality, privacy and bias checks', 'les vérifications de qualité, de confidentialité et de biais', 'data provenance and human review', 'la provenance des données et l’examen humain', 'responsible AI governance', 'la gouvernance responsable de l’IA'],
+  finish: ['Evidence champion', 'Champion des données probantes', 'evidence-based decisions and public understanding', 'les décisions fondées sur des données probantes et la compréhension du public', 'methods, context and uncertainty', 'les méthodes, le contexte et l’incertitude', 'balanced evidence synthesis', 'la synthèse équilibrée des données probantes'],
+  mystery: ['Mystery question', 'Question mystère', 'data curiosity and chart/source checks', 'la curiosité statistique et la vérification des graphiques et des sources', 'denominators and context', 'les dénominateurs et le contexte', 'correlation, causation and overclaiming', 'la corrélation, la causalité et les conclusions excessives']
+};
+
+function buildQuestions(id) {
+  const topic = TOPICS[id] || TOPICS.finish;
+  const [en, fr, bEn, bFr, mEn, mFr, hEn, hFr] = topic;
+  const rows = [
+    ['low', en, fr, `Which idea best matches ${en}?`, `Quelle idée correspond le mieux à « ${fr} »?`, [bEn, 'a random guess', 'a decorative label'], [bFr, 'une supposition au hasard', 'un libellé décoratif'], `This square is about ${bEn}.`, `Cette case porte sur ${bFr}.`],
+    ['low', en, fr, `Why does ${en} matter?`, `Pourquoi « ${fr} » est-il important?`, ['It supports better public understanding', 'It hides all uncertainty', 'It replaces judgment'], ['Cela soutient une meilleure compréhension du public', 'Cela cache toute l’incertitude', 'Cela remplace le jugement'], `${en} helps users interpret official statistics in context.`, `« ${fr} » aide les utilisateurs à interpréter les statistiques officielles en contexte.`],
+    ['medium', en, fr, `What should users check when using ${en}?`, `Que devraient vérifier les utilisateurs lorsqu’ils utilisent « ${fr} »?`, [mEn, 'the button colour only', 'whether the number is popular'], [mFr, 'seulement la couleur du bouton', 'si le nombre est populaire'], `Responsible use requires checking ${mEn}.`, `Une utilisation responsable exige de vérifier ${mFr}.`],
+    ['medium', en, fr, `Which action improves quality for ${en}?`, `Quelle action améliore la qualité pour « ${fr} »?`, ['Review definitions, sources and limitations', 'Remove all notes', 'Avoid documentation'], ['Examiner les définitions, les sources et les limites', 'Supprimer toutes les notes', 'Éviter la documentation'], 'Quality improves when definitions, sources and limitations are clear.', 'La qualité s’améliore lorsque les définitions, les sources et les limites sont claires.'],
+    ['high', en, fr, `What is a higher-risk interpretation issue for ${en}?`, `Quel est un enjeu d’interprétation plus risqué pour « ${fr} »?`, [hEn, 'font size', 'the presence of a title'], [hFr, 'la taille de la police', 'la présence d’un titre'], `Advanced interpretation must consider ${hEn}.`, `Une interprétation avancée doit tenir compte de ${hFr}.`],
+    ['high', en, fr, `What makes a conclusion about ${en} stronger?`, `Qu’est-ce qui renforce une conclusion au sujet de « ${fr} »?`, ['Relevant evidence, transparent methods and stated limits', 'A louder claim', 'A missing source'], ['Des données pertinentes, des méthodes transparentes et des limites énoncées', 'Une affirmation plus forte', 'Une source absente'], 'Strong conclusions connect evidence, method and limits.', 'Les conclusions solides relient les données probantes, la méthode et les limites.']
+  ];
+  return rows.map(row => ({
+    difficulty: row[0],
+    square: { en: row[1], fr: row[2] },
+    text: { en: row[3], fr: row[4] },
+    answers: { en: row[5], fr: row[6] },
+    correct: 0,
+    explain: { en: row[7], fr: row[8] },
+    source: `${row[1]} learning objective`
+  }));
+}
+
+const BANK = {};
+Object.keys(TOPICS).forEach(id => { BANK[id] = buildQuestions(id); });
+
+const S = {
+  lang: 'en',
+  started: false,
+  name: 'Alex',
+  token: '🦫',
+  pos: 0,
+  score: 0,
+  challenge: null,
+  pool: [],
+  qIndex: 0,
+  selected: null,
+  answered: false,
+  answerOk: null,
+  answerWasRepeat: false,
+  won: false,
+  lastRoll: null,
+  qCursor: {},
+  optionOrder: [],
+  answeredKeys: {},
+  history: []
+};
+
+const tr = key => I18N[S.lang][key] || key;
+const currentCell = () => CELLS[S.pos];
+const levelLabel = value => tr(value);
+
+function shuffle(count) {
+  const indexes = Array.from({ length: count }, (_, index) => index);
+  for (let i = indexes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
+  }
+  return indexes;
+}
+
+function poolFor(id) {
+  if (id === 'start') return [];
+  const base = id === 'mystery' ? BANK.mystery : (BANK[id] || BANK.finish);
+  const requestedDifficulty = $('difficulty').value;
+  if (requestedDifficulty === 'mixed') return base;
+  const filtered = base.filter(question => question.difficulty === requestedDifficulty);
+  return filtered.length ? filtered : base;
+}
+
+function keyFor(cell) {
+  return `${cell.id}:${$('difficulty').value}`;
+}
+
+function answeredKey() {
+  return `${keyFor(currentCell())}:${S.qIndex}`;
+}
+
+function renderText() {
+  document.documentElement.lang = S.lang === 'fr' ? 'fr-CA' : 'en-CA';
+  $('title').textContent = tr('title');
+  $('subtitle').textContent = tr('sub');
+  $('notice').textContent = tr('prototype');
+  $('setupH').textContent = tr('setup');
+  $('playerNameL').textContent = tr('playerName');
+  $('difficultyL').textContent = tr('difficulty');
+  $('startBtn').textContent = tr('start');
+  $('restartBtn').textContent = tr('restart');
+  $('rulesBtn').textContent = tr('rules');
+  $('contrastBtn').textContent = tr('contrast');
+  $('printBtn').textContent = tr('print');
+  $('boardH').textContent = tr('board');
+  $('rulesText').textContent = tr('rulesText');
+  $('challengeH').textContent = tr('question');
+  $('summaryH').textContent = tr('summary');
+  $('enBtn').classList.toggle('primary', S.lang === 'en');
+  $('frBtn').classList.toggle('primary', S.lang === 'fr');
+  $('enBtn').setAttribute('aria-pressed', S.lang === 'en' ? 'true' : 'false');
+  $('frBtn').setAttribute('aria-pressed', S.lang === 'fr' ? 'true' : 'false');
+  [...$('difficulty').options].forEach(option => { option.textContent = levelLabel(option.value); });
+}
+
+function renderPlayer() {
+  $('playerCard').replaceChildren(
+    el('span', {}, [el('span', { class: 'token', 'aria-hidden': 'true', text: S.token }), ' ', S.name]),
+    el('span', { text: `${tr('score')}: ${S.score} | ${currentCell().year}` })
+  );
+}
+
+function specialLabel(cell) {
+  if (cell.kind === 'skip') return `${tr('skip')} +${cell.move}`;
+  if (cell.kind === 'back') return `${tr('back')} ${cell.move}`;
+  if (cell.kind === 'mystery') return tr('mystery');
+  if (cell.kind === 'finish') return 'FINISH';
+  if (cell.kind === 'start') return 'START';
+  return '';
+}
+
+function renderBoard() {
+  const board = $('board');
+  board.replaceChildren();
+  CELLS.forEach((cell, index) => {
+    const special = specialLabel(cell);
+    board.append(el('button', {
+      type: 'button',
+      class: 'cell',
+      role: 'gridcell',
+      'aria-current': S.started && S.pos === index ? 'step' : null,
+      'aria-label': `${cell.year} ${cell.topic[S.lang]} ${special}`.trim(),
+      onclick: () => { $('live').textContent = `${cell.year}: ${cell.topic[S.lang]}`; }
+    }, [
+      el('div', { class: 'emoji', 'aria-hidden': 'true', text: cell.emoji }),
+      el('div', { class: 'year', text: cell.year }),
+      el('div', { class: 'topic', text: cell.topic[S.lang] }),
+      el('div', { class: 'kind', text: special }),
+      el('div', { class: 'pieces' }, S.started && S.pos === index ? [el('span', { 'aria-hidden': 'true', text: S.token })] : [])
+    ]));
+  });
+  $('boardSummary').textContent = S.started
+    ? `${S.token} ${S.name}: ${currentCell().year} — ${currentCell().topic[S.lang]}${S.lastRoll ? ` | ${tr('rolled')} ${S.lastRoll}` : ''}`
+    : tr('notStarted');
+}
+
+function renderSummary() {
+  const summary = $('summary');
+  summary.replaceChildren();
+  if (!S.started) {
+    summary.append(el('p', { text: tr('noResults') }));
+    return;
+  }
+  summary.append(el('div', { class: 'card' }, [
+    el('strong', { text: `${S.token} ${S.name}` }),
+    el('p', { text: `${tr('score')}: ${S.score}` }),
+    el('p', { text: `${tr('position')}: ${currentCell().year} — ${currentCell().topic[S.lang]}` }),
+    el('p', { text: `${tr('level')}: ${levelLabel($('difficulty').value)}` })
+  ]));
+  if (S.history.length) {
+    summary.append(el('div', { class: 'card' }, [
+      el('strong', { text: S.lang === 'fr' ? 'Questions réussies' : 'Correct answers' }),
+      el('p', { text: `${S.history.filter(item => item.ok).length} / ${S.history.length}` })
+    ]));
+  }
+}
+
+function renderAll() {
+  renderText();
+  renderPlayer();
+  renderBoard();
+  renderSummary();
+}
+
+function roll() {
+  return Math.floor(Math.random() * 3) + 1;
+}
+
+function movePlayer(rollValue) {
+  S.lastRoll = rollValue;
+  S.pos = Math.min(CELLS.length - 1, S.pos + rollValue);
+  let landing = currentCell();
+  let specialNote = '';
+  if (landing.kind === 'skip' || landing.kind === 'back') {
+    const from = landing;
+    S.pos = Math.max(0, Math.min(CELLS.length - 1, S.pos + from.move));
+    landing = currentCell();
+    specialNote = `${from.topic[S.lang]}: ${from.move > 0 ? '+' : ''}${from.move}. `;
+  }
+  return { cell: landing, note: specialNote };
+}
+
+function presentQuestion(direction = 0, feedback = null) {
+  const cell = currentCell();
+  S.pool = poolFor(cell.id);
+  const key = keyFor(cell);
+  const panel = $('challenge');
+  panel.replaceChildren();
+  if (feedback) panel.append(feedback);
+
+  if (!S.pool.length) {
+    panel.append(el('p', { class: 'feedback info', text: tr('notStarted') }));
+    return;
+  }
+
+  if (direction) {
+    S.qCursor[key] = ((S.qCursor[key] ?? S.qIndex) + direction + S.pool.length) % S.pool.length;
+  } else {
+    S.qCursor[key] = (S.qCursor[key] ?? 0) % S.pool.length;
+  }
+
+  S.qIndex = S.qCursor[key];
+  S.challenge = S.pool[S.qIndex];
+  S.selected = null;
+  S.answered = false;
+  S.answerOk = null;
+  S.answerWasRepeat = false;
+  S.optionOrder = shuffle(S.challenge.answers[S.lang].length);
+
+  drawQuestion();
+}
+
+function drawQuestion(extra = null) {
+  const cell = currentCell();
+  const question = S.challenge;
+  const panel = $('challenge');
+
+  if (!question) return;
+  panel.replaceChildren();
+  if (extra) panel.append(extra);
+
+  panel.append(el('div', { class: 'meta' }, [
+    el('span', { class: 'tag', text: cell.year }),
+    el('span', { class: 'tag', text: cell.topic[S.lang] }),
+    el('span', { class: 'tag', text: `${tr('level')}: ${levelLabel(question.difficulty)}` }),
+    cell.kind === 'mystery' ? el('span', { class: 'tag', text: tr('mystery') }) : null
+  ]));
+
+  if (cell.kind === 'finish') panel.append(el('p', { class: 'feedback info', text: tr('finishNeed') }));
+  panel.append(el('h3', { text: `${question.square[S.lang]}: ${question.text[S.lang]}` }));
+
+  const answers = el('div', { class: 'answers', role: 'radiogroup', 'aria-label': question.text[S.lang] });
+  S.optionOrder.forEach((answerIndex, displayIndex) => {
+    const isSelected = S.selected === answerIndex;
+    answers.append(el('button', {
+      type: 'button',
+      class: `answer${isSelected ? ' selected' : ''}`,
+      role: 'radio',
+      'aria-checked': isSelected ? 'true' : 'false',
+      disabled: S.answered ? 'disabled' : null,
+      onclick: () => selectAnswer(answerIndex)
+    }, `${String.fromCharCode(65 + displayIndex)}. ${question.answers[S.lang][answerIndex]}`));
+  });
+  panel.append(answers);
+
+  if (S.answered) {
+    panel.append(answerTable(question));
+    panel.append(el('div', { class: `feedback ${S.answerOk ? 'ok' : 'bad'}`, role: 'status' }, [
+      el('strong', { text: S.answerOk ? tr('correct') : tr('incorrect') }),
+      S.answerWasRepeat ? el('p', { text: tr('alreadyAnswered') }) : null,
+      el('p', {}, [el('strong', { text: `${tr('explain')}: ` }), question.explain[S.lang]]),
+      el('p', {}, [el('strong', { text: `${tr('source')}: ` }), question.source])
+    ]));
+    if (cell.kind === 'finish' && S.answerOk) {
+      panel.append(el('div', { class: 'feedback ok' }, el('strong', { text: `${tr('winner')}: ${S.token} ${S.name}` })));
+    }
+  }
+
+  panel.append(controls());
+}
+
+function controls() {
+  return el('div', { class: 'row turn' }, [
+    el('button', { type: 'button', class: 'primary', onclick: submitAnswer, disabled: S.answered || S.won ? 'disabled' : null, text: tr('submit') }),
+    el('button', { type: 'button', onclick: previousQuestion, disabled: !S.answered || S.won ? 'disabled' : null, text: tr('prev') }),
+    el('button', { type: 'button', onclick: nextRoll, disabled: !S.answered || S.won ? 'disabled' : null, text: tr('next') })
+  ]);
+}
+
+function selectAnswer(index) {
+  if (S.answered) return;
+  S.selected = index;
+  document.querySelectorAll('#challenge .answer').forEach((button, displayIndex) => {
+    const isActive = S.optionOrder[displayIndex] === index;
+    button.classList.toggle('selected', isActive);
+    button.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  });
+}
+
+function submitAnswer() {
+  if (!S.challenge || S.answered) return;
+  if (S.selected === null || S.selected === undefined) {
+    $('live').textContent = tr('need');
+    return;
+  }
+
+  const questionKey = answeredKey();
+  const alreadyAnswered = Boolean(S.answeredKeys[questionKey]);
+  const ok = S.selected === S.challenge.correct;
+
+  S.answered = true;
+  S.answerOk = ok;
+  S.answerWasRepeat = alreadyAnswered;
+
+  if (!alreadyAnswered) {
+    S.answeredKeys[questionKey] = true;
+    if (ok) S.score += 10;
+    S.history.push({ key: questionKey, ok, cell: currentCell().id, difficulty: S.challenge.difficulty });
+  }
+
+  if (currentCell().kind === 'finish' && ok) S.won = true;
+  const key = keyFor(currentCell());
+  S.qCursor[key] = ((S.qCursor[key] ?? S.qIndex) + 1) % S.pool.length;
+
+  renderPlayer();
+  renderSummary();
+  drawQuestion();
+}
+
+function answerTable(question) {
+  const bodyRows = S.optionOrder.map((answerIndex, displayIndex) => {
+    const isSelected = answerIndex === S.selected;
+    const isCorrect = answerIndex === question.correct;
+    return el('tr', {}, [
+      el('th', { scope: 'row', text: String.fromCharCode(65 + displayIndex) }),
+      el('td', { text: question.answers[S.lang][answerIndex] }),
+      el('td', { text: isSelected ? '✓' : '' }),
+      el('td', { class: isCorrect ? 'correct' : '', text: isCorrect ? '✓' : '' })
+    ]);
+  });
+
+  return el('table', { class: 'answer-table' }, [
+    el('caption', { text: tr('answerTable') }),
+    el('thead', {}, el('tr', {}, [
+      el('th', { scope: 'col', text: tr('option') }),
+      el('th', { scope: 'col', text: tr('answer') }),
+      el('th', { scope: 'col', text: tr('selected') }),
+      el('th', { scope: 'col', text: tr('right') })
+    ])),
+    el('tbody', {}, bodyRows),
+    el('tfoot', {}, el('tr', {}, el('td', { colspan: '4' }, `${tr('explain')}: ${question.explain[S.lang]} | ${tr('source')}: ${question.source}`)))
+  ]);
+}
+
+function previousQuestion() {
+  if (!S.started || S.won) return;
+  if (S.challenge && !S.answered) {
+    $('live').textContent = tr('need');
+    return;
+  }
+  presentQuestion(-1);
+}
+
+function nextRoll() {
+  if (!S.started || S.won) return;
+  if (S.challenge && !S.answered) {
+    $('live').textContent = tr('need');
+    return;
+  }
+  const rollValue = roll();
+  const result = movePlayer(rollValue);
+  renderAll();
+  presentQuestion(0, el('div', { class: 'feedback info', text: `${S.name} ${tr('rolled')} ${rollValue}. ${result.note}${result.cell.year} — ${result.cell.topic[S.lang]}` }));
+}
+
+function start() {
+  S.name = ($('playerName').value || 'Alex').trim();
+  S.started = true;
+  S.won = false;
+  S.score = 0;
+  S.pos = 0;
+  S.lastRoll = null;
+  S.challenge = null;
+  S.selected = null;
+  S.answered = true;
+  S.answerOk = null;
+  S.answerWasRepeat = false;
+  S.qCursor = {};
+  S.optionOrder = [];
+  S.answeredKeys = {};
+  S.history = [];
+  renderAll();
+  nextRoll();
+}
+
+function restart() {
+  S.started = false;
+  S.won = false;
+  S.score = 0;
+  S.pos = 0;
+  S.lastRoll = null;
+  S.challenge = null;
+  S.selected = null;
+  S.answered = false;
+  S.answerOk = null;
+  S.answerWasRepeat = false;
+  S.qCursor = {};
+  S.optionOrder = [];
+  S.answeredKeys = {};
+  S.history = [];
+  renderAll();
+  $('challenge').textContent = tr('notStarted');
+  $('live').textContent = '';
+}
+
+function setLang(lang) {
+  S.lang = lang;
+  renderAll();
+  if (S.started && S.challenge) drawQuestion();
+}
+
+function validateContent() {
+  const issues = [];
+  CELLS.forEach(cell => {
+    if (['start', 'skip', 'back'].includes(cell.kind)) return;
+    const bank = cell.id === 'mystery' ? BANK.mystery : (BANK[cell.id] || BANK.finish);
+    ['low', 'medium', 'high'].forEach(difficulty => {
+      if (bank.filter(question => question.difficulty === difficulty).length < 2) issues.push(`${cell.id}:${difficulty}`);
+    });
+    bank.forEach(question => {
+      if (question.square.en !== cell.topic.en || question.square.fr !== cell.topic.fr) issues.push(`${cell.id}:title`);
+      if (question.correct < 0 || question.correct >= question.answers.en.length || question.answers.en.length !== question.answers.fr.length) issues.push(`${cell.id}:answer`);
+    });
+  });
+  return issues;
+}
+
+$('enBtn').onclick = () => setLang('en');
+$('frBtn').onclick = () => setLang('fr');
+$('difficulty').onchange = () => {
+  if (S.started && S.challenge && !S.answered) {
+    S.qCursor = {};
+    presentQuestion(0);
+  }
+  renderAll();
+};
+$('startBtn').onclick = start;
+$('restartBtn').onclick = restart;
+$('rulesBtn').onclick = () => alert(tr('rulesBody'));
+$('contrastBtn').onclick = () => document.body.classList.toggle('high-contrast');
+$('printBtn').onclick = () => window.print();
+
+const contentIssues = validateContent();
+renderAll();
+$('challenge').textContent = contentIssues.length ? `Content validation issue: ${contentIssues.join(', ')}` : tr('notStarted');
 </script>
 </body>
 </html>
