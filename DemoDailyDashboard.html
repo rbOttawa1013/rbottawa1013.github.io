@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Daily — Ice Cream and Frozen Desserts: Production, Consumption, and Trade (DEMO)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+    <!-- Official Top Bar / Canada.ca Identity Header -->
+    <header class="border-b border-slate-200 bg-white sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <!-- StatCan Leaf Flag Graphic Representation -->
+                <div class="flex items-center space-x-1 font-bold text-lg tracking-tight text-red-700">
+                    <span>Government</span>
+                    <span class="text-slate-500 font-normal">of Canada</span>
+                </div>
+                <span class="text-slate-300">|</span>
+                <div class="font-semibold text-slate-700 text-sm">Statistics Canada</div>
+            </div>
+            <div class="text-xs font-semibold tracking-wider text-slate-500 uppercase flex items-center space-x-4">
+                <span>The Daily / Le Quotidien</span>
+                <span class="px-2 py-1 bg-red-50 text-red-700 rounded-md border border-red-100 text-[10px]">Official Release</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Metadata Info Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs md:text-sm">
+                <div>
+                    <span class="block text-slate-400 font-medium uppercase tracking-wider text-[10px]">Title</span>
+                    <span class="font-semibold text-slate-800">Ice Cream and Frozen Desserts</span>
+                </div>
+                <div>
+                    <span class="block text-slate-400 font-medium uppercase tracking-wider text-[10px]">Release Date</span>
+                    <span class="font-semibold text-slate-800">June 19, 2026</span>
+                </div>
+                <div>
+                    <span class="block text-slate-400 font-medium uppercase tracking-wider text-[10px]">Catalogue Numbers</span>
+                    <span class="font-semibold text-slate-800 block">32-10-0054-01, 32-10-0483-01</span>
+                    <span class="font-semibold text-slate-800 block">16-10-0117-01</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Release Title Block -->
+        <article class="prose max-w-none">
+            <h1 class="text-2xl md:text-4xl font-extrabold text-slate-900 leading-tight mb-2">
+                Ice Cream and Frozen Desserts: Production, Consumption, and Trade, First Quarter 2026
+            </h1>
+            <p class="text-sm text-slate-500 font-medium mb-6">Released: June 19, 2026</p>
+
+            <p class="text-lg text-slate-700 leading-relaxed font-normal mb-8 border-l-4 border-red-500 pl-4 bg-red-50/40 py-2 rounded-r-lg">
+                Canadian manufacturers produced 46,326 kilolitres of hard ice cream in the first quarter of 2026, down 8.4% compared with the same quarter in 2025. This production dip coincided with longer-term trends in food availability; although the amount of ice cream available per Canadian rose 5.3% to 4.75 litres in 2023, it remained well below the historical peaks of the 1970s. Meanwhile, annual manufacturing revenues reached $1.4 billion in 2023 (+12.6%), even as processors faced rising operational costs.
+            </p>
+
+            <!-- Highlights Section -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-850 text-slate-100 rounded-xl p-6 shadow-md mb-8">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center">
+                    <span class="bg-red-500 w-2.5 h-2.5 rounded-full mr-2.5"></span>
+                    Highlights
+                </h2>
+                <ul class="space-y-3 text-sm md:text-base leading-relaxed text-slate-300">
+                    <li class="flex items-start">
+                        <span class="text-red-400 font-bold mr-2">•</span>
+                        The amount of ice cream available for consumption per capita in Canada increased by 5.3% in 2023, reaching 4.75 litres per person.
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 font-bold mr-2">•</span>
+                        Canadian manufacturers produced 46,326 kilolitres of hard ice cream in the first quarter of 2026, down 8.4% from the 50,602 kilolitres produced in the first quarter of 2025.
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 font-bold mr-2">•</span>
+                        Total revenues for the ice cream and frozen dessert manufacturing industry (NAICS 31152) grew 12.6% to $1.4 billion in 2023, up from $1.2 billion in 2022.
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 font-bold mr-2">•</span>
+                        The cost of materials and supplies for ice cream manufacturers increased by 18.1% to $903.9 million in 2023, which coincided with a minor decrease in manufacturing value-added to $417.2 million.
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 font-bold mr-2">•</span>
+                        Canada imported 10.6 million kilograms of ice cream and other edible ice in 2023, down from the record high of 11.9 million kilograms imported in 2022.
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Section 1 -->
+            <section class="mb-10">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-4 border-b pb-2">
+                    Per capita ice cream availability rises, yet remains below historical peaks
+                </h2>
+                <p class="text-slate-700 leading-relaxed mb-4">
+                    The annual food availability series, which serves as a reliable proxy for consumption by measuring the physical volume of food present in the Canadian market on a per capita basis, indicates a recent uptick in ice cream availability. In 2023, there were 4.75 litres of ice cream available per Canadian, an increase of 5.3% from 4.51 litres in 2022.
+                </p>
+                
+                <p class="text-slate-700 leading-relaxed mb-6">
+                    To contextualize this annual change:
+                </p>
+
+                <!-- Responsive Formula Box -->
+                <div class="bg-slate-100 rounded-lg p-5 border border-slate-200 mb-6 overflow-x-auto">
+                    <div class="text-center min-w-[500px]">
+                        <span class="block text-slate-500 font-medium text-xs uppercase tracking-wide mb-2">Percentage Change Formula (2022 to 2023)</span>
+                        <code class="text-sm md:text-base font-mono text-slate-800">
+                            Percentage Change = ((4.75 L - 4.51 L) / 4.51 L) &times; 100 &approx; 5.32%
+                        </code>
+                    </div>
+                </div>
+
+                <p class="text-slate-700 leading-relaxed mb-8">
+                    From a long-term historical perspective, ice cream availability has trended downward. Statistics Canada began tracking these data in 1960, when availability stood at 10.47 litres per person. The all-time record high was recorded a decade later, in 1970, at 12.79 litres per person. This long-term downward trend has historically coincided with a growing market share for alternative frozen desserts, evolving nutritional preferences, and changing demographic profiles.
+                </p>
+
+                <!-- Live Professional Interactive Chart 1 Component -->
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-8">
+                    <div class="mb-4">
+                        <span class="text-slate-400 font-semibold tracking-wider uppercase text-[10px] block">Chart 1</span>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Ice cream food availability per capita, Canada, 1960 to 2023</h3>
+                        <p class="text-xs text-slate-500 mt-1">Source: Statistics Canada, Table 32-10-0054-01</p>
+                    </div>
+                    <div class="relative w-full h-[320px]">
+                        <canvas id="availabilityChart"></canvas>
+                    </div>
+                    <div class="mt-4 bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg">
+                        <p class="text-xs text-slate-500 italic leading-relaxed">
+                            <strong>Alt text:</strong> Line chart showing per capita ice cream availability peaking at 12.79 litres in 1970 and gradually declining to 4.75 litres in 2023.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2 -->
+            <section class="mb-10">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-4 border-b pb-2">
+                    Hard ice cream production reaches 46,326 kilolitres in the first quarter of 2026
+                </h2>
+                <p class="text-slate-700 leading-relaxed mb-4">
+                    During the first quarter of 2026, Canadian dairy processors produced 46,326 kilolitres of hard ice cream. This represents an 8.4% decrease compared with the first quarter of 2025, when production reached 50,602 kilolitres (see Table 1).
+                </p>
+                <p class="text-slate-700 leading-relaxed mb-6">
+                    Ice cream production is highly seasonal, consistently dipping during the fall and winter quarters before climbing in spring and summer to meet warm-weather demand. For instance, in 2025, production peaked in the second quarter at 61,121 kilolitres before declining to 50,153 kilolitres in the third quarter and further dropping to 35,874 kilolitres in the fourth quarter.
+                </p>
+                <p class="text-slate-700 leading-relaxed mb-8">
+                    The historical single-month production record occurred in June 1994, when Canadian plants churned out 39,104 kilolitres of hard ice cream. In comparison, monthly production in July 2023 (historically the peak production month of that year) topped out at 17,310 kilolitres.
+                </p>
+
+                <!-- Table 1 -->
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
+                    <div class="p-5 border-b border-slate-100 bg-slate-50/50">
+                        <h4 class="font-bold text-slate-800 text-sm md:text-base">Table 1: Production of hard ice cream, Canada, quarterly, 2025 to first quarter of 2026</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                    <th class="p-4 font-semibold">Reference period</th>
+                                    <th class="p-4 font-semibold text-right">Hard ice cream production (kilolitres)</th>
+                                    <th class="p-4 font-semibold text-right">Quarter-over-quarter change (%)</th>
+                                    <th class="p-4 font-semibold text-right">Year-over-year change (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr class="bg-slate-50/30">
+                                    <td class="p-4 font-bold" colspan="4">2025</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 pl-8">First quarter</td>
+                                    <td class="p-4 text-right">50,602</td>
+                                    <td class="p-4 text-right text-slate-500">-0.1</td>
+                                    <td class="p-4 text-right text-slate-400">...</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 pl-8">Second quarter</td>
+                                    <td class="p-4 text-right">61,121</td>
+                                    <td class="p-4 text-right text-emerald-600">+20.8</td>
+                                    <td class="p-4 text-right text-slate-400">...</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 pl-8">Third quarter</td>
+                                    <td class="p-4 text-right">50,153</td>
+                                    <td class="p-4 text-right text-rose-600">-18.0</td>
+                                    <td class="p-4 text-right text-slate-400">...</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 pl-8">Fourth quarter</td>
+                                    <td class="p-4 text-right">35,874</td>
+                                    <td class="p-4 text-right text-rose-600">-28.5</td>
+                                    <td class="p-4 text-right text-slate-400">...</td>
+                                </tr>
+                                <tr class="bg-slate-50/30">
+                                    <td class="p-4 font-bold" colspan="4">2026</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 pl-8 font-medium">First quarter</td>
+                                    <td class="p-4 text-right font-medium">46,326</td>
+                                    <td class="p-4 text-right text-emerald-600 font-medium">+29.1</td>
+                                    <td class="p-4 text-right text-rose-600 font-medium">-8.4</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-400">
+                        ... Not applicable.<br>
+                        Source: Statistics Canada, Table 32-10-0483-01.
+                    </div>
+                </div>
+
+                <!-- Live Professional Interactive Chart 2 Component -->
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-8">
+                    <div class="mb-4">
+                        <span class="text-slate-400 font-semibold tracking-wider uppercase text-[10px] block">Chart 2</span>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800">Hard ice cream production by quarter, Canada, Q1 2025 to Q1 2026</h3>
+                        <p class="text-xs text-slate-500 mt-1">Source: Statistics Canada, Table 32-10-0483-01</p>
+                    </div>
+                    <div class="relative w-full h-[320px]">
+                        <canvas id="productionChart"></canvas>
+                    </div>
+                    <div class="mt-4 bg-slate-50 border-t border-slate-100 p-3 rounded-b-lg">
+                        <p class="text-xs text-slate-500 italic leading-relaxed">
+                            <strong>Alt text:</strong> Bar chart showing hard ice cream production peaking in Q2 2025 (61,121 kL) and falling to Q1 2026 (46,326 kL).
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3 -->
+            <section class="mb-10">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-4 border-b pb-2">
+                    Manufacturing revenues show robust growth amid rising input costs
+                </h2>
+                <p class="text-slate-700 leading-relaxed mb-4">
+                    The financial performance of Canada’s ice cream and frozen dessert manufacturing industry (NAICS 31152) reflects solid demand alongside elevated operational pressures. In 2023, total revenues for this manufacturing subsector reached $1.4 billion, up 12.6% from the $1.2 billion recorded in 2022 (see Table 2).
+                </p>
+                <p class="text-slate-700 leading-relaxed mb-6">
+                    However, manufacturers faced significant cost increases. The costs of materials and supplies utilized by ice cream processors rose 18.1% to $903.9 million in 2023, compared with $765.3 million in 2022. Due to these input cost increases, manufacturing value-added decreased slightly from $426.3 million in 2022 to $417.2 million in 2023. The industry intensity ratio—measuring manufacturing value-added as a proportion of total production—dropped from 35.3% in 2022 to 30.7% in 2023.
+                </p>
+
+                <!-- Table 2 -->
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-8">
+                    <div class="p-5 border-b border-slate-100 bg-slate-50/50">
+                        <h4 class="font-bold text-slate-800 text-sm md:text-base">Table 2: Selected financial indicators for the ice cream and frozen dessert manufacturing industry (NAICS 31152), Canada, 2022 and 2023</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                    <th class="p-4 font-semibold">Financial indicator</th>
+                                    <th class="p-4 font-semibold text-right">2022</th>
+                                    <th class="p-4 font-semibold text-right">2023</th>
+                                    <th class="p-4 font-semibold text-right">Change (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr>
+                                    <td class="p-4 font-medium">Total revenues ($ billions)</td>
+                                    <td class="p-4 text-right">1.2</td>
+                                    <td class="p-4 text-right">1.4</td>
+                                    <td class="p-4 text-right text-emerald-600">+12.6</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 font-medium">Cost of materials and supplies ($ millions)</td>
+                                    <td class="p-4 text-right">765.3</td>
+                                    <td class="p-4 text-right">903.9</td>
+                                    <td class="p-4 text-right text-emerald-600">+18.1</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 font-medium">Manufacturing value-added ($ millions)</td>
+                                    <td class="p-4 text-right">426.3</td>
+                                    <td class="p-4 text-right">417.2</td>
+                                    <td class="p-4 text-right text-rose-600">-2.1</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-4 font-medium">Industry intensity ratio (%)</td>
+                                    <td class="p-4 text-right">35.3</td>
+                                    <td class="p-4 text-right">30.7</td>
+                                    <td class="p-4 text-right text-rose-600">-4.6¹</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-400">
+                        ¹ Change expressed in percentage points.<br>
+                        Source: Statistics Canada, Table 16-10-0117-01.
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 4 -->
+            <section class="mb-10">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-900 mb-4 border-b pb-2">
+                    International trade: Imports stabilize while exports soften
+                </h2>
+                <p class="text-slate-700 leading-relaxed mb-4">
+                    Ice cream and other edible ice products (whether or not containing cocoa) represent a notable segment of Canada's cross-border agricultural trade, primarily integrated with the United States.
+                </p>
+                <p class="text-slate-700 leading-relaxed">
+                    Canada imported 10.6 million kilograms of ice cream in 2023. While this is a substantial volume, it fell short of the record high of 11.9 million kilograms imported in 2022. On the other side of the ledger, Canadian exports of ice cream have experienced a long-term downward trend. The largest export volume on record was established in 2006, when Canada exported 29.3 million kilograms. By 2023, total export volume had softened to 9.8 million kilograms.
+                </p>
+            </section>
+
+            <!-- Note to readers -->
+            <section class="bg-slate-100 rounded-xl p-6 border border-slate-200 mb-10">
+                <h2 class="text-lg font-bold text-slate-900 mb-4">Note to readers</h2>
+                <p class="text-slate-700 text-sm leading-relaxed mb-4">
+                    This release incorporates data from three distinct Statistics Canada programs to provide a comprehensive picture of the Canadian ice cream sector: the Food Available in Canada series, the monthly and quarterly dairy product surveys, and the Annual Survey of Manufactures and Logging.
+                </p>
+                <p class="text-slate-700 text-sm leading-relaxed mb-6">
+                    The drafting process and quality control protocols utilized for this release have been structured in accordance with the quality gates, style constraints, and reporting standards established in the internal control document <span class="font-semibold text-slate-900">StatCan_Daily_AI_Generation_Master_Guide_8.pdf</span>.
+                </p>
+
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">Definitions and concepts</h3>
+                <ul class="space-y-4 text-xs md:text-sm text-slate-700 leading-relaxed">
+                    <li>
+                        <strong class="text-slate-900">Food availability:</strong> Data represent the amount of food physically present in Canada for consumption. It is calculated by adding domestic production to imports, subtracting exports, and adjusting for stock changes. Per capita availability is calculated using population estimates. These data do not measure actual food intake or consumer waste; they are a proxy for food supply.
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Hard ice cream:</strong> Refers to ice cream that is frozen and packaged at the manufacturing facility, typically containing more than 5.0% butterfat by weight.
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Manufacturing revenues:</strong> Include revenues from shipments of goods manufactured, adjusted for changes in inventories, as well as revenue from non-manufacturing activities.
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Manufacturing value-added:</strong> Measures the net output of the manufacturing sector. It is calculated as total manufacturing revenues minus the cost of materials, supplies, fuel, and electricity.
+                    </li>
+                </ul>
+
+                <p class="text-slate-500 text-xs leading-relaxed mt-6">
+                    Data on quarterly dairy product volumes (Table 32-10-0483-01) are subject to revision and are not seasonally adjusted. Data on manufacturing activities (Table 16-10-0117-01) are obtained from the Annual Survey of Manufactures and Logging and represent comprehensive enterprise-level reporting.
+                </p>
+            </section>
+
+            <!-- Products section -->
+            <section class="mb-10">
+                <h2 class="text-lg font-bold text-slate-900 mb-3">Products</h2>
+                <p class="text-slate-700 text-sm mb-4">The following products and databases are available:</p>
+                <ul class="space-y-2 text-sm">
+                    <li>
+                        <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210005401" class="text-blue-700 hover:underline font-medium flex items-center" target="_blank">
+                            <span class="mr-2">📊</span> Table 32-10-0054-01: Food available in Canada
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3210048301" class="text-blue-700 hover:underline font-medium flex items-center" target="_blank">
+                            <span class="mr-2">📊</span> Table 32-10-0483-01: Production of selected dairy products, quarterly
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1610011701" class="text-blue-700 hover:underline font-medium flex items-center" target="_blank">
+                            <span class="mr-2">📊</span> Table 16-10-0117-01: Ice cream and frozen dessert manufacturing - 31152
+                        </a>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Contact section -->
+            <section class="border-t border-slate-200 pt-6">
+                <h2 class="text-lg font-bold text-slate-900 mb-3">Contact information</h2>
+                <p class="text-slate-700 text-sm mb-4">
+                    For more information, or to enquire about the concepts, methods, or data quality of this release, contact us:
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white p-4 border border-slate-200 rounded-lg">
+                        <strong class="block text-slate-800 font-semibold mb-1">Statistical Information Service</strong>
+                        <span class="block text-slate-600">Toll-free: 1-800-263-1136</span>
+                        <a href="mailto:infostats@statcan.gc.ca" class="text-blue-700 hover:underline">infostats@statcan.gc.ca</a>
+                    </div>
+                    <div class="bg-white p-4 border border-slate-200 rounded-lg">
+                        <strong class="block text-slate-800 font-semibold mb-1">Media Relations</strong>
+                        <span class="block text-slate-600">Phone: 613-951-4636</span>
+                        <a href="mailto:statcan.mediahotline-ligneinfomedias.statcan@statcan.gc.ca" class="text-blue-700 hover:underline text-xs block truncate">statcan.mediahotline-ligneinfomedias.statcan@statcan.gc.ca</a>
+                    </div>
+                </div>
+            </section>
+
+        </article>
+    </main>
+
+    <script>
+        window.onload = function() {
+            // Setup Chart 1: Per Capita Food Availability (1960 to 2023)
+            const ctx1 = document.getElementById('availabilityChart').getContext('2d');
+            const years1 = [1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2021, 2022, 2023];
+            const data1 = [10.47, 11.50, 12.79, 11.20, 9.80, 8.90, 7.50, 6.80, 5.90, 5.40, 5.10, 4.80, 4.60, 4.45, 4.51, 4.75];
+
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: years1,
+                    datasets: [{
+                        label: 'Litres per person',
+                        data: data1,
+                        borderColor: '#1e293b', // Tailwind Slate-800
+                        backgroundColor: 'rgba(30, 41, 59, 0.04)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#ef4444', // Red-500 highlight
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 8,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 13, family: 'Inter' },
+                            bodyFont: { size: 13, family: 'Inter' },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Availability: ${context.parsed.y} Litres`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Volume (Litres)',
+                                font: { size: 11, weight: 'bold', family: 'Inter' },
+                                color: '#64748b'
+                            },
+                            grid: {
+                                color: '#f1f5f9'
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: 'Inter' }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: 'Inter' }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Setup Chart 2: Quarterly Production Volumes (Q1 2025 to Q1 2026)
+            const ctx2 = document.getElementById('productionChart').getContext('2d');
+            const labels2 = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026'];
+            const data2 = [50602, 61121, 50153, 35874, 46326];
+
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labels2,
+                    datasets: [{
+                        label: 'Production (kilolitres)',
+                        data: data2,
+                        backgroundColor: '#ef4444', // Red-500
+                        hoverBackgroundColor: '#b91c1c', // Red-700
+                        borderRadius: 6,
+                        borderWidth: 0,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 13, family: 'Inter' },
+                            bodyFont: { size: 13, family: 'Inter' },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Volume: ${context.parsed.y.toLocaleString()} kL`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Volume (Kilolitres)',
+                                font: { size: 11, weight: 'bold', family: 'Inter' },
+                                color: '#64748b'
+                            },
+                            grid: {
+                                color: '#f1f5f9'
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: 'Inter' }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: 'Inter' }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
