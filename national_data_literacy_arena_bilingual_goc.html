@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Statistics Canada Data Literacy Challenge Arena. Test your data analysis, privacy, and accessibility skills using real Canadian data." />
+  <title>National Data Literacy Challenge Arena</title>
+
+  <!-- GC Design System CSS shortcuts -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/css-shortcuts@1.2.0/dist/gcds-css-shortcuts.min.css" />
+
+  <!-- GC Design System components -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.css" />
+  <script type="module" src="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.esm.js"></script>
+
+  <style>
+    /* ==========================================================================
+       STATCAN & GC DESIGN TOKENS
+       ========================================================================== */
+    :root {
+      --stc-blue: #26374a;
+      --stc-red: #d3080c;
+      --stc-light-blue: #e8f0f8;
+      --stc-light-grey: #f8f8f8;
+      --stc-mid-grey: #d9d9d9;
+      --stc-dark: #111111;
+      --stc-green: #2e8540;
+      --stc-yellow: #f2d40d;
+      --stc-orange: #f58220;
+      --stc-focus: #0535d2;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: #ffffff;
+      color: var(--stc-dark);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* Core UI Elements matching reference document */
+    .prototype-banner {
+      border-left: 0.35rem solid var(--stc-red);
+      background: #fff4f4;
+      padding: 1rem;
+      margin: 1.25rem 0;
+    }
+
+    .info-box, .warning-box, .success-box, .neutral-box {
+      border-left: 0.35rem solid var(--stc-blue);
+      background: var(--stc-light-grey);
+      padding: 1rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .warning-box { border-left-color: var(--stc-red); background: #fff4f4; }
+    .success-box { border-left-color: var(--stc-green); background: #f3fbf4; }
+    .neutral-box { border-left-color: #6f6f6f; }
+
+    /* Layout & View Management */
+    .view {
+      display: none;
+      animation: fadeIn 0.3s ease-in;
+    }
+    .view.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .focusable-region:focus {
+      outline: 3px solid var(--stc-focus);
+      outline-offset: 3px;
+    }
+
+    /* Forms & Inputs */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .form-hint {
+      display: block;
+      color: #555;
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+    .form-control {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.65rem;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .form-control:focus {
+      outline: 3px solid var(--stc-focus);
+      outline-offset: 1px;
+      border-color: var(--stc-blue);
+    }
+
+    /* Radio Lists (Quiz) */
+    .radio-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.75rem 0 0 0;
+    }
+    .radio-list li {
+      margin-bottom: 0.75rem;
+    }
+    .radio-list label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 4px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .radio-list label:hover {
+      background: var(--stc-light-blue);
+    }
+    .radio-list input[type="radio"] {
+      flex: 0 0 auto;
+      margin: 0.25rem 0 0 0;
+      transform: scale(1.2);
+    }
+    .radio-list label:focus-within {
+      outline: 3px solid var(--stc-focus);
+      border-color: var(--stc-blue);
+    }
+
+    /* Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    .tool-card {
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+    }
+    .tool-card h3 { margin-top: 0; color: var(--stc-blue); }
+    .tool-card p { flex-grow: 1; margin-bottom: 1.5rem; }
+    
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.35rem;
+      background: #ffffff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+    caption {
+      text-align: left;
+      font-weight: 700;
+      padding: 0.75rem;
+      background: var(--stc-light-grey);
+      border-bottom: 1px solid var(--stc-mid-grey);
+    }
+    th, td {
+      border: 1px solid var(--stc-mid-grey);
+      padding: 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    thead th { background: var(--stc-blue); color: #ffffff; }
+    tbody th { background: #f2f2f2; font-weight: 700; }
+    .text-right { text-align: right; }
+
+    /* Progress & Badges */
+    .progress-bar-container {
+      width: 100%;
+      background-color: var(--stc-mid-grey);
+      height: 8px;
+      border-radius: 4px;
+      margin: 1rem 0 2rem 0;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background-color: var(--stc-blue);
+      transition: width 0.3s ease;
+    }
+    .badge {
+      display: inline-block;
+      background-color: var(--stc-light-blue);
+      color: var(--stc-blue);
+      border: 1px solid var(--stc-blue);
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .score-display {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--stc-green);
+    }
+    
+
+
+    /* Official languages and bilingual layout */
+    .app-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .app-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .language-toggle {
+      background: #ffffff;
+      border: 2px solid var(--stc-blue);
+      color: var(--stc-blue);
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 2.5rem;
+    }
+    .language-toggle:hover,
+    .language-toggle:focus {
+      background: var(--stc-light-blue);
+    }
+    .terminology-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .review-list {
+      margin-bottom: 0;
+    }
+    .term-pill {
+      display: inline-block;
+      background: #ffffff;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.25rem;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.9rem;
+    }
+    .nowrap { white-space: nowrap; }
+    @media (max-width: 640px) {
+      .app-toolbar,
+      .app-actions {
+        display: block;
+      }
+      .app-actions > * {
+        margin-bottom: 0.75rem;
+      }
+    }
+
+    .screen-only { display: block; }
+    .visually-hidden {
+      position: absolute !important; width: 1px !important; height: 1px !important;
+      padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header matching GC design pattern -->
+  <gcds-header lang-href="#ol-note" skip-to-href="#main-content">
+    <gcds-search slot="search"></gcds-search>
+    <gcds-breadcrumbs slot="breadcrumb">
+      <gcds-breadcrumbs-item href="#" data-i18n="crumb-data-literacy">Data Literacy</gcds-breadcrumbs-item>
+      <gcds-breadcrumbs-item href="#" data-i18n="crumb-challenge-arena">Challenge Arena</gcds-breadcrumbs-item>
+    </gcds-breadcrumbs>
+  </gcds-header>
+
+  <gcds-container id="main-content" layout="page" tag="main">
+    
+    <div class="app-toolbar">
+      <gcds-heading tag="h1" data-i18n="title-main">National Data Literacy Challenge Arena</gcds-heading>
+      <div class="app-actions">
+        <button id="btn-lang-toggle" type="button" class="badge language-toggle" aria-label="Passer au français" aria-live="polite">FR</button>
+        <div id="user-status-badge" class="badge" style="display: none;" aria-live="polite">
+          <span data-i18n="badge-player">Player:</span> <span id="display-alias"></span> | <span data-i18n="badge-score">Score:</span> <span id="display-score"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="prototype-banner" role="note">
+      <strong data-i18n="proto-status">Prototype status:</strong> <span data-i18n="proto-desc">This is a standalone interactive educational tool utilizing real open data sets from Statistics Canada. No personal information is transmitted; all scores and progress are saved securely and locally on your device.</span>
+    </p>
+
+    <!-- ARIA Live region for screen readers status announcements -->
+    <div id="live-region" class="visually-hidden" aria-live="assertive"></div>
+
+    <!-- ==================== VIEW: WELCOME ==================== -->
+    <section id="view-welcome" class="view active focusable-region" tabindex="-1" aria-labelledby="welcome-heading">
+      <gcds-heading tag="h2" id="welcome-heading" data-i18n="welcome-h2">1. Enter the Arena</gcds-heading>
+      <gcds-text data-i18n="welcome-desc">
+        Welcome to the Data Literacy Challenge. Choose an anonymous alias to track your score on the local leaderboard. Your mission is to analyze real Canadian data and apply statistical critical thinking.
+      </gcds-text>
+
+      <div class="info-box" style="max-width: 600px;">
+        <form id="form-register">
+          <div class="form-group">
+            <label for="input-alias" class="form-label" data-i18n="alias-label">Player Alias</label>
+            <span id="hint-alias" class="form-hint" data-i18n="alias-hint">Use a pseudonym (e.g., DataExplorer). Max 15 characters.</span>
+            <input type="text" id="input-alias" class="form-control" aria-describedby="hint-alias" required maxlength="15" inputmode="text">
+          </div>
+          <gcds-button type="submit" data-i18n="btn-start">Start Challenge</gcds-button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: HUB ==================== -->
+    <section id="view-hub" class="view focusable-region" tabindex="-1" aria-labelledby="hub-heading">
+      <gcds-heading tag="h2" id="hub-heading" data-i18n="hub-h2">2. Select a Data Theme</gcds-heading>
+      <gcds-text data-i18n="hub-desc">
+        Choose a thematic module below. Each module utilizes real Statistics Canada datasets. Correct analysis will earn you points and badges.
+      </gcds-text>
+      
+      <div id="hub-grid" class="cards-grid">
+        <!-- Cards dynamically injected via JS -->
+      </div>
+
+      <div style="margin-top: 2rem; border-top: 1px solid var(--stc-mid-grey); padding-top: 1.5rem;">
+        <gcds-button button-role="secondary" id="btn-show-leaderboard" data-i18n="btn-board">View Local Leaderboard</gcds-button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: SCENARIO ==================== -->
+    <section id="view-scenario" class="view focusable-region" tabindex="-1" aria-labelledby="scenario-heading">
+      <div style="margin-bottom: 1.5rem;">
+        <gcds-button button-role="secondary" class="btn-back-hub" data-i18n="btn-back-hub">← Back to Hub</gcds-button>
+      </div>
+      
+      <gcds-heading tag="h2" id="scenario-heading" data-i18n="scenario-h2">Theme Context</gcds-heading>
+      
+      <div id="scenario-content">
+        <!-- Dataset Context injected here -->
+      </div>
+      
+      <div style="margin-top: 2rem;">
+        <gcds-button id="btn-start-quiz" size="large" data-i18n="btn-begin-quiz">Begin Analysis Quiz</gcds-button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: QUIZ ==================== -->
+    <section id="view-quiz" class="view focusable-region" tabindex="-1" aria-labelledby="quiz-heading">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <gcds-heading tag="h2" id="quiz-heading" data-i18n="quiz-h2">Analysis</gcds-heading>
+        <span class="badge"><span data-i18n="q-progress">Question</span> <span id="quiz-progress-text">1 of 3</span></span>
+      </div>
+      
+      <div class="progress-bar-container">
+        <div id="quiz-progress-bar" class="progress-bar-fill" style="width: 33%;"></div>
+      </div>
+
+      <div class="info-box">
+        <h3 id="quiz-question-text" style="margin-top: 0;">Question goes here?</h3>
+        
+        <form id="form-quiz">
+          <ul id="quiz-options" class="radio-list">
+            <!-- Options dynamically injected -->
+          </ul>
+          <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+            <gcds-button type="submit" id="btn-submit-answer" data-i18n="btn-submit">Submit Answer</gcds-button>
+            <gcds-button type="button" button-role="secondary" id="btn-back-question" data-i18n="btn-back">Back</gcds-button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: FEEDBACK ==================== -->
+    <section id="view-feedback" class="view focusable-region" tabindex="-1" aria-labelledby="feedback-heading">
+      <gcds-heading tag="h2" id="feedback-heading" data-i18n="feedback-h2">Result</gcds-heading>
+      
+      <div id="feedback-alert" class="neutral-box">
+        <!-- Feedback injected here -->
+      </div>
+      
+      <gcds-text id="feedback-explanation"></gcds-text>
+      
+      <div style="margin-top: 2rem;">
+        <gcds-button id="btn-next-question" data-i18n="btn-continue">Continue</gcds-button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: SUMMARY ==================== -->
+    <section id="view-summary" class="view focusable-region" tabindex="-1" aria-labelledby="summary-heading">
+      <gcds-heading tag="h2" id="summary-heading" data-i18n="summary-h2">Module Complete</gcds-heading>
+      
+      <div class="success-box" style="max-width: 500px;">
+        <h3 style="margin-top: 0;" data-i18n="summary-h3">Performance Summary</h3>
+        <p><span data-i18n="summary-p1">You earned</span> <span id="summary-score" class="score-display">0</span> <span data-i18n="summary-p2">points in this module.</span></p>
+        <div id="summary-badges" style="margin-top: 1rem;"></div>
+      </div>
+      
+      <div style="margin-top: 2rem;">
+        <gcds-button class="btn-back-hub" data-i18n="btn-back-hub-short">Return to Hub</gcds-button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW: LEADERBOARD ==================== -->
+    <section id="view-leaderboard" class="view focusable-region" tabindex="-1" aria-labelledby="leaderboard-heading">
+      <div style="margin-bottom: 1.5rem;">
+        <gcds-button button-role="secondary" class="btn-back-hub" data-i18n="btn-back-hub">← Back to Hub</gcds-button>
+      </div>
+      
+      <gcds-heading tag="h2" id="leaderboard-heading" data-i18n="board-h2">Local Leaderboard</gcds-heading>
+      <gcds-text data-i18n="board-desc">Top scores are saved securely within this device's browser to protect privacy.</gcds-text>
+      
+      <div class="table-wrap">
+        <table>
+          <caption data-i18n="board-cap">Top 10 Player Scores</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="th-rank">Rank</th>
+              <th scope="col" data-i18n="th-alias">Player Alias</th>
+              <th scope="col" data-i18n="th-score">Total Score</th>
+              <th scope="col" data-i18n="th-badges">Badges Earned</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <!-- Injected dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ol-note" class="mt-600 screen-only" style="margin-top: 3rem;" aria-labelledby="ol-note-heading">
+      <gcds-heading tag="h3" id="ol-note-heading" data-i18n="ol-h3">Official languages and terminology review</gcds-heading>
+      <gcds-text data-i18n="ol-desc">This prototype now provides English and French interface text, scenario content, question content, dataset labels, and feedback text through the same application flow. The review table below records the bilingual terminology used for key data-literacy concepts.</gcds-text>
+
+      <div class="info-box">
+        <strong data-i18n="ol-standard-h4">Bilingual implementation standard applied</strong>
+        <ul class="review-list">
+          <li data-i18n="ol-standard-1">English and French are treated as equivalent content, not as summaries.</li>
+          <li data-i18n="ol-standard-2">The language toggle updates visible text, document language metadata, titles, screen-reader announcements, and dynamic quiz content.</li>
+          <li data-i18n="ol-standard-3">Statistical terminology is aligned to Government of Canada terminology practice and should be validated against TERMIUM Plus and Statistics Canada source-table labels before production release.</li>
+        </ul>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption data-i18n="term-cap">Bilingual terminology review register</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="term-th-en">English term</th>
+              <th scope="col" data-i18n="term-th-fr">French equivalent</th>
+              <th scope="col" data-i18n="term-th-context">Usage context</th>
+              <th scope="col" data-i18n="term-th-status">Review note</th>
+            </tr>
+          </thead>
+          <tbody id="terminology-body">
+            <!-- Injected dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <p class="neutral-box"><strong data-i18n="term-final-check-label">Production note:</strong> <span data-i18n="term-final-check">For final publication, route the French and English strings through departmental official-languages review, including terminology validation and accessibility testing in both languages.</span></p>
+    </section>
+
+    <gcds-date-modified>2026-06-23</gcds-date-modified>
+  </gcds-container>
+
+  <gcds-footer display="compact">
+    <div slot="links">
+      <button id="btn-reset-data" data-i18n="btn-reset" style="background: none; border: none; color: #333; text-decoration: underline; cursor: pointer; font-family: inherit;">Reset Local App Data</button>
+    </div>
+  </gcds-footer>
+
+  <script>
+    "use strict";
+
+    /**
+     * =====================================================================
+     * I18N DICTIONARY
+     * =====================================================================
+     */
+    const I18n = {
+      lang: 'en',
+      dict: {
+        'title-main': { en: 'National Data Literacy Challenge Arena', fr: 'Arène du défi national de littératie des données' },
+        'badge-player': { en: 'Player:', fr: 'Joueur :' },
+        'badge-score': { en: 'Score:', fr: 'Score :' },
+        'proto-status': { en: 'Prototype status:', fr: 'Statut du prototype :' },
+        'proto-desc': { en: 'This is a standalone interactive educational tool utilizing real open data sets from Statistics Canada. No personal information is transmitted; all scores and progress are saved securely and locally on your device.', fr: 'Il s\'agit d\'un outil éducatif interactif autonome utilisant de véritables ensembles de données ouvertes de Statistique Canada. Aucune information personnelle n\'est transmise ; tous les scores sont enregistrés localement de manière sécurisée.' },
+        'welcome-h2': { en: '1. Enter the Arena', fr: '1. Entrez dans l\'arène' },
+        'welcome-desc': { en: 'Welcome to the Data Literacy Challenge. Choose an anonymous alias to track your score on the local leaderboard. Your mission is to analyze real Canadian data and apply statistical critical thinking.', fr: 'Bienvenue au défi de littératie des données. Choisissez un alias anonyme pour suivre votre score sur le classement local. Votre mission est d\'analyser de vraies données canadiennes et de faire preuve de pensée critique statistique.' },
+        'alias-label': { en: 'Player Alias', fr: 'Alias du joueur' },
+        'alias-hint': { en: 'Use a pseudonym (e.g., DataExplorer). Max 15 characters.', fr: 'Utilisez un pseudonyme (ex: Explorateur). Max 15 caractères.' },
+        'btn-start': { en: 'Start Challenge', fr: 'Commencer le défi' },
+        'hub-h2': { en: '2. Select a Data Theme', fr: '2. Sélectionnez un thème de données' },
+        'hub-desc': { en: 'Choose a thematic module below. Each module utilizes real Statistics Canada datasets. Correct analysis will earn you points and badges.', fr: 'Choisissez un module thématique ci-dessous. Chaque module utilise de vrais ensembles de données de Statistique Canada. Une bonne analyse vous fera gagner des points et des badges.' },
+        'btn-board': { en: 'View Local Leaderboard', fr: 'Voir le classement local' },
+        'btn-back-hub': { en: '← Back to Hub', fr: '← Retour au portail' },
+        'btn-back-hub-short': { en: 'Return to Hub', fr: 'Retour au portail' },
+        'scenario-h2': { en: 'Theme Context', fr: 'Contexte du thème' },
+        'btn-begin-quiz': { en: 'Begin Analysis Quiz', fr: 'Commencer le quiz d\'analyse' },
+        'quiz-h2': { en: 'Analysis', fr: 'Analyse' },
+        'q-progress': { en: 'Question', fr: 'Question' },
+        'btn-submit': { en: 'Submit Answer', fr: 'Soumettre la réponse' },
+        'btn-back': { en: 'Back', fr: 'Retour' },
+        'feedback-h2': { en: 'Result', fr: 'Résultat' },
+        'btn-continue': { en: 'Continue', fr: 'Continuer' },
+        'summary-h2': { en: 'Module Complete', fr: 'Module terminé' },
+        'summary-h3': { en: 'Performance Summary', fr: 'Résumé des performances' },
+        'summary-p1': { en: 'You earned', fr: 'Vous avez obtenu' },
+        'summary-p2': { en: 'points in this module.', fr: 'points dans ce module.' },
+        'board-h2': { en: 'Local Leaderboard', fr: 'Classement local' },
+        'board-desc': { en: 'Top scores are saved securely within this device\'s browser to protect privacy.', fr: 'Les meilleurs scores sont enregistrés de manière sécurisée dans le navigateur de cet appareil pour protéger la vie privée.' },
+        'board-cap': { en: 'Top 10 Player Scores', fr: 'Les 10 meilleurs scores' },
+        'th-rank': { en: 'Rank', fr: 'Rang' },
+        'th-alias': { en: 'Player Alias', fr: 'Alias du joueur' },
+        'th-score': { en: 'Total Score', fr: 'Score total' },
+        'th-badges': { en: 'Badges Earned', fr: 'Badges obtenus' },
+        'btn-reset': { en: 'Reset Local App Data', fr: 'Réinitialiser les données locales' },
+        
+        // JS injected strings
+        'badge-completed': { en: '✓ Completed', fr: '✓ Terminé' },
+        'btn-replay': { en: 'Replay Module', fr: 'Rejouer le module' },
+        'btn-start-mod': { en: 'Start Module', fr: 'Démarrer le module' },
+        'text-correct': { en: 'Correct', fr: 'Correct' },
+        'text-incorrect': { en: 'Incorrect', fr: 'Incorrect' },
+        'text-pts-earned': { en: 'points earned.', fr: 'points obtenus.' },
+        'text-pts': { en: 'points', fr: 'points' },
+        'text-review': { en: 'Review the explanation to learn more.', fr: 'Revoyez l\'explication pour en savoir plus.' },
+        'text-exp': { en: 'Explanation:', fr: 'Explication :' },
+        'text-badge': { en: 'Badge Unlocked:', fr: 'Badge débloqué :' },
+        'text-you': { en: '(You)', fr: '(Vous)' },
+        'text-no-scores': { en: 'No scores recorded yet.', fr: 'Aucun score enregistré pour le moment.' },
+        'text-badges-earned': { en: 'Badges Earned:', fr: 'Badges obtenus :' },
+        'text-confirm-reset': { en: 'Are you sure you want to delete all local scores? This cannot be undone.', fr: 'Êtes-vous sûr de vouloir supprimer tous les scores locaux ? Cette action est irréversible.' },
+        'of': { en: 'of', fr: 'sur' },
+        'meta-desc': { en: 'Statistics Canada Data Literacy Challenge Arena. Test your data analysis, privacy, and accessibility skills using real Canadian data.', fr: 'Arène du défi de littératie des données de Statistique Canada. Testez vos compétences en analyse des données, en protection des renseignements personnels et en accessibilité à l’aide de vraies données canadiennes.' },
+        'crumb-data-literacy': { en: 'Data Literacy', fr: 'Littératie des données' },
+        'crumb-challenge-arena': { en: 'Challenge Arena', fr: 'Arène du défi' },
+        'lang-switch-label': { en: 'Passer au français', fr: 'Switch to English' },
+        'ol-h3': { en: 'Official languages and terminology review', fr: 'Examen des langues officielles et de la terminologie' },
+        'ol-desc': { en: 'This prototype now provides English and French interface text, scenario content, question content, dataset labels, and feedback text through the same application flow. The review table below records the bilingual terminology used for key data-literacy concepts.', fr: 'Ce prototype offre maintenant le texte de l’interface, le contenu des scénarios, les questions, les libellés des ensembles de données et la rétroaction en français et en anglais dans le même déroulement applicatif. Le tableau d’examen ci-dessous consigne la terminologie bilingue utilisée pour les principaux concepts de littératie des données.' },
+        'ol-standard-h4': { en: 'Bilingual implementation standard applied', fr: 'Norme de mise en œuvre bilingue appliquée' },
+        'ol-standard-1': { en: 'English and French are treated as equivalent content, not as summaries.', fr: 'Le français et l’anglais sont traités comme du contenu équivalent, et non comme des résumés.' },
+        'ol-standard-2': { en: 'The language toggle updates visible text, document language metadata, titles, screen-reader announcements, and dynamic quiz content.', fr: 'Le sélecteur de langue met à jour le texte visible, les métadonnées linguistiques du document, les titres, les annonces aux lecteurs d’écran et le contenu dynamique du quiz.' },
+        'ol-standard-3': { en: 'Statistical terminology is aligned to Government of Canada terminology practice and should be validated against TERMIUM Plus and Statistics Canada source-table labels before production release.', fr: 'La terminologie statistique est alignée sur les pratiques terminologiques du gouvernement du Canada et devrait être validée dans TERMIUM Plus ainsi qu’avec les libellés des tableaux sources de Statistique Canada avant la mise en production.' },
+        'term-cap': { en: 'Bilingual terminology review register', fr: 'Registre d’examen de la terminologie bilingue' },
+        'term-th-en': { en: 'English term', fr: 'Terme anglais' },
+        'term-th-fr': { en: 'French equivalent', fr: 'Équivalent français' },
+        'term-th-context': { en: 'Usage context', fr: 'Contexte d’utilisation' },
+        'term-th-status': { en: 'Review note', fr: 'Note d’examen' },
+        'term-final-check-label': { en: 'Production note:', fr: 'Note de production :' },
+        'term-final-check': { en: 'For final publication, route the French and English strings through departmental official-languages review, including terminology validation and accessibility testing in both languages.', fr: 'Pour une publication finale, soumettre les chaînes françaises et anglaises à un examen ministériel des langues officielles, y compris une validation terminologique et des essais d’accessibilité dans les deux langues.' },
+        'announce-moved': { en: 'Moved to', fr: 'Écran affiché :' },
+        'view-name-view-welcome': { en: 'welcome screen', fr: 'accueil' },
+        'view-name-view-hub': { en: 'data theme hub', fr: 'portail des thèmes de données' },
+        'view-name-view-scenario': { en: 'theme context screen', fr: 'contexte du thème' },
+        'view-name-view-quiz': { en: 'analysis quiz screen', fr: 'quiz d’analyse' },
+        'view-name-view-feedback': { en: 'result screen', fr: 'résultat' },
+        'view-name-view-summary': { en: 'module summary screen', fr: 'résumé du module' },
+        'view-name-view-leaderboard': { en: 'local leaderboard', fr: 'classement local' }
+      },
+      t: function(key) {
+        return this.dict[key] ? this.dict[key][this.lang] : key;
+      },
+      setLang: function(l) {
+        this.lang = l === 'fr' ? 'fr' : 'en';
+        try { localStorage.setItem('stc_data_arena_lang', this.lang); } catch (e) { console.warn('Language preference not saved:', e); }
+        this.syncDocumentLanguage();
+        this.updateDOM();
+      },
+      syncDocumentLanguage: function() {
+        document.documentElement.lang = this.lang;
+        document.documentElement.dir = 'ltr';
+        document.title = this.t('title-main');
+        const metaDescription = document.querySelector('meta[name="description"]');
+        if (metaDescription) metaDescription.setAttribute('content', this.t('meta-desc'));
+        const toggle = document.getElementById('btn-lang-toggle');
+        if (toggle) {
+          toggle.textContent = this.lang === 'en' ? 'FR' : 'EN';
+          toggle.setAttribute('aria-label', this.t('lang-switch-label'));
+          toggle.setAttribute('title', this.t('lang-switch-label'));
+        }
+      },
+      updateDOM: function() {
+        this.syncDocumentLanguage();
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.placeholder = this.t(el.getAttribute('data-i18n'));
+          } else {
+            el.textContent = this.t(el.getAttribute('data-i18n'));
+          }
+        });
+        
+        // Re-render dynamic views
+        if(document.getElementById('view-hub').classList.contains('active')) UI.renderHub();
+        if(document.getElementById('view-scenario').classList.contains('active')) {
+          document.getElementById('scenario-heading').textContent = CONTENT_DB[State.currentThemeId].title[I18n.lang];
+          document.getElementById('scenario-content').innerHTML = CONTENT_DB[State.currentThemeId].scenarioHTML[I18n.lang];
+        }
+        if(document.getElementById('view-quiz').classList.contains('active')) {
+          const q = State.questionsQueue[State.currentQuestionIndex];
+          document.getElementById('quiz-progress-text').textContent = `${State.currentQuestionIndex + 1} ${I18n.t('of')} ${State.questionsQueue.length}`;
+          document.getElementById('quiz-question-text').textContent = q.text[I18n.lang];
+          
+          // Re-render options text while preserving radio inputs state
+          const labels = document.querySelectorAll('#quiz-options label span');
+          labels.forEach((span, index) => {
+             span.textContent = q.options[I18n.lang][index];
+          });
+        }
+        if(document.getElementById('view-leaderboard').classList.contains('active')) UI.renderLeaderboard();
+        if(document.getElementById('view-summary').classList.contains('active')) UI.renderSummary();
+        if(document.getElementById('view-feedback').classList.contains('active')) UI.renderFeedback();
+        if(typeof UI !== 'undefined') UI.renderTerminologyReview();
+      }
+    };
+
+    /**
+     * =====================================================================
+     * REAL DATA CONTENT DATABASE
+     * Data sourced from official Statistics Canada data tables.
+     * =====================================================================
+     */
+    const CONTENT_DB = {
+      'theme-population': {
+        id: 'theme-population',
+        title: { en: 'Demographics: Population Growth', fr: 'Démographie : Croissance de la population' },
+        icon: '👥',
+        desc: { en: 'Analyze Canada’s historical population milestones using quarterly estimates.', fr: 'Analysez les étapes historiques de la population du Canada à l\'aide d\'estimations trimestrielles.' },
+        scenarioHTML: {
+          en: `
+            <h3>Population estimates, quarterly</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 17-10-0009-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901" target="_blank" rel="noopener">View table 17-10-0009-01</a></p>
+            <p>The following extract shows Canada's estimated population at the beginning of Q3 (July 1st) for recent years.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Canada Population Estimates (July 1st)</caption>
+                <thead>
+                  <tr><th scope="col">Geography</th><th scope="col">Q3 2021</th><th scope="col">Q3 2022</th><th scope="col">Q3 2023</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Canada</th><td class="text-right">38,239,864</td><td class="text-right">38,939,056</td><td class="text-right">40,097,761</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Estimations de la population, trimestrielles</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 17-10-0009-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1710000901" target="_blank" rel="noopener">Voir le tableau 17-10-0009-01</a></p>
+            <p>L'extrait suivant montre la population estimée du Canada au début du troisième trimestre (1er juillet) pour les années récentes.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Estimations de la population du Canada (1er juillet)</caption>
+                <thead>
+                  <tr><th scope="col">Géographie</th><th scope="col">T3 2021</th><th scope="col">T3 2022</th><th scope="col">T3 2023</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Canada</th><td class="text-right">38 239 864</td><td class="text-right">38 939 056</td><td class="text-right">40 097 761</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "Based on the table, in which year did Canada's estimated population officially surpass 40 million people on July 1st?", fr: "D'après le tableau, en quelle année la population estimée du Canada a-t-elle officiellement dépassé les 40 millions d'habitants le 1er juillet ?" },
+            options: { en: ["2021", "2022", "2023", "It has not yet surpassed 40 million."], fr: ["2021", "2022", "2023", "Elle n'a pas encore dépassé les 40 millions."] },
+            answer: 2, 
+            exp: { en: "The table shows the population reached 40,097,761 in Q3 of 2023.", fr: "Le tableau indique que la population a atteint 40 097 761 au T3 de 2023." }
+          },
+          {
+            diff: 2, 
+            text: { en: "Approximately how many people were added to the population between July 1, 2022, and July 1, 2023?", fr: "Environ combien de personnes se sont ajoutées à la population entre le 1er juillet 2022 et le 1er juillet 2023 ?" },
+            options: { en: ["Roughly 700,000", "Roughly 1.15 million", "Roughly 2.5 million", "Roughly 500,000"], fr: ["Environ 700 000", "Environ 1,15 million", "Environ 2,5 millions", "Environ 500 000"] },
+            answer: 1, 
+            exp: { en: "40,097,761 (2023) minus 38,939,056 (2022) is an increase of 1,158,705 people.", fr: "40 097 761 (2023) moins 38 939 056 (2022) représente une augmentation de 1 158 705 personnes." }
+          },
+          {
+            diff: 3, 
+            text: { en: "What was the approximate percentage growth of the population from Q3 2021 to Q3 2023?", fr: "Quelle a été la croissance en pourcentage approximative de la population entre le T3 2021 et le T3 2023 ?" },
+            options: { en: ["2.5%", "4.9%", "7.1%", "10.0%"], fr: ["2,5 %", "4,9 %", "7,1 %", "10,0 %"] },
+            answer: 1, 
+            exp: { en: "((40,097,761 - 38,239,864) / 38,239,864) * 100 calculates to approximately 4.86%.", fr: "((40 097 761 - 38 239 864) / 38 239 864) * 100 donne environ 4,86 %." },
+            badge: { en: 'Demographics Analyst 📊', fr: 'Analyste démographique 📊' }
+          }
+        ]
+      },
+      'theme-economy': {
+        id: 'theme-economy',
+        title: { en: 'Economy: Consumer Price Index', fr: 'Économie : Indice des prix à la consommation' },
+        icon: '🛒',
+        desc: { en: 'Track changes in the cost of living using the All-items CPI.', fr: 'Suivez l\'évolution du coût de la vie à l\'aide de l\'IPC d\'ensemble.' },
+        scenarioHTML: {
+          en: `
+            <h3>Consumer Price Index, monthly</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 18-10-0004-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000401" target="_blank" rel="noopener">View table 18-10-0004-01</a></p>
+            <p>The Consumer Price Index (CPI) represents changes in prices as experienced by Canadian consumers. The baseline index is 2002=100.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>All-items Consumer Price Index (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Reference Period</th><th scope="col">Index (2002=100)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">January 2022</th><td class="text-right">145.3</td></tr>
+                  <tr><th scope="row">January 2023</th><td class="text-right">153.9</td></tr>
+                  <tr><th scope="row">January 2024</th><td class="text-right">158.3</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Indice des prix à la consommation, mensuel</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 18-10-0004-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1810000401" target="_blank" rel="noopener">Voir le tableau 18-10-0004-01</a></p>
+            <p>L'Indice des prix à la consommation (IPC) représente l'évolution des prix telle qu'elle est vécue par les consommateurs canadiens. L'indice de référence est 2002=100.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Indice d'ensemble des prix à la consommation (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Période de référence</th><th scope="col">Indice (2002=100)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Janvier 2022</th><td class="text-right">145,3</td></tr>
+                  <tr><th scope="row">Janvier 2023</th><td class="text-right">153,9</td></tr>
+                  <tr><th scope="row">Janvier 2024</th><td class="text-right">158,3</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "What was the All-items Consumer Price Index value for January 2024?", fr: "Quelle était la valeur de l'Indice d'ensemble des prix à la consommation pour janvier 2024 ?" },
+            options: { en: ["100.0", "145.3", "153.9", "158.3"], fr: ["100,0", "145,3", "153,9", "158,3"] },
+            answer: 3, 
+            exp: { en: "The table lists the January 2024 index as 158.3.", fr: "Le tableau indique que l'indice de janvier 2024 est de 158,3." }
+          },
+          {
+            diff: 2, 
+            text: { en: "A user points out the index went up 4.4 points from Jan 2023 to Jan 2024. Does this mean the inflation rate was exactly 4.4%?", fr: "Un utilisateur souligne que l'indice a augmenté de 4,4 points entre janv. 2023 et janv. 2024. Cela signifie-t-il que le taux d'inflation était exactement de 4,4 % ?" },
+            options: { 
+              en: [
+                "Yes, points and percentages are identical in the CPI.",
+                "No, the inflation rate is calculated as the percentage change between the two index values, not the raw point difference.",
+                "Yes, because the base year is 2002.",
+                "No, inflation is calculated by adding the two numbers together."
+              ], 
+              fr: [
+                "Oui, les points et les pourcentages sont identiques dans l'IPC.",
+                "Non, le taux d'inflation est calculé comme la variation en pourcentage entre les deux valeurs de l'indice, et non comme la différence brute en points.",
+                "Oui, car l'année de base est 2002.",
+                "Non, l'inflation est calculée en additionnant les deux nombres."
+              ]
+            },
+            answer: 1, 
+            exp: { en: "The rate of inflation is the percentage change: ((158.3 - 153.9) / 153.9) * 100 = ~2.9%.", fr: "Le taux d'inflation est la variation en pourcentage : ((158,3 - 153,9) / 153,9) * 100 = ~2,9 %." }
+          },
+          {
+            diff: 3, 
+            text: { en: "The base year for this CPI table is 2002=100. What does the January 2024 value of 158.3 signify compared to 2002?", fr: "L'année de base pour ce tableau de l'IPC est 2002=100. Que signifie la valeur de 158,3 de janvier 2024 par rapport à 2002 ?" },
+            options: { 
+              en: [
+                "Prices have decreased by 58.3%",
+                "A standard basket of goods costs exactly $158.30",
+                "Prices for the CPI basket of goods have increased by 58.3% since 2002",
+                "Inflation is rising at 58% per year"
+              ], 
+              fr: [
+                "Les prix ont baissé de 58,3 %",
+                "Un panier standard de biens coûte exactement 158,30 $",
+                "Les prix du panier de biens de l'IPC ont augmenté de 58,3 % depuis 2002",
+                "L'inflation augmente de 58 % par an"
+              ] 
+            },
+            answer: 2, 
+            exp: { en: "The index measures price change relative to the base year. A value of 158.3 means prices are 58.3% higher than they were in 2002.", fr: "L'indice mesure la variation des prix par rapport à l'année de base. Une valeur de 158,3 signifie que les prix sont 58,3 % plus élevés qu'en 2002." },
+            badge: { en: 'Inflation Expert 📈', fr: 'Spécialiste de l’inflation 📈' }
+          }
+        ]
+      },
+      'theme-environment': {
+        id: 'theme-environment',
+        title: { en: 'Environment: GHG Emissions', fr: 'Environnement : Émissions de GES' },
+        icon: '🌍',
+        desc: { en: 'Examine trends in total greenhouse gas emissions across industries and households.', fr: 'Examinez les tendances des émissions totales de gaz à effet de serre des industries et des ménages.' },
+        scenarioHTML: {
+          en: `
+            <h3>Physical flow account for greenhouse gas emissions</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 38-10-0097-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3810009701" target="_blank" rel="noopener">View table 38-10-0097-01</a></p>
+            <p>Total greenhouse gas (GHG) emissions represent the sum of emissions from all industries and households, measured in kilotonnes.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Total GHG Emissions (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Sector</th><th scope="col">2005</th><th scope="col">2015</th><th scope="col">2021</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Total, industries and households</th><td class="text-right">722,869</td><td class="text-right">720,539</td><td class="text-right">690,449</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Compte de flux physiques des émissions de gaz à effet de serre</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 38-10-0097-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=3810009701" target="_blank" rel="noopener">Voir le tableau 38-10-0097-01</a></p>
+            <p>Les émissions totales de gaz à effet de serre (GES) représentent la somme des émissions de toutes les industries et des ménages, mesurées en kilotonnes.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Émissions totales de GES (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Secteur</th><th scope="col">2005</th><th scope="col">2015</th><th scope="col">2021</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Total, industries et ménages</th><td class="text-right">722 869</td><td class="text-right">720 539</td><td class="text-right">690 449</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "What was the overall trend in total GHG emissions between 2005 and 2021 according to this extract?", fr: "Quelle a été la tendance globale des émissions totales de GES entre 2005 et 2021 selon cet extrait ?" },
+            options: { en: ["Emissions increased significantly.", "Emissions decreased.", "Emissions remained exactly the same.", "Emissions doubled."], fr: ["Les émissions ont augmenté de manière significative.", "Les émissions ont diminué.", "Les émissions sont restées exactement les mêmes.", "Les émissions ont doublé."] },
+            answer: 1, 
+            exp: { en: "The total dropped from 722,869 kilotonnes in 2005 to 690,449 kilotonnes in 2021.", fr: "Le total est passé de 722 869 kilotonnes en 2005 à 690 449 kilotonnes en 2021." }
+          },
+          {
+            diff: 2, 
+            text: { en: "What was the absolute reduction in GHG emissions (in kilotonnes) from 2005 to 2021?", fr: "Quelle a été la réduction absolue des émissions de GES (en kilotonnes) de 2005 à 2021 ?" },
+            options: { en: ["2,330 kt", "15,100 kt", "32,420 kt", "50,000 kt"], fr: ["2 330 kt", "15 100 kt", "32 420 kt", "50 000 kt"] },
+            answer: 2, 
+            exp: { en: "722,869 kt (2005) minus 690,449 kt (2021) equals a reduction of 32,420 kt.", fr: "722 869 kt (2005) moins 690 449 kt (2021) équivaut à une réduction de 32 420 kt." }
+          },
+          {
+            diff: 3, 
+            text: { en: "If a target was set to reduce 2005 emission levels by exactly 5% by 2021, was this target met?", fr: "Si un objectif avait été fixé pour réduire les niveaux d'émissions de 2005 d'exactement 5 % d'ici 2021, cet objectif a-t-il été atteint ?" },
+            options: { 
+              en: [
+                "Yes, emissions dropped by more than 5%.",
+                "No, emissions only dropped by approximately 4.5%.",
+                "Yes, emissions dropped by exactly 10%.",
+                "No, emissions increased."
+              ],
+              fr: [
+                "Oui, les émissions ont chuté de plus de 5 %.",
+                "Non, les émissions n'ont chuté que d'environ 4,5 %.",
+                "Oui, les émissions ont chuté d'exactement 10 %.",
+                "Non, les émissions ont augmenté."
+              ]
+            },
+            answer: 1, 
+            exp: { en: "A 5% reduction of 722,869 is 36,143. The actual reduction was only 32,420 (about 4.48%), meaning the 5% target was not met.", fr: "Une réduction de 5 % de 722 869 équivaut à 36 143. La réduction réelle n'a été que de 32 420 (environ 4,48 %), ce qui signifie que l'objectif de 5 % n'a pas été atteint." },
+            badge: { en: 'Emissions Tracker 🌍', fr: 'Suivi des émissions 🌍' }
+          }
+        ]
+      },
+      'theme-labour': {
+        id: 'theme-labour',
+        title: { en: 'Labour: Unemployment Rate', fr: 'Travail : Taux de chômage' },
+        icon: '💼',
+        desc: { en: 'Analyze recent fluctuations in Canada’s unemployment rate using monthly data.', fr: 'Analysez les fluctuations récentes du taux de chômage au Canada à l\'aide de données mensuelles.' },
+        scenarioHTML: {
+          en: `
+            <h3>Labour force characteristics, monthly</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 14-10-0287-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701" target="_blank" rel="noopener">View table 14-10-0287-01</a></p>
+            <p>This table displays the seasonally adjusted unemployment rate for both sexes, ages 15 and over.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Unemployment Rate (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Reference Period</th><th scope="col">Unemployment Rate (%)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">January 2024</th><td class="text-right">5.7</td></tr>
+                  <tr><th scope="row">February 2024</th><td class="text-right">5.8</td></tr>
+                  <tr><th scope="row">March 2024</th><td class="text-right">6.1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Caractéristiques de la population active, mensuelles</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 14-10-0287-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1410028701" target="_blank" rel="noopener">Voir le tableau 14-10-0287-01</a></p>
+            <p>Ce tableau affiche le taux de chômage désaisonnalisé pour les deux sexes, âgés de 15 ans et plus.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Taux de chômage (Canada)</caption>
+                <thead>
+                  <tr><th scope="col">Période de référence</th><th scope="col">Taux de chômage (%)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Janvier 2024</th><td class="text-right">5,7</td></tr>
+                  <tr><th scope="row">Février 2024</th><td class="text-right">5,8</td></tr>
+                  <tr><th scope="row">Mars 2024</th><td class="text-right">6,1</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "What was the unemployment rate in March 2024?", fr: "Quel était le taux de chômage en mars 2024 ?" },
+            options: { en: ["5.7%", "5.8%", "6.1%", "6.5%"], fr: ["5,7 %", "5,8 %", "6,1 %", "6,5 %"] },
+            answer: 2, 
+            exp: { en: "The table shows the March 2024 unemployment rate as 6.1%.", fr: "Le tableau indique que le taux de chômage de mars 2024 est de 6,1 %." }
+          },
+          {
+            diff: 2, 
+            text: { en: "How much did the unemployment rate increase from January 2024 to March 2024?", fr: "De combien le taux de chômage a-t-il augmenté entre janvier 2024 et mars 2024 ?" },
+            options: { en: ["0.2 percentage points", "0.4 percentage points", "0.4 percent", "1.4 percentage points"], fr: ["0,2 point de pourcentage", "0,4 point de pourcentage", "0,4 pour cent", "1,4 point de pourcentage"] },
+            answer: 1, 
+            exp: { en: "6.1 - 5.7 = 0.4. When comparing two rates, the absolute difference is expressed in 'percentage points', not percent.", fr: "6,1 - 5,7 = 0,4. Lors de la comparaison de deux taux, la différence absolue est exprimée en « points de pourcentage », et non en pourcentage." }
+          },
+          {
+            diff: 3, 
+            text: { en: "If the total active labor force was exactly 21 million people in March 2024, approximately how many people were unemployed?", fr: "Si la population active totale était d'exactement 21 millions de personnes en mars 2024, environ combien de personnes étaient au chômage ?" },
+            options: { en: ["1.28 million", "6.1 million", "12.8 million", "210,000"], fr: ["1,28 million", "6,1 millions", "12,8 millions", "210 000"] },
+            answer: 0, 
+            exp: { en: "6.1% of 21,000,000 (0.061 * 21,000,000) equals 1,281,000 people (1.28 million).", fr: "6,1 % de 21 000 000 (0,061 * 21 000 000) équivaut à 1 281 000 personnes (1,28 million)." },
+            badge: { en: 'Labour Economist 💼', fr: 'Économiste du travail 💼' }
+          }
+        ]
+      },
+      'theme-retail': {
+        id: 'theme-retail',
+        title: { en: 'Business: Retail Trade', fr: 'Entreprise : Commerce de détail' },
+        icon: '🛍️',
+        desc: { en: 'Examine the proportion of retail e-commerce sales compared to total retail trade.', fr: 'Examinez la proportion des ventes du commerce de détail électronique par rapport au commerce de détail total.' },
+        scenarioHTML: {
+          en: `
+            <h3>Retail trade sales by industry (x 1,000,000)</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 20-10-0008-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=2010000801" target="_blank" rel="noopener">View table 20-10-0008-01</a></p>
+            <p>The table below shows unadjusted retail sales figures for Canada in millions of dollars ($ millions).</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Retail Sales, November 2023 ($ millions)</caption>
+                <thead>
+                  <tr><th scope="col">Sales Category</th><th scope="col">Amount ($ millions)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Total retail sales</th><td class="text-right">66,000</td></tr>
+                  <tr><th scope="row">Retail e-commerce sales</th><td class="text-right">4,000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Ventes au détail par industrie (x 1 000 000)</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 20-10-0008-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=2010000801" target="_blank" rel="noopener">Voir le tableau 20-10-0008-01</a></p>
+            <p>Le tableau ci-dessous présente les chiffres non désaisonnalisés des ventes au détail pour le Canada en millions de dollars (en millions de $).</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Ventes au détail, novembre 2023 (en millions de $)</caption>
+                <thead>
+                  <tr><th scope="col">Catégorie de vente</th><th scope="col">Montant (en millions de $)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Total des ventes au détail</th><td class="text-right">66 000</td></tr>
+                  <tr><th scope="row">Ventes au détail du commerce électronique</th><td class="text-right">4 000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "What were the total retail sales in Canada in November 2023?", fr: "Quel a été le total des ventes au détail au Canada en novembre 2023 ?" },
+            options: { en: ["$66,000", "$66 million", "$66 billion", "$4 billion"], fr: ["66 000 $", "66 millions de $", "66 milliards de $", "4 milliards de $"] },
+            answer: 2, 
+            exp: { en: "The table units are in millions of dollars ($ millions). 66,000 million is equal to 66 billion dollars.", fr: "Les unités du tableau sont en millions de dollars. 66 000 millions équivaut à 66 milliards de dollars." }
+          },
+          {
+            diff: 2, 
+            text: { en: "What proportion of total retail sales were made through e-commerce in November 2023?", fr: "Quelle proportion du total des ventes au détail a été réalisée par le commerce électronique en novembre 2023 ?" },
+            options: { en: ["~2%", "~6%", "~12%", "~40%"], fr: ["~2 %", "~6 %", "~12 %", "~40 %"] },
+            answer: 1, 
+            exp: { en: "(4,000 / 66,000) * 100 calculates to approximately 6.06%.", fr: "(4 000 / 66 000) * 100 donne environ 6,06 %." }
+          },
+          {
+            diff: 3, 
+            text: { en: "If total retail sales grew the following month, but e-commerce sales remained exactly the same, what happens to the e-commerce proportion?", fr: "Si le total des ventes au détail augmentait le mois suivant, mais que les ventes du commerce électronique restaient exactement les mêmes, qu'arriverait-il à la proportion du commerce électronique ?" },
+            options: { en: ["It increases", "It decreases", "It stays the same", "It becomes negative"], fr: ["Elle augmente", "Elle diminue", "Elle reste la même", "Elle devient négative"] },
+            answer: 1, 
+            exp: { en: "If the numerator (e-commerce sales) stays the same while the denominator (total sales) grows, the overall proportion decreases.", fr: "Si le numérateur (ventes du commerce électronique) reste le même alors que le dénominateur (ventes totales) augmente, la proportion globale diminue." },
+            badge: { en: 'Retail Strategist 🛍️', fr: 'Stratège du commerce de détail 🛍️' }
+          }
+        ]
+      },
+      'theme-housing': {
+        id: 'theme-housing',
+        title: { en: 'Housing: Price Index', fr: 'Logement : Indice des prix' },
+        icon: '🏠',
+        desc: { en: 'Analyze new housing price trends across different Canadian geographies.', fr: 'Analysez les tendances des prix des logements neufs dans différentes régions canadiennes.' },
+        scenarioHTML: {
+          en: `
+            <h3>New housing price index, monthly</h3>
+            <p><strong>Source:</strong> Statistics Canada. Table 18-10-0205-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810020501" target="_blank" rel="noopener">View table 18-10-0205-01</a></p>
+            <p>The New Housing Price Index (NHPI) measures changes over time in the contractors' selling prices of new residential houses. The base period is 2016=100.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>New Housing Price Index (December 2023)</caption>
+                <thead>
+                  <tr><th scope="col">Geography</th><th scope="col">Index (2016=100)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Canada</th><td class="text-right">124.5</td></tr>
+                  <tr><th scope="row">Toronto, Ontario</th><td class="text-right">125.0</td></tr>
+                  <tr><th scope="row">Calgary, Alberta</th><td class="text-right">132.0</td></tr>
+                  <tr><th scope="row">Vancouver, British Columbia</th><td class="text-right">121.0</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `,
+          fr: `
+            <h3>Indice des prix des logements neufs, mensuel</h3>
+            <p><strong>Source :</strong> Statistique Canada. Tableau 18-10-0205-01. <br>
+            <a href="https://www150.statcan.gc.ca/t1/tbl1/fr/tv.action?pid=1810020501" target="_blank" rel="noopener">Voir le tableau 18-10-0205-01</a></p>
+            <p>L'Indice des prix des logements neufs (IPLN) mesure les variations au fil du temps des prix de vente des entrepreneurs pour les maisons résidentielles neuves. La période de base est 2016=100.</p>
+            <div class="table-wrap">
+              <table>
+                <caption>Indice des prix des logements neufs (décembre 2023)</caption>
+                <thead>
+                  <tr><th scope="col">Géographie</th><th scope="col">Indice (2016=100)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Canada</th><td class="text-right">124,5</td></tr>
+                  <tr><th scope="row">Toronto, Ontario</th><td class="text-right">125,0</td></tr>
+                  <tr><th scope="row">Calgary, Alberta</th><td class="text-right">132,0</td></tr>
+                  <tr><th scope="row">Vancouver, Colombie-Britannique</th><td class="text-right">121,0</td></tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        },
+        questions: [
+          {
+            diff: 1, 
+            text: { en: "Which listed geography had the highest New Housing Price Index in December 2023?", fr: "Quelle géographie répertoriée avait l'indice des prix des logements neufs le plus élevé en décembre 2023 ?" },
+            options: { en: ["Canada", "Toronto, Ontario", "Calgary, Alberta", "Vancouver, British Columbia"], fr: ["Canada", "Toronto, Ontario", "Calgary, Alberta", "Vancouver, Colombie-Britannique"] },
+            answer: 2, 
+            exp: { en: "Calgary had the highest index value at 132.0.", fr: "Calgary avait la valeur d'indice la plus élevée à 132,0." }
+          },
+          {
+            diff: 2, 
+            text: { en: "Compared to the 2016 baseline (100), how much higher are new housing prices in Toronto in December 2023?", fr: "Par rapport à l'indice de référence de 2016 (100), de combien les prix des logements neufs sont-ils plus élevés à Toronto en décembre 2023 ?" },
+            options: { en: ["12.5%", "21.0%", "25.0%", "125.0%"], fr: ["12,5 %", "21,0 %", "25,0 %", "125,0 %"] },
+            answer: 2, 
+            exp: { en: "An index of 125.0 means prices have risen 25.0% since the base year (125.0 - 100 = 25.0).", fr: "Un indice de 125,0 signifie que les prix ont augmenté de 25,0 % depuis l'année de base (125,0 - 100 = 25,0)." }
+          },
+          {
+            diff: 3, 
+            text: { en: "True or False: Because Calgary's index (132.0) is higher than Vancouver's (121.0), a new house in Calgary definitely costs more dollars than a new house in Vancouver.", fr: "Vrai ou Faux : Parce que l'indice de Calgary (132,0) est supérieur à celui de Vancouver (121,0), une maison neuve à Calgary coûte certainement plus cher en dollars qu'une maison neuve à Vancouver." },
+            options: { 
+              en: [
+                "True, the index reflects absolute dollar price.",
+                "False, the index only measures the rate of price change relative to 2016 for each specific geography.",
+                "True, Calgary is always more expensive.",
+                "False, Vancouver's index is actually higher."
+              ],
+              fr: [
+                "Vrai, l'indice reflète le prix absolu en dollars.",
+                "Faux, l'indice mesure uniquement le taux de variation des prix par rapport à 2016 pour chaque géographie spécifique.",
+                "Vrai, Calgary est toujours plus chère.",
+                "Faux, l'indice de Vancouver est en fait plus élevé."
+              ]
+            },
+            answer: 1, 
+            exp: { en: "The NHPI measures price *changes* within a specific region over time. It cannot be used to compare absolute dollar prices between two different cities.", fr: "L'IPLN mesure les *variations* de prix dans une région spécifique au fil du temps. Il ne peut pas être utilisé pour comparer les prix absolus en dollars entre deux villes différentes." },
+            badge: { en: 'Housing Market Specialist 🏠', fr: 'Spécialiste du marché du logement 🏠' }
+          }
+        ]
+      }
+    };
+
+
+    /**
+     * =====================================================================
+     * BILINGUAL TERMINOLOGY REVIEW REGISTER
+     * =====================================================================
+     */
+    const TERMINOLOGY_REVIEW = [
+      { en: 'data literacy', fr: 'littératie des données', context: { en: 'Main learning objective and application theme.', fr: 'Objectif d’apprentissage principal et thème de l’application.' }, status: { en: 'Use consistently in title, breadcrumbs, and official-languages note.', fr: 'À utiliser uniformément dans le titre, le fil d’Ariane et la note sur les langues officielles.' } },
+      { en: 'open data', fr: 'données ouvertes', context: { en: 'Description of Statistics Canada source datasets.', fr: 'Description des ensembles de données sources de Statistique Canada.' }, status: { en: 'Government of Canada standard terminology.', fr: 'Terminologie normalisée du gouvernement du Canada.' } },
+      { en: 'Statistics Canada', fr: 'Statistique Canada', context: { en: 'Source institution.', fr: 'Institution source.' }, status: { en: 'Official institution name.', fr: 'Nom officiel de l’institution.' } },
+      { en: 'population estimates', fr: 'estimations de la population', context: { en: 'Demographics module and table 17-10-0009-01.', fr: 'Module sur la démographie et tableau 17-10-0009-01.' }, status: { en: 'Aligned to source-table wording.', fr: 'Aligné sur le libellé du tableau source.' } },
+      { en: 'Consumer Price Index', fr: 'Indice des prix à la consommation', context: { en: 'Economy module and CPI questions.', fr: 'Module sur l’économie et questions sur l’IPC.' }, status: { en: 'Official statistical term; acronym CPI / IPC used after first mention.', fr: 'Terme statistique officiel; sigle CPI / IPC utilisé après la première mention.' } },
+      { en: 'All-items Consumer Price Index', fr: 'Indice d’ensemble des prix à la consommation', context: { en: 'CPI table label.', fr: 'Libellé du tableau de l’IPC.' }, status: { en: 'Use “all-items” / “d’ensemble” consistently.', fr: 'Utiliser « all-items » / « d’ensemble » de façon uniforme.' } },
+      { en: 'greenhouse gas emissions', fr: 'émissions de gaz à effet de serre', context: { en: 'Environment module and GHG questions.', fr: 'Module sur l’environnement et questions sur les GES.' }, status: { en: 'Acronyms GHG / GES used after first mention.', fr: 'Sigles GHG / GES utilisés après la première mention.' } },
+      { en: 'unemployment rate', fr: 'taux de chômage', context: { en: 'Labour module and monthly labour force table.', fr: 'Module sur le travail et tableau mensuel de la population active.' }, status: { en: 'Official labour-market term.', fr: 'Terme officiel du marché du travail.' } },
+      { en: 'percentage point', fr: 'point de pourcentage', context: { en: 'Used when comparing rates, such as unemployment rates.', fr: 'Utilisé lors de la comparaison de taux, par exemple les taux de chômage.' }, status: { en: 'Maintains distinction between points and percent.', fr: 'Maintient la distinction entre les points et les pourcentages.' } },
+      { en: 'retail e-commerce sales', fr: 'ventes au détail du commerce électronique', context: { en: 'Retail trade module.', fr: 'Module sur le commerce de détail.' }, status: { en: 'Aligned to source-table business terminology.', fr: 'Aligné sur la terminologie commerciale du tableau source.' } },
+      { en: 'New Housing Price Index', fr: 'Indice des prix des logements neufs', context: { en: 'Housing module and NHPI questions.', fr: 'Module sur le logement et questions sur l’IPLN.' }, status: { en: 'Official statistical index name; acronym NHPI / IPLN used after first mention.', fr: 'Nom officiel de l’indice statistique; sigle NHPI / IPLN utilisé après la première mention.' } },
+      { en: 'reference period', fr: 'période de référence', context: { en: 'Dataset tables and quiz questions.', fr: 'Tableaux des ensembles de données et questions du quiz.' }, status: { en: 'Use for time periods in statistical tables.', fr: 'À utiliser pour les périodes dans les tableaux statistiques.' } },
+      { en: 'local leaderboard', fr: 'classement local', context: { en: 'Browser-only scoring feature.', fr: 'Fonction de pointage limitée au navigateur.' }, status: { en: 'Plain-language term; clarifies no server transmission.', fr: 'Terme en langage clair; précise qu’il n’y a aucune transmission au serveur.' } }
+    ];
+
+    /**
+     * =====================================================================
+     * STATE MANAGEMENT & STORAGE
+     * =====================================================================
+     */
+    const State = {
+      user: null,
+      leaderboard: [],
+      completedThemes: [],
+      
+      // Quiz flow state
+      currentThemeId: null,
+      questionsQueue: [],
+      currentQuestionIndex: 0,
+      questionScores: [], // Tracks score earned per question to handle 'Back'
+      quizScore: 0,
+      lastFeedback: null
+    };
+
+    const Storage = {
+      load: () => {
+        try {
+          const data = localStorage.getItem('stc_data_arena');
+          if (data) {
+            const parsed = JSON.parse(data);
+            State.user = parsed.user || null;
+            State.leaderboard = parsed.leaderboard || [];
+            State.completedThemes = parsed.completedThemes || [];
+          }
+        } catch (e) { console.error("Storage error:", e); }
+      },
+      save: () => {
+        try {
+          localStorage.setItem('stc_data_arena', JSON.stringify({
+            user: State.user,
+            leaderboard: State.leaderboard,
+            completedThemes: State.completedThemes
+          }));
+        } catch (e) { console.error("Storage save error:", e); }
+      },
+      updateLeaderboard: () => {
+        if (!State.user) return;
+        const existingIndex = State.leaderboard.findIndex(u => u.alias === State.user.alias);
+        if (existingIndex > -1) {
+          State.leaderboard[existingIndex] = State.user;
+        } else {
+          State.leaderboard.push(State.user);
+        }
+        State.leaderboard.sort((a, b) => b.score - a.score);
+        State.leaderboard = State.leaderboard.slice(0, 10);
+        Storage.save();
+      },
+      clearAll: () => {
+        localStorage.removeItem('stc_data_arena');
+        location.reload();
+      }
+    };
+
+    /**
+     * =====================================================================
+     * UTILITIES
+     * =====================================================================
+     */
+    const Utils = {
+      escapeHTML: (str) => {
+        return String(str).replace(/[&<>'"]/g, 
+          tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
+        );
+      },
+      announce: (message) => {
+        const liveRegion = document.getElementById('live-region');
+        if (liveRegion) {
+          liveRegion.textContent = message;
+          setTimeout(() => { liveRegion.textContent = ''; }, 3000);
+        }
+      },
+      focusElement: (id) => {
+        const el = document.getElementById(id);
+        if (el) { el.focus(); }
+      },
+      getBadgeKey: (badge) => {
+        if (!badge) return '';
+        return typeof badge === 'object' ? badge.en : String(badge);
+      },
+      getBadgeLabel: (badgeOrKey) => {
+        if (!badgeOrKey) return '';
+        if (typeof badgeOrKey === 'object') return badgeOrKey[I18n.lang] || badgeOrKey.en;
+        for (const theme of Object.values(CONTENT_DB)) {
+          for (const q of theme.questions) {
+            if (q.badge && Utils.getBadgeKey(q.badge) === badgeOrKey) {
+              return Utils.getBadgeLabel(q.badge);
+            }
+          }
+        }
+        return String(badgeOrKey);
+      }
+    };
+
+    /**
+     * =====================================================================
+     * UI RENDERING & ROUTING
+     * =====================================================================
+     */
+    const Router = {
+      navigate: (viewId) => {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        
+        switch(viewId) {
+          case 'view-hub':
+            UI.renderHub();
+            UI.updateHeader();
+            break;
+          case 'view-summary':
+            UI.renderSummary();
+            break;
+          case 'view-leaderboard':
+            UI.renderLeaderboard();
+            break;
+        }
+        Utils.focusElement(viewId);
+        Utils.announce(`${I18n.t('announce-moved')} ${I18n.t('view-name-' + viewId)}.`);
+      }
+    };
+
+    const UI = {
+      updateHeader: () => {
+        const badge = document.getElementById('user-status-badge');
+        if (State.user) {
+          document.getElementById('display-alias').textContent = State.user.alias;
+          document.getElementById('display-score').textContent = State.user.score;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      },
+      
+      renderHub: () => {
+        const grid = document.getElementById('hub-grid');
+        grid.innerHTML = '';
+        
+        Object.values(CONTENT_DB).forEach(theme => {
+          const isComplete = State.completedThemes.includes(theme.id);
+          const card = document.createElement('article');
+          card.className = 'tool-card';
+          card.innerHTML = `
+            <h3>${theme.icon} ${theme.title[I18n.lang]}</h3>
+            <p>${theme.desc[I18n.lang]}</p>
+            ${isComplete ? `<p class="badge" style="align-self: flex-start; margin-bottom: 1rem;">${I18n.t('badge-completed')}</p>` : ''}
+            <div>
+              <gcds-button ${isComplete ? 'button-role="secondary"' : ''} data-action="select-theme" data-theme="${theme.id}">
+                ${isComplete ? I18n.t('btn-replay') : I18n.t('btn-start-mod')}
+              </gcds-button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      },
+
+      renderLeaderboard: () => {
+        const tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '';
+        
+        if (State.leaderboard.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 2rem;">${I18n.t('text-no-scores')}</td></tr>`;
+          return;
+        }
+
+        State.leaderboard.forEach((entry, index) => {
+          const badgesHTML = entry.badges.map(b => `<span class="badge" style="margin:2px;">${Utils.escapeHTML(Utils.getBadgeLabel(b))}</span>`).join('');
+          const isMe = State.user && entry.alias === State.user.alias;
+          const tr = document.createElement('tr');
+          if (isMe) tr.style.backgroundColor = '#f3fbf4';
+          
+          tr.innerHTML = `
+            <td><strong>#${index + 1}</strong></td>
+            <td>${Utils.escapeHTML(entry.alias)} ${isMe ? I18n.t('text-you') : ''}</td>
+            <td class="text-right"><strong>${entry.score}</strong></td>
+            <td>${badgesHTML || '-'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      },
+
+      renderSummary: () => {
+        document.getElementById('summary-score').textContent = State.quizScore;
+        const badgesContainer = document.getElementById('summary-badges');
+        if (State.user.badges.length > 0) {
+          badgesContainer.innerHTML = `<strong>${I18n.t('text-badges-earned')}</strong><br>` + 
+            State.user.badges.map(b => `<span class="badge" style="margin:4px;">${Utils.escapeHTML(Utils.getBadgeLabel(b))}</span>`).join('');
+        } else {
+          badgesContainer.innerHTML = '';
+        }
+      },
+
+      renderTerminologyReview: () => {
+        const tbody = document.getElementById('terminology-body');
+        if (!tbody) return;
+        tbody.innerHTML = TERMINOLOGY_REVIEW.map(item => `
+          <tr>
+            <td><span class="term-pill" lang="en">${Utils.escapeHTML(item.en)}</span></td>
+            <td><span class="term-pill" lang="fr">${Utils.escapeHTML(item.fr)}</span></td>
+            <td>${Utils.escapeHTML(item.context[I18n.lang])}</td>
+            <td>${Utils.escapeHTML(item.status[I18n.lang])}</td>
+          </tr>
+        `).join('');
+      },
+
+      renderFeedback: () => {
+        if (!State.lastFeedback) return;
+        const { isCorrect, q, points, badgeUnlocked } = State.lastFeedback;
+        const alertBox = document.getElementById('feedback-alert');
+        const heading = document.getElementById('feedback-heading');
+        heading.textContent = isCorrect ? I18n.t('text-correct') : I18n.t('text-incorrect');
+        alertBox.className = isCorrect ? 'success-box' : 'warning-box';
+        alertBox.innerHTML = isCorrect ? `<strong>+${points} ${I18n.t('text-pts')}</strong>.` : `<strong>0 ${I18n.t('text-pts')}</strong>. ${I18n.t('text-review')}`;
+        if (isCorrect && q.badge && badgeUnlocked) {
+          alertBox.innerHTML += `<br><br>🏅 <strong>${I18n.t('text-badge')}</strong> ${Utils.escapeHTML(Utils.getBadgeLabel(q.badge))}`;
+        }
+        document.getElementById('feedback-explanation').innerHTML = `<strong>${I18n.t('text-exp')}</strong> ${Utils.escapeHTML(q.exp[I18n.lang])}`;
+      }
+    };
+
+    /**
+     * =====================================================================
+     * CORE LOGIC
+     * =====================================================================
+     */
+    const Logic = {
+      registerUser: (alias) => {
+        if (!State.user || State.user.alias !== alias) {
+          State.user = { alias: alias, score: 0, badges: [] };
+          State.completedThemes = [];
+        }
+        Storage.save();
+        Router.navigate('view-hub');
+      },
+
+      startTheme: (themeId) => {
+        State.currentThemeId = themeId;
+        const theme = CONTENT_DB[themeId];
+        
+        State.questionsQueue = [...theme.questions];
+        State.currentQuestionIndex = 0;
+        State.questionScores = [];
+        State.quizScore = 0;
+        State.lastFeedback = null;
+
+        document.getElementById('scenario-heading').textContent = theme.title[I18n.lang];
+        document.getElementById('scenario-content').innerHTML = theme.scenarioHTML[I18n.lang];
+        
+        Router.navigate('view-scenario');
+      },
+
+      loadNextQuestion: () => {
+        if (State.currentQuestionIndex >= State.questionsQueue.length) {
+          Logic.finishTheme();
+          return;
+        }
+
+        const q = State.questionsQueue[State.currentQuestionIndex];
+        
+        // Update UI Progress
+        document.getElementById('quiz-progress-text').textContent = `${State.currentQuestionIndex + 1} ${I18n.t('of')} ${State.questionsQueue.length}`;
+        document.getElementById('quiz-progress-bar').style.width = `${((State.currentQuestionIndex + 1) / State.questionsQueue.length) * 100}%`;
+        document.getElementById('quiz-question-text').textContent = q.text[I18n.lang];
+
+        // Render options using standard HTML list for deep accessibility integration
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = '';
+        q.options[I18n.lang].forEach((opt, index) => {
+          const id = `opt-${index}`;
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <label for="${id}">
+              <input type="radio" name="quiz-answer" id="${id}" value="${index}" required>
+              <span>${Utils.escapeHTML(opt)}</span>
+            </label>
+          `;
+          optionsContainer.appendChild(li);
+        });
+
+        Router.navigate('view-quiz');
+      },
+
+      evaluateAnswer: (selectedIndex) => {
+        const q = State.questionsQueue[State.currentQuestionIndex];
+        const isCorrect = (parseInt(selectedIndex, 10) === q.answer);
+        
+        const alertBox = document.getElementById('feedback-alert');
+        const heading = document.getElementById('feedback-heading');
+        let badgeUnlocked = false;
+        
+        if (isCorrect) {
+          const points = q.diff * 150; // Weighted scoring based on difficulty level
+          State.questionScores.push(points);
+          State.quizScore += points;
+          heading.textContent = I18n.t('text-correct');
+          alertBox.className = 'success-box';
+          alertBox.innerHTML = `<strong>+${points} ${I18n.t('text-pts')}</strong>.`;
+          
+          const badgeKey = Utils.getBadgeKey(q.badge);
+          if (q.badge && !State.user.badges.includes(badgeKey)) {
+            State.user.badges.push(badgeKey);
+            badgeUnlocked = true;
+            alertBox.innerHTML += `<br><br>🏅 <strong>${I18n.t('text-badge')}</strong> ${Utils.escapeHTML(Utils.getBadgeLabel(q.badge))}`;
+          }
+        } else {
+          State.questionScores.push(0);
+          heading.textContent = I18n.t('text-incorrect');
+          alertBox.className = 'warning-box';
+          alertBox.innerHTML = `<strong>0 ${I18n.t('text-pts')}</strong>. ${I18n.t('text-review')}`;
+        }
+
+        State.lastFeedback = { isCorrect, q, points: isCorrect ? q.diff * 150 : 0, badgeUnlocked };
+        UI.renderFeedback();
+        Utils.announce(`${isCorrect ? I18n.t('text-correct') : I18n.t('text-incorrect')}. ${q.exp[I18n.lang]}`);
+        
+        State.currentQuestionIndex++;
+        Router.navigate('view-feedback');
+      },
+      
+      goBackQuestion: () => {
+        if (State.currentQuestionIndex === 0) {
+          Router.navigate('view-scenario');
+        } else {
+          State.currentQuestionIndex--;
+          const previousScore = State.questionScores.pop() || 0;
+          State.quizScore -= previousScore;
+          
+          // Revert badge if earned on the reverted question
+          const prevQ = State.questionsQueue[State.currentQuestionIndex];
+          if (prevQ.badge && previousScore > 0) {
+             const badgeIdx = State.user.badges.indexOf(Utils.getBadgeKey(prevQ.badge));
+             if (badgeIdx > -1) {
+                State.user.badges.splice(badgeIdx, 1);
+             }
+          }
+          
+          Logic.loadNextQuestion();
+        }
+      },
+
+      finishTheme: () => {
+        State.user.score += State.quizScore;
+        if (!State.completedThemes.includes(State.currentThemeId)) {
+          State.completedThemes.push(State.currentThemeId);
+        }
+        Storage.updateLeaderboard();
+        UI.updateHeader();
+        Router.navigate('view-summary');
+      }
+    };
+
+    /**
+     * =====================================================================
+     * INITIALIZATION & EVENT DELEGATION
+     * =====================================================================
+     */
+    const init = () => {
+      Storage.load();
+      I18n.setLang(localStorage.getItem('stc_data_arena_lang') || 'en'); // Initialize interface text and document metadata
+      
+      // Form: Registration
+      document.getElementById('form-register').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const alias = document.getElementById('input-alias').value.trim();
+        if (alias) Logic.registerUser(alias);
+      });
+
+      // Form: Quiz Submission
+      document.getElementById('form-quiz').addEventListener('submit', (e) => {
+        e.preventDefault();
+        // Prevent form submission if the back button was clicked instead
+        if (e.submitter && e.submitter.id === 'btn-back-question') return;
+        
+        const selected = document.querySelector('input[name="quiz-answer"]:checked');
+        if (selected) {
+          Logic.evaluateAnswer(selected.value);
+        }
+      });
+      
+      // Language Toggle
+      document.getElementById('btn-lang-toggle').addEventListener('click', () => {
+        I18n.setLang(I18n.lang === 'en' ? 'fr' : 'en');
+      });
+
+      // Global Click Delegation
+      document.addEventListener('click', (e) => {
+        // Handle custom GCDS buttons or standard buttons
+        const targetBtn = e.target.closest('button, gcds-button');
+        if (!targetBtn) return;
+
+        if (targetBtn.id === 'btn-show-leaderboard') {
+          Router.navigate('view-leaderboard');
+        } else if (targetBtn.classList.contains('btn-back-hub')) {
+          Router.navigate('view-hub');
+        } else if (targetBtn.dataset.action === 'select-theme') {
+          Logic.startTheme(targetBtn.dataset.theme);
+        } else if (targetBtn.id === 'btn-start-quiz' || targetBtn.id === 'btn-next-question') {
+          Logic.loadNextQuestion();
+        } else if (targetBtn.id === 'btn-back-question') {
+          Logic.goBackQuestion();
+        } else if (targetBtn.id === 'btn-reset-data') {
+          if (confirm(I18n.t('text-confirm-reset'))) {
+            Storage.clearAll();
+          }
+        }
+      });
+      
+      // Routing check
+      if (State.user && State.user.alias) {
+        Router.navigate('view-hub');
+      } else {
+        Router.navigate('view-welcome');
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', init);
+
+  </script>
+</body>
+</html>
