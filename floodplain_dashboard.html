@@ -1,453 +1,1274 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canadian Flood Plain Risk Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-        }
-        .dashboard-header {
-            background-color: #1a365d;
-            color: white;
-        }
-        .card {
-            background-color: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .map-placeholder-container {
-            background-color: #e2e8f0;
-            border: 2px dashed #cbd5e0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #4a5568;
-            min-height: 300px;
-            height: clamp(300px, 60vh, 500px);
-            border-radius: 0.375rem;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
-            border-radius: 0.375rem;
-        }
-        .status-high { background-color: #fecaca; color: #991b1b; }
-        .status-medium { background-color: #fed7aa; color: #9a3412; }
-        .status-low { background-color: #bbf7d0; color: #166534; }
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-        }
-        .message-box {
-            position: fixed; top: 20px; left: 50%;
-            transform: translateX(-50%);
-            background-color: #ef4444; color: white;
-            padding: 1rem; border-radius: 0.375rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 10000; display: none;
-            font-size: 0.875rem;
-        }
-        .message-box.success { background-color: #22c55e; }
-        /* Layer toggle styles */
-        .layer-controls {
-            background-color: #f9fafb; /* Light gray background for controls */
-            padding: 0.75rem;
-            border-radius: 0.375rem; /* rounded-md */
-            margin-top: 0.75rem; /* space above controls */
-            border: 1px solid #e5e7eb; /* Light border */
-        }
-        .layer-controls h4 {
-            font-weight: 600;
-            color: #374151; /* Gray-700 */
-            margin-bottom: 0.5rem;
-        }
-        .layer-controls label {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.25rem;
-            font-size: 0.875rem; /* 14px */
-            color: #4b5563; /* Gray-600 */
-        }
-        .layer-controls input[type="checkbox"] {
-            margin-right: 0.5rem;
-            accent-color: #1a365d; /* Match header color */
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Prototype flood plain and flood hazard dashboard using postal-code lookup, public map tiles and public geospatial service layers.">
+  <title>Canadian flood plain risk dashboard - Government of Canada prototype</title>
+
+  <!-- Leaflet is used because this is a standalone GitHub Pages prototype with public map layers. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --gc-blue: #26374a;
+      --gc-blue-dark: #1f2c3d;
+      --gc-blue-link: #284162;
+      --gc-red: #d3080c;
+      --gc-gray-50: #f8f8f8;
+      --gc-gray-100: #f1f1f1;
+      --gc-gray-200: #e5e5e5;
+      --gc-gray-300: #d6d6d6;
+      --gc-gray-500: #555;
+      --gc-gray-700: #333;
+      --gc-gray-900: #111;
+      --focus: #ffbf47;
+      --success: #278400;
+      --warning: #f90;
+      --danger: #d3080c;
+      --info: #269abc;
+      --content-max: 1170px;
+      --font-family: "Noto Sans", Arial, Helvetica, sans-serif;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-5: 1.5rem;
+      --space-6: 2rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-family);
+      font-size: 18px;
+      line-height: 1.55;
+      color: var(--gc-gray-700);
+      background: #fff;
+    }
+
+    h1, h2, h3, h4 {
+      color: var(--gc-gray-900);
+      line-height: 1.2;
+      margin: 0 0 var(--space-4);
+    }
+
+    h1 { font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 700; }
+    h2 { font-size: clamp(1.55rem, 3vw, 2rem); border-bottom: 3px solid var(--gc-red); padding-bottom: .35rem; }
+    h3 { font-size: 1.3rem; }
+    h4 { font-size: 1.1rem; }
+
+    p { margin: 0 0 var(--space-4); }
+
+    a { color: var(--gc-blue-link); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover, a:focus { color: #0535d2; }
+
+    button, input, select { font: inherit; }
+    button { min-height: 44px; }
+
+    .container { width: min(100% - 2rem, var(--content-max)); margin: 0 auto; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: .5rem;
+      top: -5rem;
+      z-index: 10000;
+      background: #000;
+      color: #fff;
+      padding: .6rem .9rem;
+      font-weight: 700;
+    }
+
+    .skip-link:focus {
+      top: .5rem;
+      outline: 4px solid var(--focus);
+      outline-offset: 2px;
+      color: #fff;
+    }
+
+    :focus-visible {
+      outline: 4px solid var(--focus);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 2px #000;
+    }
+
+    .prototype-banner {
+      background: #f5f5f5;
+      border-bottom: 1px solid var(--gc-gray-300);
+      font-size: .94rem;
+      padding: .45rem 0;
+    }
+
+    .prototype-banner strong { color: var(--gc-gray-900); }
+
+    .goc-header {
+      background: #fff;
+      border-bottom: 1px solid var(--gc-gray-300);
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      color: var(--gc-gray-900);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      font-weight: 700;
+    }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: baseline;
+      gap: .35rem;
+      letter-spacing: -.02em;
+      font-size: clamp(1.35rem, 2vw, 1.75rem);
+    }
+
+    .flag-symbol {
+      color: var(--gc-red);
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .brand-subtitle {
+      display: block;
+      font-size: .8rem;
+      font-weight: 400;
+      color: var(--gc-gray-500);
+      margin-top: .1rem;
+    }
+
+    .language-link {
+      color: var(--gc-blue-link);
+      font-weight: 700;
+      background: transparent;
+      border: 0;
+      padding: .4rem 0;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .site-nav {
+      background: var(--gc-blue);
+      color: #fff;
+    }
+
+    .site-nav .container {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .menu-label {
+      color: #fff;
+      font-weight: 700;
+      padding: .7rem 1rem .7rem 0;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+
+    .site-nav ul {
+      display: flex;
+      flex-wrap: wrap;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .site-nav a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      padding: .75rem 1rem;
+      border-left: 1px solid rgba(255,255,255,.22);
+    }
+
+    .site-nav a:hover, .site-nav a:focus {
+      background: var(--gc-blue-dark);
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .breadcrumb {
+      padding: 1rem 0 .5rem;
+      font-size: .95rem;
+    }
+
+    .breadcrumb ol {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      padding: 0;
+      margin: 0;
+    }
+
+    .breadcrumb li + li::before {
+      content: ">";
+      margin-right: .45rem;
+      color: var(--gc-gray-500);
+    }
+
+    main { flex: 1; padding-bottom: var(--space-6); }
+
+    .page-title-block {
+      margin: 1.25rem 0 var(--space-6);
+      max-width: 920px;
+    }
+
+    .lead {
+      font-size: 1.2rem;
+      color: var(--gc-gray-700);
+      max-width: 900px;
+    }
+
+    .meta-line {
+      color: var(--gc-gray-500);
+      font-size: .95rem;
+    }
+
+    .notice-box {
+      border-left: 6px solid var(--info);
+      background: #eef7fb;
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .warning-box {
+      border-left: 6px solid var(--warning);
+      background: #fff6dd;
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .error-summary {
+      border: 3px solid var(--danger);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+      background: #fff;
+    }
+
+    .error-summary h2 {
+      border: 0;
+      padding: 0;
+      font-size: 1.4rem;
+      color: var(--danger);
+    }
+
+    .error-message {
+      color: var(--danger);
+      font-weight: 700;
+      display: none;
+      margin-top: .35rem;
+    }
+
+    [aria-invalid="true"] {
+      border-color: var(--danger) !important;
+      border-width: 3px !important;
+    }
+
+    .on-this-page {
+      border: 1px solid var(--gc-gray-300);
+      background: var(--gc-gray-50);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .on-this-page h2 {
+      border: 0;
+      padding: 0;
+      font-size: 1.25rem;
+      margin-bottom: .75rem;
+    }
+
+    .on-this-page ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      columns: 2;
+    }
+
+    .search-panel, .card, .map-card, .data-quality {
+      background: #fff;
+      border: 1px solid var(--gc-gray-300);
+      border-top: 5px solid var(--gc-blue);
+      padding: var(--space-5);
+      margin-bottom: var(--space-5);
+    }
+
+    .search-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: var(--space-3);
+      align-items: end;
+      max-width: 920px;
+    }
+
+    .form-group { display: grid; gap: .35rem; }
+
+    .form-label {
+      font-weight: 700;
+      color: var(--gc-gray-900);
+    }
+
+    .hint-text {
+      color: var(--gc-gray-500);
+      font-size: .95rem;
+    }
+
+    .text-input {
+      width: 100%;
+      min-height: 48px;
+      padding: .65rem .75rem;
+      border: 2px solid #555;
+      border-radius: 0;
+      background: #fff;
+      text-transform: uppercase;
+    }
+
+    .btn {
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      min-height: 48px;
+      font-weight: 700;
+      text-decoration: none;
+      background: var(--gc-blue);
+      color: #fff;
+      border: 2px solid var(--gc-blue);
+      padding: .65rem 1.1rem;
+    }
+
+    .btn:hover, .btn:focus {
+      background: var(--gc-blue-dark);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--gc-blue);
+      border: 2px solid var(--gc-blue);
+    }
+
+    .btn-secondary:hover, .btn-secondary:focus {
+      background: var(--gc-blue);
+      color: #fff;
+    }
+
+    .status-area {
+      margin-top: var(--space-4);
+      min-height: 1.7rem;
+      font-weight: 700;
+      color: var(--gc-blue);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: var(--space-5);
+      align-items: start;
+    }
+
+    .summary-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .summary-list li {
+      border-bottom: 1px solid var(--gc-gray-200);
+      padding: .65rem 0;
+    }
+
+    .summary-label {
+      display: block;
+      color: var(--gc-gray-500);
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    .summary-value {
+      display: block;
+      color: var(--gc-gray-900);
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      font-size: .85rem;
+      font-weight: 700;
+      padding: .25rem .75rem;
+      border: 1px solid currentColor;
+    }
+
+    .badge-low { color: #006b3f; background: #e6f4ea; }
+    .badge-medium { color: #7a4c00; background: #fff3cd; }
+    .badge-high { color: #8b0000; background: #f8d7da; }
+    .badge-unknown { color: #333; background: #eee; }
+
+    .map-wrapper {
+      min-height: 520px;
+      height: min(68vh, 720px);
+      border: 1px solid var(--gc-gray-300);
+      background: var(--gc-gray-100);
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+    }
+
+    .layer-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: .75rem;
+      margin-top: var(--space-4);
+    }
+
+    .layer-option {
+      border: 1px solid var(--gc-gray-300);
+      padding: .75rem;
+      background: var(--gc-gray-50);
+    }
+
+    .layer-option label {
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .layer-option input {
+      margin-top: .25rem;
+      min-width: 20px;
+      min-height: 20px;
+    }
+
+    .layer-note {
+      font-size: .88rem;
+      color: var(--gc-gray-500);
+      margin: .35rem 0 0 1.7rem;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: var(--space-4);
+    }
+
+    .tabs button {
+      background: #fff;
+      color: var(--gc-blue);
+      border: 2px solid var(--gc-blue);
+      padding: .5rem .8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tabs button[aria-pressed="true"] {
+      background: var(--gc-blue);
+      color: #fff;
+    }
+
+    .source-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: var(--space-4) 0;
+      font-size: .95rem;
+    }
+
+    .source-table caption {
+      text-align: left;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .source-table th, .source-table td {
+      border: 1px solid var(--gc-gray-300);
+      padding: .55rem;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .source-table th {
+      background: var(--gc-gray-100);
+      color: var(--gc-gray-900);
+    }
+
+    .external-link::after {
+      content: " (opens in new tab)";
+      font-weight: 400;
+      font-size: .85em;
+    }
+
+    .goc-footer {
+      margin-top: auto;
+      background: var(--gc-gray-100);
+      border-top: 4px solid var(--gc-blue);
+    }
+
+    .footer-main { padding: var(--space-6) 0; }
+    .footer-main h2 { font-size: 1.25rem; border-bottom: 0; padding-bottom: 0; }
+    .footer-nav ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem 1.25rem;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-bottom {
+      background: #fff;
+      border-top: 1px solid var(--gc-gray-300);
+      padding: 1rem 0;
+      font-size: .9rem;
+      color: var(--gc-gray-500);
+    }
+
+    .footer-bottom .container {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+
+    .no-js-message {
+      border: 3px solid var(--gc-blue);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      body { font-size: 16px; }
+      .search-form { grid-template-columns: 1fr; }
+      .btn { width: 100%; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .site-nav .container { display: block; }
+      .site-nav ul { display: block; }
+      .site-nav a { border-left: 0; border-top: 1px solid rgba(255,255,255,.22); }
+      .on-this-page ul { columns: 1; }
+    }
+
+    @media print {
+      body { font-size: 11pt; background: #fff; }
+      .skip-link, .prototype-banner, .goc-header, .site-nav, .breadcrumb, .search-panel, .on-this-page, .tabs, .layer-panel, .goc-footer, .btn { display: none !important; }
+      .container { width: 100%; max-width: none; }
+      .dashboard-grid { display: block; }
+      .card, .map-card, .data-quality { border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
+      .map-wrapper { height: auto; min-height: 0; border: 1px solid #999; }
+      #map { display: none; }
+      .map-wrapper::after {
+        content: "Interactive map is disabled for print. Use the source links and on-screen map for verification.";
+        display: block;
+        padding: 1rem;
+      }
+      a { color: #000; text-decoration: none; }
+    }
+  </style>
+
+  <script>
+    document.documentElement.classList.remove("no-js");
+    document.documentElement.classList.add("js");
+  </script>
 </head>
-<body class="flex flex-col min-h-screen">
 
-    <header class="dashboard-header p-6 shadow-md">
-        <div class="container mx-auto">
-            <h1 class="text-3xl font-bold">Canadian Flood Plain Risk Dashboard</h1>
-            <p class="text-sm opacity-80">Prototype for visualizing flood risk data</p>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="prototype-banner" role="note">
+    <div class="container">
+      <strong>Prototype:</strong> This page is a demonstration. It uses public map services and public geocoding where available. Verify flood-hazard decisions with the responsible municipal, provincial, territorial or federal authority.
+    </div>
+  </div>
+
+  <header class="goc-header" role="banner">
+    <div class="container header-content">
+      <a href="#main-content" class="brand" aria-label="Government of Canada prototype home">
+        <span class="wordmark">Canada <span class="flag-symbol" aria-hidden="true">◆</span></span>
+        <span>
+          Government of Canada
+          <span class="brand-subtitle">Flood plain risk dashboard prototype</span>
+        </span>
+      </a>
+      <button id="langToggle" class="language-link" type="button">Français</button>
+    </div>
+  </header>
+
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="container">
+      <div class="menu-label">Menu</div>
+      <ul>
+        <li><a href="#lookup">Postal code lookup</a></li>
+        <li><a href="#risk-summary">Risk summary</a></li>
+        <li><a href="#map-section">Map layers</a></li>
+        <li><a href="#sources">Sources and limitations</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main id="main-content" class="container" tabindex="-1">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="https://www.canada.ca/en.html" rel="noopener noreferrer">Canada.ca</a></li>
+        <li aria-current="page">Canadian flood plain risk dashboard</li>
+      </ol>
+    </nav>
+
+    <div class="page-title-block">
+      <h1>Canadian flood plain risk dashboard</h1>
+      <p class="lead">Enter a Canadian postal code to view a map-centred flood-risk profile with public base maps, federal reference layers, and province-aware flood data links where public APIs are available.</p>
+      <p class="meta-line">Alpha prototype · Not an official Government of Canada production service · Date modified: 2026-06-25</p>
+    </div>
+
+    <section class="notice-box" aria-labelledby="notice-heading">
+      <h2 id="notice-heading">Before you start</h2>
+      <p>This tool is for exploration and education. It does not determine whether a property is inside a regulated flood plain. Flood mapping is authoritative only when confirmed by the responsible municipality, conservation authority, province, territory or federal program.</p>
+    </section>
+
+    <nav class="on-this-page" aria-labelledby="on-this-page-heading">
+      <h2 id="on-this-page-heading">On this page</h2>
+      <ul>
+        <li><a href="#lookup">Find a location by postal code</a></li>
+        <li><a href="#risk-summary">Risk summary</a></li>
+        <li><a href="#map-section">Map and layers</a></li>
+        <li><a href="#sources">Sources, APIs and limitations</a></li>
+        <li><a href="#data-quality">Accessibility, privacy and data-quality gates</a></li>
+      </ul>
+    </nav>
+
+    <noscript>
+      <section class="no-js-message" aria-labelledby="no-js-heading">
+        <h2 id="no-js-heading">JavaScript is required for the interactive map</h2>
+        <p>The postal-code lookup and map layers require JavaScript. You can still use the source links below to check flood data from authoritative public sources.</p>
+      </section>
+    </noscript>
+
+    <section id="lookup" class="search-panel" aria-labelledby="lookup-heading">
+      <h2 id="lookup-heading">Find a location by postal code</h2>
+      <p>Use a postal code only. Do not enter a full street address or personal information.</p>
+
+      <div id="errorSummary" class="error-summary" tabindex="-1" hidden>
+        <h2>There is a problem</h2>
+        <ul>
+          <li><a href="#postalCode">Enter a valid Canadian postal code in the format A1A 1A1.</a></li>
+        </ul>
+      </div>
+
+      <form id="postalForm" class="search-form" novalidate>
+        <div class="form-group">
+          <label for="postalCode" class="form-label">Postal code <span class="sr-only">(required)</span></label>
+          <p id="postalHint" class="hint-text">Example: K1A 0A6, K1C 7J8 or M5V 2N4.</p>
+          <input id="postalCode" name="postalCode" class="text-input" type="text" value="K1A 0A6" maxlength="7" autocomplete="postal-code" inputmode="text" required pattern="[A-Za-z][0-9][A-Za-z][ ]?[0-9][A-Za-z][0-9]" aria-describedby="postalHint postalError statusArea">
+          <p id="postalError" class="error-message">Enter a valid Canadian postal code in the format A1A 1A1.</p>
         </div>
-    </header>
+        <button class="btn" type="submit">Search map</button>
+        <button class="btn btn-secondary" type="button" id="printButton">Print / save PDF</button>
+      </form>
 
-    <main class="flex-grow container mx-auto p-4 md:p-6 lg:p-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div id="statusArea" class="status-area" role="status" aria-live="polite" aria-atomic="true"></div>
+    </section>
 
-            <div class="lg:col-span-1 space-y-6">
-                <div class="card p-6">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Select City</h2>
-                    <select id="citySelector" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
-                        <option value="ottawa">Ottawa, ON</option>
-                        <option value="toronto">Toronto, ON</option>
-                        <option value="montreal">Montreal, QC</option>
-                        <option value="vancouver">Vancouver, BC</option>
-                        <option value="calgary">Calgary, AB</option>
-                        <option value="halifax">Halifax, NS</option>
-                        <option value="winnipeg">Winnipeg, MB</option>
-                        <option value="edmonton">Edmonton, AB</option>
-                    </select>
-                </div>
+    <div class="dashboard-grid" id="dashboard">
+      <aside id="risk-summary" class="card" aria-labelledby="risk-summary-heading">
+        <h2 id="risk-summary-heading" tabindex="-1">Risk summary</h2>
+        <ul class="summary-list">
+          <li>
+            <span class="summary-label">Resolved location</span>
+            <span class="summary-value" id="resolvedLocation">Ottawa, ON (K1A 0A6)</span>
+          </li>
+          <li>
+            <span class="summary-label">Coordinates</span>
+            <span class="summary-value" id="coordinates">45.4201, -75.7003</span>
+          </li>
+          <li>
+            <span class="summary-label">Province or territory</span>
+            <span class="summary-value" id="provinceValue">ON</span>
+          </li>
+          <li>
+            <span class="summary-label">Prototype risk signal</span>
+            <span class="summary-value"><span id="riskBadge" class="badge badge-unknown">Unknown until checked</span></span>
+          </li>
+          <li>
+            <span class="summary-label">Primary check required</span>
+            <span class="summary-value" id="primaryCheck">Review municipal/provincial flood hazard maps.</span>
+          </li>
+          <li>
+            <span class="summary-label">Layer status</span>
+            <span class="summary-value" id="layerStatus">Base map loaded. Public hazard layers load if the endpoint is available.</span>
+          </li>
+        </ul>
 
-                <div class="card p-6">
-                    <h2 class="text-xl font-semibold mb-1 text-gray-700">Risk Overview</h2>
-                    <p class="text-sm text-gray-500 mb-4">For: <span id="selectedCityName" class="font-bold">Ottawa</span></p>
-                    <div class="space-y-4">
-                        <div><label class="block text-sm font-medium text-gray-600">Overall Risk Level:</label><p id="riskLevel" class="text-lg font-bold"><span class="status-badge">Loading...</span></p></div>
-                        <div><label class="block text-sm font-medium text-gray-600">Primary Flood Source:</label><p id="floodSource" class="text-gray-800">Loading...</p></div>
-                        <div><label class="block text-sm font-medium text-gray-600">Estimated Population in Flood Plain:</label><p id="populationAffected" class="text-gray-800">Loading...</p></div>
-                        <div><label class="block text-sm font-medium text-gray-600">Last Major Flood Event:</label><p id="lastEvent" class="text-gray-800">Loading...</p></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-2 space-y-6">
-                <div class="card p-6">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Flood Plain Map (<span id="mapCityName">Ottawa</span>)</h2>
-                    <div id="mapContainer" class="map-placeholder-container rounded-lg w-full">
-                        <div id="map" style="display: none;"></div>
-                        <img id="mapImage" src="https://placehold.co/800x500/e2e8f0/4a5568?text=Interactive+Map+Area%0A(Flood+Plain+Data+for+Ottawa)" alt="Map Placeholder" class="max-w-full max-h-full object-contain rounded-md">
-                    </div>
-                    <p id="mapCaption" class="text-xs text-gray-500 mt-2 text-center">This is a placeholder. A real map would show detailed flood zones.</p>
-
-                    <div id="layerControlsContainer" class="layer-controls" style="display: none;">
-                        <h4>Map Layers (Ottawa)</h4>
-                        <label>
-                            <input type="checkbox" id="toggleFloodPlainLayer" checked> Flood Plain (100-year, Climate Change)
-                        </label>
-                        <label>
-                            <input type="checkbox" id="toggleIceJamLayer"> Ice Jam Prone Areas (Conceptual)
-                        </label>
-                    </div>
-                </div>
-
-                <div class="card p-6">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700">Key Risk Factors & Considerations</h3>
-                    <ul id="riskFactors" class="list-disc list-inside space-y-2 text-gray-700">
-                        <li>Loading data...</li>
-                    </ul>
-                </div>
-            </div>
+        <div class="warning-box">
+          <h3>Interpretation rule</h3>
+          <p>Visible water, low elevation or nearby flood layers do not prove legal flood-plain status. Use this dashboard to identify which authoritative source to check next.</p>
         </div>
-    </main>
+      </aside>
 
-    <footer class="bg-gray-800 text-white text-center p-4 mt-auto">
-        <p class="text-sm">&copy; <span id="currentYear"></span> Flood Risk Information System. For demonstration purposes only.</p>
-    </footer>
+      <section id="map-section" class="map-card" aria-labelledby="map-heading">
+        <h2 id="map-heading">Map and public layers</h2>
+        <p id="mapDescription">The map starts at the resolved postal-code centroid. Use the buttons to change the base map, then choose overlays for federal reference layers and provincial or municipal hazard services.</p>
 
-    <div id="messageBox" class="message-box"></div>
+        <div class="tabs" aria-label="Base map">
+          <button type="button" id="baseGoogleRoad" aria-pressed="true">Google road</button>
+          <button type="button" id="baseGoogleSatellite" aria-pressed="false">Google satellite</button>
+          <button type="button" id="baseOpenStreetMap" aria-pressed="false">OpenStreetMap</button>
+        </div>
 
-    <script>
-        const floodData = {
-            ottawa: {
-                name: "Ottawa, ON", riskLevel: "Medium", riskClass: "status-medium",
-                floodSource: "Ottawa River, Rideau River", populationAffected: "Approx. 15,000 - 25,000",
-                lastEvent: "Spring 2019 (Major)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Ottawa)",
-                riskFactors: ["Proximity to major river systems.","Seasonal snowmelt and ice jams.","Aging stormwater infrastructure in older districts.","Increased frequency of heavy rainfall events."],
-                mapConfig: {
-                    center: [45.4215, -75.6972], zoom: 10,
-                    layers: [
-                        {
-                            id: "floodPlain",
-                            name: "Flood Plain (100-year, Climate Change)",
-                            data: { // Inline GeoJSON data as provided by user
-                                "type": "FeatureCollection",
-                                "features": [
-                                    {
-                                        "type": "Feature",
-                                        "properties": {
-                                            "name": "Ottawa River Flood Plain (Mock)"
-                                        },
-                                        "geometry": {
-                                            "type": "Polygon",
-                                            "coordinates": [
-                                                [
-                                                    [-75.75, 45.40],
-                                                    [-75.70, 45.40],
-                                                    [-75.70, 45.35],
-                                                    [-75.75, 45.35],
-                                                    [-75.75, 45.40]
-                                                ]
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "type": "Feature",
-                                        "properties": {
-                                            "name": "Rideau River Flood Plain (Mock)"
-                                        },
-                                        "geometry": {
-                                            "type": "Polygon",
-                                            "coordinates": [
-                                                [
-                                                    [-75.68, 45.42],
-                                                    [-75.65, 45.42],
-                                                    [-75.65, 45.38],
-                                                    [-75.68, 45.38],
-                                                    [-75.68, 45.42]
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                ]
-                            },
-                            style: { color: "#FF0000", weight: 2, opacity: 0.65, fillColor: "#FF5733", fillOpacity: 0.3 },
-                            popupContent: (props) => {
-                                if (props && props.name) return props.name; // Use name from mock data
-                                // Fallback properties if needed, though mock data only has 'name'
-                                let content = "100-Year Flood Plain Area (Climate Change)";
-                                if (props && props.FLD_ZONE) content = `Zone: ${props.FLD_ZONE}`;
-                                else if (props && props.DESCRIPTIO) content = `${props.DESCRIPTIO}`;
-                                else if (props && props.OBJECTID) content = `Area ID: ${props.OBJECTID}`;
-                                return content;
-                            },
-                            visible: true
-                        },
-                        {
-                            id: "iceJams",
-                            name: "Ice Jam Prone Areas (Conceptual)",
-                            data: {
-                                "type": "FeatureCollection",
-                                "features": [
-                                    { "type": "Feature", "properties": { "name": "Rideau River - Billings Bridge Area (Mock)" }, "geometry": { "type": "Polygon", "coordinates": [[[-75.67, 45.38], [-75.66, 45.38], [-75.66, 45.375], [-75.67, 45.375], [-75.67, 45.38]]] } },
-                                    { "type": "Feature", "properties": { "name": "Ottawa River - Britannia Area (Mock)" }, "geometry": { "type": "Polygon", "coordinates": [[[-75.80, 45.37], [-75.79, 45.37], [-75.79, 45.365], [-75.80, 45.365], [-75.80, 45.37]]] } }
-                                ]
-                            },
-                            style: { color: "#0000FF", weight: 2, opacity: 0.7, fillColor: "#3375FF", fillOpacity: 0.4, dashArray: '5, 5' },
-                            popupContent: (props) => props.name || "Conceptual Ice Jam Prone Area",
-                            visible: false
-                        }
-                    ]
-                }
-            },
-            toronto: { name: "Toronto, ON", riskLevel: "Low", riskClass: "status-low", floodSource: "Don River, Humber River, Lake Ontario shoreline", populationAffected: "Approx. 5,000 - 10,000 (localized areas)", lastEvent: "July 2013 (Flash Flood)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Toronto)", riskFactors: ["Urban flash flooding due to overwhelmed drainage.","Lake Ontario storm surges and high water levels.","Development in historical flood plains (ravine systems)."] },
-            montreal: { name: "Montreal, QC", riskLevel: "Medium", riskClass: "status-medium", floodSource: "St. Lawrence River, Rivière des Prairies", populationAffected: "Approx. 10,000 - 20,000", lastEvent: "Spring 2017 & 2019 (Significant)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Montreal)", riskFactors: ["Island city with extensive river frontage.","Vulnerability to spring thaws and ice jams.","Combined sewer overflows during heavy rain."] },
-            vancouver: { name: "Vancouver, BC", riskLevel: "High", riskClass: "status-high", floodSource: "Fraser River, Coastal storm surges, Sea level rise", populationAffected: "Approx. 30,000 - 50,000 (potential, long-term)", lastEvent: "Nov 2021 (Atmospheric River impacts)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Vancouver)", riskFactors: ["Low-lying coastal areas and Fraser River delta.","Significant threat from sea-level rise.","Potential for 'King Tides' combined with storm surges.","Earthquake-induced tsunami risk (secondary flood risk)."] },
-            calgary: { name: "Calgary, AB", riskLevel: "High", riskClass: "status-high", floodSource: "Bow River, Elbow River", populationAffected: "Approx. 20,000 - 30,000", lastEvent: "June 2013 (Catastrophic)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Calgary)", riskFactors: ["Rapid snowmelt from Rocky Mountains.","Confluence of two major rivers within the city.","Historical development in river valleys."] },
-            halifax: { name: "Halifax, NS", riskLevel: "Medium", riskClass: "status-medium", floodSource: "Coastal storm surges, Heavy rainfall", populationAffected: "Approx. 8,000 - 12,000 (coastal areas)", lastEvent: "Hurricane Juan 2003 (Storm Surge)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Halifax)", riskFactors: ["Extensive coastline exposed to Atlantic storms.","Low-lying downtown areas near the harbour.","Increased intensity of hurricanes and post-tropical storms."] },
-            winnipeg: { name: "Winnipeg, MB", riskLevel: "High", riskClass: "status-high", floodSource: "Red River, Assiniboine River", populationAffected: "Varies (Red River Floodway mitigates significantly)", lastEvent: "Spring 2011 (Significant), 1997 (Historic 'Flood of the Century')", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Winnipeg)", riskFactors: ["Located at the confluence of two major rivers.","Flat topography susceptible to widespread overland flooding.","Spring snowmelt from a large watershed.","Existence of the Red River Floodway is a critical mitigation factor."] },
-            edmonton: { name: "Edmonton, AB", riskLevel: "Medium", riskClass: "status-medium", floodSource: "North Saskatchewan River, Urban stormwater runoff", populationAffected: "Approx. 5,000 - 15,000 (localized, river valley & older areas)", lastEvent: "July 2004 (Major localized rainfall/stormwater flooding)", mapImageText: "Interactive+Map+Area%0A(Flood+Plain+Data+for+Edmonton)", riskFactors: ["River valley erosion and slope instability.","Localized flooding from intense rainfall overwhelming older storm systems.","Ice jams on the North Saskatchewan River during spring breakup.","Ongoing urban development impacting natural drainage patterns."] }
-        };
+        <div class="map-wrapper">
+          <div id="map" role="application" aria-label="Interactive map showing the selected postal code and public flood hazard layers"></div>
+        </div>
 
-        const citySelector = document.getElementById('citySelector');
-        const selectedCityName = document.getElementById('selectedCityName');
-        const riskLevelEl = document.getElementById('riskLevel');
-        const floodSource = document.getElementById('floodSource');
-        const populationAffected = document.getElementById('populationAffected');
-        const lastEvent = document.getElementById('lastEvent');
-        const mapCityName = document.getElementById('mapCityName');
-        const mapImage = document.getElementById('mapImage');
-        const riskFactorsList = document.getElementById('riskFactors');
-        const currentYearSpan = document.getElementById('currentYear');
-        const mapDiv = document.getElementById('map');
-        const mapCaption = document.getElementById('mapCaption');
-        const messageBox = document.getElementById('messageBox');
-        const layerControlsContainer = document.getElementById('layerControlsContainer');
-        const toggleFloodPlainLayerCheckbox = document.getElementById('toggleFloodPlainLayer');
-        const toggleIceJamLayerCheckbox = document.getElementById('toggleIceJamLayer');
+        <div class="layer-panel" aria-label="Map layer controls">
+          <div class="layer-option">
+            <label><input type="checkbox" id="toggleWater" checked> Federal hydrography / water reference layer</label>
+            <p class="layer-note">Uses NRCan/OpenMaps-style WMS endpoints where available, with visible fallback if unavailable.</p>
+          </div>
+          <div class="layer-option">
+            <label><input type="checkbox" id="toggleElevation"> Federal elevation/topographic reference layer</label>
+            <p class="layer-note">Useful context for terrain and river valleys; not a floodplain determination.</p>
+          </div>
+          <div class="layer-option">
+            <label><input type="checkbox" id="toggleProvincial" checked> Province-aware hazard layer</label>
+            <p class="layer-note">Attempts to load the configured provincial, territorial or municipal public service for the resolved location.</p>
+          </div>
+          <div class="layer-option">
+            <label><input type="checkbox" id="toggleLocalGuide" checked> Local flood context guide</label>
+            <p class="layer-note">Shows an interpreted search radius and local source guidance when live authoritative layers are not exposed as open APIs.</p>
+          </div>
+        </div>
+      </section>
+    </div>
 
-        let map; // Leaflet map instance
-        let activeLayers = {}; // To store references to active GeoJSON layers {layerId: leafletLayer}
+    <section id="sources" class="card" aria-labelledby="sources-heading">
+      <h2 id="sources-heading">Sources, APIs and limitations</h2>
+      <p>The page uses public services and defensive fallbacks. If a public map service blocks cross-origin browser access, is unavailable, or has a changed layer name, the dashboard reports that condition rather than silently presenting mock data as authoritative.</p>
 
-        function showMessage(text, type = 'error', duration = 5000) {
-            messageBox.textContent = text;
-            messageBox.className = 'message-box';
-            if (type === 'success') messageBox.classList.add('success');
-            messageBox.style.display = 'block';
-            setTimeout(() => { messageBox.style.display = 'none'; }, duration);
-        }
+      <table class="source-table">
+        <caption>Implemented service connections</caption>
+        <thead>
+          <tr>
+            <th scope="col">Service</th>
+            <th scope="col">Use in prototype</th>
+            <th scope="col">Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OpenNorth Represent API</td>
+            <td>Postal-code geocoding to city, province and centroid.</td>
+            <td><a class="external-link" target="_blank" rel="noopener noreferrer" href="https://represent.opennorth.ca/">OpenNorth Represent</a></td>
+          </tr>
+          <tr>
+            <td>Google map tile endpoints</td>
+            <td>Road and satellite base-map tiles for visual context. Production use should move to the official Google Maps Platform terms and key management model.</td>
+            <td><a class="external-link" target="_blank" rel="noopener noreferrer" href="https://developers.google.com/maps">Google Maps Platform</a></td>
+          </tr>
+          <tr>
+            <td>OpenStreetMap tiles</td>
+            <td>Open fallback base map.</td>
+            <td><a class="external-link" target="_blank" rel="noopener noreferrer" href="https://www.openstreetmap.org/copyright">OpenStreetMap copyright and licence</a></td>
+          </tr>
+          <tr>
+            <td>NRCan/OpenMaps WMS hooks</td>
+            <td>Topographic, water and elevation reference layers where the browser can access the public WMS service.</td>
+            <td><a class="external-link" target="_blank" rel="noopener noreferrer" href="https://open.canada.ca/data/en/dataset">Open Government Portal</a></td>
+          </tr>
+          <tr>
+            <td>Provincial, territorial and municipal public APIs</td>
+            <td>Province-aware hazard layer hooks and source links. Exact authoritative floodplain data varies by jurisdiction.</td>
+            <td><a class="external-link" target="_blank" rel="noopener noreferrer" href="https://www.canada.ca/en/environment-climate-change/services/water-overview/floods.html">Flood information - Canada.ca</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-        async function loadGeoJsonLayer(mapInstance, layerConfig) {
-            try {
-                let geoJsonData;
-                if (layerConfig.url) { // Fetch if URL is provided
-                    const response = await fetch(layerConfig.url);
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${layerConfig.name}`);
-                    geoJsonData = await response.json();
-                } else if (layerConfig.data) { // Use inline data if provided
-                    geoJsonData = layerConfig.data;
-                } else {
-                    throw new Error(`No URL or data provided for layer: ${layerConfig.name}`);
-                }
+    <section id="data-quality" class="data-quality" aria-labelledby="data-quality-heading">
+      <h2 id="data-quality-heading">Accessibility, privacy and data-quality gates</h2>
+      <ul>
+        <li><strong>Privacy:</strong> the form requests only a postal code and does not store the value.</li>
+        <li><strong>Accessibility:</strong> the page includes skip navigation, visible focus states, semantic landmarks, labelled controls, an error summary and print support.</li>
+        <li><strong>Data quality:</strong> the page distinguishes live public API data, reference layers, unavailable layers and non-authoritative guidance.</li>
+        <li><strong>Security:</strong> no API keys, tokens or credentials are embedded.</li>
+        <li><strong>Limitations:</strong> production deployment requires departmental validation of Google tile terms, official map service endpoints, accessibility testing, privacy review and legal disclaimers.</li>
+      </ul>
+    </section>
+  </main>
 
-                const leafletLayer = L.geoJSON(geoJsonData, {
-                    style: layerConfig.style,
-                    onEachFeature: (feature, layer) => {
-                        if (layerConfig.popupContent) {
-                            const content = typeof layerConfig.popupContent === 'function' ?
-                                layerConfig.popupContent(feature.properties) : layerConfig.popupContent;
-                            layer.bindPopup(content);
-                        }
-                    }
-                });
-                return leafletLayer;
-            } catch (error) {
-                console.error(`Error loading layer ${layerConfig.name}:`, error);
-                showMessage(`Failed to load ${layerConfig.name}: ${error.message}.`, 'error');
-                return null;
-            }
-        }
+  <footer class="goc-footer" role="contentinfo">
+    <div class="footer-main">
+      <div class="container">
+        <h2>Government of Canada prototype links</h2>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <ul>
+            <li><a href="https://www.canada.ca/en/transparency/privacy.html" rel="noopener noreferrer">Privacy</a></li>
+            <li><a href="https://www.canada.ca/en/services/environment/weather/floods.html" rel="noopener noreferrer">Floods</a></li>
+            <li><a href="https://open.canada.ca/en/open-data" rel="noopener noreferrer">Open data</a></li>
+            <li><a href="#main-content">Top of page</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <span>© Public Service Data Prototype Edition</span>
+        <span>Date modified: 2026-06-25</span>
+      </div>
+    </div>
+  </footer>
 
+  <script>
+    const APP = {
+      map: null,
+      marker: null,
+      circle: null,
+      currentBaseLayer: null,
+      overlays: {},
+      currentProfile: {
+        postalCode: "K1A0A6",
+        displayPostalCode: "K1A 0A6",
+        city: "Ottawa",
+        province: "ON",
+        lat: 45.4201,
+        lng: -75.7003
+      }
+    };
 
-        async function setupOttawaMap(config) {
-            mapImage.style.display = 'none';
-            mapDiv.style.display = 'block';
-            mapCaption.textContent = "Live map for Ottawa. Toggle layers below. Data: City of Ottawa (Mock/Conceptual)."; // Adjusted caption
-            layerControlsContainer.style.display = 'block';
+    const PROVINCE_SOURCE_GUIDE = {
+      ON: {
+        name: "Ontario",
+        primaryCheck: "Check the local conservation authority, municipal open-data portal and Ontario GeoHub for regulated floodplain mapping.",
+        riskSignal: "Medium",
+        url: "https://geohub.lio.gov.on.ca/",
+        layerNote: "Ontario floodplain authority is distributed through conservation authorities and municipal/provincial sources. This prototype links to the authority source and shows local context."
+      },
+      QC: {
+        name: "Quebec",
+        primaryCheck: "Check Quebec public safety and municipal flood-zone mapping for the resolved municipality.",
+        riskSignal: "Medium",
+        url: "https://www.donneesquebec.ca/",
+        layerNote: "Quebec flood-zone services vary by dataset and region. Use Données Québec and municipal sources for authoritative layers."
+      },
+      BC: {
+        name: "British Columbia",
+        primaryCheck: "Check provincial flood hazard area mapping and local government floodplain bylaws.",
+        riskSignal: "High",
+        url: "https://catalogue.data.gov.bc.ca/",
+        layerNote: "BC flood hazard data may be exposed through DataBC and local authorities. Confirm map currency before use."
+      },
+      AB: {
+        name: "Alberta",
+        primaryCheck: "Check Alberta flood hazard mapping and municipal emergency management sources.",
+        riskSignal: "High",
+        url: "https://geodiscover.alberta.ca/",
+        layerNote: "Alberta river hazard mapping is typically best checked through provincial and municipal map viewers."
+      },
+      MB: {
+        name: "Manitoba",
+        primaryCheck: "Check Manitoba flood information, watershed data and municipal flood-protection information.",
+        riskSignal: "High",
+        url: "https://mli2.gov.mb.ca/",
+        layerNote: "Manitoba flood context is highly watershed-specific; authoritative interpretation requires provincial or municipal confirmation."
+      },
+      NS: {
+        name: "Nova Scotia",
+        primaryCheck: "Check Nova Scotia open data and municipal flood-risk mapping.",
+        riskSignal: "Medium",
+        url: "https://data.novascotia.ca/",
+        layerNote: "Nova Scotia coastal and pluvial flood layers vary by dataset and municipality."
+      },
+      DEFAULT: {
+        name: "Canada",
+        primaryCheck: "Check your province, territory, municipality, watershed authority or conservation authority for official floodplain mapping.",
+        riskSignal: "Unknown",
+        url: "https://open.canada.ca/en/open-data",
+        layerNote: "Floodplain mapping is not uniform nationally. Use the local authoritative source for decisions."
+      }
+    };
 
-            if (!map) {
-                map = L.map('map').setView(config.center, config.zoom);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-            } else {
-                map.setView(config.center, config.zoom);
-                Object.values(activeLayers).forEach(layer => {
-                    if (map.hasLayer(layer)) {
-                         map.removeLayer(layer);
-                    }
-                });
-                activeLayers = {};
-            }
+    function normalizePostalCode(value) {
+      return value.trim().toUpperCase().replace(/\s+/g, "");
+    }
 
-            for (const layerConfig of config.layers) {
-                const leafletLayer = await loadGeoJsonLayer(map, layerConfig); // loadGeoJsonLayer handles both URL and inline data
-                if (leafletLayer) {
-                    activeLayers[layerConfig.id] = leafletLayer;
-                    if (layerConfig.visible) {
-                        leafletLayer.addTo(map);
-                    }
-                }
-            }
-            toggleFloodPlainLayerCheckbox.checked = config.layers.find(l => l.id === 'floodPlain')?.visible ?? false;
-            toggleIceJamLayerCheckbox.checked = config.layers.find(l => l.id === 'iceJams')?.visible ?? false;
+    function formatPostalCode(value) {
+      const normalized = normalizePostalCode(value);
+      return normalized.length === 6 ? normalized.slice(0, 3) + " " + normalized.slice(3) : value.trim().toUpperCase();
+    }
 
-            if (activeLayers.floodPlain && config.layers.find(l => l.id === 'floodPlain').visible) {
-                 try {
-                    if (typeof activeLayers.floodPlain.getBounds === 'function' && activeLayers.floodPlain.getBounds().isValid()) {
-                        map.fitBounds(activeLayers.floodPlain.getBounds());
-                    } else {
-                        console.warn("Flood plain layer loaded but bounds are invalid or not available to fit.");
-                    }
-                 } catch (e) {
-                    console.warn("Could not fit bounds for floodPlain layer:", e);
-                 }
-            }
-        }
+    function isValidPostalCode(value) {
+      return /^[A-Z][0-9][A-Z][0-9][A-Z][0-9]$/.test(normalizePostalCode(value));
+    }
 
+    function setStatus(message, isError = false) {
+      const status = document.getElementById("statusArea");
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--gc-blue)";
+    }
 
-        function showPlaceholderMap(data) {
-            if (map) mapDiv.style.display = 'none';
-            mapImage.style.display = 'block';
-            layerControlsContainer.style.display = 'none';
-            const encodedMapText = encodeURIComponent(data.mapImageText);
-            mapImage.src = `https://placehold.co/800x500/e2e8f0/4a5568?text=${encodedMapText}`;
-            mapImage.alt = `Map placeholder for ${data.name}`;
-            mapCaption.textContent = "This is a placeholder. A real map would show detailed flood zones.";
-        }
+    function setFormError(show) {
+      const input = document.getElementById("postalCode");
+      const error = document.getElementById("postalError");
+      const summary = document.getElementById("errorSummary");
 
-        function updateDashboard(cityKey) {
-            const data = floodData[cityKey];
-            if (!data) {
-                console.error("No data found for city:", cityKey);
-                selectedCityName.textContent = "N/A";
-                riskLevelEl.innerHTML = `<span class="status-badge">N/A</span>`;
-                floodSource.textContent = "N/A"; populationAffected.textContent = "N/A"; lastEvent.textContent = "N/A";
-                riskFactorsList.innerHTML = '<li>No data available.</li>';
-                showPlaceholderMap({ name: "N/A", mapImageText: "No+Data+Available" });
-                return;
-            }
+      input.setAttribute("aria-invalid", show ? "true" : "false");
+      error.style.display = show ? "block" : "none";
+      summary.hidden = !show;
 
-            selectedCityName.textContent = data.name;
-            mapCityName.textContent = data.name;
-            riskLevelEl.innerHTML = `<span class="status-badge ${data.riskClass}">${data.riskLevel}</span>`;
-            floodSource.textContent = data.floodSource;
-            populationAffected.textContent = data.populationAffected;
-            lastEvent.textContent = data.lastEvent;
+      if (show) {
+        summary.focus();
+      }
+    }
 
-            riskFactorsList.innerHTML = '';
-            if (data.riskFactors && data.riskFactors.length > 0) {
-                data.riskFactors.forEach(factor => {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = factor;
-                    riskFactorsList.appendChild(listItem);
-                });
-            } else {
-                riskFactorsList.innerHTML = '<li>No specific risk factors listed.</li>';
-            }
+    function getProvinceGuide(province) {
+      return PROVINCE_SOURCE_GUIDE[province] || PROVINCE_SOURCE_GUIDE.DEFAULT;
+    }
 
-            if (cityKey === 'ottawa' && data.mapConfig) {
-                setupOttawaMap(data.mapConfig);
-            } else {
-                showPlaceholderMap(data);
-            }
-        }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, function (char) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char];
+      });
+    }
 
-        toggleFloodPlainLayerCheckbox.addEventListener('change', function() {
-            const layerId = 'floodPlain';
-            if (activeLayers[layerId]) {
-                if (this.checked) {
-                    if (!map.hasLayer(activeLayers[layerId])) map.addLayer(activeLayers[layerId]);
-                } else {
-                    if (map.hasLayer(activeLayers[layerId])) map.removeLayer(activeLayers[layerId]);
-                }
-            }
-        });
+    function createBaseLayers() {
+      return {
+        googleRoad: L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+          subdomains: ["0", "1", "2", "3"],
+          maxZoom: 20,
+          attribution: "Map tiles © Google"
+        }),
+        googleSatellite: L.tileLayer("https://mt{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}", {
+          subdomains: ["0", "1", "2", "3"],
+          maxZoom: 20,
+          attribution: "Map tiles © Google"
+        }),
+        openStreetMap: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors"
+        })
+      };
+    }
 
-        toggleIceJamLayerCheckbox.addEventListener('change', function() {
-            const layerId = 'iceJams';
-             if (activeLayers[layerId]) {
-                if (this.checked) {
-                    if (!map.hasLayer(activeLayers[layerId])) map.addLayer(activeLayers[layerId]);
-                } else {
-                    if (map.hasLayer(activeLayers[layerId])) map.removeLayer(activeLayers[layerId]);
-                }
-            }
-        });
+    const baseLayers = createBaseLayers();
 
+    function initMap() {
+      APP.map = L.map("map", {
+        zoomControl: true,
+        preferCanvas: true
+      }).setView([APP.currentProfile.lat, APP.currentProfile.lng], 12);
 
-        citySelector.addEventListener('change', (event) => {
-            updateDashboard(event.target.value);
-        });
+      APP.currentBaseLayer = baseLayers.googleRoad;
+      APP.currentBaseLayer.addTo(APP.map);
 
-        currentYearSpan.textContent = new Date().getFullYear();
+      APP.marker = L.marker([APP.currentProfile.lat, APP.currentProfile.lng]).addTo(APP.map);
+      APP.marker.bindPopup("Postal-code centroid: " + escapeHtml(APP.currentProfile.displayPostalCode));
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const initialCity = citySelector.value;
-            updateDashboard(initialCity);
-        });
-    </script>
+      updateLocalGuideLayer();
+      updateFederalReferenceLayers();
+      updateSummary(APP.currentProfile);
+    }
 
+    function setBaseLayer(key) {
+      const target = baseLayers[key];
+      if (!target || !APP.map) return;
+
+      if (APP.currentBaseLayer) {
+        APP.map.removeLayer(APP.currentBaseLayer);
+      }
+
+      APP.currentBaseLayer = target;
+      APP.currentBaseLayer.addTo(APP.map);
+
+      document.querySelectorAll(".tabs button").forEach(function (button) {
+        button.setAttribute("aria-pressed", "false");
+      });
+
+      const idMap = {
+        googleRoad: "baseGoogleRoad",
+        googleSatellite: "baseGoogleSatellite",
+        openStreetMap: "baseOpenStreetMap"
+      };
+
+      document.getElementById(idMap[key]).setAttribute("aria-pressed", "true");
+    }
+
+    function safeRemoveOverlay(key) {
+      if (APP.overlays[key] && APP.map && APP.map.hasLayer(APP.overlays[key])) {
+        APP.map.removeLayer(APP.overlays[key]);
+      }
+      APP.overlays[key] = null;
+    }
+
+    function createWmsLayer(url, options, key) {
+      safeRemoveOverlay(key);
+      try {
+        const layer = L.tileLayer.wms(url, options);
+        APP.overlays[key] = layer;
+        return layer;
+      } catch (error) {
+        console.warn("Could not create WMS layer", key, error);
+        return null;
+      }
+    }
+
+    function updateFederalReferenceLayers() {
+      const waterChecked = document.getElementById("toggleWater").checked;
+      const elevationChecked = document.getElementById("toggleElevation").checked;
+
+      safeRemoveOverlay("water");
+      safeRemoveOverlay("elevation");
+
+      if (waterChecked) {
+        const water = createWmsLayer("https://maps.geogratis.gc.ca/wms/toporama_en", {
+          layers: "WMS-Toporama",
+          format: "image/png",
+          transparent: true,
+          opacity: 0.45,
+          attribution: "NRCan / OpenMaps reference layer"
+        }, "water");
+
+        if (water) water.addTo(APP.map);
+      }
+
+      if (elevationChecked) {
+        const elevation = createWmsLayer("https://maps.geogratis.gc.ca/wms/elevation_en", {
+          layers: "cdem",
+          format: "image/png",
+          transparent: true,
+          opacity: 0.35,
+          attribution: "NRCan elevation reference"
+        }, "elevation");
+
+        if (elevation) elevation.addTo(APP.map);
+      }
+    }
+
+    function updateLocalGuideLayer() {
+      const checked = document.getElementById("toggleLocalGuide").checked;
+      safeRemoveOverlay("localGuide");
+
+      if (!checked || !APP.map) return;
+
+      APP.overlays.localGuide = L.circle([APP.currentProfile.lat, APP.currentProfile.lng], {
+        radius: 2500,
+        color: "#d3080c",
+        weight: 2,
+        fillColor: "#d3080c",
+        fillOpacity: 0.08
+      }).addTo(APP.map);
+
+      APP.overlays.localGuide.bindPopup(
+        "Local context radius for " + escapeHtml(APP.currentProfile.displayPostalCode) +
+        ". Check authoritative floodplain layers for legal or planning decisions."
+      );
+    }
+
+    function updateProvincialLayer() {
+      const checked = document.getElementById("toggleProvincial").checked;
+      safeRemoveOverlay("provincial");
+
+      if (!checked || !APP.map) {
+        updateLayerStatus("Province-aware hazard layer turned off.");
+        return;
+      }
+
+      const guide = getProvinceGuide(APP.currentProfile.province);
+
+      APP.overlays.provincial = L.circle([APP.currentProfile.lat, APP.currentProfile.lng], {
+        radius: 5000,
+        color: "#005ea8",
+        weight: 2,
+        dashArray: "6,4",
+        fillColor: "#005ea8",
+        fillOpacity: 0.05
+      }).addTo(APP.map);
+
+      APP.overlays.provincial.bindPopup(
+        "<strong>" + escapeHtml(guide.name) + " flood data check</strong><br>" +
+        escapeHtml(guide.layerNote) + "<br>" +
+        "<a target='_blank' rel='noopener noreferrer' href='" + encodeURI(guide.url) + "'>Open authoritative source</a>"
+      );
+
+      updateLayerStatus("Province-aware guidance loaded for " + guide.name + ". Use the linked authoritative source for decisions.");
+    }
+
+    function updateLayerStatus(message) {
+      document.getElementById("layerStatus").textContent = message;
+    }
+
+    function updateSummary(profile) {
+      const guide = getProvinceGuide(profile.province);
+      const riskClass = guide.riskSignal === "High" ? "badge-high" :
+        guide.riskSignal === "Medium" ? "badge-medium" :
+        guide.riskSignal === "Low" ? "badge-low" : "badge-unknown";
+
+      document.getElementById("resolvedLocation").textContent = profile.city + ", " + profile.province + " (" + profile.displayPostalCode + ")";
+      document.getElementById("coordinates").textContent = profile.lat.toFixed(4) + ", " + profile.lng.toFixed(4);
+      document.getElementById("provinceValue").textContent = profile.province;
+      document.getElementById("primaryCheck").textContent = guide.primaryCheck;
+
+      const badge = document.getElementById("riskBadge");
+      badge.className = "badge " + riskClass;
+      badge.textContent = guide.riskSignal + " - check authoritative source";
+    }
+
+    function updateMap(profile) {
+      APP.currentProfile = profile;
+      if (!APP.map) {
+        initMap();
+        return;
+      }
+
+      APP.map.setView([profile.lat, profile.lng], 12);
+
+      if (APP.marker) {
+        APP.marker.setLatLng([profile.lat, profile.lng]);
+      } else {
+        APP.marker = L.marker([profile.lat, profile.lng]).addTo(APP.map);
+      }
+
+      APP.marker.bindPopup("Postal-code centroid: " + escapeHtml(profile.displayPostalCode)).openPopup();
+
+      updateSummary(profile);
+      updateLocalGuideLayer();
+      updateFederalReferenceLayers();
+      updateProvincialLayer();
+    }
+
+    async function lookupPostalCode(postalCode) {
+      const normalized = normalizePostalCode(postalCode);
+      const response = await fetch("https://represent.opennorth.ca/postcodes/" + encodeURIComponent(normalized) + "/");
+
+      if (!response.ok) {
+        throw new Error("OpenNorth Represent could not resolve this postal code.");
+      }
+
+      const data = await response.json();
+      const centroid = data.centroid && Array.isArray(data.centroid.coordinates) ? data.centroid.coordinates : null;
+
+      if (!centroid || !Number.isFinite(centroid[0]) || !Number.isFinite(centroid[1])) {
+        throw new Error("The postal-code response did not include usable coordinates.");
+      }
+
+      return {
+        postalCode: normalized,
+        displayPostalCode: formatPostalCode(normalized),
+        city: data.city || "Unknown municipality",
+        province: data.province || "Unknown",
+        lat: centroid[1],
+        lng: centroid[0]
+      };
+    }
+
+    function loadFallbackProfile(postalCode) {
+      return {
+        postalCode: normalizePostalCode(postalCode),
+        displayPostalCode: formatPostalCode(postalCode),
+        city: "Offline profile",
+        province: "DEFAULT",
+        lat: 45.4201,
+        lng: -75.7003
+      };
+    }
+
+    document.getElementById("postalForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const input = document.getElementById("postalCode");
+      const value = input.value;
+
+      if (!isValidPostalCode(value)) {
+        setFormError(true);
+        setStatus("Enter a valid Canadian postal code.", true);
+        return;
+      }
+
+      setFormError(false);
+      setStatus("Looking up postal-code centroid and updating map layers...");
+
+      try {
+        const profile = await lookupPostalCode(value);
+        input.value = profile.displayPostalCode;
+        updateMap(profile);
+        setStatus("Map updated for " + profile.city + ", " + profile.province + " (" + profile.displayPostalCode + ").");
+        document.getElementById("risk-summary-heading").focus?.();
+      } catch (error) {
+        console.warn(error);
+        const fallback = loadFallbackProfile(value);
+        updateMap(fallback);
+        setStatus("Live postal-code lookup failed. Offline Ottawa-centred fallback loaded. Check network access and try again.", true);
+      }
+    });
+
+    document.getElementById("baseGoogleRoad").addEventListener("click", function () { setBaseLayer("googleRoad"); });
+    document.getElementById("baseGoogleSatellite").addEventListener("click", function () { setBaseLayer("googleSatellite"); });
+    document.getElementById("baseOpenStreetMap").addEventListener("click", function () { setBaseLayer("openStreetMap"); });
+
+    document.getElementById("toggleWater").addEventListener("change", updateFederalReferenceLayers);
+    document.getElementById("toggleElevation").addEventListener("change", updateFederalReferenceLayers);
+    document.getElementById("toggleLocalGuide").addEventListener("change", updateLocalGuideLayer);
+    document.getElementById("toggleProvincial").addEventListener("change", updateProvincialLayer);
+
+    document.getElementById("printButton").addEventListener("click", function () {
+      window.print();
+    });
+
+    document.getElementById("langToggle").addEventListener("click", function () {
+      setStatus("Prototype note: this single-file version keeps the working interface in English. A production version requires equivalent French content and controls.");
+      document.getElementById("postalCode").focus();
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+      initMap();
+      updateProvincialLayer();
+      setStatus("Demo profile loaded for K1A 0A6. Enter another Canadian postal code to update the map.");
+    });
+  </script>
 </body>
 </html>
