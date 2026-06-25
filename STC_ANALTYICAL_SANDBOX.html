@@ -1,2039 +1,1615 @@
 <!DOCTYPE html>
-<!-- 
+<html lang="en" dir="ltr" class="no-js">
+<!--
 =========================================================================================
-Application Name: National Data Literacy Sandbox Suite - AI Assisted (GCDS Compliant)
-Purpose: Standalone, accessible training platform focusing on statistical critical thinking,
-         AI methodology, data visualization, and geographic census mapping.
-Version: 6.2.0 (Dynamic Visualizer, Expanded Datasets & AI Code Documentation)
-Compliance: WCAG 2.2 AA Compliant
+Application Name: National Data Literacy Sandbox Suite — DS Challenge 2026 Prototype
+Purpose: Standalone, bilingual, accessible data-literacy sandbox for statistical critical
+         thinking, data visualization, source evaluation and geographic profile simulation.
+Version: 7.0.0
+Compliance posture: Designed to align with GoC digital standards, Canada.ca conventions,
+                    WCAG 2.1/2.2 AA intent and EN 301 549 principles. Not certified.
 =========================================================================================
 -->
-<html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Statistics Canada standalone Analytical Sandbox Suite. Learn and explore data analysis, statistical concepts, visual analytics, and geocoding profile maps." />
-  <title>Analytical Sandbox Suite - StatCan Data Literacy</title>
-
-  <!-- GCDS Design System Stylesheets -->
-  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/css-shortcuts@1.2.0/dist/gcds-css-shortcuts.min.css" />
-  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.css" />
-  <script type="module" src="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.esm.js"></script>
-
-  <!-- External Engine Integrations -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bilingual DS Challenge 2026 prototype for data literacy, statistical concepts, accessible data visualization and geographic profile simulation.">
+  <title>National Data Literacy Sandbox Suite — DS Challenge 2026 prototype</title>
   <style>
+    /* Accessibility features and Canada.ca-inspired base */
     :root {
-      --stc-blue: #26374a;
-      --stc-red: #d3080c;
-      --stc-light-blue: #e8f0f8;
-      --stc-light-grey: #f8f8f8;
-      --stc-mid-grey: #d9d9d9;
-      --stc-dark: #111111;
-      --stc-green: #2e8540;
-      --stc-yellow: #f2d40d;
-      --stc-orange: #f58220;
-      --stc-focus: #0535d2;
+      --gc-blue: #26374a;
+      --gc-blue-dark: #1f2c3d;
+      --gc-red: #d3080c;
+      --gc-link: #284162;
+      --gc-link-hover: #0535d2;
+      --gc-focus: #ffbf47;
+      --gc-grey-50: #f8f8f8;
+      --gc-grey-100: #f1f1f1;
+      --gc-grey-200: #e5e5e5;
+      --gc-grey-300: #d6d6d6;
+      --gc-grey-600: #555;
+      --gc-grey-900: #111;
+      --gc-green: #278400;
+      --gc-orange: #b45f06;
+      --gc-purple: #4f2f84;
+      --max-width: 1170px;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-5: 1.5rem;
+      --space-6: 2rem;
     }
 
-    html {
-      scroll-behavior: smooth;
-    }
-
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      background: #ffffff;
-      color: var(--stc-dark);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       font-family: Arial, Helvetica, sans-serif;
-      line-height: 1.6;
+      font-size: 18px;
+      line-height: 1.55;
+      color: #333;
+      background: #fff;
     }
+    h1, h2, h3, h4 { color: var(--gc-grey-900); line-height: 1.2; margin: 0 0 var(--space-4); }
+    h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
+    h2 { font-size: clamp(1.55rem, 3vw, 2rem); border-bottom: 3px solid var(--gc-red); padding-bottom: .35rem; margin-top: var(--space-6); }
+    h3 { font-size: 1.3rem; }
+    h4 { font-size: 1.1rem; }
+    p { margin: 0 0 var(--space-4); }
+    a { color: var(--gc-link); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover, a:focus { color: var(--gc-link-hover); }
+    button, input, select, textarea { font: inherit; }
+    button { min-height: 44px; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    caption { text-align: left; font-weight: 700; margin-bottom: .5rem; }
+    th, td { border: 1px solid var(--gc-grey-300); padding: .65rem; text-align: left; vertical-align: top; }
+    th { background: var(--gc-grey-100); color: var(--gc-grey-900); }
+    img, svg { max-width: 100%; }
 
-    /* Skip Navigation Link conforming to GoC standards */
+    .container { width: min(100% - 2rem, var(--max-width)); margin: 0 auto; }
+    .narrow { max-width: 920px; }
     .skip-link {
       position: absolute;
-      left: -10000px;
-      top: auto;
+      left: .5rem;
+      top: -5rem;
+      z-index: 9999;
+      background: #000;
+      color: #fff;
+      padding: .65rem 1rem;
+      font-weight: 700;
+    }
+    .skip-link:focus { top: .5rem; color: #fff; outline: 4px solid var(--gc-focus); outline-offset: 2px; }
+    :focus-visible { outline: 4px solid var(--gc-focus); outline-offset: 2px; box-shadow: 0 0 0 2px #000; }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    /* Header */
+    .prototype-banner {
+      background: var(--gc-grey-50);
+      border-bottom: 1px solid var(--gc-grey-300);
+      padding: .45rem 0;
+      font-size: .92rem;
+    }
+    .prototype-banner strong { color: var(--gc-grey-900); }
+    .goc-header { background: #fff; border-bottom: 1px solid var(--gc-grey-300); }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      padding: var(--space-4) 0;
+    }
+    .brand {
+      color: #000;
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-block;
+    }
+    .brand span { display: block; color: var(--gc-grey-600); font-weight: 400; font-size: .9rem; }
+    .header-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .language-toggle {
+      background: #fff;
+      border: 0;
+      color: var(--gc-link);
+      text-decoration: underline;
+      font-weight: 700;
+      cursor: pointer;
+      padding: .45rem;
+    }
+    .site-search { display: flex; }
+    .site-search label {
+      position: absolute;
       width: 1px;
       height: 1px;
       overflow: hidden;
-      z-index: 9999;
+      clip: rect(0,0,0,0);
     }
-    .skip-link:focus {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      width: auto;
-      height: auto;
-      overflow: visible;
-      background-color: var(--stc-blue);
-      color: #ffffff;
-      padding: 1rem 1.5rem;
-      border: 3px solid var(--stc-yellow);
-      font-weight: bold;
-      border-radius: 4px;
-      text-decoration: underline;
+    .site-search input {
+      min-height: 44px;
+      border: 2px solid #555;
+      padding: .45rem;
+      max-width: 16rem;
     }
-
-    /* Core GCDS-Aligned UI Elements */
-    .prototype-banner {
-      border-left: 0.35rem solid var(--stc-blue);
-      background: #f1f5f9;
-      padding: 1rem;
-      margin: 1.25rem 0;
-    }
-
-    .info-box, .warning-box, .success-box, .neutral-box {
-      border-left: 0.35rem solid var(--stc-blue);
-      background: var(--stc-light-grey);
-      padding: 1.25rem;
-      margin: 1rem 0 1.5rem 0;
-      border-radius: 4px;
-    }
-
-    .warning-box { border-left-color: var(--stc-red); background: #fff4f4; }
-    .success-box { border-left-color: var(--stc-green); background: #f3fbf4; }
-    .neutral-box { border-left-color: #6f6f6f; }
-
-    /* Focus indicators */
-    .focusable-region:focus {
-      outline: 3px solid var(--stc-focus);
-      outline-offset: 3px;
-    }
-
-    /* Tabbed Suites */
-    .sandbox-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      border-bottom: 2px solid var(--stc-mid-grey);
-      margin-bottom: 1.5rem;
-      gap: 0.25rem;
-    }
-
-    .sandbox-tab {
-      background: none;
-      border: none;
-      padding: 0.85rem 1.35rem;
-      font-weight: 600;
-      color: #4a5568;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s ease-in-out;
-    }
-
-    .sandbox-tab:hover {
-      color: var(--stc-blue);
-      background: var(--stc-light-grey);
-    }
-
-    .sandbox-tab.active {
-      color: var(--stc-blue);
-      border-bottom-color: var(--stc-blue);
-      background: var(--stc-light-blue);
-    }
-
-    .sandbox-panel {
-      display: none;
-      animation: fadeIn 0.35s ease-out;
-    }
-
-    .sandbox-panel.active {
-      display: block;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Accessible Forms */
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-      display: block;
+    .btn, .site-search button {
+      border: 2px solid var(--gc-blue);
+      background: var(--gc-blue);
+      color: #fff;
       font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .form-hint {
-      display: block;
-      color: #4a5568;
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .form-control {
-      width: 100%;
-      padding: 0.65rem;
-      border: 1px solid var(--stc-mid-grey);
+      padding: .6rem 1rem;
+      min-height: 44px;
       border-radius: 4px;
-      font-size: 1rem;
-    }
-
-    .form-control:focus {
-      outline: 3px solid var(--stc-focus);
-      outline-offset: 1px;
-      border-color: var(--stc-blue);
-    }
-
-    /* Structured Layout Tables */
-    .table-wrap {
-      overflow-x: auto;
-      margin: 1.5rem 0 0 0;
-      border: 1px solid var(--stc-mid-grey);
-      border-radius: 0.35rem;
-      background: #ffffff;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 600px;
-    }
-
-    caption {
-      text-align: left;
-      font-weight: 700;
-      padding: 0.75rem;
-      background: var(--stc-light-grey);
-      border-bottom: 1px solid var(--stc-mid-grey);
-    }
-
-    th, td {
-      border: 1px solid var(--stc-mid-grey);
-      padding: 0.75rem;
-      text-align: left;
-      vertical-align: middle;
-    }
-
-    thead th { background: var(--stc-blue); color: #ffffff; }
-    tbody th { background: #f2f2f2; font-weight: 700; }
-    .text-right { text-align: right; }
-
-    /* Interactive Explorer Grid Cells */
-    .data-cell {
-      transition: all 0.1s ease-in-out;
       cursor: pointer;
-    }
-
-    .data-cell:hover {
-      background-color: var(--stc-light-blue);
-    }
-
-    .data-cell.selected {
-      background-color: #d0e1f3;
-      outline: 2px solid var(--stc-focus);
-    }
-
-    /* Quality Indicator Ratings */
-    .rating-badge {
+      text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
-      height: 22px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      margin-left: 6px;
-      cursor: help;
+      gap: .4rem;
     }
-
-    .rating-A { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .rating-B { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-    .rating-C { background-color: #fef08a; color: #854d0e; border: 1px solid #fde047; }
-    .rating-D { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
-
-    /* AI Chat Scroll Components */
-    .chat-scroll-area {
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid var(--stc-mid-grey);
-      border-radius: 4px;
-      padding: 1.25rem;
-      background: #ffffff;
-      margin-bottom: 1rem;
+    .btn:hover, .btn:focus, .site-search button:hover, .site-search button:focus {
+      background: var(--gc-blue-dark);
+      color: #fff;
     }
+    .btn-secondary { background: #fff; color: var(--gc-blue); }
+    .btn-secondary:hover, .btn-secondary:focus { background: var(--gc-blue); color: #fff; }
+    .btn-danger { background: #fff; color: var(--gc-red); border-color: var(--gc-red); }
+    .btn-danger:hover, .btn-danger:focus { background: var(--gc-red); color: #fff; }
 
-    /* AI Loading States */
-    .dot-flashing {
-      position: relative; width: 8px; height: 8px; border-radius: 5px; background-color: #64748b; color: #64748b;
-      animation: dot-flashing 1s infinite linear alternate; animation-delay: 0.5s;
+    .site-nav { background: var(--gc-blue); color: #fff; }
+    .site-nav .container { display: flex; align-items: stretch; gap: var(--space-3); flex-wrap: wrap; }
+    .menu-label {
+      color: #fff;
+      font-weight: 700;
+      padding: .8rem 1rem .8rem 0;
+      text-transform: uppercase;
     }
-
-    .dot-flashing::before, .dot-flashing::after {
-      content: ''; display: inline-block; position: absolute; top: 0; width: 8px; height: 8px; border-radius: 5px; background-color: #64748b; color: #64748b;
-      animation: dot-flashing 1s infinite alternate;
+    .site-nav ul { display: flex; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
+    .site-nav a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      padding: .8rem 1rem;
+      border-left: 1px solid rgba(255,255,255,.25);
     }
+    .site-nav a:hover, .site-nav a:focus { background: var(--gc-blue-dark); text-decoration: underline; color: #fff; }
 
-    .dot-flashing::before { left: -12px; animation-delay: 0s; }
-    .dot-flashing::after { left: 12px; animation-delay: 1s; }
-    @keyframes dot-flashing { 0% { background-color: #64748b; } 50%, 100% { background-color: #e2e8f0; } }
+    .breadcrumb { padding: 1rem 0 .5rem; font-size: .95rem; }
+    .breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; gap: .45rem; padding: 0; margin: 0; }
+    .breadcrumb li + li::before { content: ">"; margin-right: .45rem; color: var(--gc-grey-600); }
 
-    .visually-hidden {
-      position: absolute !important; width: 1px !important; height: 1px !important;
-      padding: 0 !important; margin: -1px !important; overflow: hidden !important;
-      clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+    /* Main content */
+    main { flex: 1; padding-bottom: var(--space-6); }
+    .page-title { margin: 1.25rem 0 var(--space-6); }
+    .lead { font-size: 1.25rem; color: #333; }
+    .meta { color: var(--gc-grey-600); font-size: .95rem; }
+    .notice, .warning, .success, .panel, .callout {
+      border: 1px solid var(--gc-grey-300);
+      border-left: 6px solid var(--gc-blue);
+      background: var(--gc-grey-50);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
     }
+    .warning { border-left-color: var(--gc-orange); background: #fff8e8; }
+    .success { border-left-color: var(--gc-green); background: #f3fbf4; }
+    .callout { border-left-color: var(--gc-purple); background: #f4f0fb; }
 
-    /* Print styling updates */
-    @media print {
-      body { background: white; color: black; }
-      header, footer, .sandbox-tabs, gcds-header, gcds-footer, .no-print, button, gcds-button {
-        display: none !important;
-      }
-      .sandbox-panel { display: block !important; }
+    .on-this-page {
+      border: 1px solid var(--gc-grey-300);
+      background: var(--gc-grey-50);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
     }
+    .on-this-page h2 { border: 0; padding: 0; margin-top: 0; font-size: 1.25rem; }
+    .on-this-page ul { margin: 0; padding-left: 1.25rem; columns: 2; }
+    .on-this-page li { margin-bottom: .35rem; break-inside: avoid; }
 
-    /* SVG Map Tract Transitions */
-    .map-tract-path {
-      transition: fill 0.2s, stroke 0.2s;
+    /* Tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .25rem;
+      border-bottom: 2px solid var(--gc-grey-300);
+      margin: var(--space-5) 0;
+    }
+    .tab {
+      background: #fff;
+      border: 2px solid transparent;
+      border-bottom: 4px solid transparent;
+      color: var(--gc-link);
       cursor: pointer;
+      font-weight: 700;
+      padding: .75rem 1rem;
+    }
+    .tab:hover, .tab:focus { background: var(--gc-grey-50); }
+    .tab[aria-selected="true"] {
+      color: #000;
+      background: var(--gc-grey-100);
+      border-color: var(--gc-grey-300);
+      border-bottom-color: var(--gc-red);
+    }
+    .tabpanel { margin-bottom: var(--space-6); }
+    .tabpanel[hidden] { display: none; }
+
+    /* Forms */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-4);
+      margin: var(--space-4) 0;
+    }
+    .form-group { margin-bottom: var(--space-4); }
+    .form-label { display: block; font-weight: 700; color: var(--gc-grey-900); margin-bottom: .35rem; }
+    .hint { color: var(--gc-grey-600); font-size: .95rem; margin: .25rem 0 .5rem; }
+    .input, .select, .textarea {
+      width: 100%;
+      border: 2px solid #555;
+      min-height: 44px;
+      padding: .6rem;
+      background: #fff;
+    }
+    .textarea { min-height: 110px; resize: vertical; }
+    .error-summary {
+      border: 3px solid var(--gc-red);
+      padding: var(--space-4);
+      margin: var(--space-4) 0;
+      background: #fff;
+    }
+    .error-summary h3 { margin-top: 0; }
+    .field-error { color: var(--gc-red); font-weight: 700; }
+    .has-error .input, .has-error .select, .has-error .textarea { border-color: var(--gc-red); }
+
+    /* Cards and data */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-4);
+    }
+    .card {
+      border: 1px solid var(--gc-grey-300);
+      border-top: 5px solid var(--gc-blue);
+      background: #fff;
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+    }
+    .card h3 { border-bottom: 1px solid var(--gc-grey-300); padding-bottom: .5rem; }
+    .badge {
+      display: inline-block;
+      border: 1px solid #555;
+      border-radius: 999px;
+      padding: .2rem .55rem;
+      font-size: .85rem;
+      font-weight: 700;
+      background: #fff;
+      width: fit-content;
+      margin-bottom: .75rem;
+    }
+    .badge-demo { border-color: var(--gc-orange); background: #fff8e8; color: #743800; }
+    .data-list { list-style: none; margin: 0 0 var(--space-4); padding: 0; }
+    .data-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      border-bottom: 1px solid var(--gc-grey-200);
+      padding: .4rem 0;
+    }
+    .data-label { color: var(--gc-grey-600); }
+    .data-value { font-weight: 700; color: var(--gc-grey-900); text-align: right; }
+
+    .chart-wrap { margin-top: auto; }
+    .bar-chart { display: grid; gap: .5rem; margin: .75rem 0; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 9rem 1fr 4rem;
+      gap: .5rem;
+      align-items: center;
+    }
+    .bar-track { height: 1.25rem; background: var(--gc-grey-200); border: 1px solid #aaa; }
+    .bar-fill { height: 100%; min-width: 2px; background: var(--gc-blue); }
+    .bar-fill.alt { background: var(--gc-purple); }
+    .bar-fill.warn { background: var(--gc-orange); }
+    .bar-fill.good { background: var(--gc-green); }
+
+    .table-wrap { overflow-x: auto; margin: var(--space-4) 0; }
+    .source-list li { margin-bottom: .4rem; }
+    .question-list li { margin-bottom: .6rem; }
+
+    /* Chat */
+    .chat-log {
+      border: 1px solid var(--gc-grey-300);
+      background: #fff;
+      padding: var(--space-4);
+      min-height: 220px;
+      max-height: 360px;
+      overflow: auto;
+      margin-bottom: var(--space-4);
+    }
+    .chat-message {
+      border-left: 4px solid var(--gc-blue);
+      background: var(--gc-grey-50);
+      padding: .75rem;
+      margin-bottom: .75rem;
+    }
+    .chat-message.user { border-left-color: var(--gc-purple); background: #f4f0fb; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: var(--space-4); }
+    .chip {
+      background: #fff;
+      border: 1px solid var(--gc-grey-300);
+      border-radius: 999px;
+      cursor: pointer;
+      min-height: 36px;
+      padding: .35rem .7rem;
+    }
+    .chip:hover, .chip:focus { background: var(--gc-grey-50); }
+
+    /* SVG map */
+    .map-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--space-4); align-items: start; }
+    .map-frame {
+      border: 1px solid var(--gc-grey-300);
+      background: #e8f0f8;
+      min-height: 420px;
+      overflow: hidden;
+      padding: var(--space-2);
+    }
+    .tract {
+      cursor: pointer;
+      stroke: #333;
+      stroke-width: 2;
+    }
+    .tract:focus { outline: 4px solid var(--gc-focus); outline-offset: 2px; }
+    .tract[aria-pressed="true"] { stroke: var(--gc-red); stroke-width: 5; }
+    .map-alt {
+      border: 1px solid var(--gc-grey-300);
+      background: var(--gc-grey-50);
+      padding: var(--space-4);
     }
 
-    .map-tract-path:hover {
-      fill-opacity: 0.85;
-      stroke: var(--stc-blue);
-      stroke-width: 2.5;
+    /* Footer */
+    .footer { margin-top: auto; background: var(--gc-grey-100); border-top: 4px solid var(--gc-blue); }
+    .footer-main { padding: var(--space-6) 0; }
+    .footer-main h2 { font-size: 1.25rem; border: 0; padding: 0; margin-top: 0; }
+    .footer-nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; padding: 0; margin: 0; }
+    .footer-bottom { background: #fff; border-top: 1px solid var(--gc-grey-300); padding: 1rem 0; font-size: .9rem; color: var(--gc-grey-600); }
+    .footer-bottom .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+
+    .js .no-js-only, .no-js .js-only { display: none !important; }
+
+    @media (max-width: 760px) {
+      body { font-size: 16px; }
+      .header-row, .header-actions, .site-nav .container, .site-nav ul { display: block; }
+      .site-search { width: 100%; margin-top: .75rem; }
+      .site-search input { flex: 1; max-width: none; }
+      .site-nav a { border-left: 0; border-top: 1px solid rgba(255,255,255,.25); }
+      .on-this-page ul { columns: 1; }
+      .bar-row { grid-template-columns: 1fr; }
+      .data-list li { display: block; }
+      .data-value { display: block; text-align: left; }
+      .map-grid { grid-template-columns: 1fr; }
+      .btn { width: 100%; }
     }
 
-    .map-tract-path.active-tract {
-      fill-opacity: 0.95;
-      stroke: var(--stc-red);
-      stroke-width: 3.5;
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+
+    @media print {
+      @page { margin: 1.4cm; }
+      body { font-size: 11pt; color: #000; background: #fff; }
+      .skip-link, .prototype-banner, .goc-header, .site-nav, .breadcrumb, .on-this-page, .tabs, .footer, .screen-only, .btn, .chip-row, form { display: none !important; }
+      .container { width: 100%; max-width: none; }
+      h1 { font-size: 22pt; }
+      h2 { font-size: 16pt; border-bottom: 2px solid #000; }
+      .tabpanel { display: block !important; }
+      .tabpanel[hidden] { display: block !important; }
+      .card, .panel, .notice, .warning, .success, .map-frame, .map-alt { border: 1px solid #999; break-inside: avoid; }
+      a { color: #000; text-decoration: none; }
+      .bar-fill { background: #777 !important; }
     }
   </style>
+  <script>
+    document.documentElement.classList.remove("no-js");
+    document.documentElement.classList.add("js");
+  </script>
 </head>
 
 <body>
-  <!-- Skip Link for Keyboard Navigation accessibility -->
-  <a href="#main-content" class="skip-link" data-i18n="skip-nav">Skip to main content</a>
+  <!-- Accessibility features -->
+  <a href="#wb-cont" class="skip-link" data-i18n="skip">Skip to main content</a>
 
-  <gcds-header lang-href="#ol-note" skip-to-href="#main-content">
-    <gcds-breadcrumbs slot="breadcrumb">
-      <gcds-breadcrumbs-item href="#">Statistics Canada</gcds-breadcrumbs-item>
-      <gcds-breadcrumbs-item href="#">Data Literacy Hub</gcds-breadcrumbs-item>
-      <gcds-breadcrumbs-item href="#">Analytical Sandbox</gcds-breadcrumbs-item>
-    </gcds-breadcrumbs>
-  </gcds-header>
+  <!-- Header -->
+  <div class="prototype-banner" role="note">
+    <div class="container" id="prototype-banner-text"></div>
+  </div>
 
-  <gcds-container id="main-content" layout="page" tag="main">
-    
-    <!-- Top Branding Header -->
-    <div class="flex justify-between items-center flex-wrap border-b-2 border-slate-700 pb-4 mb-6">
-      <div>
-        <gcds-heading tag="h1" id="app-title-display" data-i18n="title-main">Analytical Sandbox Suite</gcds-heading>
-        <gcds-text id="app-subtitle-display" data-i18n="title-sub">Bilingual Research Environment & Interactive Geocoding Simulator</gcds-text>
-      </div>
-      <div class="flex gap-4 items-center">
-        <button id="btn-lang-toggle" class="px-3 py-1 bg-none border border-slate-700 rounded-md font-semibold text-sm hover:bg-slate-100 transition" aria-label="Toggle language to French / Basculer en Français">FR</button>
-      </div>
-    </div>
-
-    <p class="prototype-banner" role="note">
-      <strong data-i18n="proto-status">Information Status:</strong> 
-      <span id="proto-desc-text" data-i18n="proto-desc">This is a standalone interactive analytical sandbox utilizing synthesized and quarterly parameters modeled directly from Statistics Canada. No personal search data or address parameters are transmitted from your device.</span>
-    </p>
-
-    <!-- ARIA Live container for global assistive screen readers -->
-    <div id="live-region" class="visually-hidden" aria-live="assertive"></div>
-
-    <!-- MAIN SANDBOX WORKSPACE -->
-    <section class="focusable-region" tabindex="-1" aria-labelledby="app-title-display">
-      
-      <!-- Tab Controls (Interactive tabs matching WCAG design principles) -->
-      <div class="sandbox-tabs" role="tablist" aria-label="Data Sandbox Suites">
-        <button id="tab-sandbox-chat" class="sandbox-tab active" role="tab" aria-selected="true" aria-controls="panel-sandbox-chat" tabindex="0">
-          💬 <span data-i18n="tab-chat">AI Assistant Chat</span>
-        </button>
-        <button id="tab-sandbox-dict" class="sandbox-tab" role="tab" aria-selected="false" aria-controls="panel-sandbox-dict" tabindex="-1">
-          📖 <span data-i18n="tab-dict">Statistical Dictionary</span>
-        </button>
-        <button id="tab-sandbox-explorer" class="sandbox-tab" role="tab" aria-selected="false" aria-controls="panel-sandbox-explorer" tabindex="-1">
-          📊 <span data-i18n="tab-explorer">Interactive Matrix Explorer</span>
-        </button>
-        <button id="tab-sandbox-vis" class="sandbox-tab" role="tab" aria-selected="false" aria-controls="panel-sandbox-vis" tabindex="-1">
-          📈 <span data-i18n="tab-vis">Data Visualizer</span>
-        </button>
-        <button id="tab-sandbox-map" class="sandbox-tab" role="tab" aria-selected="false" aria-controls="panel-sandbox-map" tabindex="-1">
-          🗺️ <span data-i18n="tab-map">Geographic Community Profile</span>
-        </button>
-      </div>
-
-      <!-- Tab Panel 1: AI Chat Assistant -->
-      <div id="panel-sandbox-chat" class="sandbox-panel active" role="tabpanel" aria-labelledby="tab-sandbox-chat">
-        <gcds-heading tag="h2" class="text-xl font-bold mb-2" data-i18n="chat-heading">Bilingual Assistant Chat</gcds-heading>
-        <gcds-text data-i18n="chat-desc" class="mb-4">Consult our statistical processing model about Canadian data practices, sampling thresholds, random rounding, or coefficient metrics.</gcds-text>
-        
-        <div id="chat-messages" class="chat-scroll-area" aria-live="polite"></div>
-        
-        <!-- Pre-Prompt Helper Chips -->
-        <div id="chat-prompt-chips" class="flex gap-2 flex-wrap mb-4"></div>
-
-        <form id="form-chat" class="flex gap-2 items-center">
-          <input type="text" id="input-chat" class="form-control" style="max-width: none;" data-i18n="chat-placeholder" placeholder="Ask a question about rounding rules, standard errors, coefficients of variation..." required>
-          <gcds-button type="submit" id="btn-send-chat" data-i18n="btn-send">Send</gcds-button>
+  <header class="goc-header" role="banner">
+    <div class="container header-row">
+      <a class="brand" href="#wb-cont">
+        Government of Canada / Gouvernement du Canada
+        <span data-i18n="brand">Statistics Canada data literacy prototype</span>
+      </a>
+      <div class="header-actions">
+        <button id="language-toggle" class="language-toggle" type="button">Français</button>
+        <form class="site-search" action="https://www.canada.ca/en/sr/srb.html" method="get" role="search">
+          <label for="site-search-input" data-i18n="searchLabel">Search Canada.ca</label>
+          <input id="site-search-input" name="q" type="search">
+          <button type="submit" data-i18n="search">Search</button>
         </form>
       </div>
+    </div>
+  </header>
 
-      <!-- Tab Panel 2: Statistical Dictionary -->
-      <div id="panel-sandbox-dict" class="sandbox-panel" role="tabpanel" aria-labelledby="tab-sandbox-dict">
-        <gcds-heading tag="h2" class="text-xl font-bold mb-2" data-i18n="dict-heading">Bilingual Statistical Dictionary</gcds-heading>
-        <gcds-text data-i18n="dict-desc" class="mb-4">Instant plain-language explanations of core microdata and metadata attributes used across census tables.</gcds-text>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label for="select-dict-topic" class="form-label" data-i18n="dict-lbl-topic">1. Subject Category</label>
-            <select id="select-dict-topic" class="form-control"></select>
-          </div>
-          <div>
-            <label for="select-dict-term" class="form-label" data-i18n="dict-lbl-term">2. Concept or Parameter</label>
-            <select id="select-dict-term" class="form-control" disabled></select>
-          </div>
-        </div>
+  <nav class="site-nav" id="primary-nav" aria-label="Primary navigation">
+    <div class="container">
+      <div class="menu-label" data-i18n="menu">Menu</div>
+      <ul>
+        <li><a href="#sandbox" data-i18n="navSandbox">Sandbox tools</a></li>
+        <li><a href="#proposal" data-i18n="navProposal">DS Challenge proposal</a></li>
+        <li><a href="#quality" data-i18n="navQuality">Quality gates</a></li>
+        <li><a href="#sources" data-i18n="navSources">Sources</a></li>
+      </ul>
+    </div>
+  </nav>
 
-        <div id="dict-output" class="info-box" style="display: none;">
-          <gcds-heading tag="h3" id="dict-term-title" class="text-lg font-bold text-slate-800 mb-2">Term Title</gcds-heading>
-          <p id="dict-term-definition" class="text-base mb-4"></p>
-          <p id="dict-term-citation" class="italic text-slate-500 text-sm mb-4"></p>
-          <a id="dict-term-url" href="#" target="_blank" rel="noopener" class="text-blue-700 underline font-semibold flex items-center gap-1" data-i18n="dict-url-txt">View full STC concept definition & dataset</a>
-        </div>
+  <main id="wb-cont" class="container" tabindex="-1">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="https://www.canada.ca/en.html">Canada.ca</a></li>
+        <li><a href="https://www.statcan.gc.ca/en/start">Statistics Canada</a></li>
+        <li aria-current="page" data-i18n="crumb">National Data Literacy Sandbox Suite</li>
+      </ol>
+    </nav>
+
+    <!-- Main content -->
+    <div class="page-title narrow">
+      <h1 data-i18n="h1">National Data Literacy Sandbox Suite</h1>
+      <p class="lead" data-i18n="lead">A DS Challenge 2026 prototype that helps learners practise statistical thinking, source evaluation, accessible visualization and geographic interpretation.</p>
+      <p class="meta" data-i18n="meta">Standalone HTML prototype · no server storage · demonstration data only unless a source link is opened</p>
+    </div>
+
+    <section class="notice" aria-labelledby="before-heading">
+      <h2 id="before-heading" data-i18n="beforeH">Before you start</h2>
+      <p data-i18n="beforeP">This page is a training prototype. Demonstration values are synthetic and are used to teach interpretation, not to report official statistics. Use the linked Statistics Canada sources for authoritative data.</p>
+    </section>
+
+    <nav class="on-this-page" aria-labelledby="on-this-page-heading">
+      <h2 id="on-this-page-heading" data-i18n="onThisPage">On this page</h2>
+      <ul>
+        <li><a href="#sandbox" data-i18n="otp1">Use the sandbox tools</a></li>
+        <li><a href="#proposal" data-i18n="otp2">Read the DS Challenge 2026 proposal</a></li>
+        <li><a href="#quality" data-i18n="otp3">Review accessibility, privacy and data-quality gates</a></li>
+        <li><a href="#sources" data-i18n="otp4">Check source links</a></li>
+      </ul>
+    </nav>
+
+    <noscript>
+      <section class="warning">
+        <h2>JavaScript is required for the interactive sandbox</h2>
+        <p>The tab panels, local assistant, matrix explorer, visualizer and map simulator require JavaScript. The proposal and source notes remain available as page content.</p>
+        <h2 lang="fr">JavaScript est requis pour le bac à sable interactif</h2>
+        <p lang="fr">Les panneaux, l’assistant local, l’explorateur de matrice, le visualiseur et le simulateur cartographique nécessitent JavaScript. La proposition et les notes de source demeurent disponibles dans la page.</p>
+      </section>
+    </noscript>
+
+    <section id="sandbox" aria-labelledby="sandbox-heading" class="js-only">
+      <h2 id="sandbox-heading" data-i18n="sandboxH">Sandbox tools</h2>
+      <p data-i18n="sandboxP">Choose a tool. All tools run in the browser using demonstration data and local rule-based logic.</p>
+
+      <div class="tabs" role="tablist" aria-label="Sandbox tools" id="tabs">
+        <button id="tab-chat" class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-chat" tabindex="0" data-tab="chat" data-i18n="tabChat">Assistant</button>
+        <button id="tab-dictionary" class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-dictionary" tabindex="-1" data-tab="dictionary" data-i18n="tabDictionary">Dictionary</button>
+        <button id="tab-matrix" class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-matrix" tabindex="-1" data-tab="matrix" data-i18n="tabMatrix">Matrix explorer</button>
+        <button id="tab-visualizer" class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-visualizer" tabindex="-1" data-tab="visualizer" data-i18n="tabVisualizer">Visualizer</button>
+        <button id="tab-map" class="tab" role="tab" type="button" aria-selected="false" aria-controls="panel-map" tabindex="-1" data-tab="map" data-i18n="tabMap">Community profile</button>
       </div>
 
-      <!-- Tab Panel 3: Interactive Matrix Explorer -->
-      <div id="panel-sandbox-explorer" class="sandbox-panel" role="tabpanel" aria-labelledby="tab-sandbox-explorer">
-        <gcds-heading tag="h2" class="text-xl font-bold mb-2" data-i18n="exp-heading">Interactive Table Matrix Explorer</gcds-heading>
-        <gcds-text data-i18n="explorer-desc" class="mb-4">Select customized indicators and datasets. Highlight comparative parameters to synthesize a real-time 'The Daily' analytical report.</gcds-text>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label for="select-explorer-topic" class="form-label" data-i18n="exp-lbl-topic">Subject Area</label>
-            <select id="select-explorer-topic" class="form-control"></select>
+      <section id="panel-chat" class="tabpanel" role="tabpanel" aria-labelledby="tab-chat" tabindex="0">
+        <h3 data-i18n="chatH">Local statistical assistant</h3>
+        <p data-i18n="chatP">Ask about rounding, sampling error, coefficient of variation, data suppression, metadata or chart interpretation. The assistant is deterministic and does not send content to an external AI service.</p>
+        <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Assistant conversation"></div>
+        <div id="chip-row" class="chip-row" aria-label="Example questions"></div>
+        <form id="chat-form" novalidate>
+          <div class="form-group" id="chat-question-group">
+            <label for="chat-input" class="form-label" data-i18n="chatLabel">Question</label>
+            <p class="hint" id="chat-hint" data-i18n="chatHint">Example: Why does random rounding matter?</p>
+            <p class="field-error" id="chat-error" hidden></p>
+            <input id="chat-input" class="input" type="text" required aria-describedby="chat-hint chat-error">
           </div>
-          <div>
-            <label for="select-explorer-dataset" class="form-label" data-i18n="exp-lbl-dataset">Reference Dataset Table</label>
-            <select id="select-explorer-dataset" class="form-control" disabled></select>
-          </div>
-        </div>
+          <button type="submit" class="btn" data-i18n="send">Send</button>
+        </form>
+      </section>
 
-        <div id="explorer-interactive-container" style="display: none;">
-          <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-            <gcds-heading tag="h3" id="explorer-table-title" class="text-lg font-bold">Interactive Dataset Matrix</gcds-heading>
-            <gcds-button id="btn-generate-daily" data-i18n="btn-generate-daily">Generate Narrative Analytical Report</gcds-button>
+      <section id="panel-dictionary" class="tabpanel" role="tabpanel" aria-labelledby="tab-dictionary" tabindex="0" hidden>
+        <h3 data-i18n="dictH">Bilingual statistical dictionary</h3>
+        <p data-i18n="dictP">Select a concept to see a plain-language definition, a caution and a source path for further learning.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="dictionary-topic" class="form-label" data-i18n="topicLabel">Topic</label>
+            <select id="dictionary-topic" class="select"></select>
           </div>
-          <p class="text-sm italic mb-4" data-i18n="explorer-instructions">Click cells to select comparative metrics, then generate a narrative report.</p>
-          
-          <div class="table-wrap">
-            <table id="explorer-data-table">
-              <caption id="explorer-table-caption">Dynamic Matrix</caption>
-              <thead id="explorer-table-head"></thead>
-              <tbody id="explorer-table-body"></tbody>
-            </table>
-          </div>
-
-          <!-- Narrative Outputs block -->
-          <div id="daily-summary-container" class="success-box" style="display: none;">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-              <gcds-heading tag="h3" class="text-emerald-800 font-bold" data-i18n="daily-header">Statistics Canada — The Daily</gcds-heading>
-              <gcds-button id="btn-print-summary" button-role="secondary" data-i18n="btn-print-summary">Print / PDF Export</gcds-button>
-            </div>
-            <div id="daily-summary-content" class="prose text-sm max-w-none"></div>
+          <div class="form-group">
+            <label for="dictionary-term" class="form-label" data-i18n="termLabel">Concept</label>
+            <select id="dictionary-term" class="select"></select>
           </div>
         </div>
-      </div>
+        <article id="dictionary-output" class="panel" aria-live="polite"></article>
+      </section>
 
-      <!-- Tab Panel 4: Data Visualizer (Chart.js implementation) -->
-      <div id="panel-sandbox-vis" class="sandbox-panel" role="tabpanel" aria-labelledby="tab-sandbox-vis">
-        <gcds-heading tag="h2" class="text-xl font-bold mb-2" data-i18n="vis-heading">Bilingual Data Visualizer</gcds-heading>
-        <gcds-text data-i18n="vis-desc" class="mb-4">Select dataset parameters and configure custom charts. Automatically renders visual alternatives to support accessible parsing.</gcds-text>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label for="select-vis-topic" class="form-label" data-i18n="exp-lbl-topic">Subject Area</label>
-            <select id="select-vis-topic" class="form-control"></select>
+      <section id="panel-matrix" class="tabpanel" role="tabpanel" aria-labelledby="tab-matrix" tabindex="0" hidden>
+        <h3 data-i18n="matrixH">Interactive matrix explorer</h3>
+        <p data-i18n="matrixP">Select a demonstration dataset. Use the matrix to practise comparing indicators and identifying data-quality cautions.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="matrix-dataset" class="form-label" data-i18n="datasetLabel">Dataset</label>
+            <select id="matrix-dataset" class="select"></select>
           </div>
-          <div>
-            <label for="select-vis-dataset" class="form-label" data-i18n="exp-lbl-dataset">Reference Dataset Table</label>
-            <select id="select-vis-dataset" class="form-control" disabled></select>
-          </div>
-          <div>
-            <label for="select-vis-type" class="form-label" data-i18n="vis-type">Chart Type</label>
-            <select id="select-vis-type" class="form-control" disabled>
-              <option value="">--</option>
-            </select>
+          <div class="form-group">
+            <label for="matrix-filter" class="form-label" data-i18n="filterLabel">Focus filter</label>
+            <select id="matrix-filter" class="select"></select>
           </div>
         </div>
+        <div class="table-wrap">
+          <table id="matrix-table"></table>
+        </div>
+        <div id="matrix-summary" class="success" tabindex="-1" hidden></div>
+      </section>
 
-        <div id="vis-output-container" style="display: none;">
-          <div class="bg-white border border-slate-300 rounded-lg p-4 mb-6">
-            <div style="height: 380px; position: relative;">
-              <canvas id="vis-canvas" aria-label="Visual representation of selected dataset" role="img"></canvas>
-            </div>
+      <section id="panel-visualizer" class="tabpanel" role="tabpanel" aria-labelledby="tab-visualizer" tabindex="0" hidden>
+        <h3 data-i18n="visualizerH">Accessible data visualizer</h3>
+        <p data-i18n="visualizerP">Choose a demonstration dataset and chart type. The chart is paired with a table and text summary.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="visual-dataset" class="form-label" data-i18n="datasetLabel">Dataset</label>
+            <select id="visual-dataset" class="select"></select>
           </div>
-          
-          <gcds-heading tag="h3" class="text-lg font-bold mb-2" data-i18n="vis-table-title">Accessible Tabular Matrix (Visual Alternative)</gcds-heading>
-          <div class="table-wrap">
-            <table id="vis-alt-table">
-              <caption id="vis-alt-table-caption">Tabular Equivalent</caption>
-              <thead id="vis-alt-table-head"></thead>
-              <tbody id="vis-alt-table-body"></tbody>
-            </table>
-          </div>
-          
-          <!-- Source Data External Link Element -->
-          <div class="mt-4 pt-4 border-t border-slate-200">
-            <a id="vis-source-link" href="#" target="_blank" rel="noopener" class="text-blue-700 underline text-sm font-semibold flex items-center gap-1.5 w-fit">
-              <i data-lucide="external-link" class="w-4 h-4"></i>
-              <span data-i18n="vis-source-text">View Source Dataset on Statistics Canada</span>
-            </a>
+          <div class="form-group">
+            <label for="visual-chart-type" class="form-label" data-i18n="chartTypeLabel">Chart type</label>
+            <select id="visual-chart-type" class="select"></select>
           </div>
         </div>
-      </div>
+        <div id="visual-output" class="panel"></div>
+      </section>
 
-      <!-- Tab Panel 5: Geographic Community Profile Maps Simulator -->
-      <div id="panel-sandbox-map" class="sandbox-panel" role="tabpanel" aria-labelledby="tab-sandbox-map">
-        <gcds-heading tag="h2" class="text-xl font-bold mb-2" data-i18n="map-heading">Geographic Community Profile Simulator</gcds-heading>
-        <gcds-text data-i18n="map-desc" class="mb-4">Simulate localized geodata updates using representative census tract boundary layouts. Select map tracts directly or search for location addresses.</gcds-text>
-        
-        <div class="info-box mb-6">
-          <form id="form-map-lookup">
-            <div class="form-group">
-              <label for="input-map-location" class="form-label" data-i18n="map-lookup-label">Address or Postal Code Geocoder Lookup</label>
-              <input type="text" id="input-map-location" class="form-control" style="max-width: none;" placeholder="e.g., 150 Tunney's Pasture Driveway, Ottawa, ON or K1A 0T6" required>
-            </div>
-            <div class="flex gap-4 items-center flex-wrap">
-              <gcds-button type="submit" data-i18n="map-geocode">Geocode Location</gcds-button>
-              <div class="flex gap-2 flex-wrap" id="preset-chips-container">
-                <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="tunneys">Tunney's Pasture (STC HQ)</button>
-                <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="montreal">Vieux-Port Montréal</button>
-                <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="vancouver">Vancouver Downtown</button>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        <!-- Map visualizer layout grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          <div class="lg:col-span-2 border border-slate-300 rounded-lg bg-[#e2f0fd] relative overflow-hidden h-[450px]" id="map-vector-frame">
-            <!-- Map Controls panel overlay -->
-            <div class="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
-              <button type="button" id="btn-map-zoom-in" class="px-3 py-1.5 bg-white border border-slate-700 font-bold rounded-md text-xs hover:bg-slate-100 transition shadow" data-i18n="map-zoom-in">➕ Zoom In</button>
-              <button type="button" id="btn-map-zoom-out" class="px-3 py-1.5 bg-white border border-slate-700 font-bold rounded-md text-xs hover:bg-slate-100 transition shadow" data-i18n="map-zoom-out">➖ Zoom Out</button>
-              <button type="button" id="btn-map-zoom-reset" class="px-3 py-1.5 bg-white border border-slate-700 font-bold rounded-md text-xs hover:bg-slate-100 transition shadow" data-i18n="map-zoom-reset">🔄 Reset View</button>
-            </div>
-
-            <!-- Interlock Vector Geographic Map - Expanded Hierarchy View -->
-            <svg id="svg-vector-map" viewBox="0 0 1000 800" class="w-full h-full cursor-grab transition-colors" xmlns="http://www.w3.org/2000/svg">
-              <g id="map-transform-viewport" transform="translate(0,0) scale(1)">
-                <!-- Simulated sea background borders -->
-                <rect x="-2000" y="-2000" width="5000" height="5000" fill="#bfdbfe" />
-                
-                <!-- Expanded PROV Boundary -->
-                <polygon id="poly-prov" points="20,20 980,40 960,780 40,760" fill="#f0fdf4" stroke="#86efac" stroke-width="4" stroke-dasharray="10,5" />
-                <text id="label-prov" x="40" y="50" font-family="Arial" font-weight="bold" font-size="18" fill="#166534">PROV: -- (--)</text>
-                
-                <!-- Expanded CMA Boundary -->
-                <polygon id="poly-cma" points="80,100 880,120 850,680 100,650" fill="#eff6ff" stroke="#93c5fd" stroke-width="3" stroke-dasharray="6,4" />
-                <text id="label-cma" x="100" y="130" font-family="Arial" font-weight="bold" font-size="16" fill="#1e3a8a">CMA: -- (--)</text>
-
-                <!-- Census tract divisions Grid (Interactive SVG Paths) -->
-                <g id="vector-census-tracts">
-                  <!-- Center Focus Tract -->
-                  <polygon id="tract-center" class="map-tract-path active-tract" data-tract="--" data-original-fill="#fed7aa" fill="#fed7aa" stroke="#1e293b" stroke-width="1.5" points="350,250 550,220 580,450 320,480" />
-                  <text id="label-tract-center" x="380" y="350" font-family="Arial" font-weight="bold" font-size="14" fill="#475569">CT: --</text>
-
-                  <!-- Surrounding Tracts -->
-                  <!-- North -->
-                  <polygon id="tract-n" class="map-tract-path" data-tract="--" data-original-fill="#e2e8f0" fill="#e2e8f0" stroke="#1e293b" stroke-width="1.5" points="300,100 600,100 550,220 350,250" />
-                  <text id="label-tract-n" x="400" y="180" font-family="Arial" font-size="12" fill="#475569">CT: --</text>
-                  <!-- East -->
-                  <polygon id="tract-e" class="map-tract-path" data-tract="--" data-original-fill="#cbd5e1" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.5" points="550,220 800,200 780,420 580,450" />
-                  <text id="label-tract-e" x="610" y="320" font-family="Arial" font-size="12" fill="#475569">CT: --</text>
-                  <!-- South -->
-                  <polygon id="tract-s" class="map-tract-path" data-tract="--" data-original-fill="#f1f5f9" fill="#f1f5f9" stroke="#1e293b" stroke-width="1.5" points="320,480 580,450 500,600 280,620" />
-                  <text id="label-tract-s" x="380" y="540" font-family="Arial" font-size="12" fill="#475569">CT: --</text>
-                  <!-- West -->
-                  <polygon id="tract-w" class="map-tract-path" data-tract="--" data-original-fill="#f8fafc" fill="#f8fafc" stroke="#1e293b" stroke-width="1.5" points="150,200 350,250 320,480 120,450" />
-                  <text id="label-tract-w" x="180" y="350" font-family="Arial" font-size="12" fill="#475569">CT: --</text>
-                </g>
-
-                <!-- Grid overlay lines simulating reference coordinate grids -->
-                <line x1="80" y1="350" x2="880" y2="350" stroke="#ffffff" stroke-width="3" stroke-dasharray="10,5" />
-                <line x1="450" y1="100" x2="450" y2="650" stroke="#ffffff" stroke-width="3" stroke-dasharray="10,5" />
-
-                <!-- Geocoded targeting coordinates locator pin -->
-                <g id="map-target-pin" transform="translate(450,350)" style="display: none;">
-                  <circle cx="0" cy="0" r="18" fill="var(--stc-red)" fill-opacity="0.35" class="animate-ping" />
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" transform="translate(-12, -22)" fill="var(--stc-red)" stroke="#ffffff" stroke-width="1.5" />
-                </g>
-              </g>
+      <section id="panel-map" class="tabpanel" role="tabpanel" aria-labelledby="tab-map" tabindex="0" hidden>
+        <h3 data-i18n="mapH">Geographic community profile simulator</h3>
+        <p data-i18n="mapP">Select a simulated census tract or use a demonstration preset. The map has a text alternative and all tract buttons are keyboard-accessible.</p>
+        <div class="chip-row" id="map-presets"></div>
+        <div class="map-grid">
+          <div class="map-frame">
+            <svg id="tract-map" viewBox="0 0 900 560" role="img" aria-labelledby="map-title map-desc">
+              <title id="map-title">Simulated census tract map</title>
+              <desc id="map-desc">Five selectable polygon areas representing demonstration census tracts.</desc>
+              <rect x="0" y="0" width="900" height="560" fill="#e8f0f8"></rect>
+              <polygon points="35,35 865,40 835,525 60,500" fill="#f0fdf4" stroke="#86efac" stroke-width="4" stroke-dasharray="10 6"></polygon>
+              <text x="55" y="70" font-size="22" font-weight="700" fill="#166534" id="map-region-label">Region: Demo</text>
+              <polygon id="tract-a" class="tract" points="220,150 430,115 460,285 205,305" fill="#fed7aa" tabindex="0" role="button" aria-pressed="true" data-tract="a"></polygon>
+              <polygon id="tract-b" class="tract" points="440,115 700,145 655,300 460,285" fill="#bfdbfe" tabindex="0" role="button" aria-pressed="false" data-tract="b"></polygon>
+              <polygon id="tract-c" class="tract" points="205,305 460,285 420,465 185,445" fill="#d9f99d" tabindex="0" role="button" aria-pressed="false" data-tract="c"></polygon>
+              <polygon id="tract-d" class="tract" points="460,285 655,300 690,455 420,465" fill="#ddd6fe" tabindex="0" role="button" aria-pressed="false" data-tract="d"></polygon>
+              <polygon id="tract-e" class="tract" points="95,160 220,150 205,305 110,350" fill="#fecaca" tabindex="0" role="button" aria-pressed="false" data-tract="e"></polygon>
+              <text x="290" y="220" font-size="20" font-weight="700">A</text>
+              <text x="565" y="220" font-size="20" font-weight="700">B</text>
+              <text x="300" y="390" font-size="20" font-weight="700">C</text>
+              <text x="535" y="390" font-size="20" font-weight="700">D</text>
+              <text x="145" y="255" font-size="20" font-weight="700">E</text>
             </svg>
           </div>
-
-          <!-- Profile Sidebar panel -->
-          <div id="map-geoprofile-sidebar" class="neutral-box flex flex-col h-full m-0 min-h-[300px]">
-            <gcds-heading tag="h3" class="text-lg font-bold border-b border-slate-300 pb-2 mb-4" data-i18n="geo-profile-title">Geo-Profile Output</gcds-heading>
-            
-            <div id="map-profile-placeholder" class="text-sm">
-              <gcds-text data-i18n="geo-profile-placeholder">Select any census tract polygon on the municipal boundary layout, or submit a location address coordinate inside the form lookup field above to extract profiles.</gcds-text>
-            </div>
-            
-            <div id="map-profile-metrics" style="display: none;" class="text-sm space-y-4">
-              <!-- New Geographic Hierarchy Block -->
-              <div>
-                <strong class="block text-xs uppercase tracking-wider text-slate-500 mb-1" data-i18n="lbl-hierarchy">Geographical Hierarchy</strong>
-                <div id="lbl-geo-hierarchy" class="text-xs font-mono bg-slate-100 p-2 rounded border border-slate-300 text-slate-800 break-words font-semibold">
-                  PROV: -- &gt; CMA: -- &gt; CT: --
-                </div>
-              </div>
-
-              <div>
-                <strong class="block text-xs uppercase tracking-wider text-slate-500 mb-1" data-i18n="lbl-est-pop">Estimated Population</strong>
-                <span id="lbl-geo-pop" class="text-xl font-bold text-slate-800">0</span>
-              </div>
-              <div>
-                <strong class="block text-xs uppercase tracking-wider text-slate-500 mb-1" data-i18n="lbl-median-income">Median Household Income</strong>
-                <span id="lbl-geo-income" class="text-xl font-bold text-slate-800">$0</span>
-              </div>
-              <div>
-                <strong class="block text-xs uppercase tracking-wider text-slate-500 mb-1" data-i18n="lbl-predom-lang">Predominant Language</strong>
-                <span id="lbl-geo-language" class="text-base font-semibold text-slate-700">N/A</span>
-              </div>
-              <div>
-                <strong class="block text-xs uppercase tracking-wider text-slate-500 mb-1" data-i18n="lbl-census-quality">Census Quality Indicator</strong>
-                <div class="flex items-center gap-2 mt-1 mb-2">
-                  <span id="lbl-geo-quality" class="rating-badge rating-A">A</span>
-                  <span id="lbl-geo-quality-desc" class="font-medium">Excellent</span>
-                </div>
-              </div>
-
-              <!-- Deep Dataset Target Link -->
-              <div class="pt-2 border-t border-slate-300">
-                <a id="lbl-geo-link" href="#" target="_blank" class="text-blue-700 underline font-semibold text-sm flex items-center gap-1" data-i18n="lbl-dataset-link">View Census Profile Dataset</a>
-              </div>
-            </div>
-          </div>
-
+          <aside class="map-alt" id="map-profile" aria-live="polite"></aside>
         </div>
+      </section>
+    </section>
+
+    <section id="proposal" aria-labelledby="proposal-heading">
+      <h2 id="proposal-heading" data-i18n="proposalH">DS Challenge 2026 project proposal</h2>
+      <div class="grid">
+        <article class="card">
+          <h3 data-i18n="problemH">Problem</h3>
+          <p data-i18n="problemP">Many learners can open data tables but struggle to judge quality, metadata, geography, uncertainty and visualization choices. This slows data literacy and weakens evidence-based analysis.</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="solutionH">Solution</h3>
+          <p data-i18n="solutionP">Create a bilingual sandbox where users practise statistical reasoning through an assistant, dictionary, data matrix, accessible visualizer and geographic profile simulator.</p>
+        </article>
+        <article class="card">
+          <h3 data-i18n="valueH">Public value</h3>
+          <p data-i18n="valueP">The prototype supports students, analysts and public servants by turning statistical methods into task-based learning activities with source links and accessibility safeguards.</p>
+        </article>
       </div>
 
+      <h3 data-i18n="mvpH">MVP scope</h3>
+      <div class="table-wrap">
+        <table id="mvp-table">
+          <caption data-i18n="mvpCaption">Proposed minimum viable product</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="feature">Feature</th>
+              <th scope="col" data-i18n="purpose">Purpose</th>
+              <th scope="col" data-i18n="validation">Validation required</th>
+            </tr>
+          </thead>
+          <tbody id="mvp-body"></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- Official Languages Policy Support Note -->
-    <section id="ol-note" class="mt-12 border-t border-slate-300 pt-6" style="margin-top: 4rem;">
-      <gcds-heading tag="h3" class="text-base font-bold">Official Languages Implementation Note / Note sur les langues officielles</gcds-heading>
-      <gcds-text class="text-sm">This interface supports comprehensive bilingual toggling of core parameters, structural instructions, datasets, and simulated spatial layouts to respect Treasury Board Standards.</gcds-text>
+    <section id="quality" aria-labelledby="quality-heading">
+      <h2 id="quality-heading" data-i18n="qualityH">Accessibility, privacy and data-quality gates</h2>
+      <div class="table-wrap">
+        <table>
+          <caption data-i18n="qualityCaption">Implemented quality gates and remaining validation</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="gate">Gate</th>
+              <th scope="col" data-i18n="implemented">Implemented</th>
+              <th scope="col" data-i18n="notes">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="quality-body"></tbody>
+        </table>
+      </div>
     </section>
 
-    <gcds-date-modified>2026-06-24</gcds-date-modified>
-  </gcds-container>
+    <section id="sources" aria-labelledby="sources-heading">
+      <h2 id="sources-heading" data-i18n="sourcesH">Source links and data notes</h2>
+      <p data-i18n="sourcesP">The prototype uses demonstration values. Source links are provided so learners can verify concepts and replace demo values with official data in a future build.</p>
+      <ul class="source-list" id="source-list"></ul>
+    </section>
 
-  <gcds-footer display="compact">
-    <div slot="links">
-      <button id="btn-reset-data" class="text-sm underline hover:text-slate-700 transition" data-i18n="btn-reset">Reset Sandbox Cache</button>
+    <p class="meta"><span data-i18n="date">Date modified:</span> 2026-06-25</p>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo">
+    <div class="footer-main">
+      <div class="container">
+        <h2 data-i18n="footerH">Government of Canada prototype links</h2>
+        <nav class="footer-nav" id="footer-nav" aria-label="Footer navigation">
+          <ul>
+            <li><a href="https://www.canada.ca/en/transparency/privacy.html" data-i18n="footPrivacy">Privacy</a></li>
+            <li><a href="https://www.canada.ca/en/government/system/digital-government/government-canada-digital-standards.html" data-i18n="footDigital">Digital Standards</a></li>
+            <li><a href="https://design-system.canada.ca/en/components/" data-i18n="footGcds">GC Design System components</a></li>
+            <li><a href="https://www.statcan.gc.ca/en/developers/wds/user-guide" data-i18n="footWds">Statistics Canada Web Data Service</a></li>
+            <li><a href="#wb-cont" data-i18n="footTop">Top of page</a></li>
+          </ul>
+        </nav>
+      </div>
     </div>
-  </gcds-footer>
+    <div class="footer-bottom">
+      <div class="container">
+        <span data-i18n="edition">Public Service Data Prototype Edition</span>
+        <span><span data-i18n="date">Date modified:</span> 2026-06-25</span>
+      </div>
+    </div>
+  </footer>
 
-  <!-- ==================== CORE JS CONTROLLER ENGINE ==================== -->
   <script>
     "use strict";
 
-    /**
-     * @typedef {Object} ApplicationState - Global mutable state controller
-     * @property {Array<string>} explorerSelectedCells - Tracks Matrix selections for the Daily analytical engine. Formatted "{dsId}_{rowIdx}_{colIdx}".
-     * @property {Object|null} chartInstance - Master instance of Chart.js class instance. Destroyed and rebuilt on chart changes.
-     * @property {number} mapZoom - Real-time active zoom multiplier for SVG vector panning map.
-     * @property {number} mapPanX - Real-time active translation X axis mapping value.
-     * @property {number} mapPanY - Real-time active translation Y axis mapping value.
-     * @property {Object|null} mapActiveTract - Caches currently selected geocoded location to preserve translation states during language toggles.
-     */
-    const State = {
-      explorerSelectedCells: [],
-      chartInstance: null,
-      mapZoom: 1,
-      mapPanX: 0,
-      mapPanY: 0,
-      mapActiveTract: null
+    const state = {
+      lang: "en",
+      activeTab: "chat",
+      selectedTract: "a"
     };
 
-    /**
-     * Internationalization Map and Execution Engine
-     */
-    const I18n = {
-      lang: 'en',
-      dict: {
-        'title-main': { en: 'Analytical Sandbox Suite', fr: 'Suite du Bac à sable analytique' },
-        'title-sub': { en: 'Bilingual Research Environment & Interactive Geocoding Simulator', fr: 'Environnement de recherche bilingue et simulateur de géocodage interactif' },
-        'proto-status': { en: 'Information Status:', fr: 'Statut de l\'information :' },
-        'proto-desc': { en: 'This is a standalone interactive analytical sandbox utilizing synthesized and quarterly parameters modeled directly from Statistics Canada. No personal search data or address parameters are transmitted from your device.', fr: 'Il s\'agit d\'un bac à sable analytique interactif autonome utilisant des paramètres synthétisés et trimestriels modélisés directement d\'après Statistique Canada. Aucune donnée personnelle de recherche ou d\'adresse n\'est transmise à partir de votre appareil.' },
-        'skip-nav': { en: 'Skip to main content', fr: 'Passer au contenu principal' },
-        'tab-chat': { en: 'AI Assistant Chat', fr: 'Clavardage IA' },
-        'tab-dict': { en: 'Statistical Dictionary', fr: 'Dictionnaire statistique' },
-        'tab-explorer': { en: 'Interactive Matrix Explorer', fr: 'Explorateur de matrices' },
-        'tab-vis': { en: 'Data Visualizer', fr: 'Visualiseur de données' },
-        'tab-map': { en: 'Geographic Community Profile', fr: 'Profil de la communauté' },
-        'chat-heading': { en: 'Bilingual Assistant Chat', fr: 'Clavardage d\'assistance bilingue' },
-        'chat-desc': { en: 'Consult our statistical processing model about Canadian data practices, sampling thresholds, random rounding, or coefficient metrics.', fr: 'Consultez notre modèle de traitement statistique au sujet des pratiques de données canadiennes, des seuils d\'échantillonnage, de l\'arrondissement aléatoire ou des coefficients.' },
-        'chat-placeholder': { en: 'Ask a question about rounding rules, standard errors, coefficients of variation...', fr: 'Posez une question sur les règles d\'arrondissement, les erreurs types, les coefficients de variation...' },
-        'btn-send': { en: 'Send', fr: 'Envoyer' },
-        'dict-heading': { en: 'Bilingual Statistical Dictionary', fr: 'Dictionnaire statistique bilingue' },
-        'dict-desc': { en: 'Instant plain-language explanations of core microdata and metadata attributes used across census tables.', fr: 'Explications instantanées en langage clair des principaux attributs de microdonnées et de métadonnées utilisés dans les tableaux de recensement.' },
-        'dict-lbl-topic': { en: '1. Subject Category', fr: '1. Catégorie de sujet' },
-        'dict-lbl-term': { en: '2. Concept or Parameter', fr: '2. Concept ou paramètre' },
-        'dict-url-txt': { en: 'View full STC concept definition & dataset', fr: 'Voir la définition et les données détaillées de SC' },
-        'exp-heading': { en: 'Interactive Table Matrix Explorer', fr: 'Explorateur de matrice de données' },
-        'explorer-desc': { en: 'Select customized indicators and datasets. Highlight comparative parameters to synthesize a real-time \'The Daily\' analytical report.', fr: 'Sélectionnez des indicateurs et des ensembles de données personnalisés. Mettez en surbrillance les paramètres comparatifs pour synthétiser un rapport de presse analytique « Le Quotidien ».' },
-        'exp-lbl-topic': { en: 'Subject Area', fr: 'Sujet d\'analyse' },
-        'exp-lbl-dataset': { en: 'Reference Dataset Table', fr: 'Tableau de données' },
-        'btn-generate-daily': { en: 'Generate Narrative Analytical Report', fr: 'Générer le rapport analytique' },
-        'explorer-instructions': { en: 'Click cells to select comparative metrics, then generate a narrative report.', fr: 'Cliquez sur les cellules pour sélectionner des métriques de comparaison, puis générez un rapport analytique.' },
-        'daily-header': { en: 'Statistics Canada — The Daily', fr: 'Statistique Canada — Le Quotidien' },
-        'btn-print-summary': { en: 'Print / PDF Export', fr: 'Imprimer / Exporter en PDF' },
-        'vis-heading': { en: 'Bilingual Data Visualizer', fr: 'Visualiseur de données bilingue' },
-        'vis-desc': { en: 'Select dataset parameters and configure custom charts. Automatically renders visual alternatives to support accessible parsing.', fr: 'Sélectionnez les paramètres du jeu de données et configurez des graphiques personnalisés. Génère automatiquement des alternatives visuelles pour faciliter l\'accès.' },
-        'vis-type': { en: 'Chart Type', fr: 'Type de graphique' },
-        'vis-table-title': { en: 'Accessible Tabular Matrix (Visual Alternative)', fr: 'Matrice alternative accessible' },
-        'vis-source-text': { en: 'View Source Dataset on Statistics Canada', fr: 'Voir le jeu de données source sur Statistique Canada' },
-        'map-heading': { en: 'Geographic Community Profile Simulator', fr: 'Simulateur de profil géographique' },
-        'map-desc': { en: 'Simulate localized geodata updates using representative census tract boundary layouts. Select map tracts directly or search for location addresses.', fr: 'Simulez des mises à jour géographiques locales à l\'aide de secteurs de recensement. Cliquez sur un secteur ou utilisez un préréglage.' },
-        'map-lookup-label': { en: 'Address or Postal Code Geocoder Lookup', fr: 'Géocodage (adresse ou code postal)' },
-        'map-zoom-in': { en: '➕ Zoom In', fr: '➕ Zoom avant' },
-        'map-zoom-out': { en: '➖ Zoom Out', fr: '➖ Zoom arrière' },
-        'map-zoom-reset': { en: '🔄 Reset View', fr: '🔄 Réinitialiser' },
-        'map-geocode': { en: 'Geocode Location', fr: 'Géocoder l\'emplacement' },
-        'geo-profile-title': { en: 'Geo-Profile Output', fr: 'Données géographiques de profil' },
-        'geo-profile-placeholder': { en: 'Select any census tract polygon on the municipal boundary layout, or submit a location address coordinate inside the form lookup field above to extract profiles.', fr: 'Sélectionnez un secteur sur la carte ou entrez une coordonnée pour charger les données de profil.' },
-        'lbl-hierarchy': { en: 'Geographical Hierarchy', fr: 'Hiérarchie géographique' },
-        'lbl-dataset-link': { en: 'View Census Profile Dataset', fr: 'Voir le jeu de données du profil de recensement' },
-        'lbl-tract-id': { en: 'Tract Identifier', fr: 'Identifiant du secteur' },
-        'lbl-est-pop': { en: 'Estimated Population', fr: 'Population estimée' },
-        'lbl-median-income': { en: 'Median Household Income', fr: 'Revenu médian des ménages' },
-        'lbl-predom-lang': { en: 'Predominant Language', fr: 'Langue prédominante' },
-        'lbl-census-quality': { en: 'Census Quality Indicator', fr: 'Indicateur de qualité du recensement' },
-        'select-default': { en: '-- Select --', fr: '-- Sélectionner --' },
-        'select-term': { en: '-- Select term --', fr: '-- Sélectionner un terme --' },
-        'select-dataset': { en: '-- Select dataset --', fr: '-- Sélectionner le tableau --' },
-        'btn-reset': { en: 'Reset Sandbox Cache', fr: 'Réinitialiser le bac à sable' },
-        'of': { en: 'of', fr: 'sur' }
+    const t = {
+      en: {
+        docTitle: "National Data Literacy Sandbox Suite — DS Challenge 2026 prototype",
+        skip: "Skip to main content",
+        banner: "<strong>Prototype status:</strong> DS Challenge 2026 concept page only. Demonstration values are synthetic. Verify official data with linked Statistics Canada sources before reuse.",
+        brand: "Statistics Canada data literacy prototype",
+        searchLabel: "Search Canada.ca",
+        search: "Search",
+        menu: "Menu",
+        navSandbox: "Sandbox tools",
+        navProposal: "DS Challenge proposal",
+        navQuality: "Quality gates",
+        navSources: "Sources",
+        crumb: "National Data Literacy Sandbox Suite",
+        h1: "National Data Literacy Sandbox Suite",
+        lead: "A DS Challenge 2026 prototype that helps learners practise statistical thinking, source evaluation, accessible visualization and geographic interpretation.",
+        meta: "Standalone HTML prototype · no server storage · demonstration data only unless a source link is opened",
+        beforeH: "Before you start",
+        beforeP: "This page is a training prototype. Demonstration values are synthetic and are used to teach interpretation, not to report official statistics. Use the linked Statistics Canada sources for authoritative data.",
+        onThisPage: "On this page",
+        otp1: "Use the sandbox tools",
+        otp2: "Read the DS Challenge 2026 proposal",
+        otp3: "Review accessibility, privacy and data-quality gates",
+        otp4: "Check source links",
+        sandboxH: "Sandbox tools",
+        sandboxP: "Choose a tool. All tools run in the browser using demonstration data and local rule-based logic.",
+        tabChat: "Assistant",
+        tabDictionary: "Dictionary",
+        tabMatrix: "Matrix explorer",
+        tabVisualizer: "Visualizer",
+        tabMap: "Community profile",
+        chatH: "Local statistical assistant",
+        chatP: "Ask about rounding, sampling error, coefficient of variation, data suppression, metadata or chart interpretation. The assistant is deterministic and does not send content to an external AI service.",
+        chatLabel: "Question",
+        chatHint: "Example: Why does random rounding matter?",
+        send: "Send",
+        chatError: "Enter a question before sending.",
+        assistantHello: "Ask a statistical-method question or use one of the example questions.",
+        qRounding: "Why does random rounding matter?",
+        qCv: "What is a coefficient of variation?",
+        qSuppression: "Why are some values suppressed?",
+        qMetadata: "Why should I read metadata first?",
+        dictH: "Bilingual statistical dictionary",
+        dictP: "Select a concept to see a plain-language definition, a caution and a source path for further learning.",
+        topicLabel: "Topic",
+        termLabel: "Concept",
+        matrixH: "Interactive matrix explorer",
+        matrixP: "Select a demonstration dataset. Use the matrix to practise comparing indicators and identifying data-quality cautions.",
+        datasetLabel: "Dataset",
+        filterLabel: "Focus filter",
+        visualizerH: "Accessible data visualizer",
+        visualizerP: "Choose a demonstration dataset and chart type. The chart is paired with a table and text summary.",
+        chartTypeLabel: "Chart type",
+        mapH: "Geographic community profile simulator",
+        mapP: "Select a simulated census tract or use a demonstration preset. The map has a text alternative and all tract buttons are keyboard-accessible.",
+        proposalH: "DS Challenge 2026 project proposal",
+        problemH: "Problem",
+        problemP: "Many learners can open data tables but struggle to judge quality, metadata, geography, uncertainty and visualization choices. This slows data literacy and weakens evidence-based analysis.",
+        solutionH: "Solution",
+        solutionP: "Create a bilingual sandbox where users practise statistical reasoning through an assistant, dictionary, data matrix, accessible visualizer and geographic profile simulator.",
+        valueH: "Public value",
+        valueP: "The prototype supports students, analysts and public servants by turning statistical methods into task-based learning activities with source links and accessibility safeguards.",
+        mvpH: "MVP scope",
+        mvpCaption: "Proposed minimum viable product",
+        feature: "Feature",
+        purpose: "Purpose",
+        validation: "Validation required",
+        qualityH: "Accessibility, privacy and data-quality gates",
+        qualityCaption: "Implemented quality gates and remaining validation",
+        gate: "Gate",
+        implemented: "Implemented",
+        notes: "Notes",
+        sourcesH: "Source links and data notes",
+        sourcesP: "The prototype uses demonstration values. Source links are provided so learners can verify concepts and replace demo values with official data in a future build.",
+        date: "Date modified:",
+        footerH: "Government of Canada prototype links",
+        footPrivacy: "Privacy",
+        footDigital: "Digital Standards",
+        footGcds: "GC Design System components",
+        footWds: "Statistics Canada Web Data Service",
+        footTop: "Top of page",
+        edition: "Public Service Data Prototype Edition",
+        all: "All indicators",
+        high: "Higher values",
+        caution: "Quality caution",
+        chartBars: "Bar chart",
+        chartRanked: "Ranked bars",
+        dataTable: "Data table",
+        visualSummary: "Text summary",
+        demoBadge: "Demonstration data",
+        source: "Source",
+        openNew: "opens in a new tab",
+        selected: "Selected",
+        population: "Population",
+        income: "Median income",
+        confidence: "Quality confidence",
+        geography: "Geography",
+        tract: "Tract",
+        region: "Region",
+        keyboardMap: "Use Tab to reach tracts, then Enter or Space to select."
       },
-      t: function(key) {
-        return this.dict[key] ? this.dict[key][this.lang] : key;
-      },
-      setLang: function(l) {
-        this.lang = l;
-        document.getElementById('btn-lang-toggle').textContent = l === 'en' ? 'FR' : 'EN';
-        document.documentElement.lang = l;
-        this.updateDOM();
-      },
-      updateDOM: function() {
-        // Step 1: Capture state values before DOM rebuilds
-        const currentDictTopic = document.getElementById('select-dict-topic').value;
-        const currentDictTermIndex = document.getElementById('select-dict-term').value;
-
-        const currentExplorerTopic = document.getElementById('select-explorer-topic').value;
-        const currentExplorerDataset = document.getElementById('select-explorer-dataset').value;
-
-        const currentVisTopic = document.getElementById('select-vis-topic').value;
-        const currentVisDataset = document.getElementById('select-vis-dataset').value;
-        const currentVisType = document.getElementById('select-vis-type').value;
-
-        const currentMapLocation = document.getElementById('input-map-location').value;
-
-        // Step 2: Loop through language key selectors
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            el.placeholder = this.t(el.getAttribute('data-i18n'));
-          } else {
-            el.textContent = this.t(el.getAttribute('data-i18n'));
-          }
-        });
-        
-        // Step 3: Re-initialize dropdown parameters using captured states
-        Sandbox.init();
-
-        // Restore Dictionary Selections
-        if (currentDictTopic) {
-          const dictTopicSelect = document.getElementById('select-dict-topic');
-          dictTopicSelect.value = currentDictTopic;
-          Sandbox.updateDictTerms();
-          if (currentDictTermIndex) {
-            document.getElementById('select-dict-term').value = currentDictTermIndex;
-            Sandbox.showDictTerm();
-          }
-        }
-
-        // Restore Matrix Explorer Selections
-        if (currentExplorerTopic) {
-          const expTopicSelect = document.getElementById('select-explorer-topic');
-          expTopicSelect.value = currentExplorerTopic;
-          Sandbox.updateExplorerDatasets();
-          if (currentExplorerDataset) {
-            document.getElementById('select-explorer-dataset').value = currentExplorerDataset;
-            Sandbox.renderExplorerMatrix();
-            if (State.explorerSelectedCells.length > 0) {
-              Sandbox.generateDailyNarrative();
-            }
-          }
-        }
-
-        // Restore Visualizer Selections & Chart labels
-        if (currentVisTopic) {
-          const visTopicSelect = document.getElementById('select-vis-topic');
-          visTopicSelect.value = currentVisTopic;
-          Sandbox.updateVisDatasets();
-          if (currentVisDataset) {
-            document.getElementById('select-vis-dataset').value = currentVisDataset;
-            Sandbox.updateVisChartTypes(); // Must re-populate dynamically
-            if (currentVisType) document.getElementById('select-vis-type').value = currentVisType;
-            Sandbox.renderVisualization();
-          }
-        }
-
-        // Restore Map presets text & side-panel language variables
-        if (currentMapLocation) {
-          document.getElementById('input-map-location').value = currentMapLocation;
-          if (State.mapActiveTract) {
-            Sandbox.renderGeoprofile(State.mapActiveTract);
-          }
-        }
-
-        // Initialize Lucide vector graphics cleanly
-        if (window.lucide) {
-          lucide.createIcons();
-        }
+      fr: {
+        docTitle: "Suite nationale de bac à sable sur la littératie des données — prototype du Défi DS 2026",
+        skip: "Passer au contenu principal",
+        banner: "<strong>État du prototype :</strong> Page conceptuelle pour le Défi DS 2026 seulement. Les valeurs de démonstration sont synthétiques. Vérifiez les données officielles au moyen des sources liées de Statistique Canada avant de les réutiliser.",
+        brand: "Prototype de littératie des données de Statistique Canada",
+        searchLabel: "Rechercher dans Canada.ca",
+        search: "Rechercher",
+        menu: "Menu",
+        navSandbox: "Outils du bac à sable",
+        navProposal: "Proposition du Défi DS",
+        navQuality: "Contrôles de qualité",
+        navSources: "Sources",
+        crumb: "Suite nationale de bac à sable sur la littératie des données",
+        h1: "Suite nationale de bac à sable sur la littératie des données",
+        lead: "Prototype du Défi DS 2026 qui aide les apprenants à pratiquer la pensée statistique, l’évaluation des sources, la visualisation accessible et l’interprétation géographique.",
+        meta: "Prototype HTML autonome · aucun stockage serveur · données de démonstration seulement sauf si un lien de source est ouvert",
+        beforeH: "Avant de commencer",
+        beforeP: "Cette page est un prototype de formation. Les valeurs de démonstration sont synthétiques et servent à enseigner l’interprétation, non à déclarer des statistiques officielles. Utilisez les sources liées de Statistique Canada pour obtenir les données faisant autorité.",
+        onThisPage: "Sur cette page",
+        otp1: "Utiliser les outils du bac à sable",
+        otp2: "Lire la proposition du Défi DS 2026",
+        otp3: "Examiner les contrôles d’accessibilité, de confidentialité et de qualité des données",
+        otp4: "Vérifier les liens de source",
+        sandboxH: "Outils du bac à sable",
+        sandboxP: "Choisissez un outil. Tous les outils s’exécutent dans le navigateur au moyen de données de démonstration et d’une logique locale fondée sur des règles.",
+        tabChat: "Assistant",
+        tabDictionary: "Dictionnaire",
+        tabMatrix: "Explorateur de matrice",
+        tabVisualizer: "Visualiseur",
+        tabMap: "Profil communautaire",
+        chatH: "Assistant statistique local",
+        chatP: "Posez une question sur l’arrondissement, l’erreur d’échantillonnage, le coefficient de variation, la suppression des données, les métadonnées ou l’interprétation d’un graphique. L’assistant est déterministe et n’envoie aucun contenu à un service d’IA externe.",
+        chatLabel: "Question",
+        chatHint: "Exemple : Pourquoi l’arrondissement aléatoire est-il important?",
+        send: "Envoyer",
+        chatError: "Entrez une question avant l’envoi.",
+        assistantHello: "Posez une question sur une méthode statistique ou utilisez l’une des questions d’exemple.",
+        qRounding: "Pourquoi l’arrondissement aléatoire est-il important?",
+        qCv: "Qu’est-ce qu’un coefficient de variation?",
+        qSuppression: "Pourquoi certaines valeurs sont-elles supprimées?",
+        qMetadata: "Pourquoi faut-il d’abord lire les métadonnées?",
+        dictH: "Dictionnaire statistique bilingue",
+        dictP: "Sélectionnez un concept pour afficher une définition en langage clair, une mise en garde et un chemin de source pour poursuivre l’apprentissage.",
+        topicLabel: "Sujet",
+        termLabel: "Concept",
+        matrixH: "Explorateur de matrice interactive",
+        matrixP: "Sélectionnez un jeu de données de démonstration. Utilisez la matrice pour comparer des indicateurs et repérer les mises en garde sur la qualité des données.",
+        datasetLabel: "Jeu de données",
+        filterLabel: "Filtre ciblé",
+        visualizerH: "Visualiseur de données accessible",
+        visualizerP: "Choisissez un jeu de données de démonstration et un type de graphique. Le graphique est accompagné d’un tableau et d’un résumé textuel.",
+        chartTypeLabel: "Type de graphique",
+        mapH: "Simulateur de profil communautaire géographique",
+        mapP: "Sélectionnez un secteur de recensement simulé ou utilisez un préréglage de démonstration. La carte comprend un équivalent textuel et tous les secteurs sont accessibles au clavier.",
+        proposalH: "Proposition de projet pour le Défi DS 2026",
+        problemH: "Problème",
+        problemP: "De nombreux apprenants peuvent ouvrir des tableaux de données, mais ont de la difficulté à juger la qualité, les métadonnées, la géographie, l’incertitude et les choix de visualisation. Cela ralentit la littératie des données et affaiblit l’analyse fondée sur des données probantes.",
+        solutionH: "Solution",
+        solutionP: "Créer un bac à sable bilingue où les utilisateurs pratiquent le raisonnement statistique au moyen d’un assistant, d’un dictionnaire, d’une matrice de données, d’un visualiseur accessible et d’un simulateur de profil géographique.",
+        valueH: "Valeur publique",
+        valueP: "Le prototype soutient les étudiants, les analystes et les fonctionnaires en transformant les méthodes statistiques en activités d’apprentissage axées sur les tâches, avec des liens de source et des mesures d’accessibilité.",
+        mvpH: "Portée du MVP",
+        mvpCaption: "Produit minimum viable proposé",
+        feature: "Fonction",
+        purpose: "Objectif",
+        validation: "Validation requise",
+        qualityH: "Contrôles d’accessibilité, de confidentialité et de qualité des données",
+        qualityCaption: "Contrôles de qualité mis en œuvre et validation restante",
+        gate: "Contrôle",
+        implemented: "Mis en œuvre",
+        notes: "Notes",
+        sourcesH: "Liens de source et notes sur les données",
+        sourcesP: "Le prototype utilise des valeurs de démonstration. Les liens de source permettent aux apprenants de vérifier les concepts et de remplacer les valeurs de démonstration par des données officielles dans une version future.",
+        date: "Date de modification :",
+        footerH: "Liens du prototype du gouvernement du Canada",
+        footPrivacy: "Confidentialité",
+        footDigital: "Normes numériques",
+        footGcds: "Composants du Système de design GC",
+        footWds: "Service de données Web de Statistique Canada",
+        footTop: "Haut de la page",
+        edition: "Édition prototype des données du service public",
+        all: "Tous les indicateurs",
+        high: "Valeurs plus élevées",
+        caution: "Mise en garde sur la qualité",
+        chartBars: "Graphique à barres",
+        chartRanked: "Barres classées",
+        dataTable: "Tableau de données",
+        visualSummary: "Résumé textuel",
+        demoBadge: "Données de démonstration",
+        source: "Source",
+        openNew: "s’ouvre dans un nouvel onglet",
+        selected: "Sélectionné",
+        population: "Population",
+        income: "Revenu médian",
+        confidence: "Confiance de qualité",
+        geography: "Géographie",
+        tract: "Secteur",
+        region: "Région",
+        keyboardMap: "Utilisez Tab pour atteindre les secteurs, puis Entrée ou Espace pour sélectionner."
       }
     };
 
-    /* Expanded Dictionary updating exact URL endpoints to Statistics Canada */
-    const DICTIONARY_DB = [
-      { topicId: 'econ', term: { en: 'Gross Domestic Product (GDP)', fr: 'Produit intérieur brut (PIB)' }, def: { en: 'The total unduplicated value of goods and services produced within Canada\'s economic borders during a given reference period.', fr: 'La valeur totale sans double compte des biens et services produits dans le territoire économique canadien au cours d\'une période donnée.' }, cit: 'StatCan (SNA)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/economic_accounts' },
-      { topicId: 'econ', term: { en: 'Consumer Price Index (CPI)', fr: 'Indice des prix à la consommation (IPC)' }, def: { en: 'A measure of price variations calculated by tracking the weighted cost of a fixed basket of consumer goods over time.', fr: 'Indicateur mesurant la variation des prix de détail d\'un panier fixe de biens et services consommés.' }, cit: 'StatCan (CPI Portal)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/prices_and_price_indexes/consumer_price_indexes' },
-      { topicId: 'econ', term: { en: 'Inflation Rate', fr: 'Taux d\'inflation' }, def: { en: 'The percentage change in the CPI from one period to another, typically calculated on a year-over-year basis.', fr: 'La variation en pourcentage de l\'IPC d\'une période à l\'autre, généralement calculée sur une base annuelle.' }, cit: 'StatCan (CPI)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/prices_and_price_indexes' },
-      { topicId: 'econ', term: { en: 'Industrial Product Price Index (IPPI)', fr: 'Indice des prix des produits industriels (IPPI)' }, def: { en: 'Measures price changes for major commodities sold by Canadian manufacturers at the gate.', fr: 'Mesure les variations de prix des principaux produits vendus par les fabricants canadiens à la sortie de l\'usine.' }, cit: 'StatCan (Prices)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/prices_and_price_indexes/industrial_product_price_indexes' },
-      { topicId: 'econ', term: { en: 'Balance of Trade', fr: 'Balance commerciale' }, def: { en: 'The difference between the value of a country\'s imports and exports over a specific period.', fr: 'La différence entre la valeur des importations et des exportations d\'un pays sur une période donnée.' }, cit: 'StatCan (Macro)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/international_trade' },
+    const topics = {
+      en: {
+        methods: "Methods",
+        quality: "Data quality",
+        geography: "Geography",
+        visualization: "Visualization"
+      },
+      fr: {
+        methods: "Méthodes",
+        quality: "Qualité des données",
+        geography: "Géographie",
+        visualization: "Visualisation"
+      }
+    };
 
-      { topicId: 'demo', term: { en: 'Census Metropolitan Area (CMA)', fr: 'Région métropolitaine de recensement (RMR)' }, def: { en: 'A major urban area carrying a core municipal population of at least 100,000 residents.', fr: 'Grande zone urbaine ayant un noyau de population d\'au moins 100 000 habitants.' }, cit: 'StatCan (Census Dictionary)', url: 'https://www12.statcan.gc.ca/census-recensement/2021/ref/dict/az/Definition-eng.cfm?ID=geo009' },
-      { topicId: 'demo', term: { en: 'Median Age', fr: 'Âge médian' }, def: { en: 'The age that divides a population into two numerically equal groups, with half being older and half younger.', fr: 'L\'âge qui divise la population en deux groupes numériquement égaux, la moitié étant plus âgée et l\'autre plus jeune.' }, cit: 'StatCan (Demographics)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/population_and_demography' },
-      { topicId: 'demo', term: { en: 'Population Density', fr: 'Densité de population' }, def: { en: 'The number of people living per square kilometre of land area.', fr: 'Le nombre d\'habitants par kilomètre carré de superficie terrestre.' }, cit: 'StatCan (Geography)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/population_and_demography/population_estimates_and_projections' },
-      { topicId: 'demo', term: { en: 'Dependency Ratio', fr: 'Rapport de dépendance' }, def: { en: 'The ratio of dependents (people under 15 and over 64) to the working-age population (15 to 64).', fr: 'Le rapport entre le nombre de personnes à charge (moins de 15 ans et plus de 64 ans) et la population en âge de travailler (15 à 64 ans).' }, cit: 'StatCan (Census)', url: 'https://www12.statcan.gc.ca/census-recensement/index-eng.cfm' },
-
-      { topicId: 'env', term: { en: 'Greenhouse Gas (GHG) Emissions', fr: 'Émissions de gaz à effet de serre (GES)' }, def: { en: 'Emissions of carbon dioxide, methane, nitrous oxide, and fluorinated gases, measured in carbon dioxide equivalent.', fr: 'Rejets de CO2, méthane et autres gaz à effet de serre, mesurés en équivalent CO2.' }, cit: 'StatCan (Physical Accounts)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/environment' },
-      { topicId: 'env', term: { en: 'Physical Flow Accounts', fr: 'Comptes des flux physiques' }, def: { en: 'Statistical accounts recording the flows of natural resources, products, and residuals between environment and economy.', fr: 'Comptes statistiques enregistrant les flux de ressources naturelles, de produits et de résidus entre l\'environnement et l\'économie.' }, cit: 'StatCan (SEEA)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/environment/environmental_and_resource_accounts' },
-      { topicId: 'env', term: { en: 'Renewable Energy Consumption', fr: 'Consommation d\'énergie renouvelable' }, def: { en: 'The share of total energy use derived from renewable sources such as hydro, wind, solar, and biomass.', fr: 'La part de l\'utilisation totale d\'énergie provenant de sources renouvelables comme l\'hydroélectricité, l\'éolien, le solaire et la biomasse.' }, cit: 'StatCan (Energy)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/energy' },
-      { topicId: 'env', term: { en: 'Waste Diversion Rate', fr: 'Taux de détournement des déchets' }, def: { en: 'The percentage of total waste produced that is prevented from entering landfills via recycling or composting.', fr: 'Le pourcentage du total des déchets produits qui est détourné des décharges par le recyclage ou le compostage.' }, cit: 'StatCan (Waste Survey)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/environment/solid_waste' },
-
-      { topicId: 'health', term: { en: 'Life Expectancy', fr: 'Espérance de vie' }, def: { en: 'The average number of years a newborn is expected to live if current mortality rates continue.', fr: 'Le nombre moyen d\'années qu\'un nouveau-né devrait vivre si les taux de mortalité actuels se maintiennent.' }, cit: 'StatCan (Health Registry)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/health' },
-      { topicId: 'health', term: { en: 'Perceived Health', fr: 'Santé perçue' }, def: { en: 'Self-reported overall health status, categorizing how individuals evaluate their own health from excellent to poor.', fr: 'Indicateur d\'auto-évaluation où les individus qualifient leur propre état de santé global d\'excellent à mauvais.' }, cit: 'StatCan (CCHS)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/health/health_conditions' },
-      { topicId: 'health', term: { en: 'Body Mass Index (BMI)', fr: 'Indice de masse corporelle (IMC)' }, def: { en: 'A ratio of weight in kilograms to height in meters squared, used as an indicator of body fatness.', fr: 'Le rapport entre le poids en kilogrammes et le carré de la taille en mètres, utilisé comme indicateur de corpulence.' }, cit: 'StatCan (Standards)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/health/lifestyle_and_social_conditions' },
-      { topicId: 'health', term: { en: 'Incidence Rate', fr: 'Taux d\'incidence' }, def: { en: 'The rate of occurrence of new cases of a particular disease diagnosed in a population over a given period.', fr: 'La vitesse d\'apparition de nouveaux cas d\'une maladie diagnostiqués dans une population sur une période donnée.' }, cit: 'StatCan (Health)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/health/diseases_and_health_conditions' },
-
-      { topicId: 'labour', term: { en: 'Unemployment Rate', fr: 'Taux de chômage' }, def: { en: 'The percentage of the active labor force that is currently out of work and actively seeking employment.', fr: 'Le pourcentage de la population active qui est actuellement sans emploi et recherche activement du travail.' }, cit: 'StatCan (LFS)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/labour' },
-      { topicId: 'labour', term: { en: 'Employment Rate', fr: 'Taux d\'emploi' }, def: { en: 'The percentage of the working-age population (15+) that is employed.', fr: 'Le pourcentage de la population en âge de travailler (15 ans et plus) qui occupe un emploi.' }, cit: 'StatCan (Labour Force)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/labour/employment_and_unemployment' },
-      { topicId: 'labour', term: { en: 'Job Vacancy Rate', fr: 'Taux de postes vacants' }, def: { en: 'The proportion of vacant positions relative to total labor demand (occupied plus vacant positions).', fr: 'La proportion de postes vacants par rapport à la demande totale de main-d\'œuvre (postes occupés et vacants).' }, cit: 'StatCan (JVWS)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/labour/job_vacancies' },
-      { topicId: 'labour', term: { en: 'Median Household Income', fr: 'Revenu médian des ménages' }, def: { en: 'The income amount that divides households into two equal groups, half earning more and half earning less.', fr: 'Le niveau de revenu qui divise les ménages en deux groupes égaux, la moitié gagnant plus et l\'autre moitié moins.' }, cit: 'StatCan (Income Survey)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/income_pensions_spending_and_wealth' },
-
-      { topicId: 'edu', term: { en: 'Educational Attainment', fr: 'Niveau de scolarité' }, def: { en: 'The highest level of education completed by an individual (e.g., high school, college, university degree).', fr: 'Le plus haut niveau d\'études qu\'une personne a achevé avec succès.' }, cit: 'StatCan (Census-Edu)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/education_training_and_learning' },
-      { topicId: 'edu', term: { en: 'Postsecondary Enrolment', fr: 'Effectifs postsecondaires' }, def: { en: 'The number of students registered at universities or colleges during a specific reference academic year.', fr: 'Le nombre d\'étudiants inscrits dans une université ou un collège au cours d\'une année universitaire donnée.' }, cit: 'StatCan (PSIS)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/education_training_and_learning/postsecondary_education' },
-      { topicId: 'edu', term: { en: 'Graduation Rate', fr: 'Taux de diplomation' }, def: { en: 'The percentage of students who successfully graduate from their study program within a standard timeframe.', fr: 'Le pourcentage d\'étudiants qui obtiennent avec succès leur diplôme d\'études dans un délai standard.' }, cit: 'StatCan (Education Indicators)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/education_training_and_learning/educational_attainment' },
-      { topicId: 'edu', term: { en: 'Literacy Rate', fr: 'Taux d\'alphabétisation' }, def: { en: 'The percentage of the population aged 15 and over who can read and write with understanding.', fr: 'Le pourcentage de la population âgée de 15 ans et plus qui sait lire, écrire et comprendre un texte simple.' }, cit: 'StatCan (PIAAC)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/education_training_and_learning/adult_education_and_training' },
-
-      { topicId: 'house', term: { en: 'Core Housing Need', fr: 'Besoins impérieux en matière de logement' }, def: { en: 'A household in housing that is substandard, overcrowded, or unaffordable, with insufficient income to find local alternatives.', fr: 'Ménage vivant dans un logement inadéquat, de taille insuffisante ou inabordable, sans revenus suffisants pour se loger convenablement.' }, cit: 'StatCan (CHSP)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/housing' },
-      { topicId: 'house', term: { en: 'Shelter-Cost-to-Income Ratio', fr: 'Rapport des frais de logement au revenu' }, def: { en: 'The percentage of average household income spent on housing costs, where over 30% indicates affordability issues.', fr: 'Le pourcentage moyen du revenu consacré aux frais de logement ; un taux supérieur à 30 % indique des problèmes d\'abordabilité.' }, cit: 'StatCan (Housing)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/housing/housing_costs_and_affordability' },
-      { topicId: 'house', term: { en: 'Average Dwelling Value', fr: 'Valeur moyenne du logement' }, def: { en: 'The average self-reported dollar value of residential properties in a given census metropolitan area.', fr: 'La valeur moyenne estimée en dollars des propriétés résidentielles dans une région géographique donnée.' }, cit: 'StatCan (Census-Housing)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/housing/housing_conditions' },
-      { topicId: 'house', term: { en: 'Homeownership Rate', fr: 'Taux de propriété' }, def: { en: 'The proportion of owner-occupied households relative to total occupied private dwellings.', fr: 'La proportion de ménages qui possèdent leur propre logement par rapport au nombre total de logements privés.' }, cit: 'StatCan (Census)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/housing/homeownership' },
-
-      { topicId: 'crime', term: { en: 'Crime Severity Index (CSI)', fr: 'Indice de gravité de la criminalité (IGC)' }, def: { en: 'A metric tracking changes in police-reported crime severity, assigning higher weights to violent offenses.', fr: 'Indicateur mesurant la gravité des crimes déclarés par la police en attribuant un poids supérieur aux infractions violentes.' }, cit: 'StatCan (UCR)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/crime_and_justice' },
-      { topicId: 'crime', term: { en: 'Police-Reported Crime Rate', fr: 'Taux de criminalité déclaré par la police' }, def: { en: 'The number of Criminal Code incidents (excluding traffic) reported to police per 100,000 population.', fr: 'Le nombre d\'infractions au Code criminel (sauf infractions routières) signalées par 100 000 habitants.' }, cit: 'StatCan (Justice)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/crime_and_justice/crimes_and_offences' },
-      { topicId: 'crime', term: { en: 'Crime Victimization Rate', fr: 'Taux de victimisation criminelle' }, def: { en: 'The proportion of individuals reporting being victims of selected offenses, sourced via general social surveys.', fr: 'La proportion de personnes se déclarant victimes d\'infractions, mesurée par l\'Enquête sociale générale.' }, cit: 'StatCan (GSS)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/crime_and_justice/victims_and_victimization' },
-      { topicId: 'crime', term: { en: 'Clearance Rate', fr: 'Taux de classement' }, def: { en: 'The proportion of police-reported criminal incidents solved or closed by the arrest of a suspect or other means.', fr: 'La proportion d\'infractions déclarées par la police résolues ou classées par l\'arrestation d\'un suspect ou d\'une autre manière.' }, cit: 'StatCan (UCR Summary)', url: 'https://www150.statcan.gc.ca/n1/en/subjects/crime_and_justice/police_services' }
-    ];
-
-    /**
-     * @typedef {Object} SandboxDataset - Central architecture map for all visualizer/explorer items
-     * @property {string} id - Unique identifier (e.g. 'ds_pop_milestones')
-     * @property {string} topicId - Correlates with the 8 root subject identifiers.
-     * @property {Object} title - Bilingual title object containing 'en' and 'fr' strings.
-     * @property {Object} columns - Bilingual array of column headers defining the X-axis or reference periods.
-     * @property {Array} rows - Formatted row objects housing row labels and structured {v: value, r: quality_rating} metric nodes.
-     * @property {Array<string>} allowedCharts - Critical Array explicitly verifying acceptable Chart.js rendering formats ['bar', 'line', 'pie'].
-     * @property {string} url - Active, validated URL direct to Statistics Canada table reference source.
-     */
-    const SANDBOX_DATASETS = [
-      // 1. POPULATION & DEMOGRAPHICS (demo)
+    const dictionary = [
       {
-        id: 'ds_pop_1', topicId: 'demo',
-        title: { en: 'Table 17-10-0009: Population quarterly estimates', fr: 'Tableau 17-10-0009 : Estimations démographiques trimestrielles' },
-        columns: { en: ['Q1 2024', 'Q2 2024', 'Q3 2024'], fr: ['T1 2024', 'T2 2024', 'T3 2024'] },
-        rows: [
-          { label: { en: 'Ontario', fr: 'Ontario' }, data: [{ v: '15,500,000', r: 'A' }, { v: '15,620,000', r: 'A' }, { v: '15,750,000', r: 'A' }] },
-          { label: { en: 'Quebec', fr: 'Québec' }, data: [{ v: '8,900,000', r: 'A' }, { v: '8,950,000', r: 'B' }, { v: '9,020,000', r: 'A' }] },
-          { label: { en: 'British Columbia', fr: 'Colombie-Britannique' }, data: [{ v: '5,600,000', r: 'A' }, { v: '5,680,000', r: 'A' }, { v: '5,740,000', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000901'
+        id: "rounding",
+        topic: "methods",
+        en: {
+          term: "Random rounding",
+          definition: "A disclosure-control technique that rounds values so individual responses cannot be inferred from small cells.",
+          caution: "Rounded cells may not add exactly to totals. Explain this before learners compare row and column sums."
+        },
+        fr: {
+          term: "Arrondissement aléatoire",
+          definition: "Technique de contrôle de la divulgation qui arrondit les valeurs afin que les réponses individuelles ne puissent pas être déduites de petites cellules.",
+          caution: "Les cellules arrondies peuvent ne pas correspondre exactement aux totaux. Expliquez-le avant de comparer les lignes et les colonnes."
+        },
+        source: "https://www.statcan.gc.ca/en/concepts/index"
       },
       {
-        id: 'ds_pop_2', topicId: 'demo',
-        title: { en: 'Table 17-10-0005: Population by age group (2024)', fr: 'Tableau 17-10-0005 : Population par groupe d\'âge (2024)' },
-        columns: { en: ['0 to 14 years', '15 to 64 years', '65 years and older'], fr: ['0 à 14 ans', '15 à 64 ans', '65 ans et plus'] },
-        rows: [
-          { label: { en: 'Canada Total', fr: 'Total Canada' }, data: [{ v: '6,200,000', r: 'A' }, { v: '26,500,000', r: 'A' }, { v: '7,800,000', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710000501'
+        id: "cv",
+        topic: "quality",
+        en: {
+          term: "Coefficient of variation",
+          definition: "A relative measure of sampling variability. It helps users judge the reliability of an estimate.",
+          caution: "High CV values mean estimates should be interpreted with caution."
+        },
+        fr: {
+          term: "Coefficient de variation",
+          definition: "Mesure relative de la variabilité d’échantillonnage. Elle aide les utilisateurs à juger la fiabilité d’une estimation.",
+          caution: "Des valeurs élevées de CV signifient que les estimations doivent être interprétées avec prudence."
+        },
+        source: "https://www.statcan.gc.ca/en/concepts/index"
       },
       {
-        id: 'ds_pop_3', topicId: 'demo',
-        title: { en: 'Table 17-10-0040: Components of population growth', fr: 'Tableau 17-10-0040 : Composantes de la croissance démographique' },
-        columns: { en: ['Births', 'Deaths', 'Immigrants'], fr: ['Naissances', 'Décès', 'Immigrants'] },
-        rows: [
-          { label: { en: '2022/2023', fr: '2022/2023' }, data: [{ v: '350,000', r: 'A' }, { v: '330,000', r: 'A' }, { v: '460,000', r: 'A' }] },
-          { label: { en: '2023/2024', fr: '2023/2024' }, data: [{ v: '345,000', r: 'B' }, { v: '335,000', r: 'A' }, { v: '475,000', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1710004001'
-      },
-
-      // 2. ECONOMY & PRICES (econ)
-      {
-        id: 'ds_econ_1', topicId: 'econ',
-        title: { en: 'Table 18-10-0004: All-items CPI (2002=100)', fr: 'Tableau 18-10-0004 : IPC d\'ensemble (2002=100)' },
-        columns: { en: ['Jan 2024', 'Feb 2024', 'Mar 2024'], fr: ['Janv 2024', 'Fév 2024', 'Mar 2024'] },
-        rows: [
-          { label: { en: 'Canada Baseline', fr: 'Ligne de base Canada' }, data: [{ v: '158.3', r: 'A' }, { v: '158.8', r: 'A' }, { v: '159.2', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000401'
+        id: "metadata",
+        topic: "quality",
+        en: {
+          term: "Metadata",
+          definition: "Information that explains a dataset, such as concepts, geography, reference period, methods, limitations and units.",
+          caution: "Without metadata, the same number can be misread or compared against the wrong population."
+        },
+        fr: {
+          term: "Métadonnées",
+          definition: "Information qui explique un jeu de données, notamment les concepts, la géographie, la période de référence, les méthodes, les limites et les unités.",
+          caution: "Sans métadonnées, le même nombre peut être mal interprété ou comparé à la mauvaise population."
+        },
+        source: "https://www.statcan.gc.ca/en/developers/wds/user-guide"
       },
       {
-        id: 'ds_econ_2', topicId: 'econ',
-        title: { en: 'Table 36-10-0434: Gross domestic product by industry', fr: 'Tableau 36-10-0434 : Produit intérieur brut par industrie' },
-        columns: { en: ['Manufacturing', 'Construction', 'Retail Trade'], fr: ['Fabrication', 'Construction', 'Commerce de détail'] },
-        rows: [
-          { label: { en: 'Q3 2023 ($M)', fr: 'T3 2023 (M$)' }, data: [{ v: '210,500', r: 'A' }, { v: '145,200', r: 'A' }, { v: '115,800', r: 'B' }] },
-          { label: { en: 'Q4 2023 ($M)', fr: 'T4 2023 (M$)' }, data: [{ v: '208,900', r: 'A' }, { v: '142,000', r: 'B' }, { v: '118,500', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3610043401'
+        id: "geography",
+        topic: "geography",
+        en: {
+          term: "Geographic level",
+          definition: "The spatial unit used to summarize data, such as province, census metropolitan area, municipality or census tract.",
+          caution: "A pattern can change when the geographic level changes. Avoid mixing levels without explanation."
+        },
+        fr: {
+          term: "Niveau géographique",
+          definition: "Unité spatiale utilisée pour résumer les données, comme la province, la région métropolitaine de recensement, la municipalité ou le secteur de recensement.",
+          caution: "Un profil peut changer lorsque le niveau géographique change. Évitez de mélanger les niveaux sans explication."
+        },
+        source: "https://www12.statcan.gc.ca/census-recensement/2021/ref/dict/index-eng.cfm"
       },
       {
-        id: 'ds_econ_3', topicId: 'econ',
-        title: { en: 'Table 20-10-0008: Retail sales by subsector', fr: 'Tableau 20-10-0008 : Ventes au détail par sous-secteur' },
-        columns: { en: ['Motor Vehicle', 'Food & Beverage', 'Clothing'], fr: ['Véhicules automobiles', 'Aliments et boissons', 'Vêtements'] },
-        rows: [
-          { label: { en: 'Total Sales Share ($M)', fr: 'Part des ventes totales (M$)' }, data: [{ v: '18,500', r: 'A' }, { v: '14,200', r: 'A' }, { v: '3,800', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=2010000801'
-      },
-
-      // 3. ENVIRONMENT & AGRICULTURE (env)
-      {
-        id: 'ds_env_1', topicId: 'env',
-        title: { en: 'Table 38-10-0097: Industrial greenhouse gas flows', fr: 'Tableau 38-10-0097 : Flux de GES industriels' },
-        columns: { en: ['Oil and Gas', 'Transportation', 'Agriculture'], fr: ['Pétrole et gaz', 'Transports', 'Agriculture'] },
-        rows: [
-          { label: { en: 'Sector Emissions (kt CO2e)', fr: 'Émissions (kt éq. CO2)' }, data: [{ v: '180,000', r: 'A' }, { v: '120,000', r: 'B' }, { v: '75,000', r: 'C' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3810009701'
-      },
-      {
-        id: 'ds_env_2', topicId: 'env',
-        title: { en: 'Table 25-10-0015: Electric power generation', fr: 'Tableau 25-10-0015 : Production d\'énergie électrique' },
-        columns: { en: ['Hydro', 'Wind', 'Combustible Fuels'], fr: ['Hydroélectrique', 'Éolien', 'Combustibles'] },
-        rows: [
-          { label: { en: 'Generation (MWh)', fr: 'Production (MWh)' }, data: [{ v: '350,000', r: 'A' }, { v: '45,000', r: 'B' }, { v: '110,000', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=2510001501'
-      },
-      {
-        id: 'ds_env_3', topicId: 'env',
-        title: { en: 'Table 38-10-0032: Solid waste diversion', fr: 'Tableau 38-10-0032 : Détournement des déchets solides' },
-        columns: { en: ['2018', '2020', '2022'], fr: ['2018', '2020', '2022'] },
-        rows: [
-          { label: { en: 'Tonnes Diverted', fr: 'Tonnes détournées' }, data: [{ v: '9,800,000', r: 'B' }, { v: '10,100,000', r: 'A' }, { v: '10,500,000', r: 'C' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3810003201'
-      },
-
-      // 4. HEALTH & WELL-BEING (health)
-      {
-        id: 'ds_hlth_1', topicId: 'health',
-        title: { en: 'Table 13-10-0114: Life expectancy at birth', fr: 'Tableau 13-10-0114 : Espérance de vie à la naissance' },
-        columns: { en: ['Males', 'Females', 'Both sexes'], fr: ['Hommes', 'Femmes', 'Les deux sexes'] },
-        rows: [
-          { label: { en: 'Canada', fr: 'Canada' }, data: [{ v: '79.5', r: 'A' }, { v: '84.0', r: 'A' }, { v: '81.7', r: 'A' }] }
-        ],
-        allowedCharts: ['bar'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1310011401'
-      },
-      {
-        id: 'ds_hlth_2', topicId: 'health',
-        title: { en: 'Table 13-10-0096: Perceived mental health', fr: 'Tableau 13-10-0096 : Santé mentale perçue' },
-        columns: { en: ['Excellent or Very Good', 'Good', 'Fair or Poor'], fr: ['Excellente ou très bonne', 'Bonne', 'Passable ou mauvaise'] },
-        rows: [
-          { label: { en: 'Population Share (%)', fr: 'Part de la population (%)' }, data: [{ v: '59.2', r: 'A' }, { v: '28.1', r: 'B' }, { v: '12.7', r: 'C' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1310009601'
-      },
-      {
-        id: 'ds_hlth_3', topicId: 'health',
-        title: { en: 'Table 13-10-0801: Regular healthcare provider access', fr: 'Tableau 13-10-0801 : Accès à un fournisseur de soins' },
-        columns: { en: ['Has regular provider', 'No regular provider'], fr: ['A un fournisseur', 'N\'a pas de fournisseur'] },
-        rows: [
-          { label: { en: 'Ontario', fr: 'Ontario' }, data: [{ v: '88.5', r: 'A' }, { v: '11.5', r: 'B' }] },
-          { label: { en: 'British Columbia', fr: 'Colombie-Britannique' }, data: [{ v: '80.2', r: 'B' }, { v: '19.8', r: 'C' }] }
-        ],
-        allowedCharts: ['bar'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1310080101'
-      },
-
-      // 5. LABOUR & INCOME (labour)
-      {
-        id: 'ds_lab_1', topicId: 'labour',
-        title: { en: 'Table 14-10-0287: Unemployment rate by province', fr: 'Tableau 14-10-0287 : Taux de chômage par province' },
-        columns: { en: ['Jan 2024', 'Feb 2024', 'Mar 2024'], fr: ['Janv 2024', 'Fév 2024', 'Mar 2024'] },
-        rows: [
-          { label: { en: 'Alberta', fr: 'Alberta' }, data: [{ v: '6.2', r: 'A' }, { v: '6.1', r: 'B' }, { v: '6.3', r: 'A' }] },
-          { label: { en: 'Nova Scotia', fr: 'Nouvelle-Écosse' }, data: [{ v: '7.0', r: 'B' }, { v: '6.8', r: 'C' }, { v: '6.9', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701'
-      },
-      {
-        id: 'ds_lab_2', topicId: 'labour',
-        title: { en: 'Table 14-10-0023: Employment by broad industry', fr: 'Tableau 14-10-0023 : Emploi par industrie globale' },
-        columns: { en: ['Goods-producing', 'Services-producing'], fr: ['Production de biens', 'Services'] },
-        rows: [
-          { label: { en: 'Total Employment (x1,000)', fr: 'Emploi total (x1 000)' }, data: [{ v: '4,250', r: 'A' }, { v: '16,100', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410002301'
-      },
-      {
-        id: 'ds_lab_3', topicId: 'labour',
-        title: { en: 'Table 14-10-0064: Average hourly wage', fr: 'Tableau 14-10-0064 : Salaire horaire moyen' },
-        columns: { en: ['Full-time', 'Part-time'], fr: ['Temps plein', 'Temps partiel'] },
-        rows: [
-          { label: { en: 'Men', fr: 'Hommes' }, data: [{ v: '38.50', r: 'A' }, { v: '24.20', r: 'B' }] },
-          { label: { en: 'Women', fr: 'Femmes' }, data: [{ v: '34.80', r: 'A' }, { v: '23.90', r: 'B' }] }
-        ],
-        allowedCharts: ['bar'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410006401'
-      },
-
-      // 6. EDUCATION & TRAINING (edu)
-      {
-        id: 'ds_edu_1', topicId: 'edu',
-        title: { en: 'Table 37-10-0018: Postsecondary enrolments', fr: 'Tableau 37-10-0018 : Effectifs postsecondaires' },
-        columns: { en: ['Colleges', 'Universities'], fr: ['Collèges', 'Universités'] },
-        rows: [
-          { label: { en: '2021/2022', fr: '2021/2022' }, data: [{ v: '850,000', r: 'A' }, { v: '1,450,000', r: 'A' }] },
-          { label: { en: '2022/2023', fr: '2022/2023' }, data: [{ v: '875,000', r: 'B' }, { v: '1,480,000', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3710001801'
-      },
-      {
-        id: 'ds_edu_2', topicId: 'edu',
-        title: { en: 'Table 37-10-0164: Field of study distribution', fr: 'Tableau 37-10-0164 : Répartition par domaine d\'études' },
-        columns: { en: ['STEM', 'Business', 'Arts & Humanities', 'Health'], fr: ['STGM', 'Affaires', 'Arts et lettres', 'Santé'] },
-        rows: [
-          { label: { en: 'Graduates (%)', fr: 'Diplômés (%)' }, data: [{ v: '25.4', r: 'A' }, { v: '21.8', r: 'A' }, { v: '18.2', r: 'B' }, { v: '14.5', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3710016401'
-      },
-      {
-        id: 'ds_edu_3', topicId: 'edu',
-        title: { en: 'Table 37-10-0130: Educational attainment (Age 25-64)', fr: 'Tableau 37-10-0130 : Niveau de scolarité (25-64 ans)' },
-        columns: { en: ['High school or less', 'College/Trades', 'University degree'], fr: ['Secondaire ou moins', 'Collège/Métiers', 'Diplôme universitaire'] },
-        rows: [
-          { label: { en: 'Canada', fr: 'Canada' }, data: [{ v: '28.5', r: 'A' }, { v: '36.2', r: 'A' }, { v: '35.3', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3710013001'
-      },
-
-      // 7. HOUSING & REAL ESTATE (house)
-      {
-        id: 'ds_hse_1', topicId: 'house',
-        title: { en: 'Table 34-10-0126: Housing starts', fr: 'Tableau 34-10-0126 : Mises en chantier' },
-        columns: { en: ['Single-detached', 'Multi-unit'], fr: ['Individuel non attenant', 'Logements multiples'] },
-        rows: [
-          { label: { en: '2022', fr: '2022' }, data: [{ v: '65,000', r: 'A' }, { v: '198,000', r: 'A' }] },
-          { label: { en: '2023', fr: '2023' }, data: [{ v: '55,000', r: 'B' }, { v: '185,000', r: 'B' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3410012601'
-      },
-      {
-        id: 'ds_hse_2', topicId: 'house',
-        title: { en: 'Table 46-10-0065: Core housing need status', fr: 'Tableau 46-10-0065 : Besoins impérieux en logement' },
-        columns: { en: ['In core need', 'Not in core need'], fr: ['Besoins impérieux', 'Pas de besoins impérieux'] },
-        rows: [
-          { label: { en: 'Renter households (%)', fr: 'Ménages locataires (%)' }, data: [{ v: '23.5', r: 'A' }, { v: '76.5', r: 'A' }] },
-          { label: { en: 'Owner households (%)', fr: 'Ménages propriétaires (%)' }, data: [{ v: '5.2', r: 'B' }, { v: '94.8', r: 'A' }] }
-        ],
-        allowedCharts: ['bar'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4610006501'
-      },
-      {
-        id: 'ds_hse_3', topicId: 'house',
-        title: { en: 'Table 46-10-0060: Homeownership rate', fr: 'Tableau 46-10-0060 : Taux de propriété' },
-        columns: { en: ['2016', '2021'], fr: ['2016', '2021'] },
-        rows: [
-          { label: { en: 'Canada', fr: 'Canada' }, data: [{ v: '69.0', r: 'A' }, { v: '66.5', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=4610006001'
-      },
-
-      // 8. CRIME & JUSTICE (crime)
-      {
-        id: 'ds_crm_1', topicId: 'crime',
-        title: { en: 'Table 35-10-0026: Crime Severity Index (CSI)', fr: 'Tableau 35-10-0026 : Indice de gravité de la criminalité (IGC)' },
-        columns: { en: ['2021', '2022', '2023'], fr: ['2021', '2022', '2023'] },
-        rows: [
-          { label: { en: 'Violent CSI', fr: 'IGC des crimes violents' }, data: [{ v: '93.5', r: 'A' }, { v: '98.1', r: 'A' }, { v: '99.5', r: 'A' }] },
-          { label: { en: 'Non-violent CSI', fr: 'IGC des crimes non violents' }, data: [{ v: '68.2', r: 'A' }, { v: '71.4', r: 'A' }, { v: '73.0', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'line'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3510002601'
-      },
-      {
-        id: 'ds_crm_2', topicId: 'crime',
-        title: { en: 'Table 35-10-0177: Police-reported incidents', fr: 'Tableau 35-10-0177 : Infractions déclarées par la police' },
-        columns: { en: ['Property crime', 'Violent crime', 'Other'], fr: ['Crimes contre les biens', 'Crimes violents', 'Autres'] },
-        rows: [
-          { label: { en: 'Proportion (%)', fr: 'Proportion (%)' }, data: [{ v: '62.5', r: 'A' }, { v: '21.0', r: 'B' }, { v: '16.5', r: 'C' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3510017701'
-      },
-      {
-        id: 'ds_crm_3', topicId: 'crime',
-        title: { en: 'Table 35-10-0027: Adult criminal courts - cases', fr: 'Tableau 35-10-0027 : Tribunaux de juridiction criminelle pour adultes' },
-        columns: { en: ['Guilty', 'Acquitted', 'Stayed/Withdrawn'], fr: ['Coupable', 'Acquitté', 'Arrêt/Retrait'] },
-        rows: [
-          { label: { en: 'Case Decisions', fr: 'Décisions' }, data: [{ v: '185,000', r: 'A' }, { v: '12,500', r: 'B' }, { v: '98,000', r: 'A' }] }
-        ],
-        allowedCharts: ['bar', 'pie'], url: 'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=3510002701'
+        id: "chart-accessibility",
+        topic: "visualization",
+        en: {
+          term: "Chart text alternative",
+          definition: "A table, summary or description that communicates the same meaning as a visual chart.",
+          caution: "Do not rely on colour, hover-only tooltips or images of text as the only way to understand data."
+        },
+        fr: {
+          term: "Équivalent textuel d’un graphique",
+          definition: "Tableau, résumé ou description qui communique le même sens qu’un graphique visuel.",
+          caution: "N’utilisez pas uniquement la couleur, les infobulles au survol ou les images de texte pour comprendre les données."
+        },
+        source: "https://design-system.canada.ca/en/components/table/"
       }
     ];
 
-    /* Expanded Geodata Presets containing deep hierarchy strings and dynamic arrays */
-    const GEODATA_PRESETS = {
-      'tunneys': { 
-        tract: '5050053.01', 
-        cma: { code: '505', en: 'Ottawa - Gatineau', fr: 'Ottawa - Gatineau' },
-        prov: { code: '35', en: 'Ontario', fr: 'Ontario' },
-        pop: '5,182', 
-        income: { en: '$104,200', fr: '104 200 $' }, 
-        lang: { en: 'Bilingual (En: 52%, Fr: 45%)', fr: 'Bilingue (Ang : 52 %, Fra : 45 %)' }, 
-        quality: 'A', 
-        qdesc: { en: 'Excellent', fr: 'Excellent' }, 
-        x: 450, 
-        y: 350,
-        url: 'https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/page.cfm?Lang=E&SearchText=5050053.01&DGUIDlist=2021S05035050053.01',
-        surrounding: ['5050051.00', '5050053.02', '5050054.00', '5050052.00']
+    const datasets = [
+      {
+        id: "labour",
+        source: "https://www150.statcan.gc.ca/n1/en/subjects/Labour",
+        en: {
+          label: "Labour market demonstration",
+          caption: "Demonstration labour market indicators",
+          unit: "Index",
+          summary: "Employment participation is highest in Metro demo, while the quality flag suggests caution for the North demo estimate."
+        },
+        fr: {
+          label: "Démonstration du marché du travail",
+          caption: "Indicateurs de démonstration du marché du travail",
+          unit: "Indice",
+          summary: "La participation à l’emploi est la plus élevée dans la région métro de démonstration, tandis que le drapeau de qualité invite à la prudence pour l’estimation du Nord."
+        },
+        rows: [
+          { geo: "Metro demo", employment: 78, income: 74, confidence: 92, quality: "A" },
+          { geo: "Rural demo", employment: 64, income: 61, confidence: 78, quality: "B" },
+          { geo: "North demo", employment: 58, income: 67, confidence: 62, quality: "C" },
+          { geo: "Coastal demo", employment: 71, income: 69, confidence: 84, quality: "B" }
+        ]
       },
-      'montreal': { 
-        tract: '4620112.02', 
-        cma: { code: '462', en: 'Montréal', fr: 'Montréal' },
-        prov: { code: '24', en: 'Quebec', fr: 'Québec' },
-        pop: '3,110', 
-        income: { en: '$72,500', fr: '72 500 $' }, 
-        lang: { en: 'French (84%)', fr: 'Français (84 %)' }, 
-        quality: 'B', 
-        qdesc: { en: 'Very Good', fr: 'Très bien' }, 
-        x: 450, 
-        y: 350,
-        url: 'https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/page.cfm?Lang=E&SearchText=4620112.02&DGUIDlist=2021S05034620112.02',
-        surrounding: ['4620111.00', '4620112.03', '4620113.00', '4620110.00']
+      {
+        id: "housing",
+        source: "https://www150.statcan.gc.ca/n1/en/subjects/Housing",
+        en: {
+          label: "Housing affordability demonstration",
+          caption: "Demonstration housing indicators",
+          unit: "Index",
+          summary: "Shelter-cost pressure is highest in Metro demo. Learners should verify geography, household type and reference year before interpreting affordability."
+        },
+        fr: {
+          label: "Démonstration de l’abordabilité du logement",
+          caption: "Indicateurs de démonstration du logement",
+          unit: "Indice",
+          summary: "La pression des coûts de logement est la plus élevée dans la région métro de démonstration. Les apprenants doivent vérifier la géographie, le type de ménage et l’année de référence avant d’interpréter l’abordabilité."
+        },
+        rows: [
+          { geo: "Metro demo", employment: 82, income: 55, confidence: 86, quality: "B" },
+          { geo: "Rural demo", employment: 49, income: 68, confidence: 81, quality: "B" },
+          { geo: "North demo", employment: 61, income: 57, confidence: 58, quality: "C" },
+          { geo: "Coastal demo", employment: 74, income: 63, confidence: 76, quality: "B" }
+        ]
       },
-      'vancouver': { 
-        tract: '9330059.04', 
-        cma: { code: '933', en: 'Vancouver', fr: 'Vancouver' },
-        prov: { code: '59', en: 'British Columbia', fr: 'Colombie-Britannique' },
-        pop: '8,410', 
-        income: { en: '$93,800', fr: '93 800 $' }, 
-        lang: { en: 'English (68%)', fr: 'Anglais (68 %)' }, 
-        quality: 'A', 
-        qdesc: { en: 'Excellent', fr: 'Excellent' }, 
-        x: 450, 
-        y: 350,
-        url: 'https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/details/page.cfm?Lang=E&SearchText=9330059.04&DGUIDlist=2021S05039330059.04',
-        surrounding: ['9330059.02', '9330060.00', '9330061.00', '9330058.00']
-      },
-      'generic': { 
-        tract: '0000.00', 
-        cma: { code: '999', en: 'Simulated Metro Area', fr: 'Région métropolitaine simulée' },
-        prov: { code: '99', en: 'Simulated Province', fr: 'Province simulée' },
-        pop: '4,650', 
-        income: { en: '$86,100', fr: '86 100 $' }, 
-        lang: { en: 'English (74%)', fr: 'Anglais (74 %)' }, 
-        quality: 'C', 
-        qdesc: { en: 'Good', fr: 'Bien' }, 
-        x: 450, 
-        y: 350,
-        url: 'https://www12.statcan.gc.ca/census-recensement/index-eng.cfm',
-        surrounding: ['0000.01', '0000.02', '0000.03', '0000.04']
+      {
+        id: "digital",
+        source: "https://www150.statcan.gc.ca/n1/en/subjects/Digital_economy_and_society",
+        en: {
+          label: "Digital access demonstration",
+          caption: "Demonstration digital-access indicators",
+          unit: "Index",
+          summary: "Digital-access confidence varies by geography. This supports discussion about low-bandwidth design and alternative service channels."
+        },
+        fr: {
+          label: "Démonstration de l’accès numérique",
+          caption: "Indicateurs de démonstration de l’accès numérique",
+          unit: "Indice",
+          summary: "La confiance liée à l’accès numérique varie selon la géographie. Cela soutient la discussion sur la conception pour la faible bande passante et les autres modes de service."
+        },
+        rows: [
+          { geo: "Metro demo", employment: 86, income: 80, confidence: 90, quality: "A" },
+          { geo: "Rural demo", employment: 63, income: 66, confidence: 74, quality: "B" },
+          { geo: "North demo", employment: 52, income: 59, confidence: 55, quality: "C" },
+          { geo: "Coastal demo", employment: 69, income: 72, confidence: 79, quality: "B" }
+        ]
       }
+    ];
+
+    const tracts = {
+      a: { region: "Metro demo", population: 24500, income: 76000, confidence: 91, quality: "A" },
+      b: { region: "Suburban demo", population: 18200, income: 82000, confidence: 86, quality: "B" },
+      c: { region: "Rural demo", population: 9600, income: 61000, confidence: 78, quality: "B" },
+      d: { region: "Coastal demo", population: 12100, income: 69000, confidence: 74, quality: "B" },
+      e: { region: "North demo", population: 4300, income: 67000, confidence: 59, quality: "C" }
     };
 
-    /**
-     * Helper Utilities for text sanitization, markdown layout string parsing, and screen reader announcements.
-     */
-    const Utils = {
-      escapeHTML: (str) => {
-        return String(str).replace(/[&<>'"]/g, 
-          tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
-        );
-      },
-      announce: (message) => {
-        const liveRegion = document.getElementById('live-region');
-        if (liveRegion) {
-          liveRegion.textContent = message;
-          setTimeout(() => { liveRegion.textContent = ''; }, 3000);
-        }
-      },
-      /* Simple safe markdown parser to convert Gemini responses to polished layout HTML */
-      formatMarkdown: (text) => {
-        if (!text) return "";
-        let html = text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-
-        // Headers
-        html = html.replace(/^#### (.*?)$/gm, '<h4 class="text-base font-bold text-slate-800 mt-4 mb-2">$1</h4>');
-        html = html.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-bold text-slate-800 mt-4 mb-2">$1</h3>');
-        html = html.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-bold text-slate-800 mt-4 mb-2">$1</h2>');
-        html = html.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold text-slate-800 mt-4 mb-2">$1</h1>');
-
-        // Bold
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        // Italic
-        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        // Lists
-        html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li class="ml-4 list-disc">$1</li>');
-        
-        // Paragraph conversion
-        html = html.replace(/\n\n/g, '</p><p class="mb-3">');
-        html = `<p class="mb-3">${html}</p>`;
-        
-        // Structure Cleanups
-        html = html.replace(/<p class="mb-3"><h/g, '<h');
-        html = html.replace(/<\/h(\d)><\/p>/g, '</h$1>');
-        return html;
-      }
+    const mvpRows = {
+      en: [
+        ["Local assistant", "Answer method questions using safe, rule-based responses.", "Review terminology against official statistical-method sources."],
+        ["Statistical dictionary", "Explain core concepts in plain language.", "Terminology review in English and French."],
+        ["Matrix explorer", "Teach comparison, reliability and metadata review.", "Replace demo values with official WDS or table data."],
+        ["Accessible visualizer", "Pair each chart with a table and text summary.", "Manual screen-reader, keyboard and zoom/reflow testing."],
+        ["Community profile simulator", "Teach geographic interpretation without collecting personal data.", "Validate geography logic and privacy language."]
+      ],
+      fr: [
+        ["Assistant local", "Répondre aux questions de méthode au moyen de réponses sécuritaires fondées sur des règles.", "Réviser la terminologie avec des sources officielles de méthodes statistiques."],
+        ["Dictionnaire statistique", "Expliquer les concepts de base en langage clair.", "Révision terminologique en français et en anglais."],
+        ["Explorateur de matrice", "Enseigner la comparaison, la fiabilité et l’examen des métadonnées.", "Remplacer les valeurs de démonstration par des données officielles du SDW ou de tableaux."],
+        ["Visualiseur accessible", "Associer chaque graphique à un tableau et à un résumé textuel.", "Essais manuels au lecteur d’écran, au clavier et avec zoom/redisposition."],
+        ["Simulateur de profil communautaire", "Enseigner l’interprétation géographique sans recueillir de renseignements personnels.", "Valider la logique géographique et le libellé de confidentialité."]
+      ]
     };
 
-    /* Standard Gemini Call Engine with Exponential Backoff Retries */
-    const callGeminiAPI = async (prompt, systemInstruction = "") => {
-      const apiKey = ""; // Let Runtime inject standard key parameters
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-      const payload = {
-        contents: [{ parts: [{ text: prompt }] }]
-      };
-      if (systemInstruction) {
-        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
-      }
-
-      const delay = (ms) => new Promise(res => setTimeout(res, ms));
-
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP Error ${response.status}`);
-          }
-          const result = await response.json();
-          const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) return text;
-          throw new Error("Empty candidate response");
-        } catch (error) {
-          const waitTime = Math.pow(2, attempt) * 1000;
-          if (attempt === 4) {
-            throw error; // Re-throw if all attempts fail
-          }
-          await delay(waitTime);
-        }
-      }
+    const qualityRows = {
+      en: [
+        ["Compliance claims", "Yes", "Removed unsupported “WCAG compliant” claim; page says designed to align and requires validation."],
+        ["Accessibility", "Partial", "Semantic structure, keyboard tabs, map buttons, chart tables and visible focus are implemented; formal testing remains required."],
+        ["Official languages", "Partial", "Functional English/French toggle is implemented; official translation review remains required."],
+        ["Privacy", "Yes", "No external AI call, no address submission, no analytics and no server storage."],
+        ["Data quality", "Partial", "Demo values are labelled and source links are provided; authoritative StatCan integration remains future work."],
+        ["Security", "Improved", "Removed third-party chart, icon and utility libraries from the prototype to reduce dependency risk."]
+      ],
+      fr: [
+        ["Allégations de conformité", "Oui", "L’allégation non étayée de conformité WCAG a été retirée; la page indique qu’elle est conçue pour s’aligner et exige une validation."],
+        ["Accessibilité", "Partiel", "Structure sémantique, onglets au clavier, boutons cartographiques, tableaux de graphiques et focus visible sont mis en œuvre; des essais officiels demeurent requis."],
+        ["Langues officielles", "Partiel", "Bascule fonctionnelle français/anglais mise en œuvre; révision officielle de la traduction requise."],
+        ["Confidentialité", "Oui", "Aucun appel à une IA externe, aucune soumission d’adresse, aucune analytique et aucun stockage serveur."],
+        ["Qualité des données", "Partiel", "Les valeurs de démonstration sont indiquées et des liens de source sont fournis; l’intégration de données officielles de Statistique Canada demeure à faire."],
+        ["Sécurité", "Amélioré", "Les bibliothèques tierces de graphiques, d’icônes et d’utilitaires ont été retirées pour réduire le risque de dépendance."]
+      ]
     };
 
-    /**
-     * @namespace Sandbox
-     * @description Core Application controller. Manages DOM events, state execution, and logical routing.
-     */
-    const Sandbox = {
-      init: () => {
-        // Render Subject Selection Dropdowns for expanded 8 categories
-        const dictTopic = document.getElementById('select-dict-topic');
-        const explorerTopic = document.getElementById('select-explorer-topic');
-        const visTopic = document.getElementById('select-vis-topic');
-
-        const topics = [
-          { id: 'demo', label: { en: 'Population & Demographics', fr: 'Population et démographie' } },
-          { id: 'econ', label: { en: 'Economy & Prices', fr: 'Économie et prix' } },
-          { id: 'env', label: { en: 'Environment & Agriculture', fr: 'Environnement et agriculture' } },
-          { id: 'health', label: { en: 'Health & Well-being', fr: 'Santé et bien-être' } },
-          { id: 'labour', label: { en: 'Labour & Income', fr: 'Travail et revenu' } },
-          { id: 'edu', label: { en: 'Education & Training', fr: 'Éducation et formation' } },
-          { id: 'house', label: { en: 'Housing & Real Estate', fr: 'Logement et immobilier' } },
-          { id: 'crime', label: { en: 'Crime & Justice', fr: 'Crime et justice' } }
-        ];
-
-        const populateOptions = (element) => {
-          element.innerHTML = `<option value="">${I18n.t('select-default')}</option>`;
-          topics.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t.id;
-            opt.textContent = t.label[I18n.lang];
-            element.appendChild(opt);
-          });
-        };
-
-        populateOptions(dictTopic);
-        populateOptions(explorerTopic);
-        populateOptions(visTopic);
-
-        // Populate preset map chips dynamically to match language
-        const presetChipsContainer = document.getElementById('preset-chips-container');
-        presetChipsContainer.innerHTML = `
-          <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="tunneys">${I18n.lang === 'en' ? "Tunney's Pasture (STC HQ)" : "Parc de Tunney (QG StatCan)"}</button>
-          <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="montreal">${I18n.lang === 'en' ? "Vieux-Port Montréal" : "Vieux-Port de Montréal"}</button>
-          <button type="button" class="px-2.5 py-1 text-xs bg-white border border-slate-300 hover:bg-slate-100 rounded-full cursor-pointer map-preset-chip" data-preset="vancouver">${I18n.lang === 'en' ? "Vancouver Downtown" : "Centre-ville de Vancouver"}</button>
-        `;
-
-        // Re-attach listeners to dynamically generated chips
-        document.querySelectorAll('.map-preset-chip').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const presetKey = btn.getAttribute('data-preset');
-            const data = GEODATA_PRESETS[presetKey];
-            document.getElementById('input-map-location').value = btn.textContent;
-            Sandbox.renderGeoprofile(data);
-          });
-        });
-
-        // Render AI Agent prompt helper chips
-        const chipsContainer = document.getElementById('chat-prompt-chips');
-        const defaultPrompts = [
-          { en: 'What is a Coefficient of Variation?', fr: 'Qu\'est-ce qu\'un coefficient de variation?' },
-          { en: 'Explain random rounding in census datasets', fr: 'Expliquez l\'arrondissement aléatoire dans les recensements' },
-          { en: 'How do index base years work?', fr: 'Comment fonctionnent les années de référence des indices?' }
-        ];
-
-        chipsContainer.innerHTML = '';
-        defaultPrompts.forEach(p => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs rounded-full border border-slate-300 font-semibold cursor-pointer transition';
-          btn.textContent = p[I18n.lang];
-          btn.addEventListener('click', () => {
-            document.getElementById('input-chat').value = p[I18n.lang];
-            document.getElementById('form-chat').dispatchEvent(new Event('submit'));
-          });
-          chipsContainer.appendChild(btn);
-        });
-
-        // Load Default Chat Greeting
-        const chatBox = document.getElementById('chat-messages');
-        if (chatBox.innerHTML === '') {
-           chatBox.innerHTML = `
-            <div class="bg-blue-50 p-3 rounded-lg mb-2 border-l-4 border-slate-700 text-sm">
-              <strong>STC AI Assistant:</strong> ${I18n.lang === 'en' ? 'Welcome. I am now fully synchronized with Google Gemini AI. Ask me about quality variables, data suppression formulas, or indices.' : 'Bienvenue. Je suis maintenant synchronisé avec l\'IA de Google Gemini. Posez-moi des questions sur les variables de qualité, les suppressions de données ou les indices.'}
-            </div>
-          `;
-        }
-      },
-
-      handleChatSubmit: async () => {
-        const input = document.getElementById('input-chat');
-        const query = input.value.trim();
-        if (!query) return;
-
-        const chatBox = document.getElementById('chat-messages');
-        chatBox.innerHTML += `
-          <div class="bg-slate-100 p-3 rounded-lg mb-2 text-right text-sm">
-            <strong>User:</strong> ${Utils.escapeHTML(query)}
-          </div>
-        `;
-        
-        input.value = '';
-
-        // Inject flashing typing visual block
-        const loaderId = "ai-typing-loader";
-        chatBox.innerHTML += `
-          <div id="${loaderId}" class="flex items-center gap-3 p-3 text-sm">
-            <div class="dot-flashing"></div> 
-            <span class="text-xs text-slate-500 font-medium">Processing Gemini analysis engine...</span>
-          </div>
-        `;
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-        try {
-          const systemInstruction = I18n.lang === 'en'
-            ? "You are a bilingual statistical research assistant at Statistics Canada. Respond clearly, concisely, and with a professional tone. Explain concepts using clean terminology, reference formulas where applicable, and format the output in beautiful markdown."
-            : "Vous êtes un assistant bilingue de recherche statistique à Statistique Canada. Répondez de manière claire, concise et professionnelle. Expliquez les concepts à l'aide d'une terminologie rigoureuse, mentionnez les formules le cas échéant et formatez le texte en markdown.";
-
-          const aiResponse = await callGeminiAPI(query, systemInstruction);
-          
-          const loader = document.getElementById(loaderId);
-          if (loader) loader.remove();
-
-          chatBox.innerHTML += `
-            <div class="bg-blue-50 p-3 rounded-lg mb-2 border-l-4 border-slate-700 text-sm">
-              <strong>STC AI Assistant:</strong> ${Utils.formatMarkdown(aiResponse)}
-            </div>
-          `;
-          chatBox.scrollTop = chatBox.scrollHeight;
-        } catch (err) {
-          const loader = document.getElementById(loaderId);
-          if (loader) loader.remove();
-
-          chatBox.innerHTML += `
-            <div class="bg-rose-50 border-l-4 border-rose-500 p-3 rounded-lg mb-2 text-sm text-rose-800">
-              <strong>Error:</strong> ${I18n.lang === 'en' ? 'Unable to reach the Gemini API engine. Please verify connection.' : 'Impossible de contacter le moteur d\'IA Gemini. Veuillez vérifier la connexion.'}
-            </div>
-          `;
-          chatBox.scrollTop = chatBox.scrollHeight;
-        }
-      },
-
-      updateDictTerms: () => {
-        const topic = document.getElementById('select-dict-topic').value;
-        const termSelect = document.getElementById('select-dict-term');
-        termSelect.innerHTML = `<option value="">${I18n.t('select-term')}</option>`;
-        
-        if (!topic) {
-          termSelect.disabled = true;
-          return;
-        }
-
-        const filtered = DICTIONARY_DB.filter(d => d.topicId === topic);
-        filtered.forEach((d, idx) => {
-          const opt = document.createElement('option');
-          opt.value = idx;
-          opt.textContent = d.term[I18n.lang];
-          termSelect.appendChild(opt);
-        });
-        
-        termSelect.disabled = false;
-        document.getElementById('dict-output').style.display = 'none';
-      },
-
-      showDictTerm: () => {
-        const topic = document.getElementById('select-dict-topic').value;
-        const termIdx = document.getElementById('select-dict-term').value;
-        const output = document.getElementById('dict-output');
-
-        if (termIdx === "") {
-          output.style.display = 'none';
-          return;
-        }
-
-        const term = DICTIONARY_DB.filter(d => d.topicId === topic)[termIdx];
-        document.getElementById('dict-term-title').textContent = term.term[I18n.lang];
-        document.getElementById('dict-term-definition').textContent = term.def[I18n.lang];
-        document.getElementById('dict-term-citation').textContent = `Official Reference: ${term.cit}`;
-        
-        const urlLink = document.getElementById('dict-term-url');
-        urlLink.href = term.url;
-        output.style.display = 'block';
-      },
-
-      updateExplorerDatasets: () => {
-        const topic = document.getElementById('select-explorer-topic').value;
-        const dsSelect = document.getElementById('select-explorer-dataset');
-        dsSelect.innerHTML = `<option value="">${I18n.t('select-dataset')}</option>`;
-
-        if (!topic) {
-          dsSelect.disabled = true;
-          document.getElementById('explorer-interactive-container').style.display = 'none';
-          return;
-        }
-
-        const filtered = SANDBOX_DATASETS.filter(d => d.topicId === topic);
-        filtered.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = d.id;
-          opt.textContent = d.title[I18n.lang];
-          dsSelect.appendChild(opt);
-        });
-
-        dsSelect.disabled = false;
-        document.getElementById('explorer-interactive-container').style.display = 'none';
-      },
-
-      renderExplorerMatrix: () => {
-        const dsId = document.getElementById('select-explorer-dataset').value;
-        const container = document.getElementById('explorer-interactive-container');
-
-        if (!dsId) {
-          container.style.display = 'none';
-          return;
-        }
-
-        const ds = SANDBOX_DATASETS.find(d => d.id === dsId);
-        document.getElementById('explorer-table-title').textContent = ds.title[I18n.lang];
-        document.getElementById('explorer-table-caption').textContent = ds.title[I18n.lang];
-        
-        // Build table head headers
-        const head = document.getElementById('explorer-table-head');
-        head.innerHTML = `
-          <tr>
-            <th scope="col" style="background-color: var(--stc-blue);">${I18n.lang === 'en' ? 'Geography / Category' : 'Géographie / Catégorie'}</th>
-            ${ds.columns[I18n.lang].map(c => `<th scope="col" style="background-color: var(--stc-blue);">${Utils.escapeHTML(c)}</th>`).join('')}
-          </tr>
-        `;
-
-        // Build data cells body
-        const body = document.getElementById('explorer-table-body');
-        body.innerHTML = '';
-        
-        ds.rows.forEach((row, rowIdx) => {
-          const tr = document.createElement('tr');
-          const th = document.createElement('th');
-          th.setAttribute('scope', 'row');
-          th.textContent = row.label[I18n.lang];
-          tr.appendChild(th);
-
-          row.data.forEach((cell, cellIdx) => {
-            const td = document.createElement('td');
-            td.className = 'data-cell';
-            td.tabIndex = 0;
-            td.innerHTML = `
-              <strong>${cell.v}</strong> 
-              <span class="rating-badge rating-${cell.r}" title="Data Quality: ${cell.r}">${cell.r}</span>
-            `;
-            
-            const cellKey = `${dsId}_${rowIdx}_${cellIdx}`;
-            if (State.explorerSelectedCells.includes(cellKey)) {
-              td.classList.add('selected');
-            }
-
-            td.addEventListener('click', (e) => {
-              if (td.classList.contains('selected')) {
-                td.classList.remove('selected');
-                State.explorerSelectedCells = State.explorerSelectedCells.filter(k => k !== cellKey);
-              } else {
-                td.classList.add('selected');
-                State.explorerSelectedCells.push(cellKey);
-              }
-            });
-
-            td.addEventListener('keydown', (e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                td.click();
-              }
-            });
-
-            tr.appendChild(td);
-          });
-
-          body.appendChild(tr);
-        });
-
-        container.style.display = 'block';
-        document.getElementById('daily-summary-container').style.display = 'none';
-      },
-
-      /* Uses Google Gemini to create a professional Statistics Canada "The Daily" news briefing based on active coordinates */
-      generateDailyNarrative: async () => {
-        const dsId = document.getElementById('select-explorer-dataset').value;
-        if (!dsId) return;
-
-        const ds = SANDBOX_DATASETS.find(d => d.id === dsId);
-        const dailyContainer = document.getElementById('daily-summary-container');
-        const dailyContent = document.getElementById('daily-summary-content');
-
-        dailyContainer.style.display = 'block';
-        dailyContent.innerHTML = `
-          <div class="flex items-center gap-3 p-4 text-emerald-800">
-            <div class="dot-flashing"></div> 
-            <span class="text-sm font-semibold">Generating Daily News Brief via Gemini AI...</span>
-          </div>
-        `;
-        dailyContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
-        let selectedDetails = [];
-        State.explorerSelectedCells.forEach(key => {
-          const parts = key.split('_');
-          if (parts[0] !== dsId) return;
-          const rowIdx = parseInt(parts[1], 10);
-          const colIdx = parseInt(parts[2], 10);
-          const row = ds.rows[rowIdx];
-          const col = ds.columns[I18n.lang][colIdx];
-          const cell = row.data[colIdx];
-          selectedDetails.push({
-            category: row.label[I18n.lang],
-            reference_period: col,
-            value: cell.v,
-            data_quality: cell.r
-          });
-        });
-
-        // System instructions to guide Gemini for professional "The Daily" output format
-        const systemInstruction = I18n.lang === 'en'
-          ? "You are a senior principal economic analyst at Statistics Canada. Write a detailed, highly professional news briefing in the exact format of 'The Daily' (the official news release venue of Statistics Canada). Analyze the user's selected metrics, evaluate any clear trends or percentage changes, discuss implications, and explain what the data quality indicators (A, B, C, or D) mean to researchers. Present the report with structured markdown sub-headers (####), bold text, and logical bullet points. Be formal, objective, and clear."
-          : "Vous êtes un analyste économique principal à Statistique Canada. Rédigez un communiqué de presse détaillé et hautement professionnel dans le style exact de la publication officielle « Le Quotidien ». Analysez les données sélectionnées, dégagez les tendances et variations importantes, expliquez l'incidence des indicateurs de qualité des données (A, B, C ou D) pour les chercheurs. Structurez le rapport avec des sous-titres markdown (####), du texte en gras et des puces d'énumération. Soyez rigoureux, objectif et clair.";
-
-        const prompt = I18n.lang === 'en'
-          ? `Perform a deep trend and pattern analysis on these selected cell values from Table ${ds.title.en}:
-             Selected Data Points:
-             ${JSON.stringify(selectedDetails, null, 2)}
-             
-             Structure the analysis into these sections:
-             1. #### Major Releases & Context
-             2. #### Quarterly Trends & Highlights (Do comparisons if there are multiple values, compute percentage variations)
-             3. #### Data Quality, Quality Indicators (A/B/C/D) & Methodological Notes (Explain limitations if 'C' or 'D' ratings are present)`
-          : `Effectuez une analyse approfondie des tendances à partir de ces cellules sélectionnées du Tableau ${ds.title.fr} :
-             Points de données sélectionnés :
-             ${JSON.stringify(selectedDetails, null, 2)}
-             
-             Structurez votre analyse avec ces sections :
-             1. #### Faits saillants et contexte de la publication
-             2. #### Analyse des variations (S'il y a plusieurs points, faites des comparaisons, calculez les variations en %)
-             3. #### Notes de qualité, indicateurs (A/B/C/D) et considérations méthodologiques (Expliquez les limitations si des cotes 'C' ou 'D' sont présentes)`;
-
-        try {
-          const aiResponse = await callGeminiAPI(prompt, systemInstruction);
-          dailyContent.innerHTML = Utils.formatMarkdown(aiResponse);
-        } catch (err) {
-          dailyContent.innerHTML = `
-            <div class="p-3 text-rose-800">
-              <strong>Error:</strong> ${I18n.lang === 'en' ? 'Unable to generate narrative using Gemini. Please fall back to basic calculations.' : 'Impossible de générer le rapport à l\'aide de Gemini. Veuillez procéder aux calculs de base.'}
-            </div>
-          `;
-        }
-      },
-
-      updateVisDatasets: () => {
-        const topic = document.getElementById('select-vis-topic').value;
-        const dsSelect = document.getElementById('select-vis-dataset');
-        dsSelect.innerHTML = `<option value="">${I18n.t('select-dataset')}</option>`;
-        
-        document.getElementById('select-vis-type').disabled = true;
-        document.getElementById('select-vis-type').innerHTML = `<option value="">--</option>`;
-
-        if (!topic) {
-          dsSelect.disabled = true;
-          document.getElementById('vis-output-container').style.display = 'none';
-          return;
-        }
-
-        const filtered = SANDBOX_DATASETS.filter(d => d.topicId === topic);
-        filtered.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = d.id;
-          opt.textContent = d.title[I18n.lang];
-          dsSelect.appendChild(opt);
-        });
-
-        dsSelect.disabled = false;
-        document.getElementById('vis-output-container').style.display = 'none';
-      },
-
-      /**
-       * Dynamically populates the Chart Type Dropdown to strictly allow chart forms native to the dataset struct.
-       */
-      updateVisChartTypes: () => {
-        const dsId = document.getElementById('select-vis-dataset').value;
-        const typeSelect = document.getElementById('select-vis-type');
-        typeSelect.innerHTML = '';
-        
-        if (!dsId) {
-            typeSelect.disabled = true;
-            typeSelect.innerHTML = `<option value="">--</option>`;
-            document.getElementById('vis-output-container').style.display = 'none';
-            return;
-        }
-
-        const ds = SANDBOX_DATASETS.find(d => d.id === dsId);
-        const typeOptions = {
-            'bar': { en: 'Bar Chart', fr: 'Graphique à barres' },
-            'line': { en: 'Line Chart', fr: 'Graphique linéaire' },
-            'pie': { en: 'Pie Chart', fr: 'Graphique circulaire' }
-        };
-
-        ds.allowedCharts.forEach(type => {
-            const opt = document.createElement('option');
-            opt.value = type;
-            opt.textContent = typeOptions[type][I18n.lang];
-            typeSelect.appendChild(opt);
-        });
-
-        typeSelect.disabled = false;
-        Sandbox.renderVisualization();
-      },
-
-      renderVisualization: () => {
-        const dsId = document.getElementById('select-vis-dataset').value;
-        const type = document.getElementById('select-vis-type').value;
-        const container = document.getElementById('vis-output-container');
-
-        if (!dsId || !type) {
-          container.style.display = 'none';
-          return;
-        }
-
-        const ds = SANDBOX_DATASETS.find(d => d.id === dsId);
-        
-        const canvas = document.getElementById('vis-canvas');
-        if (State.chartInstance) {
-          State.chartInstance.destroy();
-        }
-
-        const labels = ds.columns[I18n.lang];
-        const hexColors = ['#26374a', '#d3080c', '#2e8540', '#f58220', '#f2d40d', '#0535d2', '#64748b', '#0f766e'];
-        
-        let datasetsArray = [];
-
-        // Pie Charts expect a flat 1D data structure matching the labels array.
-        // We safely force pie charts to only parse the primary (first) data row.
-        if (type === 'pie') {
-          datasetsArray = [{
-            label: ds.rows[0].label[I18n.lang],
-            data: ds.rows[0].data.map(d => parseFloat(d.v.replace(/,/g, ''))),
-            backgroundColor: hexColors.slice(0, labels.length),
-            borderColor: '#ffffff',
-            borderWidth: 2
-          }];
-        } else {
-          // Bar and Line logic supports multiple structural comparative datasets.
-          datasetsArray = ds.rows.map((row, idx) => {
-            return {
-              label: row.label[I18n.lang],
-              data: row.data.map(d => parseFloat(d.v.replace(/,/g, ''))),
-              backgroundColor: hexColors[idx % hexColors.length],
-              borderColor: hexColors[idx % hexColors.length],
-              borderWidth: 1
-            };
-          });
-        }
-
-        State.chartInstance = new Chart(canvas, {
-          type: type,
-          data: {
-            labels: labels,
-            datasets: datasetsArray
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: true, position: 'top' }
-            },
-            scales: type === 'pie' ? {} : {
-              y: { beginAtZero: true }
-            }
-          }
-        });
-
-        // Build Visual Alternative Accessible Table (WCAG Standard)
-        document.getElementById('vis-alt-table-caption').textContent = ds.title[I18n.lang];
-        const head = document.getElementById('vis-alt-table-head');
-        head.innerHTML = `
-          <tr>
-            <th scope="col" style="background-color: var(--stc-blue);">${I18n.lang === 'en' ? 'Row Title' : 'Titre de ligne'}</th>
-            ${labels.map(l => `<th scope="col" style="background-color: var(--stc-blue);">${Utils.escapeHTML(l)}</th>`).join('')}
-          </tr>
-        `;
-
-        const body = document.getElementById('vis-alt-table-body');
-        body.innerHTML = '';
-        ds.rows.forEach(row => {
-          const tr = document.createElement('tr');
-          const th = document.createElement('th');
-          th.setAttribute('scope', 'row');
-          th.textContent = row.label[I18n.lang];
-          tr.appendChild(th);
-
-          row.data.forEach(cell => {
-            const td = document.createElement('td');
-            td.textContent = cell.v;
-            tr.appendChild(td);
-          });
-          body.appendChild(tr);
-        });
-
-        // Set the active STC Dataset Source Link
-        document.getElementById('vis-source-link').href = ds.url;
-
-        container.style.display = 'block';
-      },
-
-      geocodeAddress: (e) => {
-        if (e) e.preventDefault();
-        const address = document.getElementById('input-map-location').value.trim();
-        if (!address) return;
-
-        // Perform address parameter mapping matches
-        const lower = address.toLowerCase();
-        let target = GEODATA_PRESETS.generic;
-
-        if (lower.includes('tunney') || lower.includes('pasture') || lower.includes('k1a')) {
-          target = GEODATA_PRESETS.tunneys;
-        } else if (lower.includes('montreal') || lower.includes('communes') || lower.includes('port')) {
-          target = GEODATA_PRESETS.montreal;
-        } else if (lower.includes('vancouver') || lower.includes('georgia')) {
-          target = GEODATA_PRESETS.vancouver;
-        }
-
-        Sandbox.renderGeoprofile(target);
-      },
-
-      renderGeoprofile: (profile) => {
-        // Track preset context for language toggles
-        State.mapActiveTract = profile;
-
-        // 1. Drop coordinates Pin and slide Map viewport focus
-        const pin = document.getElementById('map-target-pin');
-        pin.setAttribute('transform', `translate(${profile.x}, ${profile.y})`);
-        pin.style.display = 'block';
-
-        // Auto pan map to center selected pin inside the expanded viewbox
-        State.mapPanX = 500 - (profile.x * State.mapZoom);
-        State.mapPanY = 400 - (profile.y * State.mapZoom);
-        Sandbox.applyMapTransform();
-
-        // 2. Setup Vector Map Labels and dynamic surrounding boundaries
-        document.getElementById('label-prov').textContent = `PROV: ${profile.prov[I18n.lang]} (${profile.prov.code})`;
-        document.getElementById('label-cma').textContent = `CMA: ${profile.cma[I18n.lang]} (${profile.cma.code})`;
-        
-        // Target CT
-        const tCenter = document.getElementById('tract-center');
-        tCenter.setAttribute('data-tract', profile.tract);
-        document.getElementById('label-tract-center').textContent = `CT: ${profile.tract}`;
-        
-        // Dynamic Surrounding CTs (North, East, South, West representations)
-        const dirs = ['n', 'e', 's', 'w'];
-        dirs.forEach((d, i) => {
-          const code = profile.surrounding[i] || '--';
-          const pSvg = document.getElementById(`tract-${d}`);
-          pSvg.setAttribute('data-tract', code);
-          document.getElementById(`label-tract-${d}`).textContent = `CT: ${code}`;
-        });
-
-        // Clear active tract highlighting, then highlight the correct newly active path
-        document.querySelectorAll('.map-tract-path').forEach(p => {
-          if (p.getAttribute('data-tract') === profile.tract) {
-            p.classList.add('active-tract');
-            p.setAttribute('fill', '#f58220');
-          } else {
-            p.classList.remove('active-tract');
-            p.setAttribute('fill', p.getAttribute('data-original-fill'));
-          }
-        });
-
-        // 3. Populate Geoprofile Output Indicators in the Sidebar
-        document.getElementById('map-profile-placeholder').style.display = 'none';
-        
-        // Detailed Geographic Hierarchy String formulation
-        document.getElementById('lbl-geo-hierarchy').innerHTML = `PROV: ${profile.prov.code} (${profile.prov[I18n.lang]})<br> CMA: ${profile.cma.code} (${profile.cma[I18n.lang]})<br> CT: ${profile.tract}`;
-
-        document.getElementById('lbl-geo-pop').textContent = profile.pop;
-        document.getElementById('lbl-geo-income').textContent = profile.income[I18n.lang];
-        document.getElementById('lbl-geo-language').textContent = profile.lang[I18n.lang];
-        
-        const qBadge = document.getElementById('lbl-geo-quality');
-        qBadge.textContent = profile.quality;
-        qBadge.className = `rating-badge rating-${profile.quality}`;
-        document.getElementById('lbl-geo-quality-desc').textContent = profile.qdesc[I18n.lang];
-
-        // Activate external STC Dataset Link mapping specifically to this tract
-        const dsLink = document.getElementById('lbl-geo-link');
-        dsLink.href = profile.url;
-
-        document.getElementById('map-profile-metrics').style.display = 'block';
-        Utils.announce(`Geocoded hierarchy loaded for tract: ${profile.tract}`);
-      },
-
-      zoomMap: (factor) => {
-        State.mapZoom = Math.max(0.5, Math.min(4, State.mapZoom * factor));
-        Sandbox.applyMapTransform();
-      },
-
-      resetMapView: () => {
-        State.mapZoom = 1;
-        State.mapPanX = 0;
-        State.mapPanY = 0;
-        State.mapActiveTract = null;
-        document.getElementById('input-map-location').value = "";
-        document.getElementById('map-target-pin').style.display = 'none';
-        
-        document.querySelectorAll('.map-tract-path').forEach(p => {
-          p.classList.remove('active-tract');
-          p.setAttribute('fill', p.getAttribute('data-original-fill'));
-        });
-        
-        Sandbox.applyMapTransform();
-        document.getElementById('map-profile-placeholder').style.display = 'block';
-        document.getElementById('map-profile-metrics').style.display = 'none';
-      },
-
-      applyMapTransform: () => {
-        const viewport = document.getElementById('map-transform-viewport');
-        viewport.setAttribute('transform', `translate(${State.mapPanX}, ${State.mapPanY}) scale(${State.mapZoom})`);
+    const sourceRows = {
+      en: [
+        ["Government of Canada Digital Standards", "https://www.canada.ca/en/government/system/digital-government/government-canada-digital-standards.html"],
+        ["GC Design System components", "https://design-system.canada.ca/en/components/"],
+        ["Statistics Canada Web Data Service user guide", "https://www.statcan.gc.ca/en/developers/wds/user-guide"],
+        ["Statistics Canada Census Profile", "https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/index.cfm?Lang=E"],
+        ["Statistics Canada concepts", "https://www.statcan.gc.ca/en/concepts/index"]
+      ],
+      fr: [
+        ["Normes numériques du gouvernement du Canada", "https://www.canada.ca/fr/gouvernement/systeme/gouvernement-numerique/normes-numeriques-gouvernement-canada.html"],
+        ["Composants du Système de design GC", "https://design-system.canada.ca/fr/composants/"],
+        ["Guide d’utilisation du Service de données Web de Statistique Canada", "https://www.statcan.gc.ca/fr/developpeurs/sdw/guide"],
+        ["Profil du recensement de Statistique Canada", "https://www12.statcan.gc.ca/census-recensement/2021/dp-pd/prof/index.cfm?Lang=F"],
+        ["Concepts de Statistique Canada", "https://www.statcan.gc.ca/fr/concepts/index"]
+      ]
+    };
+
+    function T(key) {
+      return (t[state.lang] && t[state.lang][key]) || t.en[key] || key;
+    }
+
+    function localeText(record, key) {
+      return record[state.lang][key];
+    }
+
+    function el(tag, options = {}) {
+      const node = document.createElement(tag);
+      if (options.className) node.className = options.className;
+      if (options.id) node.id = options.id;
+      if (options.text !== undefined) node.textContent = options.text;
+      if (options.attrs) {
+        Object.entries(options.attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
       }
-    };
+      return node;
+    }
 
-    const init = () => {
-      // Build initial strings and controls
-      I18n.updateDOM(); 
+    function clear(node) {
+      while (node.firstChild) node.removeChild(node.firstChild);
+    }
 
-      // Chat triggers
-      document.getElementById('form-chat').addEventListener('submit', (e) => {
-        e.preventDefault();
-        Sandbox.handleChatSubmit();
+    function formatNumber(value) {
+      return new Intl.NumberFormat(state.lang === "fr" ? "fr-CA" : "en-CA").format(value);
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat(state.lang === "fr" ? "fr-CA" : "en-CA", {
+        style: "currency",
+        currency: "CAD",
+        maximumFractionDigits: 0
+      }).format(value);
+    }
+
+    function applyLanguage() {
+      document.documentElement.lang = state.lang;
+      document.title = T("docTitle");
+      document.querySelectorAll("[data-i18n]").forEach(node => {
+        node.textContent = T(node.getAttribute("data-i18n"));
       });
+      document.getElementById("prototype-banner-text").innerHTML = T("banner");
+      document.getElementById("language-toggle").textContent = state.lang === "en" ? "Français" : "English";
+      document.getElementById("language-toggle").setAttribute("aria-label", state.lang === "en" ? "Switch to French" : "Passer à l’anglais");
+      document.getElementById("site-search-input").placeholder = state.lang === "en" ? "Search Canada.ca" : "Rechercher dans Canada.ca";
+      document.getElementById("primary-nav").setAttribute("aria-label", state.lang === "en" ? "Primary navigation" : "Navigation principale");
+      document.getElementById("breadcrumb").setAttribute("aria-label", state.lang === "en" ? "Breadcrumb" : "Fil d’Ariane");
+      document.getElementById("footer-nav").setAttribute("aria-label", state.lang === "en" ? "Footer navigation" : "Navigation du pied de page");
+      renderAll();
+    }
 
-      // Dictionary updates
-      document.getElementById('select-dict-topic').addEventListener('change', Sandbox.updateDictTerms);
-      document.getElementById('select-dict-term').addEventListener('change', Sandbox.showDictTerm);
+    function setActiveTab(id, focus = true) {
+      state.activeTab = id;
+      document.querySelectorAll("[role='tab']").forEach(tab => {
+        const selected = tab.dataset.tab === id;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      document.querySelectorAll("[role='tabpanel']").forEach(panel => {
+        panel.hidden = panel.id !== "panel-" + id;
+      });
+      if (focus) document.getElementById("tab-" + id).focus();
+    }
 
-      // Explorer actions
-      document.getElementById('select-explorer-topic').addEventListener('change', Sandbox.updateExplorerDatasets);
-      document.getElementById('select-explorer-dataset').addEventListener('change', Sandbox.renderExplorerMatrix);
-      document.getElementById('btn-generate-daily').addEventListener('click', Sandbox.generateDailyNarrative);
-      document.getElementById('btn-print-summary').addEventListener('click', () => { window.print(); });
+    function handleTabKeys(event) {
+      const tabs = Array.from(document.querySelectorAll("[role='tab']"));
+      const currentIndex = tabs.indexOf(event.currentTarget);
+      let nextIndex = currentIndex;
+      if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+      if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabs.length - 1;
+      if (nextIndex !== currentIndex) {
+        event.preventDefault();
+        setActiveTab(tabs[nextIndex].dataset.tab, true);
+      }
+    }
 
-      // Visualizer actions
-      document.getElementById('select-vis-topic').addEventListener('change', Sandbox.updateVisDatasets);
-      document.getElementById('select-vis-dataset').addEventListener('change', Sandbox.updateVisChartTypes);
-      document.getElementById('select-vis-type').addEventListener('change', Sandbox.renderVisualization);
+    function initTabs() {
+      document.querySelectorAll("[role='tab']").forEach(tab => {
+        tab.addEventListener("click", () => setActiveTab(tab.dataset.tab, true));
+        tab.addEventListener("keydown", handleTabKeys);
+      });
+    }
 
-      // Map profiles and geocoding controls
-      document.getElementById('form-map-lookup').addEventListener('submit', Sandbox.geocodeAddress);
+    function assistantAnswer(question) {
+      const q = question.toLowerCase();
+      if (q.includes("round") || q.includes("arrond")) {
+        return state.lang === "fr"
+          ? "L’arrondissement aléatoire protège la confidentialité dans les petites cellules. Il peut aussi faire en sorte que les sous-totaux ne correspondent pas exactement aux totaux. Il faut donc expliquer la méthode avant de comparer des sommes."
+          : "Random rounding protects confidentiality in small cells. It can also mean that subtotals do not add exactly to totals, so the method should be explained before comparing sums.";
+      }
+      if (q.includes("coefficient") || q.includes("variation") || q.includes("cv")) {
+        return state.lang === "fr"
+          ? "Le coefficient de variation indique la variabilité relative d’une estimation. Plus il est élevé, plus l’estimation doit être interprétée avec prudence."
+          : "The coefficient of variation shows the relative variability of an estimate. The higher it is, the more caution users should apply.";
+      }
+      if (q.includes("suppress") || q.includes("supprim")) {
+        return state.lang === "fr"
+          ? "Une valeur peut être supprimée pour protéger la confidentialité, éviter une mauvaise interprétation ou signaler une qualité insuffisante. Il faut consulter les notes et les métadonnées."
+          : "A value may be suppressed to protect confidentiality, avoid misinterpretation or flag insufficient quality. Users should consult notes and metadata.";
+      }
+      if (q.includes("metadata") || q.includes("métad")) {
+        return state.lang === "fr"
+          ? "Les métadonnées expliquent le concept, la population, la géographie, la période de référence, l’unité et les limites. Elles empêchent les comparaisons incorrectes."
+          : "Metadata explains the concept, population, geography, reference period, unit and limitations. It helps prevent incorrect comparisons.";
+      }
+      if (q.includes("chart") || q.includes("graph") || q.includes("visual") || q.includes("graphique")) {
+        return state.lang === "fr"
+          ? "Un graphique accessible doit avoir un titre clair, un résumé, des étiquettes compréhensibles, une table de données équivalente et ne doit pas dépendre uniquement de la couleur."
+          : "An accessible chart needs a clear title, summary, understandable labels, an equivalent data table and meaning that does not rely on colour alone.";
+      }
+      return state.lang === "fr"
+        ? "Commencez par vérifier le concept, la source, la géographie, la période de référence, l’unité et les notes de qualité. Ensuite seulement, comparez les valeurs."
+        : "Start by checking the concept, source, geography, reference period, unit and quality notes. Compare values only after those checks.";
+    }
 
-      // SVG map polygon interaction
-      document.querySelectorAll('.map-tract-path').forEach(p => {
-        p.addEventListener('click', () => {
-          const tractId = p.getAttribute('data-tract');
-          if (tractId === "--" || !tractId) return; // Prevent clicking uninitialized shapes
-          
-          let match = Object.values(GEODATA_PRESETS).find(g => g.tract === tractId);
-          // If a surrounding tract is clicked that lacks direct metadata, synthesize a simulated environment
-          if (!match) {
-            match = { ...GEODATA_PRESETS.generic, tract: tractId };
-            match.surrounding = [tractId + '.1', tractId + '.2', tractId + '.3', tractId + '.4'];
-          }
-          Sandbox.renderGeoprofile(match);
+    function addChatMessage(kind, text) {
+      const log = document.getElementById("chat-log");
+      const item = el("div", { className: "chat-message " + (kind === "user" ? "user" : "assistant") });
+      const label = el("strong", { text: kind === "user" ? (state.lang === "fr" ? "Vous : " : "You: ") : (state.lang === "fr" ? "Assistant : " : "Assistant: ") });
+      item.append(label, document.createTextNode(text));
+      log.append(item);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderChat() {
+      const log = document.getElementById("chat-log");
+      if (!log.dataset.ready || log.dataset.lang !== state.lang) {
+        clear(log);
+        addChatMessage("assistant", T("assistantHello"));
+        log.dataset.ready = "true";
+        log.dataset.lang = state.lang;
+      }
+
+      const chipRow = document.getElementById("chip-row");
+      clear(chipRow);
+      ["qRounding", "qCv", "qSuppression", "qMetadata"].forEach(key => {
+        const chip = el("button", { className: "chip", text: T(key), attrs: { type: "button" } });
+        chip.addEventListener("click", () => {
+          document.getElementById("chat-input").value = T(key);
+          document.getElementById("chat-form").dispatchEvent(new Event("submit", { cancelable: true }));
         });
-        
-        // Keyboard access focus loops
-        p.setAttribute('tabindex', '0');
-        p.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault();
-            p.dispatchEvent(new Event('click'));
-          }
-        });
+        chipRow.append(chip);
       });
+    }
 
-      // Fully-functional Interactive Drag-and-Pan Event Bindings for SVG Canvas
-      const mapSvg = document.getElementById('svg-vector-map');
-      let isDragging = false;
-      let startX = 0, startY = 0;
+    function initChat() {
+      document.getElementById("chat-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const input = document.getElementById("chat-input");
+        const error = document.getElementById("chat-error");
+        const group = document.getElementById("chat-question-group");
+        const question = input.value.trim();
 
-      const startDrag = (clientX, clientY) => {
-        isDragging = true;
-        mapSvg.classList.replace('cursor-grab', 'cursor-grabbing');
-        startX = clientX - State.mapPanX;
-        startY = clientY - State.mapPanY;
-      };
-
-      const moveDrag = (clientX, clientY) => {
-        if (!isDragging) return;
-        State.mapPanX = clientX - startX;
-        State.mapPanY = clientY - startY;
-        Sandbox.applyMapTransform();
-      };
-
-      const stopDrag = () => {
-        if (isDragging) {
-          isDragging = false;
-          mapSvg.classList.replace('cursor-grabbing', 'cursor-grab');
-        }
-      };
-
-      // Mouse bindings
-      mapSvg.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
-      window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
-      window.addEventListener('mouseup', stopDrag);
-
-      // Touch bindings for premium responsive screens
-      mapSvg.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          startDrag(e.touches[0].clientX, e.touches[0].clientY);
-        }
-      });
-      window.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
-          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-        }
-      });
-      window.addEventListener('touchend', stopDrag);
-
-      // Zoom overlays
-      document.getElementById('btn-map-zoom-in').addEventListener('click', () => Sandbox.zoomMap(1.2));
-      document.getElementById('btn-map-zoom-out').addEventListener('click', () => Sandbox.zoomMap(0.8));
-      document.getElementById('btn-map-zoom-reset').addEventListener('click', Sandbox.resetMapView);
-
-      // Language Switcher
-      document.getElementById('btn-lang-toggle').addEventListener('click', () => {
-        I18n.setLang(I18n.lang === 'en' ? 'fr' : 'en');
-      });
-
-      // WAI-ARIA Accessible Keyboard tab list navigation controls
-      const tabButtons = Array.from(document.querySelectorAll('.sandbox-tab'));
-      const tabList = document.querySelector('[role="tablist"]');
-
-      tabList.addEventListener('keydown', (e) => {
-        let index = tabButtons.indexOf(document.activeElement);
-        if (index === -1) return;
-
-        let nextIndex;
-        if (e.key === 'ArrowRight') {
-          nextIndex = (index + 1) % tabButtons.length;
-        } else if (e.key === 'ArrowLeft') {
-          nextIndex = (index - 1 + tabButtons.length) % tabButtons.length;
-        } else if (e.key === 'Home') {
-          nextIndex = 0;
-        } else if (e.key === 'End') {
-          nextIndex = tabButtons.length - 1;
-        } else {
+        if (!question) {
+          error.textContent = T("chatError");
+          error.hidden = false;
+          input.setAttribute("aria-invalid", "true");
+          group.classList.add("has-error");
+          input.focus();
           return;
         }
 
-        e.preventDefault();
-        tabButtons[nextIndex].focus();
-        tabButtons[nextIndex].click(); // Activate focused tab automatically
+        error.hidden = true;
+        error.textContent = "";
+        input.removeAttribute("aria-invalid");
+        group.classList.remove("has-error");
+
+        addChatMessage("user", question);
+        addChatMessage("assistant", assistantAnswer(question));
+        input.value = "";
+      });
+    }
+
+    function renderDictionarySelectors() {
+      const topic = document.getElementById("dictionary-topic");
+      const term = document.getElementById("dictionary-term");
+      clear(topic);
+      clear(term);
+
+      Object.entries(topics[state.lang]).forEach(([id, label]) => {
+        topic.append(el("option", { text: label, attrs: { value: id } }));
       });
 
-      // Centralized sandbox tab state updates
-      tabButtons.forEach(tabBtn => {
-        tabBtn.addEventListener('click', () => {
-          tabButtons.forEach(b => {
-            b.classList.remove('active');
-            b.setAttribute('aria-selected', 'false');
-            b.setAttribute('tabindex', '-1');
-          });
-          document.querySelectorAll('.sandbox-panel').forEach(p => p.classList.remove('active'));
+      function refreshTerms() {
+        clear(term);
+        dictionary.filter(item => item.topic === topic.value).forEach(item => {
+          term.append(el("option", { text: item[state.lang].term, attrs: { value: item.id } }));
+        });
+        renderDictionaryOutput();
+      }
 
-          tabBtn.classList.add('active');
-          tabBtn.setAttribute('aria-selected', 'true');
-          tabBtn.setAttribute('tabindex', '0');
-          
-          const panelId = tabBtn.getAttribute('aria-controls');
-          document.getElementById(panelId).classList.add('active');
-          Utils.announce(`Sandbox panel loaded: ${tabBtn.querySelector('span').textContent}`);
+      topic.onchange = refreshTerms;
+      term.onchange = renderDictionaryOutput;
+      refreshTerms();
+    }
+
+    function renderDictionaryOutput() {
+      const selected = dictionary.find(item => item.id === document.getElementById("dictionary-term").value) || dictionary[0];
+      const out = document.getElementById("dictionary-output");
+      clear(out);
+      out.append(el("h4", { text: selected[state.lang].term }));
+      out.append(el("p", { text: selected[state.lang].definition }));
+      const caution = el("p");
+      caution.append(el("strong", { text: state.lang === "fr" ? "Mise en garde : " : "Caution: " }), document.createTextNode(selected[state.lang].caution));
+      out.append(caution);
+      const link = el("a", { text: T("source") + " (" + T("openNew") + ")", attrs: { href: selected.source, target: "_blank", rel: "noopener noreferrer" } });
+      out.append(link);
+    }
+
+    function renderDatasetOptions(selectId) {
+      const select = document.getElementById(selectId);
+      clear(select);
+      datasets.forEach(ds => select.append(el("option", { text: ds[state.lang].label, attrs: { value: ds.id } })));
+    }
+
+    function getDataset(id) {
+      return datasets.find(ds => ds.id === id) || datasets[0];
+    }
+
+    function renderFilterOptions() {
+      const filter = document.getElementById("matrix-filter");
+      clear(filter);
+      [
+        ["all", T("all")],
+        ["high", T("high")],
+        ["caution", T("caution")]
+      ].forEach(([value, label]) => filter.append(el("option", { text: label, attrs: { value } })));
+    }
+
+    function qualityText(q) {
+      if (q === "A") return state.lang === "fr" ? "A — confiance élevée" : "A — high confidence";
+      if (q === "B") return state.lang === "fr" ? "B — confiance moyenne" : "B — medium confidence";
+      return state.lang === "fr" ? "C — utiliser avec prudence" : "C — use with caution";
+    }
+
+    function filteredRows(ds, filter) {
+      if (filter === "high") return ds.rows.filter(row => row.employment >= 70 || row.income >= 70 || row.confidence >= 85);
+      if (filter === "caution") return ds.rows.filter(row => row.quality === "C");
+      return ds.rows;
+    }
+
+    function renderMatrix() {
+      renderDatasetOptions("matrix-dataset");
+      renderFilterOptions();
+      drawMatrix();
+      document.getElementById("matrix-dataset").onchange = drawMatrix;
+      document.getElementById("matrix-filter").onchange = drawMatrix;
+    }
+
+    function drawMatrix() {
+      const ds = getDataset(document.getElementById("matrix-dataset").value);
+      const filter = document.getElementById("matrix-filter").value;
+      const rows = filteredRows(ds, filter);
+      const table = document.getElementById("matrix-table");
+      clear(table);
+
+      table.append(el("caption", { text: ds[state.lang].caption }));
+      const thead = el("thead");
+      const head = el("tr");
+      [T("geography"), "Employment / emploi", T("income"), T("confidence"), "Quality / qualité"].forEach(text => {
+        head.append(el("th", { text, attrs: { scope: "col" } }));
+      });
+      thead.append(head);
+      table.append(thead);
+
+      const tbody = el("tbody");
+      rows.forEach(row => {
+        const tr = el("tr");
+        tr.append(el("th", { text: row.geo, attrs: { scope: "row" } }));
+        tr.append(el("td", { text: row.employment + " / 100" }));
+        tr.append(el("td", { text: row.income + " / 100" }));
+        tr.append(el("td", { text: row.confidence + " / 100" }));
+        tr.append(el("td", { text: qualityText(row.quality) }));
+        tbody.append(tr);
+      });
+      table.append(tbody);
+
+      const summary = document.getElementById("matrix-summary");
+      clear(summary);
+      summary.hidden = false;
+      summary.append(el("h4", { text: state.lang === "fr" ? "Résumé analytique" : "Analytical summary" }));
+      summary.append(el("p", { text: ds[state.lang].summary }));
+    }
+
+    function renderVisualizer() {
+      renderDatasetOptions("visual-dataset");
+      const type = document.getElementById("visual-chart-type");
+      clear(type);
+      [["bars", T("chartBars")], ["ranked", T("chartRanked")], ["table", T("dataTable")]].forEach(([value, label]) => {
+        type.append(el("option", { text: label, attrs: { value } }));
+      });
+      drawVisual();
+      document.getElementById("visual-dataset").onchange = drawVisual;
+      document.getElementById("visual-chart-type").onchange = drawVisual;
+    }
+
+    function drawVisual() {
+      const ds = getDataset(document.getElementById("visual-dataset").value);
+      const type = document.getElementById("visual-chart-type").value || "bars";
+      const out = document.getElementById("visual-output");
+      clear(out);
+
+      out.append(el("h4", { text: ds[state.lang].caption }));
+      out.append(el("span", { className: "badge badge-demo", text: T("demoBadge") }));
+
+      const rows = type === "ranked" ? [...ds.rows].sort((a, b) => b.employment - a.employment) : ds.rows;
+      if (type !== "table") {
+        const chart = el("div", { className: "bar-chart", attrs: { "aria-hidden": "true" } });
+        rows.forEach(row => {
+          const item = el("div", { className: "bar-row" });
+          const label = el("span", { text: row.geo });
+          const track = el("div", { className: "bar-track" });
+          const fill = el("div", { className: "bar-fill" });
+          fill.style.width = Math.max(2, Math.min(100, row.employment)) + "%";
+          track.append(fill);
+          item.append(label, track, el("strong", { text: row.employment + "/100" }));
+          chart.append(item);
+        });
+        out.append(chart);
+      }
+
+      out.append(renderDatasetTable(ds, rows));
+      const summary = el("p");
+      summary.append(el("strong", { text: T("visualSummary") + ": " }), document.createTextNode(ds[state.lang].summary));
+      out.append(summary);
+      const link = el("a", { text: T("source") + " (" + T("openNew") + ")", attrs: { href: ds.source, target: "_blank", rel: "noopener noreferrer" } });
+      out.append(link);
+    }
+
+    function renderDatasetTable(ds, rows) {
+      const wrap = el("div", { className: "table-wrap" });
+      const table = el("table");
+      table.append(el("caption", { text: ds[state.lang].caption + " — " + T("dataTable") }));
+      const thead = el("thead");
+      const head = el("tr");
+      [T("geography"), "Employment / emploi", T("income"), T("confidence"), "Quality / qualité"].forEach(text => {
+        head.append(el("th", { text, attrs: { scope: "col" } }));
+      });
+      thead.append(head);
+      table.append(thead);
+      const tbody = el("tbody");
+      rows.forEach(row => {
+        const tr = el("tr");
+        tr.append(el("th", { text: row.geo, attrs: { scope: "row" } }));
+        tr.append(el("td", { text: row.employment + " / 100" }));
+        tr.append(el("td", { text: row.income + " / 100" }));
+        tr.append(el("td", { text: row.confidence + " / 100" }));
+        tr.append(el("td", { text: qualityText(row.quality) }));
+        tbody.append(tr);
+      });
+      table.append(tbody);
+      wrap.append(table);
+      return wrap;
+    }
+
+    function renderMapPresets() {
+      const presets = document.getElementById("map-presets");
+      clear(presets);
+      [
+        ["a", "Metro demo"],
+        ["c", "Rural demo"],
+        ["e", "North demo"]
+      ].forEach(([id, label]) => {
+        const button = el("button", { className: "chip", text: label, attrs: { type: "button" } });
+        button.addEventListener("click", () => selectTract(id));
+        presets.append(button);
+      });
+    }
+
+    function initMap() {
+      document.querySelectorAll(".tract").forEach(shape => {
+        shape.addEventListener("click", () => selectTract(shape.dataset.tract));
+        shape.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            selectTract(shape.dataset.tract);
+          }
         });
       });
+    }
 
-      // Reset application cache trigger
-      document.getElementById('btn-reset-data').addEventListener('click', () => {
-        if (confirm(I18n.lang === 'en' ? 'Are you sure you want to reset all sandbox inputs and configurations?' : 'Êtes-vous sûr de vouloir réinitialiser la configuration du bac à sable ?')) {
-          location.reload();
-        }
+    function selectTract(id) {
+      state.selectedTract = id;
+      document.querySelectorAll(".tract").forEach(shape => {
+        shape.setAttribute("aria-pressed", String(shape.dataset.tract === id));
+        shape.setAttribute("aria-label", (shape.dataset.tract === id ? T("selected") + ": " : "") + T("tract") + " " + shape.dataset.tract.toUpperCase());
       });
-    };
+      renderMapProfile();
+    }
 
-    window.addEventListener('DOMContentLoaded', init);
+    function renderMapProfile() {
+      const data = tracts[state.selectedTract];
+      const out = document.getElementById("map-profile");
+      clear(out);
+      out.append(el("h4", { text: T("tract") + " " + state.selectedTract.toUpperCase() }));
+      const list = el("dl");
+      [
+        [T("region"), data.region],
+        [T("population"), formatNumber(data.population)],
+        [T("income"), formatMoney(data.income)],
+        [T("confidence"), data.confidence + " / 100"],
+        ["Quality / qualité", qualityText(data.quality)]
+      ].forEach(([term, value]) => {
+        list.append(el("dt", { text: term }), el("dd", { text: value }));
+      });
+      out.append(el("span", { className: "badge badge-demo", text: T("demoBadge") }));
+      out.append(list);
+      out.append(el("p", { className: "hint", text: T("keyboardMap") }));
+    }
+
+    function renderMvp() {
+      const body = document.getElementById("mvp-body");
+      clear(body);
+      mvpRows[state.lang].forEach(row => {
+        const tr = el("tr");
+        tr.append(el("th", { text: row[0], attrs: { scope: "row" } }));
+        tr.append(el("td", { text: row[1] }));
+        tr.append(el("td", { text: row[2] }));
+        body.append(tr);
+      });
+    }
+
+    function renderQuality() {
+      const body = document.getElementById("quality-body");
+      clear(body);
+      qualityRows[state.lang].forEach(row => {
+        const tr = el("tr");
+        tr.append(el("th", { text: row[0], attrs: { scope: "row" } }));
+        tr.append(el("td", { text: row[1] }));
+        tr.append(el("td", { text: row[2] }));
+        body.append(tr);
+      });
+    }
+
+    function renderSources() {
+      const list = document.getElementById("source-list");
+      clear(list);
+      sourceRows[state.lang].forEach(([label, href]) => {
+        const li = el("li");
+        li.append(el("a", { text: label + " (" + T("openNew") + ")", attrs: { href, target: "_blank", rel: "noopener noreferrer" } }));
+        list.append(li);
+      });
+    }
+
+    function renderAll() {
+      renderChat();
+      renderDictionarySelectors();
+      renderMatrix();
+      renderVisualizer();
+      renderMapPresets();
+      renderMapProfile();
+      renderMvp();
+      renderQuality();
+      renderSources();
+      selectTract(state.selectedTract);
+    }
+
+    function initLanguageToggle() {
+      document.getElementById("language-toggle").addEventListener("click", () => {
+        state.lang = state.lang === "en" ? "fr" : "en";
+        applyLanguage();
+        document.getElementById("wb-cont").focus();
+      });
+    }
+
+    function init() {
+      initTabs();
+      initChat();
+      initMap();
+      initLanguageToggle();
+      applyLanguage();
+      setActiveTab("chat", false);
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
   </script>
 </body>
 </html>
