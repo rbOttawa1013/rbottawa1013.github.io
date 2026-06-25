@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Reviewed standalone Statistics Canada AI prompting guide prototype with task routing, risk controls, policy obligations, custom checklists, accessible structure and print support." />
+  <title>Statistics Canada AI prompting guide — reviewed prototype</title>
+
+  <!-- GC Design System CSS shortcuts -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/css-shortcuts@1.2.0/dist/gcds-css-shortcuts.min.css" />
+
+  <!-- GC Design System components. For production, pin to the current approved GCDS version used by your publishing environment. -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.1/dist/gcds/gcds.css" />
+  <script type="module" src="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.1/dist/gcds/gcds.esm.js"></script>
+
+  <style>
+    :root {
+      --stc-blue: #26374a;
+      --stc-red: #d3080c;
+      --stc-grey: #f8f8f8;
+      --stc-border: #d9d9d9;
+      --stc-yellow: #f9f4d4;
+      --stc-green: #e8f5e9;
+      --stc-light-blue: #eef7fb;
+      --stc-dark: #111;
+      --stc-focus: #0535d2;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      color: var(--stc-dark);
+      background: #fff;
+      line-height: 1.55;
+    }
+
+    .lead {
+      font-size: 1.12rem;
+      max-width: 68rem;
+    }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .info-box,
+    .warning-box,
+    .success-box,
+    .blue-box {
+      padding: 1rem;
+      margin: 1rem 0 1.5rem 0;
+      border-radius: 0.25rem;
+    }
+
+    .info-box {
+      border-left: 4px solid var(--stc-blue);
+      background: var(--stc-grey);
+    }
+
+    .warning-box {
+      border-left: 4px solid var(--stc-red);
+      background: #fff5f5;
+    }
+
+    .success-box {
+      border-left: 4px solid #278400;
+      background: var(--stc-green);
+    }
+
+    .blue-box {
+      border-left: 4px solid #269abc;
+      background: var(--stc-light-blue);
+    }
+
+    details {
+      border: 1px solid var(--stc-border);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+      background: #fff;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    details[open] summary {
+      margin-bottom: 1rem;
+    }
+
+    summary:focus,
+    button:focus,
+    input:focus,
+    select:focus,
+    textarea:focus,
+    a:focus,
+    [tabindex="-1"]:focus {
+      outline: 3px solid var(--stc-focus);
+      outline-offset: 2px;
+    }
+
+    .wizard-fieldset {
+      border: 1px solid var(--stc-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      background: #fff;
+    }
+
+    .wizard-fieldset legend {
+      padding: 0 0.25rem;
+      font-weight: 700;
+    }
+
+    .checkbox-list,
+    .radio-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.75rem 0 0 0;
+    }
+
+    .checkbox-list li,
+    .radio-list li {
+      margin-bottom: 0.75rem;
+    }
+
+    .checkbox-list label,
+    .radio-list label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .checkbox-list input[type="checkbox"],
+    .radio-list input[type="radio"] {
+      flex: 0 0 auto;
+      margin: 0.45rem 0 0 0;
+      transform: scale(1.1);
+    }
+
+    .text-input-row {
+      margin: 1rem 0;
+    }
+
+    .text-input-row label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .text-input-row input,
+    .text-input-row textarea {
+      width: 100%;
+      max-width: 56rem;
+      border: 2px solid #333;
+      border-radius: 0.25rem;
+      padding: 0.65rem;
+      font: inherit;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.75rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tag-list li {
+      border: 1px solid #b5b5b5;
+      background: #fff;
+      border-radius: 1rem;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.95rem;
+    }
+
+    .tier-badge {
+      display: inline-block;
+      padding: 0.35rem 0.7rem;
+      border-radius: 0.25rem;
+      font-weight: 700;
+      border: 2px solid #111;
+      background: #fff;
+    }
+
+    .tier-1 { background: #e8f5e9; }
+    .tier-2 { background: #eef7fb; }
+    .tier-3 { background: #f9f4d4; }
+    .tier-4 { background: #fff5f5; border-color: var(--stc-red); color: #7a0000; }
+
+    .guide-card,
+    .checklist-box,
+    .todo-box,
+    .prompt-card {
+      border: 1px solid var(--stc-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      background: #fff;
+    }
+
+    .prompt-card pre,
+    pre.prompt-output {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid #999;
+      border-radius: 0.25rem;
+      background: #f8f8f8;
+      padding: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0;
+    }
+
+    th,
+    td {
+      border: 1px solid #999;
+      padding: 0.6rem;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f1f1;
+      font-weight: 700;
+    }
+
+    .screen-only {
+      display: block;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    #wizard-result {
+      margin-top: 1.5rem;
+    }
+
+    .page-meta {
+      border-top: 1px solid #ccc;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      color: #555;
+    }
+
+    .prototype-banner {
+      border: 2px solid #26374a;
+      background: #eef7fb;
+      padding: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -999px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .skip-link:focus {
+      position: static;
+      width: auto;
+      height: auto;
+      display: block;
+      background: #fff;
+      color: #000;
+      padding: 0.75rem;
+      border: 3px solid var(--stc-focus);
+    }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    .native-action-button {
+      border: 2px solid var(--stc-blue);
+      background: var(--stc-blue);
+      color: #fff;
+      border-radius: 0.25rem;
+      padding: 0.65rem 1rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .native-action-button:hover,
+    .native-action-button:focus {
+      background: #1f2d3d;
+    }
+
+    .validation-summary {
+      border-left: 4px solid var(--stc-red);
+      background: #fff5f5;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+
+    gcds-container,
+    gcds-heading,
+    gcds-text,
+    gcds-link {
+      display: block;
+    }
+
+    @media print {
+      gcds-header,
+      gcds-footer,
+      gcds-search,
+      gcds-breadcrumbs,
+      .control-bar,
+      .screen-only,
+      .no-print,
+      .skip-link {
+        display: none !important;
+      }
+
+      .print-only {
+        display: block;
+      }
+
+      body {
+        background: #fff;
+        color: #000;
+      }
+
+      details,
+      .checklist-box,
+      .todo-box,
+      .guide-card,
+      .prompt-card,
+      .info-box,
+      .warning-box,
+      .success-box,
+      .blue-box {
+        border: 1px solid #999;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      a {
+        color: #000;
+        text-decoration: none;
+      }
+
+      gcds-container,
+      gcds-heading,
+      gcds-text,
+      gcds-link,
+      section,
+      nav {
+        display: block;
+      }
+
+      table {
+        break-inside: avoid;
+      }
+    }
+  </style>
+
+  <script>
+    /*
+      Prototype interaction model
+      ---------------------------
+      The wizard maps four inputs to a custom guide:
+      1. task type;
+      2. intended output use;
+      3. risk triggers; and
+      4. policy controls.
+      It then generates a route, risk tier, prompt starter, before/during/after
+      checklist, related guidance links and a print-ready custom plan.
+    */
+    const TASKS = {
+      writing: {
+        title: "Writing, editing and plain language",
+        href: "#task-writing",
+        summary: "Use this path to improve clarity, tone, structure, plain language, accessibility and inclusive wording while preserving meaning.",
+        before: [
+          "Confirm the audience, purpose, tone and approval context.",
+          "Provide the source text and state that factual meaning must be preserved.",
+          "Identify any terms, acronyms, program names or mandatory wording that must not change."
+        ],
+        during: [
+          "Ask the AI to separate edits from substantive changes.",
+          "Require a change log that identifies wording changes, assumptions and unresolved issues.",
+          "Ask for plain-language and accessibility improvements without adding unsupported facts."
+        ],
+        after: [
+          "Compare the revised text against the source for meaning preservation.",
+          "Check acronyms, names, figures, policy references and links.",
+          "Apply official languages, accessibility and communications review if the output is public or employee-facing."
+        ],
+        prompt: "Act as a Statistics Canada plain-language and professional writing editor. Revise the text for the stated audience and purpose. Preserve factual meaning. Do not add unsupported claims. Explain acronyms where appropriate. Improve structure, accessibility, readability and inclusive language. Output: revised text, key changes, and issues requiring human review."
+      },
+      summarize: {
+        title: "Summarization and synthesis",
+        href: "#task-summary",
+        summary: "Use this path to condense source material, identify themes, extract decisions, or prepare issue summaries without adding new facts.",
+        before: [
+          "Define whether the output is a summary, synthesis, decision log, action list or issue map.",
+          "Provide only source material appropriate for the selected AI environment.",
+          "State whether inference is allowed or whether the summary must be source-only."
+        ],
+        during: [
+          "Require the AI to separate source-based facts from interpretation.",
+          "Ask for decisions, action items, owners, dates and unresolved questions when relevant.",
+          "Ask the AI to flag missing evidence, contradictions and unclear source passages."
+        ],
+        after: [
+          "Verify that no unsupported facts were added.",
+          "Check whether sensitive or protected information appears in the summary.",
+          "Record source documents used if the summary supports business decisions."
+        ],
+        prompt: "Act as a careful Government of Canada analyst. Summarize only the source material provided. Do not add external facts. Separate facts, assumptions, inferences, risks, decisions and action items. Flag contradictions, missing context and items requiring human verification."
+      },
+      briefing: {
+        title: "Briefing notes and executive products",
+        href: "#task-briefing",
+        summary: "Use this path for executive summaries, issue notes, briefing notes, decks, speaking points and decision-support products.",
+        before: [
+          "Define the decision-maker, decision required, deadline and intended use.",
+          "Confirm the authority, mandate, policy context and source hierarchy.",
+          "Identify required approvals and whether the output is advice, background or a recommendation."
+        ],
+        during: [
+          "Ask for issue, background, analysis, options, risks, recommendation and next steps.",
+          "Require assumptions, evidence gaps, stakeholder impacts and dissenting considerations.",
+          "Ask for concise executive style with clear decision points."
+        ],
+        after: [
+          "Validate facts, dates, authorities, figures and risk statements.",
+          "Confirm the recommendation is supported by evidence and options were fairly represented.",
+          "Ensure human review before executive or formal use."
+        ],
+        prompt: "Act as a senior Government of Canada briefing analyst. Prepare a concise executive product for the stated decision context. Include issue, context, analysis, options, risks, recommendation, caveats and items requiring human review. Separate evidence from assumptions."
+      },
+      communications: {
+        title: "Professional communications and public content",
+        href: "#task-communications",
+        summary: "Use this path for internal messages, web text, announcements, intranet articles, media lines, social posts and public-facing narratives.",
+        before: [
+          "Define audience, channel, approval process, plain-language level and publication status.",
+          "Identify whether federal identity, official languages, accessibility and disclosure apply.",
+          "Provide approved facts, key messages, spokesperson lines and source links."
+        ],
+        during: [
+          "Ask for neutral, non-partisan, factual and accessible wording.",
+          "Require separation between approved facts, suggested language and risk notes.",
+          "Ask for key messages, public risk flags and approval considerations."
+        ],
+        after: [
+          "Validate all public claims against approved sources.",
+          "Complete communications, OL, accessibility and web checks before release.",
+          "Add AI-use disclosure where required by departmental procedure."
+        ],
+        prompt: "Act as a Government of Canada communications advisor. Draft clear, factual, non-partisan content for the stated audience and channel. Use only approved facts. Include key messages, accessibility considerations, official languages considerations, public-risk flags and approval notes."
+      },
+      policy: {
+        title: "Policy, program and options analysis",
+        href: "#task-policy",
+        summary: "Use this path to analyze policy issues, program design, options, trade-offs, benefits, risks and implementation considerations.",
+        before: [
+          "State the policy question, mandate, authorities, constraints and decision timeline.",
+          "Identify affected groups, implementation partners, service implications and evidence sources.",
+          "Confirm whether GBA Plus, Indigenous considerations, privacy, security or ADM triggers apply."
+        ],
+        during: [
+          "Ask for criteria-based analysis and a transparent options table.",
+          "Require assumptions, evidence gaps, risks, mitigations and implementation dependencies.",
+          "Ask for distributional impacts and stakeholder considerations."
+        ],
+        after: [
+          "Validate policy authorities, evidence and assumptions.",
+          "Confirm affected groups and risk mitigations are not underdeveloped.",
+          "Obtain program, legal, privacy, security, OL and accessibility review where triggered."
+        ],
+        prompt: "Act as a Government of Canada policy and program analyst. Analyze the issue using explicit criteria. Provide context, options, trade-offs, risks, mitigations, implementation considerations, GBA Plus considerations, Indigenous considerations where relevant, and a recommendation for human review."
+      },
+      data: {
+        title: "Data, statistical and evidence analysis",
+        href: "#task-data",
+        summary: "Use this path for data interpretation, indicator explanation, statistical narratives, quality review and evidence mapping.",
+        before: [
+          "Define the dataset, measure, reference period, population, geography and definitions.",
+          "Confirm data classification, confidentiality constraints and disclosure rules.",
+          "Identify quality dimensions, methodology notes, limitations and approved source tables."
+        ],
+        during: [
+          "Ask for findings with definitions, caveats, uncertainty and quality limitations.",
+          "Require no fabrication of estimates, sources or methodological details.",
+          "Ask for clear separation between data observations and interpretation."
+        ],
+        after: [
+          "Verify all figures, percentages, labels and denominators.",
+          "Apply statistical quality, confidentiality, disclosure and publication review if relevant.",
+          "Confirm chart/table accessibility and plain-language interpretation."
+        ],
+        prompt: "Act as a Statistics Canada statistical analyst. Interpret the provided data using the supplied definitions, reference periods and methodology notes. Do not invent figures. Separate observations, interpretation, limitations and caveats. Include data quality considerations and items requiring statistical validation."
+      },
+      risk: {
+        title: "Risk, compliance, privacy and security review",
+        href: "#task-risk",
+        summary: "Use this path to identify issues, exposure, controls, escalation needs and review requirements. AI can support issue-spotting, not final legal or compliance advice.",
+        before: [
+          "Define the object of review and the policy/control areas in scope.",
+          "Remove sensitive data unless using an approved secure environment.",
+          "Identify required reviewers such as privacy, security, legal, HR, finance or IM."
+        ],
+        during: [
+          "Ask for a risk table with likelihood, impact, controls, gaps and mitigations.",
+          "Require the AI to flag uncertainty and avoid giving binding legal, HR, security or financial advice.",
+          "Ask for escalation triggers and evidence needed for review."
+        ],
+        after: [
+          "Route the output to the accountable expert authority.",
+          "Confirm the AI output is issue-spotting only and not a decision record by itself.",
+          "Document final human conclusions separately from AI-generated suggestions."
+        ],
+        prompt: "Act as a Government of Canada risk and compliance issue-spotter. Identify possible risks, affected policy areas, missing evidence, mitigations, escalation triggers and required expert reviews. Do not provide final legal, HR, financial, privacy or security advice."
+      },
+      sop: {
+        title: "SOP, workflow and process design",
+        href: "#task-sop",
+        summary: "Use this path to turn rough processes into repeatable procedures for humans, copilots or semi-automated workflows.",
+        before: [
+          "Define scope, start/end points, actors, systems, inputs, outputs and records.",
+          "Identify decision points, exceptions, approval gates and risks.",
+          "Confirm whether automation, privacy, security, accessibility or audit controls apply."
+        ],
+        during: [
+          "Ask for numbered steps, roles, preconditions, quality checks and escalation paths.",
+          "Require human checkpoints for consequential decisions or sensitive data.",
+          "Ask for a before/during/after operational checklist."
+        ],
+        after: [
+          "Test the SOP against realistic scenarios and exceptions.",
+          "Validate roles, records, controls and escalation points with process owners.",
+          "Store approved versions in the appropriate IM repository."
+        ],
+        prompt: "Act as a Government of Canada SOP engineer and operational control reviewer. Convert the process into a clear, testable SOP with purpose, scope, roles, inputs, outputs, steps, decision points, controls, exceptions, escalation paths, records and audit checks."
+      },
+      technical: {
+        title: "Digital, technical, architecture and code prompts",
+        href: "#task-technical",
+        summary: "Use this path for code explanation, controlled code drafting, architecture notes, technical review and digital-service artifacts.",
+        before: [
+          "Classify code, logs, configuration and system information before prompting.",
+          "Remove secrets, credentials, keys, internal endpoints and protected information.",
+          "Define technology stack, constraints, accessibility, security and test requirements."
+        ],
+        during: [
+          "Ask for secure, maintainable, accessible and testable output.",
+          "Require explanation of assumptions, dependencies, licensing concerns and threat considerations.",
+          "Ask for tests and validation steps."
+        ],
+        after: [
+          "Run tests, linting and security review before operational use.",
+          "Check licences, dependencies, accessibility and deployment implications.",
+          "Do not deploy AI-generated code without normal peer review and change control."
+        ],
+        prompt: "Act as a Government of Canada digital-service and secure-development reviewer. Produce or review the technical artifact with security, privacy, accessibility, maintainability, testing, licensing and operational controls. Do not use or expose secrets."
+      },
+      meeting: {
+        title: "Meetings, consultations and stakeholder engagement",
+        href: "#task-meeting",
+        summary: "Use this path for agendas, facilitation plans, consultation summaries, stakeholder maps and follow-up action lists.",
+        before: [
+          "Define meeting purpose, participants, language needs, accessibility needs and recordkeeping requirements.",
+          "Identify whether Indigenous engagement, GBA Plus, privacy or public consultation controls apply.",
+          "Prepare accessible agenda, materials and participation instructions."
+        ],
+        during: [
+          "Ask for facilitation flow, questions, roles, timing and participation supports.",
+          "Require neutral framing and separation of participant input from analysis.",
+          "Ask for action items, decisions and unresolved questions."
+        ],
+        after: [
+          "Validate summaries with source notes or recordings where appropriate.",
+          "Share accessible follow-up materials in required languages.",
+          "Preserve records according to IM requirements."
+        ],
+        prompt: "Act as a Government of Canada engagement planner. Create an accessible, inclusive and bilingual-ready meeting or consultation plan with purpose, agenda, roles, participation methods, support needs, risks, records and follow-up actions."
+      },
+      ol: {
+        title: "Official languages and bilingual-content support",
+        href: "#task-ol",
+        summary: "Use this path for bilingual drafting support, terminology checks and meaning-equivalence review. It does not replace professional translation where required.",
+        before: [
+          "Define source language, target language, audience and required terminology.",
+          "Identify whether simultaneous availability, equal quality or formal translation review is required.",
+          "Provide approved terminology and bilingual references where available."
+        ],
+        during: [
+          "Ask for meaning equivalence, tone alignment and terminology consistency.",
+          "Require a list of uncertain terms, cultural issues and content needing professional review.",
+          "Avoid relying on AI alone for official or high-risk translation."
+        ],
+        after: [
+          "Route public or formal content for official languages or translation review.",
+          "Check names, program titles, legal wording, statistics and idioms.",
+          "Confirm both versions are accessible and of equal quality."
+        ],
+        prompt: "Act as a bilingual Government of Canada language reviewer. Support meaning-equivalent English/French drafting. Preserve meaning, tone and terminology. Flag uncertain terms and content requiring professional language review."
+      },
+      inclusion: {
+        title: "GBA Plus, inclusion and anti-bias review",
+        href: "#task-inclusion",
+        summary: "Use this path when people, groups, access, impacts, benefits, representation or service outcomes are discussed.",
+        before: [
+          "Identify affected groups, intersectional factors and service impacts.",
+          "Define the decision context and the limits of available evidence.",
+          "Check whether Indigenous, accessibility, official languages or human-rights review is also required."
+        ],
+        during: [
+          "Ask for assumptions, excluded perspectives, potential bias and distributional impacts.",
+          "Require respectful, non-stereotyping and evidence-based language.",
+          "Ask for mitigations and affected-group engagement questions."
+        ],
+        after: [
+          "Validate findings with subject-matter experts and affected perspectives where appropriate.",
+          "Avoid treating AI-generated inclusion analysis as definitive.",
+          "Document unresolved gaps and review requirements."
+        ],
+        prompt: "Act as a Government of Canada GBA Plus and inclusion reviewer. Identify possible differential impacts, bias risks, assumptions, excluded perspectives, accessibility issues, official languages considerations and mitigation options. Use respectful, evidence-based language and flag gaps requiring human review."
+      },
+      indigenous: {
+        title: "Indigenous and distinctions-based considerations",
+        href: "#task-indigenous",
+        summary: "Use this path when content relates to First Nations, Inuit, Métis, Indigenous data, knowledge, programs, communities, rights, lands or engagement.",
+        before: [
+          "Determine whether the content relates to First Nations, Inuit or Métis peoples, data, knowledge, rights, lands or communities.",
+          "Identify engagement obligations, data-governance constraints and source authority.",
+          "Avoid entering sensitive Indigenous data or community-specific information into unapproved tools."
+        ],
+        during: [
+          "Ask for distinctions-based framing and avoidance of pan-Indigenous generalization.",
+          "Require flags for engagement, data sovereignty, consent and source limitations.",
+          "Ask the AI to avoid speaking on behalf of Indigenous peoples or communities."
+        ],
+        after: [
+          "Seek appropriate Indigenous, program and data-governance review.",
+          "Verify terminology, distinctions and community-specific references.",
+          "Document limits, sources and engagement requirements."
+        ],
+        prompt: "Act as a cautious Government of Canada analyst applying distinctions-based Indigenous considerations. Identify whether First Nations, Inuit or Métis-specific review, engagement, data sovereignty, consent or source limitations apply. Do not generalize or speak on behalf of Indigenous peoples or communities."
+      },
+      publication: {
+        title: "StatCan publication and statistical-output support",
+        href: "#task-publication",
+        summary: "Use this path for public statistical narratives, The Daily-style content, tables, charts, methods summaries, release notes and publication-readiness review.",
+        before: [
+          "Confirm release status, source tables, methodology, quality notes, confidentiality and disclosure controls.",
+          "Define the narrative purpose, audience, statistical units, geography and reference period.",
+          "Identify required review by subject matter, methodology, dissemination, communications, OL and accessibility."
+        ],
+        during: [
+          "Ask for plain-language statistical interpretation with caveats and no invented figures.",
+          "Require accessible table/chart wording and clear definitions.",
+          "Ask for validation flags, disclosure risks and publication-readiness gaps."
+        ],
+        after: [
+          "Verify every number, table label, chart description, comparison and reference period.",
+          "Complete confidentiality, disclosure, quality, communications, OL and accessibility checks.",
+          "Apply AI-use disclosure and recordkeeping procedures where required."
+        ],
+        prompt: "Act as a Statistics Canada publication-readiness reviewer. Review or draft statistical content using only approved figures and source notes. Include definitions, reference periods, quality caveats, accessibility notes, disclosure/confidentiality flags, validation checks and publication-readiness issues for human review."
+      }
+    };
+
+    const OUTPUT_USE = {
+      personal: { title: "Personal productivity or rough notes", tier: 1, note: "Use for low-risk drafting, brainstorming and formatting when no sensitive information is included." },
+      team: { title: "Internal team or project use", tier: 2, note: "Use for internal planning and review. Validate key claims and keep a record if the output has business value." },
+      management: { title: "Manager, director or executive review", tier: 3, note: "Use only as draft support. Validate facts, options and risks before management use." },
+      public: { title: "Public, employee-facing, web or communications use", tier: 3, note: "Requires formal review for accuracy, accessibility, official languages, communications and disclosure where applicable." },
+      decision: { title: "Decision support, statistical release or controlled operational use", tier: 3, note: "Requires human accountability, evidence validation, approvals and records. AI output must not be the sole basis for a decision." }
+    };
+
+    const POLICY_CONTROLS = {
+      responsible: { title: "Responsible AI / FASTER controls", href: "#guidance-responsible", before: "Confirm the use case is appropriate for generative AI.", during: "Prompt for fair, accountable, secure, transparent, educated and relevant output.", after: "Review AI-assisted work critically and document disclosure requirements." },
+      privacy: { title: "Privacy, confidentiality and protected information", href: "#guidance-privacy", before: "Classify information and remove personal, protected or confidential content unless using an approved secure process.", during: "Do not ask the model to process client cases or confidential records in public tools.", after: "Confirm no sensitive information is retained in outputs, logs or shared files." },
+      security: { title: "Security and cyber controls", href: "#guidance-security", before: "Remove secrets, credentials, internal endpoints and sensitive configurations.", during: "Ask for secure-by-design recommendations and misuse-resistant handling.", after: "Complete normal security, peer review, testing and change controls." },
+      im: { title: "Information management and records", href: "#guidance-records", before: "Identify whether the prompt, sources, output or review notes have business value.", during: "Track source material, assumptions and decisions made during drafting.", after: "Save final approved outputs and decision records in the appropriate repository." },
+      ol: { title: "Official languages", href: "#guidance-ol", before: "Determine whether bilingual production, equivalent quality or translation review is required.", during: "Ask for terminology consistency and meaning-equivalence flags.", after: "Complete official languages review before public or employee-facing use." },
+      accessibility: { title: "Accessibility and plain language", href: "#guidance-accessibility", before: "Define format, audience needs and accessibility requirements.", during: "Ask for headings, lists, meaningful links, accessible tables and plain language.", after: "Check reading order, structure, contrast, alt text, tables and file format accessibility." },
+      comms: { title: "Communications, public release and federal identity", href: "#guidance-comms", before: "Confirm channel, audience, approvals and federal identity requirements.", during: "Ask for neutral, factual, non-partisan and audience-specific wording.", after: "Complete communications, web, accessibility, OL and disclosure checks before release." },
+      gba: { title: "GBA Plus, inclusion and anti-bias", href: "#guidance-inclusion", before: "Identify affected groups and possible differential impacts.", during: "Ask for bias, exclusion, stereotype and representation checks.", after: "Validate with human expertise and affected perspectives where appropriate." },
+      indigenous: { title: "Indigenous and distinctions-based considerations", href: "#guidance-indigenous", before: "Identify First Nations, Inuit, Métis, data sovereignty, engagement and consent triggers.", during: "Prompt for distinctions-based framing and source limitations.", after: "Seek appropriate Indigenous, program and data-governance review." },
+      science: { title: "Scientific integrity and evidence standards", href: "#guidance-science", before: "Define methods, evidence hierarchy, conflicts, limitations and uncertainty.", during: "Ask for transparent evidence, assumptions and caveats.", after: "Validate claims, methods, uncertainty and source quality before use." },
+      statistical: { title: "Statistical quality, disclosure and publication", href: "#guidance-statistical", before: "Confirm approved sources, definitions, quality notes, confidentiality and disclosure constraints.", during: "Ask for no invented figures and explicit quality caveats.", after: "Complete statistical validation, disclosure/confidentiality and release-readiness checks." },
+      disclosure: { title: "AI-use disclosure and approvals", href: "#guidance-disclosure", before: "Determine whether AI use must be disclosed to a manager, reviewer or the public.", during: "Track substantive AI contributions to the product.", after: "Apply the approved disclosure statement and retain review notes where required." },
+      procurement: { title: "Procurement, vendor, licensing and IP", href: "#guidance-procurement", before: "Check tool approval, terms of use, copyright, licence and vendor constraints.", during: "Ask the model to flag possible third-party, copyright or licence concerns.", after: "Complete procurement, licensing or IP review where triggered." }
+    };
+
+    function expandAll() {
+      document.querySelectorAll("details").forEach((item) => { item.open = true; });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll("details").forEach((item) => { item.open = false; });
+    }
+
+    function printPage() {
+      expandAll();
+      window.print();
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function getCheckedValues(name) {
+      return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map((item) => item.value);
+    }
+
+    function getRadioValue(name) {
+      const checked = document.querySelector('input[name="' + name + '"]:checked');
+      return checked ? checked.value : null;
+    }
+
+    function uniqueList(values) {
+      return Array.from(new Set(values.filter(Boolean)));
+    }
+
+    function getSectionTitle(href) {
+      const heading = document.querySelector(href + " gcds-heading, " + href + " h2, " + href + " h3, " + href + " h4");
+      return heading ? heading.textContent.trim() : href.replace("#", "");
+    }
+
+    function getInputLabel(value) {
+      const input = document.querySelector('input[value="' + value + '"]');
+      const label = input ? input.closest("label") : null;
+      return label ? label.textContent.trim() : value;
+    }
+
+    function setResultStatus(message, type) {
+      const status = document.getElementById("wizard-status");
+      if (!status) return;
+      status.textContent = message || "";
+      status.className = type === "error" ? "validation-summary" : "sr-only";
+    }
+
+    function buildChecklist(items) {
+      return '<ul class="checkbox-list">' + items.map((item) => '<li><label><input type="checkbox"> <span>' + escapeHtml(item) + '</span></label></li>').join('') + '</ul>';
+    }
+
+    function inferControls(taskValue, riskValues) {
+      const controls = ["responsible"];
+      if (["communications", "publication"].includes(taskValue)) controls.push("comms", "accessibility", "ol", "disclosure");
+      if (["writing", "meeting", "sop"].includes(taskValue)) controls.push("accessibility");
+      if (["ol"].includes(taskValue)) controls.push("ol");
+      if (["policy", "inclusion"].includes(taskValue)) controls.push("gba");
+      if (["indigenous"].includes(taskValue)) controls.push("indigenous");
+      if (["data", "publication"].includes(taskValue)) controls.push("statistical", "science");
+      if (["risk"].includes(taskValue)) controls.push("privacy", "security", "im");
+      if (["technical"].includes(taskValue)) controls.push("security", "procurement", "accessibility");
+      if (["briefing", "policy", "summarize"].includes(taskValue)) controls.push("im", "science");
+
+      const riskToControls = {
+        personalInfo: ["privacy"],
+        protectedInfo: ["privacy", "security"],
+        publicFacing: ["comms", "accessibility", "ol", "disclosure"],
+        decisionImpact: ["responsible", "privacy", "im", "disclosure"],
+        legalHrFinance: ["privacy", "security", "im"],
+        codeSystems: ["security", "procurement"],
+        officialLanguages: ["ol"],
+        accessibilityNeed: ["accessibility"],
+        peopleImpact: ["gba", "accessibility", "ol"],
+        indigenousContext: ["indigenous"],
+        scientificStatistical: ["science", "statistical"],
+        publicationRelease: ["statistical", "comms", "accessibility", "ol", "disclosure"],
+        thirdPartyIp: ["procurement"],
+        productionTool: ["security", "privacy", "procurement", "disclosure"]
+      };
+
+      riskValues.forEach((risk) => {
+        (riskToControls[risk] || []).forEach((control) => controls.push(control));
+      });
+      return uniqueList(controls);
+    }
+
+    function inferTier(outputUse, riskValues) {
+      let tier = OUTPUT_USE[outputUse] ? OUTPUT_USE[outputUse].tier : 1;
+      const high = ["publicFacing", "decisionImpact", "legalHrFinance", "scientificStatistical", "publicationRelease", "productionTool"];
+      const stop = ["protectedInfo"];
+
+      if (riskValues.some((value) => high.includes(value))) tier = Math.max(tier, 3);
+      if (riskValues.includes("personalInfo")) tier = Math.max(tier, 3);
+      if (riskValues.some((value) => stop.includes(value))) tier = 4;
+      return tier;
+    }
+
+    function tierLabel(tier) {
+      if (tier === 1) return "Tier 1 — Basic productivity";
+      if (tier === 2) return "Tier 2 — Guarded internal use";
+      if (tier === 3) return "Tier 3 — Controlled expert, public or decision-support use";
+      return "Tier 4 — Restricted / stop / approved secure process only";
+    }
+
+    function tierText(tier) {
+      if (tier === 1) return "Suitable for non-sensitive drafting, editing, formatting and brainstorming. Human review is still required before relying on factual output.";
+      if (tier === 2) return "Suitable for internal analysis and planning where facts, assumptions and caveats are reviewed by a responsible employee.";
+      if (tier === 3) return "Use only as draft support. Requires evidence validation, expert review, accessibility/official languages checks where applicable, approval and records.";
+      return "Do not proceed in a public or unapproved AI tool. Use an approved secure process or escalate to the accountable authority before prompting.";
+    }
+
+    function buildPrompt(task, taskValue, outputUse, controls, purpose) {
+      const objective = purpose ? "\nSpecific objective: " + purpose : "";
+      const controlLine = controls.map((key) => POLICY_CONTROLS[key].title).join("; ");
+      return task.prompt + objective + "\n\nOutput use: " + OUTPUT_USE[outputUse].title + ".\nRequired controls: " + controlLine + ".\nRequired output sections: 1. Draft or analysis; 2. Assumptions; 3. Evidence or source requirements; 4. Risks and limitations; 5. Accessibility and official languages considerations where applicable; 6. Items requiring human review.";
+    }
+
+    function showWizardResult() {
+      const taskValue = getRadioValue("taskType");
+      const outputUse = getRadioValue("outputUse");
+      const riskValues = getCheckedValues("riskTrigger");
+      const manualControls = getCheckedValues("policyControl");
+      const purposeField = document.getElementById("prompt-purpose");
+      const purpose = purposeField ? purposeField.value.trim() : "";
+
+      const result = document.getElementById("wizard-result");
+      const resultContent = document.getElementById("wizard-result-content");
+
+      if (!result || !resultContent) return;
+
+      if (!taskValue || !outputUse) {
+        result.hidden = false;
+        resultContent.innerHTML = '<div class="warning-box" role="alert"><p><strong>Choose a task type and output use first.</strong></p><p>Select one option in question 1 and one option in question 2, then create the custom prompt guide.</p></div>';
+        setResultStatus("Choose a task type and output use first.", "error");
+        result.focus();
+        return;
+      }
+
+      setResultStatus("Custom prompt guide generated.", "success");
+
+      const task = TASKS[taskValue];
+      const tier = inferTier(outputUse, riskValues);
+      const inferredControls = inferControls(taskValue, riskValues);
+      const controls = uniqueList(inferredControls.concat(manualControls));
+      const controlLinks = controls.map((key) => POLICY_CONTROLS[key]);
+
+      const before = uniqueList(task.before.concat(controlLinks.map((item) => item.before)));
+      const during = uniqueList(task.during.concat(controlLinks.map((item) => item.during)));
+      const after = uniqueList(task.after.concat(controlLinks.map((item) => item.after)));
+
+      const guideLinks = uniqueList([task.href].concat(controlLinks.map((item) => item.href)).concat(["#full-checklist", "#worksheet"]));
+      const guideHtml = guideLinks.map((href) => {
+        const linkText = getSectionTitle(href);
+        return '<li><a href="' + href + '">' + escapeHtml(linkText) + '</a></li>';
+      }).join("");
+
+      const controlTags = controls.map((key) => '<li>' + escapeHtml(POLICY_CONTROLS[key].title) + '</li>').join("");
+      const riskTags = riskValues.length ? riskValues.map((value) => {
+        const label = getInputLabel(value);
+        return '<li>' + escapeHtml(label) + '</li>';
+      }).join("") : '<li>No additional risk trigger selected</li>';
+
+      const promptText = buildPrompt(task, taskValue, outputUse, controls, purpose);
+
+      const stopHtml = tier === 4 ? '<div class="warning-box" role="alert"><p><strong>Stop / escalate:</strong> This route indicates restricted or protected handling. Do not put protected, personal, confidential, secret, classified, or sensitive operational information into a public or unapproved AI tool. Use an approved secure process or seek the accountable authority before proceeding.</p></div>' : '';
+
+      result.hidden = false;
+      resultContent.innerHTML = `
+        ${stopHtml}
+        <div class="guide-card">
+          <h4>Custom route</h4>
+          <p><strong>Primary prompt path:</strong> <a href="${task.href}">${escapeHtml(task.title)}</a></p>
+          <p><strong>Output use:</strong> ${escapeHtml(OUTPUT_USE[outputUse].title)}</p>
+          <p><span class="tier-badge tier-${tier}">${escapeHtml(tierLabel(tier))}</span></p>
+          <p>${escapeHtml(tierText(tier))}</p>
+          <p>${escapeHtml(task.summary)}</p>
+          <p><strong>Risk triggers selected:</strong></p>
+          <ul class="tag-list">${riskTags}</ul>
+          <p><strong>Required controls:</strong></p>
+          <ul class="tag-list">${controlTags}</ul>
+        </div>
+
+        <div class="prompt-card">
+          <h4>Prompt starter</h4>
+          <pre id="generated-prompt" class="prompt-output">${escapeHtml(promptText)}</pre>
+          <div class="control-bar screen-only">
+            <button class="native-action-button" type="button" onclick="copyPrompt()">Copy prompt starter</button>
+          </div>
+          <p id="copy-status" class="screen-only" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="checklist-box">
+          <h4>Before prompting</h4>
+          ${buildChecklist(before)}
+        </div>
+
+        <div class="checklist-box">
+          <h4>During prompting</h4>
+          ${buildChecklist(during)}
+        </div>
+
+        <div class="checklist-box">
+          <h4>After AI output</h4>
+          ${buildChecklist(after)}
+        </div>
+
+        <div class="blue-box">
+          <p><strong>Also review these guide sections:</strong></p>
+          <ul>${guideHtml}</ul>
+        </div>
+      `;
+      result.dataset.guideLinks = guideLinks.join(",");
+      result.focus();
+    }
+
+    function resetWizardResult() {
+      const result = document.getElementById("wizard-result");
+      const resultContent = document.getElementById("wizard-result-content");
+      if (!result || !resultContent) return;
+      result.hidden = true;
+      result.dataset.guideLinks = "";
+      resultContent.innerHTML = "";
+      setResultStatus("", "success");
+      const copyStatus = document.getElementById("copy-status");
+      if (copyStatus) copyStatus.textContent = "";
+    }
+
+    function copyPrompt() {
+      const prompt = document.getElementById("generated-prompt");
+      const status = document.getElementById("copy-status");
+      if (!prompt || !status) return;
+      const text = prompt.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          status.textContent = "Prompt starter copied.";
+        }).catch(() => {
+          status.textContent = "Copy failed. Select and copy the prompt manually.";
+        });
+      } else {
+        status.textContent = "Clipboard not available. Select and copy the prompt manually.";
+      }
+    }
+
+    function printWizardResult() {
+      const result = document.getElementById("wizard-result");
+      const resultContent = document.getElementById("wizard-result-content");
+
+      if (!result || !resultContent) {
+        alert("The custom guide result is missing.");
+        return;
+      }
+
+      if (result.hidden || resultContent.innerHTML.trim() === "") {
+        alert("Create your custom prompt guide before printing.");
+        return;
+      }
+
+      const printContent = document.createElement("div");
+
+      const heading = document.createElement("h1");
+      heading.textContent = "Statistics Canada AI prompting guide — custom plan";
+      printContent.appendChild(heading);
+
+      const generatedDate = document.createElement("p");
+      generatedDate.innerHTML = "<strong>Generated:</strong> " + new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+      printContent.appendChild(generatedDate);
+
+      const intro = document.createElement("p");
+      intro.textContent = "This printout includes the selected prompt route, required controls, before/during/after checklist, prompt starter and related guide sections.";
+      printContent.appendChild(intro);
+
+      const note = document.createElement("p");
+      note.textContent = "Use this printout as a planning and review aid. It does not replace official StatCan or Government of Canada policy, approval, security, privacy, statistical, communications, official languages or accessibility review.";
+      printContent.appendChild(note);
+
+      const resultClone = result.cloneNode(true);
+      resultClone.hidden = false;
+      resultClone.removeAttribute("tabindex");
+      resultClone.querySelectorAll("button, .screen-only").forEach((node) => node.remove());
+      printContent.appendChild(resultClone);
+
+      const links = (result.dataset.guideLinks || "").split(",").filter(Boolean);
+      links.forEach((href) => {
+        const targetSection = document.querySelector(href);
+        if (targetSection) {
+          const sectionClone = targetSection.cloneNode(true);
+          sectionClone.querySelectorAll("details").forEach((details) => details.setAttribute("open", "open"));
+          sectionClone.querySelectorAll("button, .screen-only, .control-bar").forEach((node) => node.remove());
+          printContent.appendChild(sectionClone);
+        }
+      });
+
+      const printWindow = window.open("", "_blank", "width=900,height=700");
+      if (!printWindow) {
+        alert("The print window was blocked. Allow pop-ups for this site and try again.");
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Statistics Canada AI prompting guide custom printout</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #000; background: #fff; line-height: 1.5; margin: 1.5rem; }
+            h1 { font-size: 22pt; margin-bottom: 1rem; }
+            h2, h3, h4, gcds-heading { display: block; font-weight: bold; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+            gcds-container, gcds-text, gcds-link, section, div, nav { display: block; }
+            p, gcds-text { margin-top: 0; margin-bottom: 0.75rem; }
+            ul, ol { margin: 0.75rem 0 1rem 1.25rem; }
+            li { margin-bottom: 0.4rem; }
+            a { color: #000; text-decoration: none; }
+            table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+            th, td { border: 1px solid #999; padding: 0.5rem; vertical-align: top; }
+            th { background: #f1f1f1; }
+            .info-box, .warning-box, .success-box, .blue-box, .checklist-box, .todo-box, .guide-card, .prompt-card, details { border: 1px solid #999; padding: 1rem; margin-bottom: 1rem; break-inside: avoid; page-break-inside: avoid; }
+            .checkbox-list { list-style: none; padding-left: 0; margin-left: 0; }
+            .checkbox-list label { display: flex; gap: 0.5rem; align-items: flex-start; }
+            pre { white-space: pre-wrap; word-break: break-word; border: 1px solid #999; background: #f8f8f8; padding: 1rem; }
+            summary { display: none; }
+            .no-print, .screen-only, .control-bar { display: none !important; }
+            @page { margin: 1.5cm; }
+          </style>
+        </head>
+        <body>${printContent.innerHTML}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(function () { printWindow.print(); }, 500);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const selectAllRisk = document.getElementById("select-all-risk");
+      const riskCheckboxes = document.querySelectorAll('input[name="riskTrigger"]');
+      const selectAllControls = document.getElementById("select-all-controls");
+      const controlCheckboxes = document.querySelectorAll('input[name="policyControl"]');
+
+      function setSelectAllState(master, checkboxes) {
+        if (!master || checkboxes.length === 0) return;
+        const checkedCount = Array.from(checkboxes).filter((item) => item.checked).length;
+        master.checked = checkedCount === checkboxes.length;
+        master.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+      }
+
+      if (selectAllRisk) {
+        selectAllRisk.addEventListener("change", function () {
+          riskCheckboxes.forEach((checkbox) => { checkbox.checked = selectAllRisk.checked; });
+          selectAllRisk.indeterminate = false;
+        });
+        riskCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", () => setSelectAllState(selectAllRisk, riskCheckboxes)));
+      }
+
+      if (selectAllControls) {
+        selectAllControls.addEventListener("change", function () {
+          controlCheckboxes.forEach((checkbox) => { checkbox.checked = selectAllControls.checked; });
+          selectAllControls.indeterminate = false;
+        });
+        controlCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", () => setSelectAllState(selectAllControls, controlCheckboxes)));
+      }
+
+      setSelectAllState(selectAllRisk, riskCheckboxes);
+      setSelectAllState(selectAllControls, controlCheckboxes);
+
+      const wizardForm = document.getElementById("prompt-wizard");
+      if (wizardForm) {
+        wizardForm.addEventListener("reset", function () {
+          window.setTimeout(resetWizardResult, 0);
+        });
+      }
+    });
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <gcds-header lang-href="#language-note" skip-to-href="#main-content">
+    <gcds-search slot="search"></gcds-search>
+    <gcds-breadcrumbs slot="breadcrumb">
+      <gcds-breadcrumbs-item href="https://www.canada.ca/en.html">Canada.ca</gcds-breadcrumbs-item>
+      <gcds-breadcrumbs-item href="https://www.statcan.gc.ca/en/start">Statistics Canada</gcds-breadcrumbs-item>
+      <gcds-breadcrumbs-item href="#main-content">AI prompting guide</gcds-breadcrumbs-item>
+    </gcds-breadcrumbs>
+  </gcds-header>
+
+  <gcds-container id="main-content" layout="page" tag="main">
+    <gcds-heading tag="h1">Statistics Canada AI prompting guide</gcds-heading>
+
+    <p class="lead">A standalone prototype for selecting the right AI prompt pattern by task type, risk level, output use and policy obligation. Use it to create a custom prompt route, before/during/after checklist, prompt starter and print-ready planning guide.</p>
+
+    <div class="prototype-banner" role="note" aria-label="Prototype status">
+      <p><strong>Prototype status:</strong> This is a design and planning prototype. It supports responsible prompting practice but does not replace official Statistics Canada, Treasury Board, privacy, security, legal, statistical, communications, official languages, accessibility or information management requirements.</p>
+    </div>
+
+    <section id="purpose">
+      <gcds-heading tag="h2">1. Purpose, scope and limits</gcds-heading>
+      <p>This guide helps employees convert a work objective into a controlled AI prompt path. The core routing model is:</p>
+      <div class="info-box"><p><strong>Task + risk + output use + policy obligations = approved prompt path for human review.</strong></p></div>
+      <p>Never route by task type alone. A summary for personal use, a summary for executive advice and a summary for public release require different controls.</p>
+      <div class="warning-box">
+        <p><strong>Not authorized:</strong> This prototype does not authorize the use of AI for classified, protected, personal, confidential, adjudicative, legal, HR, security, financial, statistical-release or decision-impacting work outside approved tools, approved environments and applicable governance processes.</p>
+      </div>
+    </section>
+
+    <section id="who">
+      <gcds-heading tag="h2">2. Who this guide is for</gcds-heading>
+      <p>This guide is for analysts, managers, executives, communications staff, program officers, data and statistical staff, IT and digital teams, researchers, corporate services, and AI community-of-practice members who need a repeatable way to prompt safely and consistently.</p>
+    </section>
+
+    <nav aria-labelledby="on-this-page">
+      <gcds-heading id="on-this-page" tag="h2">On this page</gcds-heading>
+      <ul class="list-disc">
+        <li><a href="#decision-tree"><strong>Start here:</strong> 3. Create your custom prompt guide</a></li>
+        <li><a href="#routing-model">4. Routing model and risk tiers</a></li>
+        <li><a href="#task-paths">5. Prompt paths by task type</a></li>
+        <li><a href="#guidance">6. Detailed guidance</a></li>
+        <li><a href="#full-checklist">7. Full checklist reference</a></li>
+        <li><a href="#worksheet">8. Print-friendly worksheet</a></li>
+        <li><a href="#references">9. References and implementation notes</a></li>
+      </ul>
+    </nav>
+
+    <section id="decision-tree" class="mt-600">
+      <gcds-heading tag="h2">3. Start here: create your custom prompt guide</gcds-heading>
+      <p>Answer the questions below. The wizard will select a primary prompt path, assign a risk tier, add required policy controls, generate a before/during/after checklist, and create a prompt starter.</p>
+
+      <form id="prompt-wizard" novalidate>
+        <fieldset class="wizard-fieldset">
+          <legend>1. What task are you trying to complete?</legend>
+          <p>Select the best match. If multiple apply, choose the final output type.</p>
+          <ul class="radio-list">
+            <li><label><input type="radio" name="taskType" value="writing"><span>Writing, editing, plain language or inclusive wording</span></label></li>
+            <li><label><input type="radio" name="taskType" value="summarize"><span>Summarization, synthesis, decision log or action list</span></label></li>
+            <li><label><input type="radio" name="taskType" value="briefing"><span>Briefing note, executive product, speaking points or decision-support draft</span></label></li>
+            <li><label><input type="radio" name="taskType" value="communications"><span>Professional communications, web, intranet, public or employee-facing content</span></label></li>
+            <li><label><input type="radio" name="taskType" value="policy"><span>Policy, program, regulatory, options or recommendation analysis</span></label></li>
+            <li><label><input type="radio" name="taskType" value="data"><span>Data, statistical, indicator, methodology or evidence analysis</span></label></li>
+            <li><label><input type="radio" name="taskType" value="risk"><span>Risk, compliance, privacy, security, legal or HR issue-spotting</span></label></li>
+            <li><label><input type="radio" name="taskType" value="sop"><span>SOP, workflow, service design or process improvement</span></label></li>
+            <li><label><input type="radio" name="taskType" value="technical"><span>Digital, technical, architecture, AI workflow or code prompt</span></label></li>
+            <li><label><input type="radio" name="taskType" value="meeting"><span>Meeting, consultation, engagement or stakeholder planning</span></label></li>
+            <li><label><input type="radio" name="taskType" value="ol"><span>Official languages or bilingual-content support</span></label></li>
+            <li><label><input type="radio" name="taskType" value="inclusion"><span>GBA Plus, inclusion, anti-bias or human-rights review</span></label></li>
+            <li><label><input type="radio" name="taskType" value="indigenous"><span>Indigenous, First Nations, Inuit, Métis or distinctions-based considerations</span></label></li>
+            <li><label><input type="radio" name="taskType" value="publication"><span>StatCan publication, release-readiness or statistical-output support</span></label></li>
+          </ul>
+        </fieldset>
+
+        <fieldset class="wizard-fieldset">
+          <legend>2. What will the output be used for?</legend>
+          <ul class="radio-list">
+            <li><label><input type="radio" name="outputUse" value="personal"><span>Personal productivity, rough notes or brainstorming</span></label></li>
+            <li><label><input type="radio" name="outputUse" value="team"><span>Internal team or project use</span></label></li>
+            <li><label><input type="radio" name="outputUse" value="management"><span>Manager, director or executive review</span></label></li>
+            <li><label><input type="radio" name="outputUse" value="public"><span>Public, employee-facing, web or communications use</span></label></li>
+            <li><label><input type="radio" name="outputUse" value="decision"><span>Decision support, statistical release, operational use or record of business value</span></label></li>
+          </ul>
+        </fieldset>
+
+        <fieldset class="wizard-fieldset">
+          <legend>3. What risk triggers apply?</legend>
+          <p>Select all that apply. These answers determine the risk tier and mandatory controls.</p>
+          <ul class="checkbox-list">
+            <li><label><input type="checkbox" id="select-all-risk"><span><strong>Select all risk triggers</strong></span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="personalInfo"><span>Personal information, identifiable people, client information, personnel information or case information may be involved.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="protectedInfo"><span>Protected, confidential, secret, classified, sensitive statistical information, internal-only operational details or data subject to strict controls may be involved.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="publicFacing"><span>The output may be public, employee-facing, published, posted, released or used in communications.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="decisionImpact"><span>The output may influence rights, benefits, services, funding, enforcement, compliance, employment, security or formal decisions.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="legalHrFinance"><span>The subject touches legal, HR, finance, procurement, security, privacy, labour relations or compliance matters.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="codeSystems"><span>The prompt involves code, systems, architecture, logs, configuration, vulnerabilities, credentials or deployment.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="officialLanguages"><span>Official languages, bilingual equivalence, translation, terminology or simultaneous availability may apply.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="accessibilityNeed"><span>Accessibility, plain language, accessible documents, web content, presentations or service instructions may apply.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="peopleImpact"><span>The topic involves people, groups, access to services, equity, inclusion, bias, human rights or differential impacts.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="indigenousContext"><span>The topic involves First Nations, Inuit, Métis, Indigenous data, knowledge, lands, rights, communities or programs.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="scientificStatistical"><span>The output includes statistical, scientific, methodological, research, publication or evidence claims.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="publicationRelease"><span>The output may support a StatCan release, publication, The Daily-style article, chart, table, analytical product or public statistic.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="thirdPartyIp"><span>The task involves third-party material, generated media, code, licensing, vendor terms or intellectual property.</span></label></li>
+            <li><label><input type="checkbox" name="riskTrigger" value="productionTool"><span>The task involves deploying, procuring, integrating or operating an AI tool, model, agent or workflow.</span></label></li>
+          </ul>
+        </fieldset>
+
+        <fieldset class="wizard-fieldset">
+          <legend>4. Add policy controls manually if needed</legend>
+          <p>The wizard infers controls automatically. Select additional controls if they are required by your context.</p>
+          <ul class="checkbox-list">
+            <li><label><input type="checkbox" id="select-all-controls"><span><strong>Select all policy controls</strong></span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="responsible"><span>Responsible AI / FASTER controls</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="privacy"><span>Privacy, confidentiality and protected information</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="security"><span>Security and cyber controls</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="im"><span>Information management and records</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="ol"><span>Official languages</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="accessibility"><span>Accessibility and plain language</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="comms"><span>Communications, public release and federal identity</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="gba"><span>GBA Plus, inclusion and anti-bias</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="indigenous"><span>Indigenous and distinctions-based considerations</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="science"><span>Scientific integrity and evidence standards</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="statistical"><span>Statistical quality, disclosure and publication</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="disclosure"><span>AI-use disclosure and approvals</span></label></li>
+            <li><label><input type="checkbox" name="policyControl" value="procurement"><span>Procurement, vendor, licensing and intellectual property</span></label></li>
+          </ul>
+        </fieldset>
+
+        <div class="text-input-row">
+          <label for="prompt-purpose">Optional: describe the specific objective</label>
+          <textarea id="prompt-purpose" rows="4" maxlength="1200" aria-describedby="prompt-purpose-help" placeholder="Example: Create a plain-language executive summary of an internal AI governance proposal for director-level review. Do not include protected information."></textarea>
+          <p id="prompt-purpose-help">Do not enter personal, protected, confidential, classified, secret or sensitive operational information unless you are using an approved secure environment for that information.</p>
+        </div>
+
+        <div class="control-bar screen-only">
+          <gcds-button type="button" onclick="showWizardResult()">Create my custom prompt guide</gcds-button>
+          <gcds-button type="reset" button-role="secondary" onclick="resetWizardResult()">Clear answers</gcds-button>
+        </div>
+      </form>
+
+      <div id="wizard-result" tabindex="-1" hidden aria-live="polite" role="region" aria-labelledby="wizard-result-heading">
+        <gcds-container alignment="left" size="lg" border padding="300">
+          <gcds-heading id="wizard-result-heading" tag="h3">Your custom prompt guide</gcds-heading>
+          <div id="wizard-result-content"></div>
+          <div class="control-bar screen-only">
+            <gcds-button type="button" button-role="secondary" id="print-wizard-button" onclick="printWizardResult()">Print or save my custom guide</gcds-button>
+          </div>
+          <p class="screen-only mt-200 info-box">Tip: To remove browser date, URL and page numbers, turn off “Headers and footers” in the print dialog before saving as PDF.</p>
+        </gcds-container>
+      </div>
+    </section>
+
+    <section id="routing-model" class="mt-600">
+      <gcds-heading tag="h2">4. Routing model and risk tiers</gcds-heading>
+      <div class="table-scroll">
+        <table>
+          <caption>Prompt routing model</caption>
+          <thead><tr><th scope="col">Step</th><th scope="col">Question</th><th scope="col">Control implication</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>What is the task?</td><td>Selects the primary prompt card and task-specific checklist.</td></tr>
+            <tr><td>2</td><td>What is the output use?</td><td>Determines whether the output is informal, internal, executive, public, operational or decision-support.</td></tr>
+            <tr><td>3</td><td>What risk triggers apply?</td><td>Escalates the risk tier and adds mandatory controls.</td></tr>
+            <tr><td>4</td><td>What policy obligations apply?</td><td>Adds responsible AI, privacy, security, IM, OL, accessibility, GBA Plus, Indigenous, scientific, statistical, disclosure and procurement controls.</td></tr>
+            <tr><td>5</td><td>What must happen after the AI output?</td><td>Defines validation, human review, approval, disclosure and recordkeeping.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <caption>Risk tiers</caption>
+          <thead><tr><th scope="col">Tier</th><th scope="col">Name</th><th scope="col">Use</th><th scope="col">Required control</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Basic productivity</td><td>Non-sensitive drafting, brainstorming and formatting.</td><td>Self-check and human review before reliance.</td></tr>
+            <tr><td>2</td><td>Guarded internal use</td><td>Internal analysis, planning and summaries.</td><td>Validate facts, assumptions, caveats and records.</td></tr>
+            <tr><td>3</td><td>Controlled use</td><td>Executive, public, policy, statistical, legal, HR, finance, security, service or decision-support contexts.</td><td>Expert human review, evidence validation, approvals and applicable policy checks.</td></tr>
+            <tr><td>4</td><td>Restricted / stop</td><td>Protected, confidential, secret, classified, sensitive or unapproved data/tool contexts.</td><td>Do not proceed in public/unapproved tools. Use approved secure process or escalate.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="task-paths" class="mt-600">
+      <gcds-heading tag="h2">5. Prompt paths by task type</gcds-heading>
+      <p>Use these cards when you need more context for the route selected by the wizard.</p>
+
+      <section id="task-writing"><gcds-heading tag="h3">5A. Writing, editing and plain language</gcds-heading><div class="prompt-card"><p>Use for rewriting, improving clarity, simplifying, restructuring, inclusive language, plain language and preserving meaning.</p><pre>Act as a Statistics Canada plain-language editor. Preserve factual meaning. Improve clarity, structure, accessibility and inclusive language. Flag unsupported claims and items requiring human review.</pre></div></section>
+      <section id="task-summary"><gcds-heading tag="h3">5B. Summarization and synthesis</gcds-heading><div class="prompt-card"><p>Use for condensing source material and extracting decisions, themes, risks and actions.</p><pre>Summarize only the provided source material. Do not add external facts. Separate facts, assumptions, inferences, risks, decisions and action items.</pre></div></section>
+      <section id="task-briefing"><gcds-heading tag="h3">5C. Briefing notes and executive products</gcds-heading><div class="prompt-card"><p>Use for executive products, decision context, issue notes, decks and speaking points.</p><pre>Prepare a concise executive product with issue, context, analysis, options, risks, recommendation, caveats and items requiring human review.</pre></div></section>
+      <section id="task-communications"><gcds-heading tag="h3">5D. Communications and public content</gcds-heading><div class="prompt-card"><p>Use for public, web, intranet, social, media, announcement and employee-facing content.</p><pre>Draft clear, factual, non-partisan content using only approved facts. Include key messages, accessibility, official languages, disclosure and approval notes.</pre></div></section>
+      <section id="task-policy"><gcds-heading tag="h3">5E. Policy, program and options analysis</gcds-heading><div class="prompt-card"><p>Use for policy questions, program design, implementation options, criteria and recommendations.</p><pre>Analyze using explicit criteria. Provide options, trade-offs, risks, mitigations, implementation considerations, GBA Plus and Indigenous considerations where relevant.</pre></div></section>
+      <section id="task-data"><gcds-heading tag="h3">5F. Data, statistical and evidence analysis</gcds-heading><div class="prompt-card"><p>Use for interpreting data, explaining indicators, mapping evidence and reviewing statistical quality.</p><pre>Interpret only the provided data and source notes. Do not invent figures. Include definitions, quality limitations, caveats and validation items.</pre></div></section>
+      <section id="task-risk"><gcds-heading tag="h3">5G. Risk, compliance, privacy and security review</gcds-heading><div class="prompt-card"><p>Use for issue-spotting, not final expert advice.</p><pre>Identify possible risks, affected policy areas, missing evidence, mitigations, escalation triggers and required expert reviews. Do not provide final legal, HR, financial, privacy or security advice.</pre></div></section>
+      <section id="task-sop"><gcds-heading tag="h3">5H. SOP, workflow and process design</gcds-heading><div class="prompt-card"><p>Use for repeatable procedures, checklists, RACI and operational controls.</p><pre>Convert the process into a testable SOP with scope, roles, inputs, outputs, steps, decision points, controls, exceptions, escalation paths, records and audit checks.</pre></div></section>
+      <section id="task-technical"><gcds-heading tag="h3">5I. Digital, technical, architecture and code prompts</gcds-heading><div class="prompt-card"><p>Use for technical drafting, code review, architecture notes, AI workflow design and secure-development support.</p><pre>Produce or review the technical artifact with security, privacy, accessibility, maintainability, testing, licensing and operational controls. Do not use or expose secrets.</pre></div></section>
+      <section id="task-meeting"><gcds-heading tag="h3">5J. Meeting, consultation and stakeholder planning</gcds-heading><div class="prompt-card"><p>Use for agendas, facilitation, engagement planning and follow-up actions.</p><pre>Create an accessible, inclusive and bilingual-ready meeting or consultation plan with purpose, agenda, roles, participation methods, support needs, risks, records and follow-up actions.</pre></div></section>
+      <section id="task-ol"><gcds-heading tag="h3">5K. Official languages and bilingual-content support</gcds-heading><div class="prompt-card"><p>Use for bilingual drafting support and meaning-equivalence review. It does not replace professional translation where required.</p><pre>Support meaning-equivalent English/French drafting. Preserve meaning, tone and terminology. Flag uncertain terms and content requiring professional language review.</pre></div></section>
+      <section id="task-inclusion"><gcds-heading tag="h3">5L. GBA Plus, inclusion and anti-bias review</gcds-heading><div class="prompt-card"><p>Use when the topic affects people, groups, access, equity, representation or services.</p><pre>Identify possible differential impacts, bias risks, assumptions, excluded perspectives, accessibility issues, official languages considerations and mitigation options.</pre></div></section>
+      <section id="task-indigenous"><gcds-heading tag="h3">5M. Indigenous and distinctions-based considerations</gcds-heading><div class="prompt-card"><p>Use when content relates to First Nations, Inuit, Métis, Indigenous data, knowledge, communities, lands, rights or programs.</p><pre>Identify whether distinctions-based review, engagement, data sovereignty, consent or source limitations apply. Do not generalize or speak on behalf of Indigenous peoples or communities.</pre></div></section>
+      <section id="task-publication"><gcds-heading tag="h3">5N. StatCan publication and statistical-output support</gcds-heading><div class="prompt-card"><p>Use for statistical narratives, tables, charts, analytical products and release-readiness review.</p><pre>Review or draft statistical content using only approved figures and source notes. Include definitions, reference periods, quality caveats, accessibility notes, disclosure/confidentiality flags and validation checks.</pre></div></section>
+    </section>
+
+    <section id="guidance" class="mt-600">
+      <gcds-heading tag="h2">6. Detailed guidance</gcds-heading>
+      <p>Follow the sections selected by your custom prompt guide, or review all controls when the work is complex, public, statistical, sensitive, operational or high-risk.</p>
+
+      <section id="guidance-responsible"><gcds-heading tag="h3">6.1 Responsible AI and FASTER controls</gcds-heading><details open><summary>What to do</summary><ul><li>Use AI only when relevant to the task and appropriate for the risk.</li><li>Check fairness, accountability, security, transparency, AI literacy and relevance.</li><li>Never treat AI output as authoritative without human validation.</li></ul></details></section>
+      <section id="guidance-privacy"><gcds-heading tag="h3">6.2 Privacy, confidentiality and protected information</gcds-heading><details><summary>What to do</summary><ul><li>Classify source material before prompting.</li><li>Do not input personal, sensitive, protected, confidential, secret or classified information into public or unapproved tools.</li><li>Use data minimization: provide only what is required.</li></ul></details></section>
+      <section id="guidance-security"><gcds-heading tag="h3">6.3 Security and cyber controls</gcds-heading><details><summary>What to do</summary><ul><li>Remove secrets, keys, credentials, internal endpoints and vulnerable configurations.</li><li>Require secure coding, testing, peer review and change control for operational use.</li><li>Escalate cyber-risk issues to the responsible security authority.</li></ul></details></section>
+      <section id="guidance-records"><gcds-heading tag="h3">6.4 Information management and records</gcds-heading><details><summary>What to do</summary><ul><li>Identify whether the prompt, source material, AI output, validation notes or final product have business value.</li><li>Record final human decisions and approvals separately from AI drafts.</li><li>Store approved outputs in the appropriate repository.</li></ul></details></section>
+      <section id="guidance-ol"><gcds-heading tag="h3">6.5 Official languages</gcds-heading><details><summary>What to do</summary><ul><li>Determine whether English and French versions must be available at the same time and of equal quality.</li><li>Use approved terminology and verify program names, legal wording and statistical terminology.</li><li>Route formal or public bilingual products for official languages review.</li></ul></details></section>
+      <section id="guidance-accessibility"><gcds-heading tag="h3">6.6 Accessibility and plain language</gcds-heading><details><summary>What to do</summary><ul><li>Use clear headings, lists, meaningful links, accessible tables and plain language.</li><li>Do not rely on colour, images, sound, charts or screen captures alone to convey meaning.</li><li>Check structure, reading order, contrast, alt text, captions, transcripts and file format accessibility.</li></ul></details></section>
+      <section id="guidance-comms"><gcds-heading tag="h3">6.7 Communications, public release and federal identity</gcds-heading><details><summary>What to do</summary><ul><li>Use approved facts, neutral language and non-partisan tone.</li><li>Check public claims, links, dates, names, numbers and approvals.</li><li>Apply federal identity, web, accessibility, official languages and disclosure requirements.</li></ul></details></section>
+      <section id="guidance-inclusion"><gcds-heading tag="h3">6.8 GBA Plus, inclusion and anti-bias</gcds-heading><details><summary>What to do</summary><ul><li>Identify differential impacts, affected groups, assumptions and excluded perspectives.</li><li>Avoid stereotypes, deficit framing and unsupported generalizations.</li><li>Validate analysis with human expertise and affected perspectives where appropriate.</li></ul></details></section>
+      <section id="guidance-indigenous"><gcds-heading tag="h3">6.9 Indigenous and distinctions-based considerations</gcds-heading><details><summary>What to do</summary><ul><li>Use distinctions-based framing for First Nations, Inuit and Métis contexts.</li><li>Flag Indigenous data sovereignty, consent, source authority and engagement requirements.</li><li>Do not ask AI to speak on behalf of Indigenous peoples or communities.</li></ul></details></section>
+      <section id="guidance-science"><gcds-heading tag="h3">6.10 Scientific integrity and evidence standards</gcds-heading><details><summary>What to do</summary><ul><li>Separate evidence, assumptions, methods, interpretation and uncertainty.</li><li>Use a source hierarchy and disclose limitations.</li><li>Validate claims with subject-matter expertise before relying on them.</li></ul></details></section>
+      <section id="guidance-statistical"><gcds-heading tag="h3">6.11 Statistical quality, disclosure and publication</gcds-heading><details><summary>What to do</summary><ul><li>Use approved data, definitions, reference periods, methodology and quality notes.</li><li>Do not invent numbers, denominators, methods, comparisons or confidentiality statements.</li><li>Complete validation, disclosure/confidentiality, methodology, communications, OL and accessibility checks before release.</li></ul></details></section>
+      <section id="guidance-disclosure"><gcds-heading tag="h3">6.12 AI-use disclosure and approvals</gcds-heading><details><summary>What to do</summary><ul><li>Track whether AI substantively contributed to drafting, analysis, coding, summarization, translation support or publication content.</li><li>Apply departmental disclosure procedure where required.</li><li>Notify the appropriate manager or reviewer when AI use is material to the product.</li></ul></details></section>
+      <section id="guidance-procurement"><gcds-heading tag="h3">6.13 Procurement, vendor, licensing and intellectual property</gcds-heading><details><summary>What to do</summary><ul><li>Check whether the AI tool, model, vendor service or software dependency is approved for the intended use.</li><li>Review terms of use, licensing, copyright and reuse restrictions.</li><li>Do not assume ownership, publication rights or open-source compatibility without review.</li></ul></details></section>
+    </section>
+
+    <section id="full-checklist" class="mt-600">
+      <gcds-heading tag="h2">7. Full checklist reference</gcds-heading>
+      <div class="checklist-box">
+        <gcds-heading tag="h3">Before prompting</gcds-heading>
+        <ul class="checkbox-list">
+          <li><label><input type="checkbox"><span>Define task, audience, purpose, output format and intended use.</span></label></li>
+          <li><label><input type="checkbox"><span>Classify the information and remove anything inappropriate for the tool.</span></label></li>
+          <li><label><input type="checkbox"><span>Identify risk tier, policy obligations and human-review requirements.</span></label></li>
+          <li><label><input type="checkbox"><span>Prepare approved source material and source hierarchy.</span></label></li>
+          <li><label><input type="checkbox"><span>Define accessibility, official languages, inclusion, Indigenous, statistical, disclosure and recordkeeping needs.</span></label></li>
+        </ul>
+      </div>
+      <div class="checklist-box">
+        <gcds-heading tag="h3">During prompting</gcds-heading>
+        <ul class="checkbox-list">
+          <li><label><input type="checkbox"><span>Instruct the AI to separate facts, assumptions, analysis, recommendations, caveats and review items.</span></label></li>
+          <li><label><input type="checkbox"><span>Ask the AI to flag uncertainty, missing evidence, contradictions and potential risk.</span></label></li>
+          <li><label><input type="checkbox"><span>Do not provide personal, protected, confidential, secret, classified or sensitive information in public or unapproved tools.</span></label></li>
+          <li><label><input type="checkbox"><span>Ask for accessible structure, plain language and official languages considerations where relevant.</span></label></li>
+          <li><label><input type="checkbox"><span>Request validation steps and human-review requirements.</span></label></li>
+        </ul>
+      </div>
+      <div class="checklist-box">
+        <gcds-heading tag="h3">After AI output</gcds-heading>
+        <ul class="checkbox-list">
+          <li><label><input type="checkbox"><span>Verify facts, figures, citations, links, definitions, methods, names and dates.</span></label></li>
+          <li><label><input type="checkbox"><span>Confirm the output has not added unsupported claims or changed source meaning.</span></label></li>
+          <li><label><input type="checkbox"><span>Complete required privacy, security, legal, HR, finance, communications, OL, accessibility, GBA Plus, Indigenous, scientific, statistical and publication reviews.</span></label></li>
+          <li><label><input type="checkbox"><span>Apply AI-use disclosure where required.</span></label></li>
+          <li><label><input type="checkbox"><span>Record final human decisions, approvals and retained business records.</span></label></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="worksheet" class="mt-600">
+      <gcds-heading tag="h2">8. Print-friendly prompt worksheet</gcds-heading>
+      <div class="todo-box">
+        <p><strong>Use this worksheet when the wizard is not enough or when the prompt will be reused.</strong></p>
+        <div class="table-scroll">
+          <table>
+            <caption>Prompt worksheet</caption>
+            <thead><tr><th scope="col">Field</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Task</td><td>&nbsp;</td></tr>
+              <tr><td>Audience</td><td>&nbsp;</td></tr>
+              <tr><td>Output use</td><td>&nbsp;</td></tr>
+              <tr><td>Risk tier</td><td>&nbsp;</td></tr>
+              <tr><td>Data classification</td><td>&nbsp;</td></tr>
+              <tr><td>Approved source material</td><td>&nbsp;</td></tr>
+              <tr><td>Required policy controls</td><td>&nbsp;</td></tr>
+              <tr><td>Human reviewer / approver</td><td>&nbsp;</td></tr>
+              <tr><td>Disclosure required?</td><td>&nbsp;</td></tr>
+              <tr><td>Recordkeeping location</td><td>&nbsp;</td></tr>
+              <tr><td>Final prompt</td><td>&nbsp;</td></tr>
+              <tr><td>Validation notes</td><td>&nbsp;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="control-bar screen-only">
+        <gcds-button type="button" button-role="secondary" onclick="printPage()">Print full guide</gcds-button>
+        <gcds-button type="button" button-role="secondary" onclick="expandAll()">Expand all guidance</gcds-button>
+        <gcds-button type="button" button-role="secondary" onclick="collapseAll()">Collapse all guidance</gcds-button>
+      </div>
+    </section>
+
+
+
+    <section id="language-note" class="mt-600">
+      <gcds-heading tag="h2">9. Official languages implementation note</gcds-heading>
+      <div class="warning-box" role="note">
+        <p><strong>Prototype limitation:</strong> this standalone file is an English prototype. A production Statistics Canada or Government of Canada implementation requires an equivalent French version, an active language toggle that preserves user context, terminology review, accessibility review and approval through the appropriate publishing process.</p>
+      </div>
+    </section>
+
+    <section id="references" class="mt-600">
+      <gcds-heading tag="h2">10. References and implementation notes</gcds-heading>
+      <ul>
+        <li><a href="https://design-system.canada.ca/en/start-to-use/develop/html/">GC Design System — Install HTML</a></li>
+        <li><a href="https://design-system.canada.ca/en/components/">GC Design System — Components</a></li>
+        <li><a href="https://www.canada.ca/en/government/system/digital-government/digital-government-innovations/responsible-use-ai/guide-use-generative-ai.html">Guide on the use of generative artificial intelligence</a></li>
+        <li><a href="https://www.canada.ca/en/government/system/digital-government/digital-government-innovations/responsible-use-ai/generative-ai-your-daily-work.html">Generative AI in your daily work</a></li>
+        <li><a href="https://www.statcan.gc.ca/en/trust/use-generative-artificial-intelligence">Statistics Canada’s responsible and transparent use of generative artificial intelligence</a></li>
+      </ul>
+      <div class="info-box">
+        <p><strong>Implementation note:</strong> This HTML file uses GC Design System components and CSS shortcuts through the official CDN pattern. For production use, pin the GCDS version approved by your environment, confirm bilingual implementation, confirm production links, complete content approvals and conduct accessibility testing.</p>
+      </div>
+      <p class="page-meta">Date modified: 2026-06-22 — reviewed build</p>
+    </section>
+  </gcds-container>
+
+  <gcds-footer display="compact"></gcds-footer>
+</body>
+</html>

@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Statistics Canada AI tool chooser for selecting an appropriate AI tool by use case, risk level, data sensitivity, and operational context." />
+  <title>How to choose a Statistics Canada AI tool</title>
+
+  <!--
+    Prototype note:
+    This standalone HTML page follows the GC Design System static HTML pattern.
+    It uses GCDS web components where practical and custom semantic HTML for the
+    large comparison tables and dynamic wizard result.
+  -->
+
+  <!-- GC Design System CSS shortcuts -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/css-shortcuts@1.2.0/dist/gcds-css-shortcuts.min.css" />
+
+  <!-- GC Design System components -->
+  <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.css" />
+  <script type="module" src="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.esm.js"></script>
+
+  <style>
+    :root {
+      --stc-blue: #26374a;
+      --stc-red: #d3080c;
+      --stc-light-blue: #e8f0f8;
+      --stc-light-grey: #f8f8f8;
+      --stc-mid-grey: #d9d9d9;
+      --stc-dark: #111111;
+      --stc-green: #2e8540;
+      --stc-yellow: #f2d40d;
+      --stc-orange: #f58220;
+      --stc-focus: #0535d2;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: #ffffff;
+      color: var(--stc-dark);
+    }
+
+    .prototype-banner {
+      border-left: 0.35rem solid var(--stc-red);
+      background: #fff4f4;
+      padding: 1rem;
+      margin: 1.25rem 0;
+    }
+
+    .info-box,
+    .warning-box,
+    .success-box,
+    .neutral-box {
+      border-left: 0.35rem solid var(--stc-blue);
+      background: var(--stc-light-grey);
+      padding: 1rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .warning-box {
+      border-left-color: var(--stc-red);
+      background: #fff4f4;
+    }
+
+    .success-box {
+      border-left-color: var(--stc-green);
+      background: #f3fbf4;
+    }
+
+    .neutral-box {
+      border-left-color: #6f6f6f;
+    }
+
+    .decision-anchor {
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1rem 0;
+      background: #ffffff;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .tool-card {
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      background: #ffffff;
+    }
+
+    .tool-card h3,
+    .tool-card h4 {
+      margin-top: 0;
+    }
+
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .wizard-fieldset {
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1.5rem 0;
+      background: #ffffff;
+    }
+
+    .wizard-fieldset legend {
+      padding: 0 0.25rem;
+      font-weight: 700;
+    }
+
+    .checkbox-list,
+    .radio-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.75rem 0 0 0;
+    }
+
+    .checkbox-list li,
+    .radio-list li {
+      margin-bottom: 0.75rem;
+    }
+
+    .checkbox-list label,
+    .radio-list label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .checkbox-list input[type="checkbox"],
+    .radio-list input[type="radio"] {
+      flex: 0 0 auto;
+      margin: 0.4rem 0 0 0;
+      transform: scale(1.1);
+    }
+
+    #wizard-result {
+      margin-top: 1.5rem;
+      outline: none;
+    }
+
+    #wizard-result:focus,
+    .focusable-region:focus {
+      outline: 3px solid var(--stc-focus);
+      outline-offset: 3px;
+    }
+
+    .result-panel {
+      border: 2px solid var(--stc-blue);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      background: #ffffff;
+    }
+
+    .recommendation-title {
+      margin-top: 0;
+      color: var(--stc-blue);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding-left: 0;
+      list-style: none;
+      margin: 0.75rem 0;
+    }
+
+    .tag {
+      display: inline-block;
+      border: 1px solid var(--stc-blue);
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+      background: var(--stc-light-blue);
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .risk-tier {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      border: 1px solid currentColor;
+    }
+
+    .risk-tier-low {
+      color: #245b2f;
+      background: #effaf1;
+    }
+
+    .risk-tier-medium {
+      color: #5f4300;
+      background: #fff8d6;
+    }
+
+    .risk-tier-high {
+      color: #7a3b00;
+      background: #fff2e6;
+    }
+
+    .risk-tier-stop {
+      color: #8b0000;
+      background: #fff0f0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem 0;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.35rem;
+      background: #ffffff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    caption {
+      text-align: left;
+      font-weight: 700;
+      padding: 0.75rem;
+      background: var(--stc-light-grey);
+      border-bottom: 1px solid var(--stc-mid-grey);
+    }
+
+    th,
+    td {
+      border: 1px solid var(--stc-mid-grey);
+      padding: 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    thead th {
+      background: var(--stc-blue);
+      color: #ffffff;
+    }
+
+    tbody th {
+      background: #f2f2f2;
+      font-weight: 700;
+    }
+
+    .symbol {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .primary {
+      color: #155724;
+      font-weight: 700;
+    }
+
+    .caution {
+      color: #7a4a00;
+      font-weight: 700;
+    }
+
+    .prohibited {
+      color: #8b0000;
+      font-weight: 700;
+    }
+
+    details {
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+      background: #ffffff;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    summary:focus {
+      outline: 3px solid var(--stc-focus);
+      outline-offset: 2px;
+    }
+
+    pre.prompt-block {
+      white-space: pre-wrap;
+      overflow-x: auto;
+      border: 1px solid var(--stc-mid-grey);
+      border-radius: 0.35rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      line-height: 1.45;
+    }
+
+    .screen-only {
+      display: block;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    @media (max-width: 640px) {
+      table {
+        min-width: 680px;
+      }
+
+      .control-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media print {
+      gcds-header,
+      gcds-footer,
+      gcds-search,
+      gcds-breadcrumbs,
+      .control-bar,
+      .screen-only,
+      .no-print {
+        display: none !important;
+      }
+
+      body {
+        color: #000000;
+        background: #ffffff;
+        font-family: Arial, sans-serif;
+        line-height: 1.45;
+      }
+
+      gcds-container,
+      gcds-heading,
+      gcds-text,
+      gcds-link,
+      gcds-date-modified {
+        display: block;
+      }
+
+      .print-only {
+        display: block;
+      }
+
+      a {
+        color: #000000;
+        text-decoration: none;
+      }
+
+      .table-wrap {
+        overflow: visible;
+        border: 0;
+      }
+
+      table {
+        min-width: 0;
+        font-size: 9pt;
+        page-break-inside: avoid;
+      }
+
+      th,
+      td {
+        border: 1px solid #777777;
+        padding: 0.35rem;
+      }
+
+      thead th,
+      tbody th {
+        background: #eeeeee !important;
+        color: #000000 !important;
+      }
+
+      details,
+      .decision-anchor,
+      .tool-card,
+      .result-panel,
+      .info-box,
+      .warning-box,
+      .success-box,
+      .neutral-box {
+        border: 1px solid #777777;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        background: #ffffff !important;
+      }
+
+      summary {
+        display: block;
+      }
+
+      details[open] {
+        display: block;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <gcds-header lang-href="#ol-note" skip-to-href="#main-content">
+    <gcds-search slot="search"></gcds-search>
+    <gcds-breadcrumbs slot="breadcrumb">
+      <gcds-breadcrumbs-item href="#">AI Hub</gcds-breadcrumbs-item>
+      <gcds-breadcrumbs-item href="#">Responsible AI tools</gcds-breadcrumbs-item>
+    </gcds-breadcrumbs>
+  </gcds-header>
+
+  <gcds-container id="main-content" layout="page" tag="main">
+    <gcds-heading tag="h1">How to choose a Statistics Canada AI tool</gcds-heading>
+
+    <p class="prototype-banner" role="note">
+      <strong>Prototype status:</strong> This page converts the canonical StatCan AI tools decision table into an accessible decision-support page. Confirm tool approvals, data-class permissions, licensing, and production-readiness with the relevant StatCan governance authority before operational use.
+    </p>
+
+    <section id="purpose">
+      <gcds-heading tag="h2">1. Purpose</gcds-heading>
+      <gcds-text>
+        Use this page to select an appropriate AI tool by scenario, data sensitivity, risk level, and intended output. It is designed for internal AI Hub or repository use as a routing aid, not as a substitute for security, privacy, legal, translation, statistical, or release approval.
+      </gcds-text>
+
+      <div class="decision-anchor">
+        <h3>Bottom line</h3>
+        <ul>
+          <li><strong>General work:</strong> use M365 Copilot when available; use Copilot Web Chat only for low-risk, non-sensitive work.</li>
+          <li><strong>Translation:</strong> use GCTranslate for informal internal translation only; do not use it for official or publication-ready outputs.</li>
+          <li><strong>Rapid non-sensitive chatbot:</strong> use Copilot Studio for low-risk, non-Protected B use.</li>
+          <li><strong>Sensitive or Protected B:</strong> use StatCan AI Assistant and, where scalable backend processing is needed, AIEP.</li>
+          <li><strong>Build or scale AI:</strong> use AIEP, with a Coding Assistant for development acceleration where approved.</li>
+        </ul>
+      </div>
+    </section>
+
+    <nav aria-labelledby="on-this-page" class="screen-only">
+      <gcds-heading id="on-this-page" tag="h2">On this page</gcds-heading>
+      <ul>
+        <li><a href="#tool-wizard">Start here: choose a tool</a></li>
+        <li><a href="#master-table">Master decision table</a></li>
+        <li><a href="#access-governance">Access and governance interpretation</a></li>
+        <li><a href="#operational-rules">Decision logic</a></li>
+        <li><a href="#risk-matrix">Risk-based allowance matrix</a></li>
+        <li><a href="#architecture-summary">Architecture summary</a></li>
+        <li><a href="#detailed-guidance">Detailed tool guidance</a></li>
+        <li><a href="#print-worksheet">Print-friendly worksheet</a></li>
+      </ul>
+    </nav>
+
+    <section id="tool-wizard" class="mt-600">
+      <gcds-heading tag="h2">2. Start here: choose a tool</gcds-heading>
+      <gcds-text>
+        Answer the questions below to generate a recommended tool path, prohibited tools, and a before / during / after checklist.
+      </gcds-text>
+
+      <form id="toolChooserForm" novalidate>
+        <div id="error-summary" class="warning-box screen-only" tabindex="-1" hidden>
+          <h3>There is a problem</h3>
+          <ul id="error-list"></ul>
+        </div>
+
+        <fieldset class="wizard-fieldset">
+          <legend>1. What do you need to do?</legend>
+          <p>Select the scenario that best matches the work.</p>
+          <ul class="radio-list">
+            <li><label><input type="radio" name="scenario" value="general" /> <span>General knowledge, brainstorming, summarizing, or low-risk drafting</span></label></li>
+            <li><label><input type="radio" name="scenario" value="m365" /> <span>Work inside Word, Excel, PowerPoint, Outlook, Teams, or other M365 apps</span></label></li>
+            <li><label><input type="radio" name="scenario" value="translation_internal" /> <span>Informal internal translation</span></label></li>
+            <li><label><input type="radio" name="scenario" value="translation_official" /> <span>Official, public, or publication translation</span></label></li>
+            <li><label><input type="radio" name="scenario" value="protected" /> <span>Protected B or sensitive business/statistical work</span></label></li>
+            <li><label><input type="radio" name="scenario" value="chatbot_low" /> <span>Rapid low-code chatbot or agent for low-risk internal use</span></label></li>
+            <li><label><input type="radio" name="scenario" value="chatbot_protected" /> <span>Chatbot, agent, or assistant that will handle Protected B or production context</span></label></li>
+            <li><label><input type="radio" name="scenario" value="custom_ai" /> <span>Custom AI solution, data ingestion, pipelines, model hosting, or scalable backend processing</span></label></li>
+            <li><label><input type="radio" name="scenario" value="coding" /> <span>Software development or coding productivity</span></label></li>
+            <li><label><input type="radio" name="scenario" value="production" /> <span>Production-grade AI deployment or official operational workflow</span></label></li>
+          </ul>
+        </fieldset>
+
+        <fieldset class="wizard-fieldset">
+          <legend>2. What is the highest risk or data class?</legend>
+          <p>Select the most restrictive option that applies.</p>
+          <ul class="radio-list">
+            <li><label><input type="radio" name="risk" value="low" /> <span>Unclassified / low risk / non-sensitive</span></label></li>
+            <li><label><input type="radio" name="risk" value="moderate" /> <span>Internal business information / moderate sensitivity</span></label></li>
+            <li><label><input type="radio" name="risk" value="protectedb" /> <span>Protected B, confidential, sensitive statistical, or controlled data</span></label></li>
+            <li><label><input type="radio" name="risk" value="official" /> <span>Production, public, official, legal, statistical-release, or publication output</span></label></li>
+          </ul>
+        </fieldset>
+
+        <fieldset class="wizard-fieldset">
+          <legend>3. What else applies?</legend>
+          <p>Select all controls that apply.</p>
+          <ul class="checkbox-list">
+            <li><label><input type="checkbox" id="select-all-controls" /> <span><strong>Select all controls</strong></span></label></li>
+            <li><label><input type="checkbox" name="controls" value="sensitive" /> <span>The work includes personal, confidential, sensitive, Protected B, or statistical information.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="official" /> <span>The output may be public, official, publication-ready, or used in a formal decision process.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="translation" /> <span>Translation, bilingual content, or official languages obligations apply.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="chatbot" /> <span>The output is a chatbot, agent, assistant, or reusable workflow.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="production" /> <span>The solution will be deployed, integrated, automated, or reused by others.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="code" /> <span>The work involves code, APIs, credentials, pipelines, architecture, or system integration.</span></label></li>
+            <li><label><input type="checkbox" name="controls" value="statistical" /> <span>The work affects statistics, methodology, models, indicators, data quality, or statistical interpretation.</span></label></li>
+          </ul>
+        </fieldset>
+
+        <div class="control-bar screen-only">
+          <gcds-button type="button" onclick="generateRecommendation()">Show recommended tool path</gcds-button>
+          <gcds-button type="reset" button-role="secondary" onclick="resetRecommendation()">Clear answers</gcds-button>
+        </div>
+      </form>
+
+      <div id="wizard-status" class="visually-hidden" aria-live="polite"></div>
+
+      <div id="wizard-result" class="focusable-region" tabindex="-1" hidden aria-labelledby="wizard-result-heading" role="region">
+        <div class="result-panel">
+          <h3 id="wizard-result-heading" class="recommendation-title">Your AI tool recommendation</h3>
+          <div id="wizard-result-content"></div>
+          <div class="control-bar screen-only">
+            <gcds-button type="button" button-role="secondary" onclick="printRecommendation()">Print or save this recommendation</gcds-button>
+          </div>
+          <p class="info-box screen-only">Tip: To save as PDF, choose <strong>Print</strong>, then select <strong>Save as PDF</strong>. Turn off browser headers and footers if your local browser allows it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="master-table" class="mt-600">
+      <gcds-heading tag="h2">3. Master decision table</gcds-heading>
+      <gcds-text>
+        This table provides the canonical usage-by-scenario view. Symbols are repeated with text so the table does not rely on colour alone.
+      </gcds-text>
+
+      <div class="table-wrap" role="region" aria-labelledby="master-table-caption" tabindex="0">
+        <table>
+          <caption id="master-table-caption">Master decision table: StatCan AI tool usage by scenario</caption>
+          <thead>
+            <tr>
+              <th scope="col">Use case / scenario</th>
+              <th scope="col">Copilot Web Chat</th>
+              <th scope="col">M365 Copilot Enterprise</th>
+              <th scope="col">GCTranslate</th>
+              <th scope="col">Copilot Studio (Non-Pro B)</th>
+              <th scope="col">StatCan AI Assistant (Pro B)</th>
+              <th scope="col">AI Platform (AIEP)</th>
+              <th scope="col">Coding Assistant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">General knowledge / brainstorming (low-risk)</th><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — preferred</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td></tr>
+            <tr><th scope="row">Draft emails / documents (internal)</th><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td></tr>
+            <tr><th scope="row">Work in M365 apps (Word, Excel, PowerPoint, Outlook)</th><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Indirect only</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td></tr>
+            <tr><th scope="row">Translation (informal internal)</th><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Possible support</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td></tr>
+            <tr><th scope="row">Translation (official / publication)</th><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited — not for official outputs</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td></tr>
+            <tr><th scope="row">Protected B data processing</th><td><span class="prohibited">Prohibited</span></td><td><span class="caution">Controlled only if approved</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Sensitive statistical workflows</th><td><span class="prohibited">Prohibited</span></td><td><span class="caution">Caution / verify</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — secondary / backend</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Enterprise chatbot (low-risk internal)</th><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Possible support</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — managed alternative</span></td><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Enterprise chatbot (Protected B)</th><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited unless explicitly approved</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — backend</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Rapid agent / chatbot creation (low-code)</th><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Possible support</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — governed</span></td><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Custom AI solution development (full-stack)</th><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Limited</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed — primary</span></td></tr>
+            <tr><th scope="row">Data ingestion / pipelines / model hosting</th><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Software development / coding productivity</th><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Possible support</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="caution">Possible support</span></td><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed — primary</span></td></tr>
+            <tr><th scope="row">Experimentation / prototyping (low-risk)</th><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed</span></td><td><span class="prohibited">Not applicable</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed</span></td><td><span class="primary">Allowed</span></td></tr>
+            <tr><th scope="row">Production-grade AI deployment</th><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited unless governed workflow</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="prohibited">Prohibited</span></td><td><span class="primary">Allowed — interface layer</span></td><td><span class="primary">Allowed — primary</span></td><td><span class="primary">Allowed</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="info-box"><strong>Interpretation note:</strong> “Allowed” does not mean “approved for every data class or use.” Always apply the highest applicable data classification, tool configuration, release status, and governance requirement.</p>
+    </section>
+
+    <section id="access-governance" class="mt-600">
+      <gcds-heading tag="h2">4. Access and governance interpretation</gcds-heading>
+      <div class="table-wrap" role="region" aria-labelledby="access-table-caption" tabindex="0">
+        <table>
+          <caption id="access-table-caption">Access model and ecosystem role by AI tool</caption>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Access model</th>
+              <th scope="col">Role in ecosystem</th>
+              <th scope="col">Critical constraint</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Copilot Web Chat</th><td>Open URL</td><td>General-purpose AI</td><td>No sensitive, protected, confidential, or controlled data.</td></tr>
+            <tr><th scope="row">M365 Copilot Enterprise</th><td>Licensed</td><td>Productivity layer embedded in M365</td><td>Limited rollout / governance; confirm data-class permissions and configuration.</td></tr>
+            <tr><th scope="row">GCTranslate</th><td>Open controlled utility</td><td>Translation utility</td><td>Not for sensitive, official, public-release, or publication-ready outputs.</td></tr>
+            <tr><th scope="row">Copilot Studio</th><td>Licensed / low-code</td><td>Agent builder for non-Protected B use</td><td>Cannot process Protected B data.</td></tr>
+            <tr><th scope="row">StatCan AI Assistant</th><td>Enterprise / broad access</td><td>Primary governed AI portal and enterprise AI front door</td><td>Use for governed interaction with AI services where approved for the relevant data class.</td></tr>
+            <tr><th scope="row">AI Platform (AIEP)</th><td>Onboarding required</td><td>AI infrastructure, hosting, orchestration, APIs, storage, scaling</td><td>Requires technical setup, architecture, data, security, and operational governance.</td></tr>
+            <tr><th scope="row">Coding Assistant</th><td>Licensed</td><td>Developer productivity</td><td>IDE / development-focused; no secrets or unapproved data in prompts.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="operational-rules" class="mt-600">
+      <gcds-heading tag="h2">5. Decision logic</gcds-heading>
+      <div class="cards-grid">
+        <article class="tool-card">
+          <h3>General productivity</h3>
+          <p><strong>Use:</strong> M365 Copilot when available.</p>
+          <p><strong>Fallback:</strong> Copilot Web Chat for low-risk, non-sensitive work only.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Translation</h3>
+          <p><strong>Use:</strong> GCTranslate for informal internal translation.</p>
+          <p><strong>Do not use:</strong> GCTranslate for official, public, publication-ready, or sensitive outputs.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Sensitive / Protected B</h3>
+          <p><strong>Use:</strong> StatCan AI Assistant as the primary interface.</p>
+          <p><strong>Use AIEP:</strong> backend, scalable, governed, or technical processing.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Low-risk chatbot</h3>
+          <p><strong>Use:</strong> Copilot Studio for quick, low-code, non-Protected B agents.</p>
+          <p><strong>Do not use:</strong> Copilot Studio for Protected B or production-sensitive workflows.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Protected B chatbot</h3>
+          <p><strong>Use:</strong> StatCan AI Assistant as the front door.</p>
+          <p><strong>Use:</strong> AIEP as backend. Do not use Copilot Studio.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Build / scale AI</h3>
+          <p><strong>Use:</strong> AIEP for hosting, orchestration, APIs, pipelines, storage, and model operations.</p>
+          <p><strong>Use:</strong> Coding Assistant for development acceleration where approved.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="risk-matrix" class="mt-600">
+      <gcds-heading tag="h2">6. Risk-based allowance matrix</gcds-heading>
+      <div class="table-wrap" role="region" aria-labelledby="risk-matrix-caption" tabindex="0">
+        <table>
+          <caption id="risk-matrix-caption">Allowed and prohibited tools by risk level</caption>
+          <thead>
+            <tr><th scope="col">Risk level</th><th scope="col">Allowed tools</th><th scope="col">Prohibited or restricted tools</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Unclassified / low risk</th><td>All tools, including Copilot Studio, subject to licensing and purpose.</td><td>None by default; still avoid sensitive content.</td></tr>
+            <tr><th scope="row">Internal business / moderate</th><td>M365 Copilot, Copilot Studio, StatCan AI Assistant.</td><td>Copilot Web Chat if the content is sensitive or controlled.</td></tr>
+            <tr><th scope="row">Protected B</th><td>StatCan AI Assistant, AIEP, and other explicitly approved controlled environments.</td><td>Copilot Web Chat, GCTranslate, Copilot Studio. M365 Copilot only if departmental configuration and approval confirm suitability.</td></tr>
+            <tr><th scope="row">Production / official outputs</th><td>AIEP and governed workflows; StatCan AI Assistant may serve as an approved interface layer where applicable.</td><td>GCTranslate, Copilot Studio, Copilot Web Chat, and any unguided AI workflow for final release.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="architecture-summary" class="mt-600">
+      <gcds-heading tag="h2">7. Architecture summary</gcds-heading>
+      <div class="cards-grid">
+        <article class="tool-card">
+          <h3>StatCan AI Assistant</h3>
+          <p><strong>Enterprise AI front door.</strong> Controlled interface for governed AI services and sensitive use cases where approved.</p>
+        </article>
+        <article class="tool-card">
+          <h3>AI Platform (AIEP)</h3>
+          <p><strong>Core engine.</strong> Hosting, orchestration, APIs, data processing, model operations, and scalable AI solution development.</p>
+        </article>
+        <article class="tool-card">
+          <h3>Copilot Studio</h3>
+          <p><strong>Rapid low-code builder.</strong> Fast prototyping and internal low-risk agents; not for Protected B.</p>
+        </article>
+        <article class="tool-card">
+          <h3>M365 Copilot</h3>
+          <p><strong>Productivity layer.</strong> Embedded assistance in Word, Excel, PowerPoint, Outlook, Teams, and related daily workflows.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="detailed-guidance" class="mt-600">
+      <gcds-heading tag="h2">8. Detailed tool guidance</gcds-heading>
+
+      <details id="guide-nonsensitive">
+        <summary>Low-risk and non-sensitive work</summary>
+        <p>Use Copilot Web Chat, M365 Copilot, StatCan AI Assistant, or low-risk prototyping tools only when the content does not include sensitive, protected, confidential, personal, or controlled information.</p>
+        <ul>
+          <li>Use generic context and remove identifiers.</li>
+          <li>Do not paste internal records unless the tool is approved for that data class.</li>
+          <li>Validate all factual claims before reuse.</li>
+        </ul>
+      </details>
+
+      <details id="guide-m365">
+        <summary>M365 productivity work</summary>
+        <p>Use M365 Copilot for work embedded in Word, Excel, PowerPoint, Outlook, Teams, and other Microsoft 365 workflows where licensing and governance permit.</p>
+        <ul>
+          <li>Confirm whether the file or mailbox content is appropriate for the tool configuration.</li>
+          <li>Do not assume all M365 content is automatically suitable for AI processing.</li>
+          <li>Review generated summaries, formulas, slides, or messages before sharing.</li>
+        </ul>
+      </details>
+
+      <details id="guide-translation">
+        <summary>Translation and official languages</summary>
+        <p>Use GCTranslate only for informal internal translation where the content is not sensitive and not intended as an official or publication-ready output.</p>
+        <ul>
+          <li>For official translation, use the approved official languages and translation process.</li>
+          <li>Check terminology, meaning equivalence, tone, and legal or statistical wording.</li>
+          <li>Do not use AI translation for sensitive, protected, or public-release content unless specifically approved.</li>
+        </ul>
+      </details>
+
+      <details id="guide-protected">
+        <summary>Protected B and sensitive statistical work</summary>
+        <p>Use StatCan AI Assistant as the primary governed interface where the data class and use case are approved. Use AIEP for backend, scalable, model, or pipeline processing.</p>
+        <ul>
+          <li>Do not use Copilot Web Chat, GCTranslate, or Copilot Studio for Protected B data.</li>
+          <li>Confirm the data class, retention, access control, and logging requirements.</li>
+          <li>Apply statistical confidentiality, disclosure control, and quality validation where relevant.</li>
+        </ul>
+      </details>
+
+      <details id="guide-chatbot">
+        <summary>Chatbots, agents, and reusable workflows</summary>
+        <p>Use Copilot Studio for rapid low-code agents only when the context is low-risk and non-Protected B. Use StatCan AI Assistant and AIEP for governed, sensitive, Protected B, or production contexts.</p>
+        <ul>
+          <li>Define intended users, data sources, guardrails, escalation, and ownership.</li>
+          <li>Test for hallucination, privacy leakage, prompt injection, accessibility, and bilingual behaviour.</li>
+          <li>Assign monitoring, support, and change-management responsibilities before launch.</li>
+        </ul>
+      </details>
+
+      <details id="guide-development">
+        <summary>Custom AI, pipelines, model hosting, and coding</summary>
+        <p>Use AIEP for full-stack AI solution development, hosting, orchestration, data ingestion, APIs, storage, and model operations. Use a Coding Assistant for developer productivity where approved.</p>
+        <ul>
+          <li>Never paste credentials, secrets, tokens, keys, or unapproved data into coding tools.</li>
+          <li>Review generated code for security, accessibility, maintainability, licensing, and correctness.</li>
+          <li>Use proper source control, testing, architecture review, and operational readiness checks.</li>
+        </ul>
+      </details>
+
+      <details id="guide-production">
+        <summary>Production and official outputs</summary>
+        <p>Production-grade AI deployment requires governed workflows. AIEP is the primary platform for production-grade AI infrastructure, while StatCan AI Assistant may serve as an approved interface layer.</p>
+        <ul>
+          <li>Do not treat AI-generated output as final without validation and approval.</li>
+          <li>Apply accessibility, official languages, privacy, security, communications, statistical quality, and records requirements.</li>
+          <li>Document the tool, model, data sources, prompts, assumptions, validation results, and approval path.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section id="print-worksheet" class="mt-600">
+      <gcds-heading tag="h2">9. Print-friendly worksheet</gcds-heading>
+      <p>Use this worksheet to record a tool decision when the wizard is not used.</p>
+      <div class="table-wrap" role="region" aria-labelledby="worksheet-caption" tabindex="0">
+        <table>
+          <caption id="worksheet-caption">AI tool choice worksheet</caption>
+          <tbody>
+            <tr><th scope="row">Use case</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Highest data class / risk level</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Recommended tool</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Tools ruled out</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Required controls</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Approval or governance check required</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Decision owner</th><td>&nbsp;</td></tr>
+            <tr><th scope="row">Date</th><td>&nbsp;</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="control-bar screen-only">
+        <gcds-button type="button" button-role="secondary" onclick="printFullPage()">Print or save full page</gcds-button>
+      </div>
+    </section>
+
+    <section id="ol-note" class="mt-600">
+      <gcds-heading tag="h2">10. Official languages implementation note</gcds-heading>
+      <p>This prototype is English only. A production AI Hub implementation should include a French equivalent page, language toggle, bilingual terminology review, and simultaneous availability where required.</p>
+    </section>
+
+    <gcds-date-modified>2026-06-23</gcds-date-modified>
+  </gcds-container>
+
+  <gcds-footer display="compact"></gcds-footer>
+
+  <script>
+    "use strict";
+
+    /*
+      Tool chooser data model.
+      primary: main recommended tool path.
+      secondary: acceptable alternatives or supporting tools.
+      prohibited: tools that should not be used for the selected route.
+      guidance: IDs of detailed guidance sections to include in the custom printout.
+    */
+    const scenarioMap = {
+      general: {
+        label: "General knowledge, brainstorming, summarizing, or low-risk drafting",
+        primary: ["M365 Copilot Enterprise"],
+        secondary: ["Copilot Web Chat", "StatCan AI Assistant"],
+        prohibited: ["GCTranslate for non-translation work", "Copilot Studio unless building an agent", "AIEP unless building a technical solution"],
+        rationale: "The task is productivity-oriented and low risk. M365 Copilot is preferred when work occurs in the enterprise productivity environment; Copilot Web Chat is a fallback only for non-sensitive content.",
+        guidance: ["guide-nonsensitive", "guide-m365"]
+      },
+      m365: {
+        label: "Work inside M365 apps",
+        primary: ["M365 Copilot Enterprise"],
+        secondary: ["StatCan AI Assistant for indirect support"],
+        prohibited: ["Copilot Web Chat for M365 file content if sensitive", "GCTranslate", "Copilot Studio", "AIEP unless a platform solution is required"],
+        rationale: "The task is embedded in Word, Excel, PowerPoint, Outlook, Teams, or related M365 workflows.",
+        guidance: ["guide-m365", "guide-nonsensitive"]
+      },
+      translation_internal: {
+        label: "Informal internal translation",
+        primary: ["GCTranslate"],
+        secondary: ["StatCan AI Assistant for low-risk drafting support if approved"],
+        prohibited: ["Copilot Web Chat for sensitive content", "GCTranslate for official or publication-ready translation"],
+        rationale: "GCTranslate is positioned as the translation utility for informal internal translation, not as the official publication translation path.",
+        guidance: ["guide-translation", "guide-nonsensitive"]
+      },
+      translation_official: {
+        label: "Official, public, or publication translation",
+        primary: ["Approved official translation process"],
+        secondary: ["Human translation and official languages review"],
+        prohibited: ["Copilot Web Chat", "M365 Copilot", "GCTranslate", "Copilot Studio", "StatCan AI Assistant", "AIEP", "Coding Assistant for final translation"],
+        rationale: "Official or publication translation requires the approved official languages and translation process. The listed AI tools are not the final authority for official translation.",
+        guidance: ["guide-translation", "guide-production"]
+      },
+      protected: {
+        label: "Protected B or sensitive business/statistical work",
+        primary: ["StatCan AI Assistant"],
+        secondary: ["AIEP for backend or scalable processing", "Coding Assistant for approved development support"],
+        prohibited: ["Copilot Web Chat", "GCTranslate", "Copilot Studio"],
+        rationale: "Sensitive or Protected B work must use a governed, approved environment. StatCan AI Assistant is the primary interface; AIEP supports backend and technical processing.",
+        guidance: ["guide-protected", "guide-production", "guide-development"]
+      },
+      chatbot_low: {
+        label: "Rapid low-code chatbot or agent for low-risk internal use",
+        primary: ["Copilot Studio"],
+        secondary: ["StatCan AI Assistant as managed alternative", "AIEP if backend services are needed", "Coding Assistant for development support"],
+        prohibited: ["Copilot Studio for Protected B", "Copilot Web Chat as chatbot platform"],
+        rationale: "Copilot Studio is suitable for rapid low-code, non-Protected B agents and prototypes.",
+        guidance: ["guide-chatbot", "guide-nonsensitive"]
+      },
+      chatbot_protected: {
+        label: "Chatbot, agent, or assistant with Protected B or production context",
+        primary: ["StatCan AI Assistant"],
+        secondary: ["AIEP backend", "Coding Assistant for approved development support"],
+        prohibited: ["Copilot Web Chat", "GCTranslate", "Copilot Studio", "Ungoverned M365 Copilot workflow"],
+        rationale: "Protected B or production agents require a governed front door and backend. Copilot Studio is not appropriate for Protected B.",
+        guidance: ["guide-chatbot", "guide-protected", "guide-production", "guide-development"]
+      },
+      custom_ai: {
+        label: "Custom AI solution, data ingestion, pipelines, model hosting, or scalable backend processing",
+        primary: ["AI Platform (AIEP)"],
+        secondary: ["Coding Assistant", "StatCan AI Assistant as interface layer where appropriate"],
+        prohibited: ["Copilot Web Chat", "GCTranslate", "M365 Copilot as platform", "Copilot Studio for full-stack production solutions"],
+        rationale: "AIEP is the core platform for hosting, orchestration, APIs, storage, pipelines, and scalable AI systems.",
+        guidance: ["guide-development", "guide-production", "guide-protected"]
+      },
+      coding: {
+        label: "Software development or coding productivity",
+        primary: ["Coding Assistant"],
+        secondary: ["AIEP", "M365 Copilot for productivity support", "StatCan AI Assistant for approved code explanation"],
+        prohibited: ["Copilot Web Chat for secrets or sensitive code", "GCTranslate", "Copilot Studio unless building an agent"],
+        rationale: "Coding Assistant is the primary developer productivity tool; AIEP supports platform-based AI development.",
+        guidance: ["guide-development", "guide-nonsensitive"]
+      },
+      production: {
+        label: "Production-grade AI deployment or official operational workflow",
+        primary: ["AI Platform (AIEP)"],
+        secondary: ["StatCan AI Assistant as approved interface layer", "Coding Assistant for development support"],
+        prohibited: ["Copilot Web Chat", "GCTranslate", "Copilot Studio", "Ungoverned M365 Copilot workflow"],
+        rationale: "Production AI requires governed workflows, architecture, monitoring, security, privacy, accessibility, official languages, and records controls.",
+        guidance: ["guide-production", "guide-development", "guide-protected", "guide-chatbot"]
+      }
+    };
+
+    const riskMap = {
+      low: {
+        label: "Unclassified / low risk / non-sensitive",
+        tier: "Tier 1 — Basic productivity",
+        className: "risk-tier risk-tier-low",
+        controls: ["Remove sensitive details.", "Validate facts before reuse.", "Use human judgment before sharing."]
+      },
+      moderate: {
+        label: "Internal business information / moderate sensitivity",
+        tier: "Tier 2 — Guarded internal use",
+        className: "risk-tier risk-tier-medium",
+        controls: ["Use enterprise-approved tools.", "Avoid public AI tools if the content is sensitive.", "Document assumptions and review before sharing."]
+      },
+      protectedb: {
+        label: "Protected B, confidential, sensitive statistical, or controlled data",
+        tier: "Tier 3 — Controlled sensitive use",
+        className: "risk-tier risk-tier-high",
+        controls: ["Use StatCan AI Assistant or AIEP where approved for the data class.", "Do not use Copilot Web Chat, GCTranslate, or Copilot Studio.", "Confirm privacy, security, confidentiality, and statistical controls before use."]
+      },
+      official: {
+        label: "Production, public, official, legal, statistical-release, or publication output",
+        tier: "Tier 4 — Governed production / formal approval required",
+        className: "risk-tier risk-tier-stop",
+        controls: ["Use governed workflow and approved toolchain only.", "Apply human expert review and formal approval.", "Record sources, assumptions, validation, and approvals."]
+      }
+    };
+
+    const controlMap = {
+      sensitive: "Apply privacy, confidentiality, data-class, need-to-know, and secure-environment controls.",
+      official: "Apply public release, legal/communications, approval, and recordkeeping controls.",
+      translation: "Apply official languages, bilingual equivalence, terminology, and human translation review where required.",
+      chatbot: "Apply agent guardrails, data-source review, escalation, monitoring, and misuse testing.",
+      production: "Apply architecture, operational readiness, service management, monitoring, security, accessibility, and lifecycle controls.",
+      code: "Apply secure coding, code review, dependency, secrets-management, and testing controls.",
+      statistical: "Apply statistical quality, methodology, disclosure control, interpretability, and release-readiness checks."
+    };
+
+    const beforeBase = [
+      "Define the task, output owner, intended users, and whether the result is draft, internal advice, public, production, or official.",
+      "Identify the highest applicable data classification and remove information that does not need to be provided to the tool.",
+      "Confirm that the selected tool is approved for the task, data class, and output use.",
+      "Check whether licensing, onboarding, access, or governance approval is required."
+    ];
+
+    const duringBase = [
+      "Do not enter secrets, credentials, personal information, protected information, or sensitive statistical data into unapproved tools.",
+      "Use clear instructions and ask the tool to identify uncertainty, assumptions, missing information, and validation needs.",
+      "Keep source material, prompt text, and outputs organized so the decision can be reviewed."
+    ];
+
+    const afterBase = [
+      "Validate the output against authoritative sources, business rules, statistical quality expectations, and human expertise.",
+      "Apply accessibility, official languages, privacy, security, communications, and records checks where relevant.",
+      "Document the tool choice, rationale, review performed, and approval path before reuse or publication."
+    ];
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function listHtml(items) {
+      return "<ul>" + items.map((item) => "<li>" + escapeHtml(item) + "</li>").join("") + "</ul>";
+    }
+
+    function getSelectedRadio(name) {
+      return document.querySelector('input[name="' + name + '"]:checked');
+    }
+
+    function getSelectedControls() {
+      return Array.from(document.querySelectorAll('input[name="controls"]:checked')).map((item) => item.value);
+    }
+
+    function showErrors(errors) {
+      const summary = document.getElementById("error-summary");
+      const list = document.getElementById("error-list");
+      if (!summary || !list) return;
+
+      list.innerHTML = errors.map((error) => "<li><a href=\"#" + error.target + "\">" + escapeHtml(error.message) + "</a></li>").join("");
+      summary.hidden = false;
+      summary.focus();
+    }
+
+    function clearErrors() {
+      const summary = document.getElementById("error-summary");
+      const list = document.getElementById("error-list");
+      if (summary) summary.hidden = true;
+      if (list) list.innerHTML = "";
+    }
+
+    function mergeUnique(base, extra) {
+      const seen = new Set();
+      return base.concat(extra).filter((item) => {
+        if (seen.has(item)) return false;
+        seen.add(item);
+        return true;
+      });
+    }
+
+    function applyRiskOverrides(scenario, risk, selectedControls) {
+      const result = {
+        primary: scenario.primary.slice(),
+        secondary: scenario.secondary.slice(),
+        prohibited: scenario.prohibited.slice(),
+        guidance: scenario.guidance.slice(),
+        warnings: []
+      };
+
+      const protectedSignal = risk === "protectedb" || selectedControls.includes("sensitive") || selectedControls.includes("statistical");
+      const officialSignal = risk === "official" || selectedControls.includes("official") || selectedControls.includes("production");
+
+      if (protectedSignal) {
+        result.primary = mergeUnique(["StatCan AI Assistant"], result.primary.filter((tool) => tool === "AIEP" || tool === "AI Platform (AIEP)"));
+        result.secondary = mergeUnique(["AIEP for backend or scalable processing", "Coding Assistant where approved"], result.secondary);
+        result.prohibited = mergeUnique(["Copilot Web Chat", "GCTranslate", "Copilot Studio for Protected B"], result.prohibited);
+        result.guidance = mergeUnique(["guide-protected"], result.guidance);
+        result.warnings.push("Protected, sensitive, confidential, or statistical content overrides convenience. Use only tools approved for that data class and context.");
+      }
+
+      if (officialSignal) {
+        result.primary = mergeUnique(["AI Platform (AIEP) or approved governed workflow"], result.primary);
+        result.secondary = mergeUnique(["StatCan AI Assistant as approved interface layer", "Human expert review"], result.secondary);
+        result.prohibited = mergeUnique(["Ungoverned AI output as final", "GCTranslate for official translation", "Copilot Studio for production-sensitive workflow"], result.prohibited);
+        result.guidance = mergeUnique(["guide-production"], result.guidance);
+        result.warnings.push("Official, public, legal, production, or statistical-release outputs require human validation and approval. AI output is not final authority.");
+      }
+
+      if (selectedControls.includes("translation")) {
+        result.guidance = mergeUnique(["guide-translation"], result.guidance);
+      }
+      if (selectedControls.includes("chatbot")) {
+        result.guidance = mergeUnique(["guide-chatbot"], result.guidance);
+      }
+      if (selectedControls.includes("code") || selectedControls.includes("production")) {
+        result.guidance = mergeUnique(["guide-development"], result.guidance);
+      }
+
+      return result;
+    }
+
+    function buildChecklist(selectedControls, scenarioKey, riskKey) {
+      const before = beforeBase.slice();
+      const during = duringBase.slice();
+      const after = afterBase.slice();
+
+      selectedControls.forEach((control) => {
+        const text = controlMap[control];
+        if (text) before.push(text);
+      });
+
+      if (scenarioKey === "translation_official") {
+        before.push("Route official translation through the approved official languages and translation process before publication or release.");
+      }
+
+      if (scenarioKey.includes("chatbot")) {
+        before.push("Define agent purpose, approved data sources, user groups, escalation path, and owner before building.");
+        during.push("Test the chatbot for hallucination, prompt injection, privacy leakage, unsafe advice, and bilingual/accessibility issues.");
+        after.push("Assign monitoring, content review, support, and retirement responsibilities before launch.");
+      }
+
+      if (scenarioKey === "custom_ai" || scenarioKey === "production") {
+        before.push("Confirm architecture, onboarding, security, privacy, accessibility, service management, and operational readiness requirements.");
+        during.push("Use secure development practices, logging, monitoring, test data discipline, and source control.");
+        after.push("Complete deployment, monitoring, incident response, rollback, and model/output validation documentation.");
+      }
+
+      if (riskKey === "protectedb" || riskKey === "official") {
+        before.push("Confirm the approval path before using any tool with controlled data or official outputs.");
+        after.push("Keep a decision record showing tool selection, rationale, validation, approvals, and residual risks.");
+      }
+
+      return { before, during, after };
+    }
+
+    function generateRecommendation() {
+      clearErrors();
+      const scenarioInput = getSelectedRadio("scenario");
+      const riskInput = getSelectedRadio("risk");
+      const errors = [];
+
+      if (!scenarioInput) {
+        errors.push({ target: "toolChooserForm", message: "Select what you need to do." });
+      }
+      if (!riskInput) {
+        errors.push({ target: "toolChooserForm", message: "Select the highest risk or data class." });
+      }
+      if (errors.length > 0) {
+        showErrors(errors);
+        return;
+      }
+
+      const scenario = scenarioMap[scenarioInput.value];
+      const risk = riskMap[riskInput.value];
+      const selectedControls = getSelectedControls();
+      const resolved = applyRiskOverrides(scenario, riskInput.value, selectedControls);
+      const checklist = buildChecklist(selectedControls, scenarioInput.value, riskInput.value);
+      const result = document.getElementById("wizard-result");
+      const content = document.getElementById("wizard-result-content");
+      const status = document.getElementById("wizard-status");
+
+      const controlTags = selectedControls.length > 0
+        ? "<ul class=\"tag-list\">" + selectedControls.map((control) => "<li class=\"tag\">" + escapeHtml(controlMap[control].split(".")[0]) + "</li>").join("") + "</ul>"
+        : "<p>No additional controls selected beyond the scenario and risk tier.</p>";
+
+      const warnings = resolved.warnings.length > 0
+        ? "<div class=\"warning-box\"><h4>Important caution</h4>" + listHtml(resolved.warnings) + "</div>"
+        : "";
+
+      const guidanceLinks = resolved.guidance.map((id) => {
+        const section = document.getElementById(id);
+        const title = section ? section.querySelector("summary").textContent.trim() : id;
+        return "<li><a href=\"#" + escapeHtml(id) + "\">" + escapeHtml(title) + "</a></li>";
+      }).join("");
+
+      const promptStarter = [
+        "Use case: " + scenario.label,
+        "Highest risk/data class: " + risk.label,
+        "Recommended primary path: " + resolved.primary.join(", "),
+        "Supporting tools: " + resolved.secondary.join(", "),
+        "Do not use: " + resolved.prohibited.join(", "),
+        "Required controls: validate tool approval, data classification, privacy/security constraints, output quality, accessibility, official languages, and human review before operational use."
+      ].join("\n");
+
+      content.innerHTML = `
+        <p><strong>Selected scenario:</strong> ${escapeHtml(scenario.label)}</p>
+        <p><strong>Risk tier:</strong> <span class="${risk.className}">${escapeHtml(risk.tier)}</span></p>
+        <p><strong>Primary recommended path:</strong></p>
+        ${listHtml(resolved.primary)}
+        <p><strong>Supporting or alternative tools:</strong></p>
+        ${listHtml(resolved.secondary)}
+        <p><strong>Do not use / restricted tools:</strong></p>
+        ${listHtml(resolved.prohibited)}
+        <p><strong>Rationale:</strong> ${escapeHtml(scenario.rationale)}</p>
+        ${warnings}
+        <h4>Required controls</h4>
+        ${listHtml(risk.controls)}
+        ${controlTags}
+        <h4>Before using the tool</h4>
+        ${listHtml(checklist.before)}
+        <h4>During use</h4>
+        ${listHtml(checklist.during)}
+        <h4>After use</h4>
+        ${listHtml(checklist.after)}
+        <h4>Detailed guidance to review</h4>
+        <ul>${guidanceLinks}</ul>
+        <h4>Decision record starter</h4>
+        <pre class="prompt-block">${escapeHtml(promptStarter)}</pre>
+      `;
+
+      result.hidden = false;
+      if (status) status.textContent = "AI tool recommendation generated.";
+      result.focus();
+    }
+
+    function resetRecommendation() {
+      clearErrors();
+      const result = document.getElementById("wizard-result");
+      const content = document.getElementById("wizard-result-content");
+      const status = document.getElementById("wizard-status");
+      if (result) result.hidden = true;
+      if (content) content.innerHTML = "";
+      if (status) status.textContent = "Answers cleared.";
+    }
+
+    function expandAll() {
+      document.querySelectorAll("details").forEach((item) => {
+        item.open = true;
+      });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll("details").forEach((item) => {
+        item.open = false;
+      });
+    }
+
+    function buildPrintWindow(title, contentNode) {
+      const printWindow = window.open("", "_blank", "width=960,height=720");
+      if (!printWindow) {
+        alert("The print window was blocked. Allow pop-ups for this site and try again.");
+        return;
+      }
+
+      const generated = new Date().toLocaleDateString("en-CA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+
+      printWindow.document.open();
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <title>${escapeHtml(title)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #000; background: #fff; line-height: 1.45; margin: 1.5rem; }
+            h1 { font-size: 22pt; margin-bottom: 0.5rem; }
+            h2 { font-size: 17pt; margin-top: 1.25rem; }
+            h3 { font-size: 14pt; margin-top: 1rem; }
+            h4 { font-size: 12pt; margin-top: 1rem; }
+            p, li { font-size: 11pt; }
+            a { color: #000; text-decoration: none; }
+            table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 1rem 0; }
+            caption { text-align: left; font-weight: bold; margin-bottom: 0.5rem; }
+            th, td { border: 1px solid #777; padding: 0.35rem; vertical-align: top; }
+            th { background: #eee; }
+            details, .decision-anchor, .tool-card, .result-panel, .info-box, .warning-box, .success-box, .neutral-box { border: 1px solid #777; padding: 0.75rem; margin: 0.75rem 0; break-inside: avoid; page-break-inside: avoid; }
+            summary { font-weight: bold; }
+            .tag-list { list-style: none; padding-left: 0; }
+            .tag { display: inline-block; border: 1px solid #777; padding: 0.15rem 0.4rem; margin: 0.15rem; }
+            .screen-only, .no-print, gcds-header, gcds-footer, gcds-search, gcds-breadcrumbs, gcds-button { display: none !important; }
+            pre { white-space: pre-wrap; border: 1px solid #777; padding: 0.75rem; background: #f7f7f7; }
+          </style>
+        </head>
+        <body>
+          <h1>${escapeHtml(title)}</h1>
+          <p><strong>Generated:</strong> ${escapeHtml(generated)}</p>
+          ${contentNode.innerHTML}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 350);
+    }
+
+    function printRecommendation() {
+      const result = document.getElementById("wizard-result");
+      const content = document.getElementById("wizard-result-content");
+      if (!result || result.hidden || !content || content.innerHTML.trim() === "") {
+        alert("Create a recommendation before printing.");
+        return;
+      }
+
+      const printContent = document.createElement("div");
+      const intro = document.createElement("p");
+      intro.textContent = "This printout includes the selected scenario, risk tier, recommended tool path, prohibited tools, required controls, and before/during/after checklist.";
+      printContent.appendChild(intro);
+
+      const clone = content.cloneNode(true);
+      printContent.appendChild(clone);
+
+      const guidanceLinks = clone.querySelectorAll('a[href^="#guide-"]');
+      guidanceLinks.forEach((link) => {
+        const target = document.getElementById(link.getAttribute("href").replace("#", ""));
+        if (target) {
+          const section = target.cloneNode(true);
+          section.open = true;
+          printContent.appendChild(section);
+        }
+      });
+
+      buildPrintWindow("StatCan AI tool recommendation", printContent);
+    }
+
+    function printFullPage() {
+      expandAll();
+      window.print();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const selectAll = document.getElementById("select-all-controls");
+      const checkboxes = document.querySelectorAll('input[name="controls"]');
+
+      if (selectAll && checkboxes.length > 0) {
+        function updateSelectAllState() {
+          const checkedCount = Array.from(checkboxes).filter((item) => item.checked).length;
+          selectAll.checked = checkedCount === checkboxes.length;
+          selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+
+        selectAll.addEventListener("change", function () {
+          checkboxes.forEach((checkbox) => {
+            checkbox.checked = selectAll.checked;
+          });
+          selectAll.indeterminate = false;
+        });
+
+        checkboxes.forEach((checkbox) => {
+          checkbox.addEventListener("change", updateSelectAllState);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
