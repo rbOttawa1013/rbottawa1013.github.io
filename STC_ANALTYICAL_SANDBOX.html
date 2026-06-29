@@ -1,39 +1,22 @@
 <!doctype html>
 <html lang="en" class="no-js">
 <!--
-National Data Literacy Sandbox Suite, version 8.0.1.
-Static bilingual prototype designed to align with GC Design System and Canada.ca page conventions. Not officially approved or certified.
-Project proposal narrative and review notes are retained as internal project documentation in repository history, not as public page content.
+National Data Literacy Sandbox Suite, version 9.0.0.
+Static bilingual prototype aligned with Canada.ca / GC Design System conventions. Not officially approved or certified.
 
-Moved from visible page display to source comments per request on 2026-06-26:
-
-Data transparency
-Data status
-Demonstration
-Synthetic values generated in the browser.
-
-Storage
-No server
-The scenario stays on the device unless exported.
-
-Automation
-Local rules
-General explanations, not decisions.
-
-Source and methodology notes
-Accessibility, privacy and responsible automation
-Implemented safeguards and validation needed
-Safeguard | Implemented | Notes
-Accessibility | Partial | Semantic structure, visible focus, keyboard tabs, equivalent tables and print support. Testing required.
-Privacy | Yes | No analytics and no external submission of answers.
-Official languages | Partial | Functional bilingual toggle; official review required.
-Data quality | Partial | Demonstration values are labelled; official data remains future work.
-Date modified: 2026-06-25
+Maintenance notes for AI coding assistants:
+- The page is a standalone static HTML application with separate CSS and JS files.
+- The JavaScript attempts live public data retrieval from the Statistics Canada Web Data Service (WDS).
+- If the WDS request fails because of API availability, network conditions, CORS, browser policy, or malformed response, the UI falls back to clearly labelled demonstration data.
+- Never present postal-code seeded community values as official local statistics unless a verified public postal-code-to-census-geography service and official source table are added.
+- Keep source status, reference period, geography, unit, limitations, and accessible equivalent tables visible in each learning tool.
+- Keep official-language strings in the tx object in STC_ANALTYICAL_SANDBOX.js synchronized when changing page text.
+- Date modified: 2026-06-29.
 -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Bilingual data-literacy sandbox prototype with accessible forms, charts, tables, community profile simulation and local learning assistant.">
+<meta name="description" content="Bilingual data-literacy sandbox prototype with public API status checks, accessible forms, charts, tables, community profile simulation and source-aware learning assistant.">
 <title>National Data Literacy Sandbox Suite</title>
 <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/css-shortcuts@1.2.0/dist/gcds-css-shortcuts.min.css">
 <link rel="stylesheet" href="https://cdn.design-system.canada.ca/@gcds-core/components@1.3.0/dist/gcds/gcds.css">
@@ -43,25 +26,121 @@ Date modified: 2026-06-25
 </head>
 <body>
 <a href="#wb-cont" class="skip" data-k="skip">Skip to main content</a>
-<div class="banner" role="note"><div class="container" id="banner"></div></div>
-<header class="header" role="banner"><div class="container header-row"><a class="brand" href="#wb-cont">Government of Canada / Gouvernement du Canada<span data-k="brand">Statistics Canada data literacy prototype</span></a><div class="actions"><button id="lang" class="lang" type="button">Français</button><form class="search" action="https://www.canada.ca/en/sr/srb.html" method="get" role="search"><label for="q" data-k="searchLabel">Search Canada.ca</label><input id="q" name="q" type="search"><button type="submit" data-k="search">Search</button></form></div></div></header>
-<nav class="nav" id="nav" aria-label="Primary navigation"><div class="container"><div class="menu" data-k="menu">Menu</div><ul><li><a href="#start" data-k="navStart">Start</a></li><li><a href="#tools" data-k="navTools">Sandbox tools</a></li></ul></div></nav>
+<div class="banner" role="status" aria-live="polite"><div class="container" id="banner"></div></div>
+<header class="header" role="banner">
+  <div class="container header-row">
+    <a class="brand" href="#wb-cont">Government of Canada / Gouvernement du Canada<span data-k="brand">Statistics Canada data literacy prototype</span></a>
+    <div class="actions">
+      <button id="lang" class="lang" type="button">Français</button>
+      <form class="search" action="https://www.canada.ca/en/sr/srb.html" method="get" role="search">
+        <label for="q" data-k="searchLabel">Search Canada.ca</label>
+        <input id="q" name="q" type="search">
+        <button type="submit" data-k="search">Search</button>
+      </form>
+    </div>
+  </div>
+</header>
+<nav class="nav" id="nav" aria-label="Primary navigation">
+  <div class="container"><div class="menu" data-k="menu">Menu</div><ul><li><a href="#start" data-k="navStart">Start</a></li><li><a href="#tools" data-k="navTools">Sandbox tools</a></li></ul></div>
+</nav>
 <main id="wb-cont" class="container" tabindex="-1">
-<nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="https://www.canada.ca/en.html">Canada.ca</a></li><li><a href="https://www.statcan.gc.ca/en/start">Statistics Canada</a></li><li aria-current="page" data-k="crumb">National Data Literacy Sandbox Suite</li></ol></nav>
-<h1 data-k="h1">National Data Literacy Sandbox Suite</h1>
-<p class="lead" data-k="lead">Practise statistical thinking, source evaluation, accessible visualization and geographic interpretation in one bilingual prototype.</p>
-<p class="meta" data-k="meta">Static HTML prototype · no server storage · demonstration data only</p>
-<section class="notice" aria-labelledby="before-heading"><h2 id="before-heading" data-k="beforeH">Before you start</h2><p data-k="beforeP">This is a training prototype. Demonstration values are synthetic and are used to teach interpretation, not to report official statistics.</p></section>
-<nav class="onpage" aria-labelledby="onpage"><h2 id="onpage" data-k="onPage">On this page</h2><ul><li><a href="#start" data-k="otp1">Start a learning scenario</a></li><li><a href="#tools" data-k="otp2">Use the sandbox tools</a></li></ul></nav>
-<noscript><section class="warning"><h2>JavaScript is required for the interactive sandbox</h2><p>The static page remains readable, but the scenario builder, tabs, chart controls and export require JavaScript.</p><h2 lang="fr">JavaScript est requis pour le bac à sable interactif</h2><p lang="fr">La page statique demeure lisible, mais le générateur de scénario, les onglets, les contrôles de graphique et l’exportation nécessitent JavaScript.</p></section></noscript>
-<section id="start" aria-labelledby="start-heading"><h2 id="start-heading" data-k="startH">Start a learning scenario</h2><p data-k="startP">Choose a learning goal and community type. The page will create a printable learning path and update the tools below.</p><div id="errsum" class="error-summary" tabindex="-1" hidden><h3 data-k="errH">There is a problem</h3><ul id="errlist"></ul></div><form id="scenario" novalidate><div class="grid"><div class="form-group" id="goalgrp"><label for="goal" class="form-label" data-k="goalLabel">Learning goal (required)</label><p id="goalhint" class="hint" data-k="goalHint">Choose the main skill to practise.</p><p id="goalerr" class="field-error" hidden></p><select id="goal" class="select" required aria-describedby="goalhint goalerr"></select></div><div class="form-group" id="postalgrp"><label for="postal" class="form-label" data-k="postalLabel">Postal code seed (optional)</label><p id="postalhint" class="hint" data-k="postalHint">Use a format such as K1A 0A6. This stays in your browser.</p><p id="postalerr" class="field-error" hidden></p><input id="postal" class="input" value="K1A 0A6" maxlength="7" autocomplete="postal-code" aria-describedby="postalhint postalerr"></div></div><fieldset id="commgrp"><legend data-k="communityLegend">Community type (required)</legend><p id="commerr" class="field-error" hidden></p><ul id="communities" class="choices"></ul></fieldset><fieldset><legend data-k="modulesLegend">Optional modules</legend><ul id="modules" class="choices"></ul></fieldset><div class="action-bar"><button class="btn" type="submit" data-k="generate">Generate learning path</button><button class="btn btn2" type="button" id="reset" data-k="reset">Reset</button><button class="btn btn2" type="button" id="print" data-k="print">Print or save as PDF</button><button class="btn btn2" type="button" id="export" data-k="export">Download scenario JSON</button></div></form><section id="output" class="success" tabindex="-1" aria-live="polite"></section></section>
-<section id="tools" aria-labelledby="tools-heading"><h2 id="tools-heading" data-k="toolsH">Sandbox tools</h2><p data-k="toolsP">Each module runs locally using demonstration data and rule-based logic.</p><div class="tabs" role="tablist" aria-label="Sandbox modules"><button id="tab-assistant" class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-assistant" data-tab="assistant" data-k="tabAssistant">Assistant</button><button id="tab-dictionary" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-dictionary" data-tab="dictionary" data-k="tabDictionary">Dictionary</button><button id="tab-matrix" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-matrix" data-tab="matrix" data-k="tabMatrix">Matrix</button><button id="tab-visualizer" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-visualizer" data-tab="visualizer" data-k="tabVisualizer">Visualizer</button><button id="tab-map" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-map" data-tab="map" data-k="tabMap">Community profile</button></div>
-<section id="panel-assistant" class="tabpanel" role="tabpanel" aria-labelledby="tab-assistant" tabindex="0"><h3 data-k="assistantH">Local statistical assistant</h3><p data-k="assistantP">Ask about rounding, coefficients of variation, suppression, metadata or chart interpretation.</p><div id="chat" class="chat" aria-live="polite"></div><div id="chips" class="chips"></div><form id="chatform" novalidate><div class="form-group" id="chatgrp"><label for="chatin" class="form-label" data-k="chatLabel">Question</label><p id="chaterr" class="field-error" hidden></p><input id="chatin" class="input" required aria-describedby="chaterr"></div><button class="btn" type="submit" data-k="send">Send</button></form></section>
-<section id="panel-dictionary" class="tabpanel" role="tabpanel" aria-labelledby="tab-dictionary" tabindex="0" hidden><h3 data-k="dictH">Bilingual statistical dictionary</h3><label for="term" class="form-label" data-k="termLabel">Concept</label><select id="term" class="select"></select><article id="dictout" class="panel" aria-live="polite"></article></section>
-<section id="panel-matrix" class="tabpanel" role="tabpanel" aria-labelledby="tab-matrix" tabindex="0" hidden><h3 data-k="matrixH">Interactive matrix explorer</h3><label for="focus" class="form-label" data-k="focusLabel">Focus</label><select id="focus" class="select"></select><div class="table-wrap"><table id="matrixtable"></table></div><div id="matrixnote" class="success"></div></section>
-<section id="panel-visualizer" class="tabpanel" role="tabpanel" aria-labelledby="tab-visualizer" tabindex="0" hidden><h3 data-k="vizH">Accessible data visualizer</h3><label for="metric" class="form-label" data-k="metricLabel">Metric</label><select id="metric" class="select"></select><div id="vizout" class="panel"></div></section>
-<section id="panel-map" class="tabpanel" role="tabpanel" aria-labelledby="tab-map" tabindex="0" hidden><h3 data-k="mapH">Community profile simulator</h3><p data-k="mapP">Select a simulated area. The map has keyboard-operable areas and a text alternative.</p><div class="chips" id="mapchips"></div><div class="map-grid"><div class="map-frame"><svg viewBox="0 0 900 560" role="img" aria-labelledby="mt md"><title id="mt">Simulated census tract map</title><desc id="md">Five selectable polygon areas representing demonstration census tracts.</desc><rect width="900" height="560" fill="#e8f0f8"></rect><polygon points="35,35 865,40 835,525 60,500" fill="#f0fdf4" stroke="#86efac" stroke-width="4" stroke-dasharray="10 6"></polygon><polygon class="tract" points="220,150 430,115 460,285 205,305" fill="#fed7aa" tabindex="0" role="button" aria-pressed="true" data-tract="a"></polygon><polygon class="tract" points="440,115 700,145 655,300 460,285" fill="#bfdbfe" tabindex="0" role="button" aria-pressed="false" data-tract="b"></polygon><polygon class="tract" points="205,305 460,285 420,465 185,445" fill="#d9f99d" tabindex="0" role="button" aria-pressed="false" data-tract="c"></polygon><polygon class="tract" points="460,285 655,300 690,455 420,465" fill="#ddd6fe" tabindex="0" role="button" aria-pressed="false" data-tract="d"></polygon><polygon class="tract" points="95,160 220,150 205,305 110,350" fill="#fecaca" tabindex="0" role="button" aria-pressed="false" data-tract="e"></polygon><text x="290" y="220" font-size="20" font-weight="700">A</text><text x="565" y="220" font-size="20" font-weight="700">B</text><text x="300" y="390" font-size="20" font-weight="700">C</text><text x="535" y="390" font-size="20" font-weight="700">D</text><text x="145" y="255" font-size="20" font-weight="700">E</text></svg></div><aside id="mapout" class="map-alt" aria-live="polite"></aside></div></section></section>
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
+    <ol><li><a href="https://www.canada.ca/en.html">Canada.ca</a></li><li><a href="https://www.statcan.gc.ca/en/start">Statistics Canada</a></li><li aria-current="page" data-k="crumb">National Data Literacy Sandbox Suite</li></ol>
+  </nav>
+  <h1 data-k="h1">National Data Literacy Sandbox Suite</h1>
+  <p class="lead" data-k="lead">Practise statistical thinking, source evaluation, accessible visualization and geographic interpretation in one bilingual prototype.</p>
+  <p class="meta" data-k="meta">Live public-data attempt · automatic demonstration fallback · no server storage</p>
+
+  <section class="notice" aria-labelledby="before-heading">
+    <h2 id="before-heading" data-k="beforeH">Before you start</h2>
+    <p data-k="beforeP">The sandbox first tries to load public Statistics Canada Web Data Service data in your browser. If the public API, network, or browser policy blocks the request, the page falls back to clearly labelled demonstration data.</p>
+  </section>
+
+  <nav class="onpage" aria-labelledby="onpage">
+    <h2 id="onpage" data-k="onPage">On this page</h2>
+    <ul><li><a href="#start" data-k="otp1">Start a learning scenario</a></li><li><a href="#tools" data-k="otp2">Use the sandbox tools</a></li></ul>
+  </nav>
+
+  <noscript>
+    <section class="warning">
+      <h2>JavaScript is required for the interactive sandbox</h2>
+      <p>The static page remains readable, but the public-data check, scenario builder, tabs, chart controls and export require JavaScript.</p>
+      <h2 lang="fr">JavaScript est requis pour le bac à sable interactif</h2>
+      <p lang="fr">La page statique demeure lisible, mais la vérification des données publiques, le générateur de scénario, les onglets, les contrôles de graphique et l’exportation nécessitent JavaScript.</p>
+    </section>
+  </noscript>
+
+  <section id="start" aria-labelledby="start-heading">
+    <h2 id="start-heading" data-k="startH">Start a learning scenario</h2>
+    <p data-k="startP">Choose a learning goal and community type. The page creates a printable learning path and updates the tools below.</p>
+    <div id="errsum" class="error-summary" tabindex="-1" hidden><h3 data-k="errH">There is a problem</h3><ul id="errlist"></ul></div>
+    <form id="scenario" novalidate>
+      <div class="grid">
+        <div class="form-group" id="goalgrp">
+          <label for="goal" class="form-label" data-k="goalLabel">Learning goal (required)</label>
+          <p id="goalhint" class="hint" data-k="goalHint">Choose the main skill to practise.</p>
+          <p id="goalerr" class="field-error" hidden></p>
+          <select id="goal" class="select" required aria-describedby="goalhint goalerr"></select>
+        </div>
+        <div class="form-group" id="postalgrp">
+          <label for="postal" class="form-label" data-k="postalLabel">Postal code seed (optional)</label>
+          <p id="postalhint" class="hint" data-k="postalHint">Use a format such as K1A 0A6. This stays in your browser and is used only to tailor the training scenario.</p>
+          <p id="postalerr" class="field-error" hidden></p>
+          <input id="postal" class="input" value="K1A 0A6" maxlength="7" autocomplete="postal-code" aria-describedby="postalhint postalerr">
+        </div>
+      </div>
+      <fieldset id="commgrp"><legend data-k="communityLegend">Community type (required)</legend><p id="commerr" class="field-error" hidden></p><ul id="communities" class="choices"></ul></fieldset>
+      <fieldset><legend data-k="modulesLegend">Optional modules</legend><ul id="modules" class="choices"></ul></fieldset>
+      <div class="action-bar"><button class="btn" type="submit" data-k="generate">Generate learning path</button><button class="btn btn2" type="button" id="reset" data-k="reset">Reset</button><button class="btn btn2" type="button" id="reload-data" data-k="reloadData">Reload public data</button><button class="btn btn2" type="button" id="print" data-k="print">Print or save as PDF</button><button class="btn btn2" type="button" id="export" data-k="export">Download scenario JSON</button></div>
+    </form>
+    <section id="output" class="success" tabindex="-1" aria-live="polite"></section>
+  </section>
+
+  <section id="tools" aria-labelledby="tools-heading">
+    <h2 id="tools-heading" data-k="toolsH">Sandbox tools</h2>
+    <p data-k="toolsP">Each module shows its data status. Live public data is used when available; otherwise the module uses labelled demonstration data.</p>
+    <section id="data-status" class="status-panel" aria-live="polite"></section>
+    <div class="tabs" role="tablist" aria-label="Sandbox modules"><button id="tab-assistant" class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel-assistant" data-tab="assistant" data-k="tabAssistant">Assistant</button><button id="tab-dictionary" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-dictionary" data-tab="dictionary" data-k="tabDictionary">Dictionary</button><button id="tab-matrix" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-matrix" data-tab="matrix" data-k="tabMatrix">Matrix</button><button id="tab-visualizer" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-visualizer" data-tab="visualizer" data-k="tabVisualizer">Visualizer</button><button id="tab-map" class="tab" role="tab" type="button" aria-selected="false" tabindex="-1" aria-controls="panel-map" data-tab="map" data-k="tabMap">Community profile</button></div>
+
+    <section id="panel-assistant" class="tabpanel" role="tabpanel" aria-labelledby="tab-assistant" tabindex="0">
+      <h3 data-k="assistantH">Source-aware statistical assistant</h3>
+      <p data-k="assistantP">Ask about rounding, coefficients of variation, suppression, metadata, chart interpretation, or whether the current values are live or demonstration data.</p>
+      <div id="chat" class="chat" aria-live="polite"></div>
+      <div id="chips" class="chips"></div>
+      <form id="chatform" novalidate><div class="form-group" id="chatgrp"><label for="chatin" class="form-label" data-k="chatLabel">Question</label><p id="chaterr" class="field-error" hidden></p><input id="chatin" class="input" required aria-describedby="chaterr"></div><button class="btn" type="submit" data-k="send">Send</button></form>
+    </section>
+
+    <section id="panel-dictionary" class="tabpanel" role="tabpanel" aria-labelledby="tab-dictionary" tabindex="0" hidden>
+      <h3 data-k="dictH">Bilingual statistical dictionary</h3>
+      <label for="term" class="form-label" data-k="termLabel">Concept</label>
+      <select id="term" class="select"></select>
+      <article id="dictout" class="panel" aria-live="polite"></article>
+    </section>
+
+    <section id="panel-matrix" class="tabpanel" role="tabpanel" aria-labelledby="tab-matrix" tabindex="0" hidden>
+      <h3 data-k="matrixH">Evidence matrix explorer</h3>
+      <label for="focus" class="form-label" data-k="focusLabel">Focus</label>
+      <select id="focus" class="select"></select>
+      <div class="table-wrap"><table id="matrixtable"></table></div>
+      <div id="matrixnote" class="success"></div>
+    </section>
+
+    <section id="panel-visualizer" class="tabpanel" role="tabpanel" aria-labelledby="tab-visualizer" tabindex="0" hidden>
+      <h3 data-k="vizH">Accessible data visualizer</h3>
+      <label for="metric" class="form-label" data-k="metricLabel">Metric</label>
+      <select id="metric" class="select"></select>
+      <div id="vizout" class="panel"></div>
+    </section>
+
+    <section id="panel-map" class="tabpanel" role="tabpanel" aria-labelledby="tab-map" tabindex="0" hidden>
+      <h3 data-k="mapH">Community profile training view</h3>
+      <p data-k="mapP">The postal-code seed does not create an official StatCan boundary. This tab shows a keyboard-operable training profile and, when available, a live national public-data reference for comparison.</p>
+      <div class="chips" id="mapchips"></div>
+      <div class="map-grid"><div class="map-frame"><svg viewBox="0 0 900 560" role="img" aria-labelledby="mt md"><title id="mt">Training census tract map</title><desc id="md">Five selectable polygon areas representing demonstration census tracts for training only.</desc><rect width="900" height="560" fill="#e8f0f8"></rect><polygon points="35,35 865,40 835,525 60,500" fill="#f0fdf4" stroke="#86efac" stroke-width="4" stroke-dasharray="10 6"></polygon><polygon class="tract" points="220,150 430,115 460,285 205,305" fill="#fed7aa" tabindex="0" role="button" aria-pressed="true" data-tract="a"></polygon><polygon class="tract" points="440,115 700,145 655,300 460,285" fill="#bfdbfe" tabindex="0" role="button" aria-pressed="false" data-tract="b"></polygon><polygon class="tract" points="205,305 460,285 420,465 185,445" fill="#d9f99d" tabindex="0" role="button" aria-pressed="false" data-tract="c"></polygon><polygon class="tract" points="460,285 655,300 690,455 420,465" fill="#ddd6fe" tabindex="0" role="button" aria-pressed="false" data-tract="d"></polygon><polygon class="tract" points="95,160 220,150 205,305 110,350" fill="#fecaca" tabindex="0" role="button" aria-pressed="false" data-tract="e"></polygon><text x="290" y="220" font-size="20" font-weight="700">A</text><text x="565" y="220" font-size="20" font-weight="700">B</text><text x="300" y="390" font-size="20" font-weight="700">C</text><text x="535" y="390" font-size="20" font-weight="700">D</text><text x="145" y="255" font-size="20" font-weight="700">E</text></svg></div><aside id="mapout" class="map-alt" aria-live="polite"></aside></div>
+    </section>
+  </section>
 </main>
 <footer class="footer" role="contentinfo"><div class="footer-main"><div class="container"><h2 data-k="footerH">Government of Canada prototype links</h2><nav aria-label="Footer navigation"><ul><li><a href="https://www.canada.ca/en/transparency/privacy.html" data-k="privacy">Privacy</a></li><li><a href="#wb-cont" data-k="top">Top of page</a></li></ul></nav></div></div><div class="footer-bottom"><div class="container"><span data-k="edition">Public Service Data Prototype Edition</span></div></div></footer>
 <script src="STC_ANALTYICAL_SANDBOX.js"></script>
-</body></html>
+</body>
+</html>
