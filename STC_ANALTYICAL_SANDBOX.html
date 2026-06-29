@@ -1,14 +1,14 @@
 <!doctype html>
 <html lang="en" class="no-js">
 <!--
-National Data Literacy Sandbox Suite, version 10.0.0.
+National Data Literacy Sandbox Suite, version 10.0.1.
 Static bilingual prototype aligned with Canada.ca / GC Design System conventions. Not officially approved or certified.
 
 Maintenance notes for AI coding assistants:
 - User flow is learning goal + Statistics Canada subject matter area + optional postal/province context.
 - Community type and optional module checklists were intentionally removed.
-- The JavaScript selects one of three candidate datasets for the selected subject area and learning goal.
-- The JavaScript first attempts Statistics Canada WDS metadata/data retrieval for the selected dataset.
+- The Start quiz button selects one relevant dataset and automatically attempts Statistics Canada WDS metadata/data refresh.
+- There is intentionally no separate data-refresh button.
 - If WDS metadata/data cannot be loaded in-browser, the UI falls back to labelled demonstration data shaped like the selected StatCan dataset.
 - Postal-code matching uses first-character province/territory inference only. It is not an official PCCF or census-boundary match.
 - Keep source name, table ID, URL, geography, unit, frequency, reference period, live/fallback status and limitations visible in each tab.
@@ -54,7 +54,7 @@ Maintenance notes for AI coding assistants:
 
   <section class="notice" aria-labelledby="before-heading">
     <h2 id="before-heading" data-k="beforeH">Before you start</h2>
-    <p data-k="beforeP">Choose a learning goal and a Statistics Canada subject area. The sandbox selects a relevant dataset, tries the public WDS API, and falls back to clearly labelled demonstration values if live data cannot be loaded.</p>
+    <p data-k="beforeP">Choose a learning goal and a Statistics Canada subject area. Start quiz selects a relevant dataset, attempts the public WDS API, and falls back to clearly labelled demonstration values if live data cannot be loaded.</p>
   </section>
 
   <nav class="onpage" aria-labelledby="onpage">
@@ -73,7 +73,7 @@ Maintenance notes for AI coding assistants:
 
   <section id="start" aria-labelledby="start-heading">
     <h2 id="start-heading" data-k="startH">Start a learning scenario</h2>
-    <p data-k="startP">Select a learning goal and subject matter area. Postal code is optional and is used only for province/territory context in this static prototype.</p>
+    <p data-k="startP">Select a learning goal and subject matter area. The Start quiz button selects the dataset and refreshes public source status automatically.</p>
     <div id="errsum" class="error-summary" tabindex="-1" hidden><h3 data-k="errH">There is a problem</h3><ul id="errlist"></ul></div>
     <form id="scenario" novalidate>
       <div class="grid grid-3">
@@ -103,7 +103,7 @@ Maintenance notes for AI coding assistants:
           <input id="postal" class="input" value="K1A 0A6" maxlength="7" autocomplete="postal-code" aria-describedby="postalhint postalerr">
         </div>
       </div>
-      <div class="action-bar"><button class="btn" type="submit" data-k="generate">Generate learning path</button><button class="btn btn2" type="button" id="reset" data-k="reset">Reset</button><button class="btn btn2" type="button" id="reload-data" data-k="reloadData">Reload public data</button><button class="btn btn2" type="button" id="print" data-k="print">Print or save as PDF</button><button class="btn btn2" type="button" id="export" data-k="export">Download scenario JSON</button></div>
+      <div class="action-bar"><button class="btn" type="submit" data-k="generate">Start quiz</button><button class="btn btn2" type="button" id="reset" data-k="reset">Reset</button><button class="btn btn2" type="button" id="print" data-k="print">Print or save as PDF</button><button class="btn btn2" type="button" id="export" data-k="export">Download scenario JSON</button></div>
     </form>
     <section id="output" class="success" tabindex="-1" aria-live="polite"></section>
   </section>
