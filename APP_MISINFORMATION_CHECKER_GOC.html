@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Standalone Government of Canada-style prototype for checking public data claims for source, context, metadata, limitations and misinformation-risk signals.">
+  <title>Misinformation-resistant data checker - Prototype</title>
+  <style>
+    /* ======================================================================
+       Canada.ca / GCWeb-inspired standalone design tokens
+       ====================================================================== */
+    :root {
+      --gc-blue: #26374a;
+      --gc-blue-dark: #1f2d3d;
+      --gc-link: #284162;
+      --gc-red: #d3080c;
+      --text: #111;
+      --muted: #555;
+      --border: #d6d6d6;
+      --border-dark: #777;
+      --bg: #fff;
+      --surface: #f8f8f8;
+      --surface-2: #eef3f7;
+      --focus: #ffbf47;
+      --success: #2b542c;
+      --warning: #7a4d00;
+      --danger: #8b1e1e;
+      --info: #1b5a72;
+      --max: 1180px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .12);
+      --radius: 4px;
+      --space-1: .25rem;
+      --space-2: .5rem;
+      --space-3: .75rem;
+      --space-4: 1rem;
+      --space-5: 1.5rem;
+      --space-6: 2rem;
+      --space-7: 3rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.55;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    h1, h2, h3, h4 { line-height: 1.22; margin: 0 0 var(--space-4); color: var(--text); }
+    h1 { font-size: clamp(2rem, 4vw, 2.75rem); margin-top: var(--space-4); }
+    h2 { font-size: clamp(1.55rem, 3vw, 2rem); border-bottom: 3px solid var(--gc-red); padding-bottom: .35rem; margin-top: var(--space-7); }
+    h3 { font-size: 1.35rem; margin-top: var(--space-5); }
+    h4 { font-size: 1.15rem; margin-top: var(--space-4); }
+
+    p { margin: 0 0 var(--space-4); }
+    ul, ol { margin-top: 0; }
+    a { color: var(--gc-link); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover, a:focus { color: #0535d2; }
+
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+
+    :focus-visible {
+      outline: 4px solid var(--focus);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 2px #000;
+    }
+
+    .container { width: min(100% - 2rem, var(--max)); margin: 0 auto; }
+    .stack > * + * { margin-top: var(--space-4); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 1.25rem; max-width: 920px; }
+    .small { font-size: .92rem; }
+    .required { color: var(--danger); font-weight: 700; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-links {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+    }
+
+    .skip-links a {
+      position: absolute;
+      top: -5rem;
+      left: .5rem;
+      background: #000;
+      color: #fff;
+      padding: .65rem .9rem;
+      font-weight: 700;
+    }
+
+    .skip-links a:focus { top: .5rem; position: relative; }
+
+    /* Header */
+    .prototype-banner {
+      border-bottom: 1px solid var(--border);
+      background: #f1f1f1;
+      padding: .55rem 0;
+      font-size: .95rem;
+    }
+
+    .goc-header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-5);
+      padding: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    .brand .canada {
+      display: block;
+      font-size: clamp(1.45rem, 2vw, 1.9rem);
+      letter-spacing: -.02em;
+    }
+
+    .brand .leaf {
+      color: var(--gc-red);
+      font-size: .9em;
+      margin-left: .2rem;
+    }
+
+    .brand .subtitle {
+      display: block;
+      color: var(--muted);
+      font-weight: 400;
+      font-size: .9rem;
+    }
+
+    .header-tools {
+      display: flex;
+      gap: var(--space-4);
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .search-box {
+      display: flex;
+      max-width: 25rem;
+      border: 1px solid var(--border-dark);
+    }
+
+    .search-box input {
+      min-width: 0;
+      border: 0;
+      padding: .55rem .7rem;
+      width: 15rem;
+    }
+
+    .search-box button {
+      background: var(--gc-blue);
+      color: #fff;
+      border: 0;
+      padding: .55rem .8rem;
+      font-weight: 700;
+    }
+
+    .language-button {
+      background: transparent;
+      border: 0;
+      color: var(--gc-link);
+      font-weight: 700;
+      text-decoration: underline;
+      min-height: 44px;
+      padding: .35rem 0;
+    }
+
+    .nav-bar { background: var(--gc-blue); color: #fff; }
+    .nav-bar .container { display: flex; flex-wrap: wrap; align-items: stretch; }
+    .nav-label { padding: .85rem 1rem .85rem 0; font-weight: 700; text-transform: uppercase; }
+    .nav-bar ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; }
+    .nav-bar a { display: block; color: #fff; text-decoration: none; padding: .85rem 1rem; border-left: 1px solid rgba(255, 255, 255, .22); }
+    .nav-bar a:hover, .nav-bar a:focus { background: var(--gc-blue-dark); color: #fff; text-decoration: underline; }
+
+    /* Breadcrumb */
+    .breadcrumb { margin: 1rem 0; font-size: .95rem; }
+    .breadcrumb ol { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .45rem; }
+    .breadcrumb li + li::before { content: ">"; margin-right: .45rem; color: var(--muted); }
+
+    /* Common content */
+    .notice {
+      border-left: 6px solid var(--info);
+      background: #eef7fb;
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .warning {
+      border-left: 6px solid var(--warning);
+      background: #fff8e6;
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .error-summary {
+      border: 3px solid var(--danger);
+      background: #fff;
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .hidden, [hidden] { display: none !important; }
+
+    .on-this-page {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: var(--space-4);
+      margin: var(--space-5) 0;
+    }
+
+    .on-this-page h2 { border: 0; padding: 0; margin-top: 0; font-size: 1.3rem; }
+    .on-this-page ul { columns: 2; margin-bottom: 0; }
+    .on-this-page li { break-inside: avoid; margin-bottom: .3rem; }
+
+    .grid { display: grid; gap: var(--space-5); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: 5px solid var(--gc-blue);
+      padding: var(--space-5);
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 { margin-top: 0; }
+    .score-card { display: flex; flex-direction: column; min-height: 100%; }
+    .big-number { font-size: 2.4rem; font-weight: 800; line-height: 1; color: var(--gc-blue); }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: var(--space-3); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .25rem .6rem;
+      border: 1px solid var(--border-dark);
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: .9rem;
+      background: #fff;
+    }
+
+    .stepper {
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0 0;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: .5rem;
+    }
+
+    .stepper li {
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--gc-blue);
+      background: var(--surface);
+      padding: .75rem;
+      font-weight: 700;
+      min-height: 4.5rem;
+    }
+
+    /* Forms */
+    .form-panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: 6px solid var(--gc-blue);
+      padding: var(--space-5);
+      margin-top: var(--space-5);
+    }
+
+    .form-group { margin-bottom: var(--space-5); }
+    .form-label, legend { display: block; font-weight: 800; color: var(--text); }
+    .hint { color: var(--muted); font-size: .95rem; margin: .2rem 0 .45rem; }
+
+    input[type="text"], input[type="url"], input[type="search"], textarea, select {
+      display: block;
+      width: 100%;
+      max-width: 48rem;
+      border: 2px solid var(--border-dark);
+      padding: .7rem;
+      background: #fff;
+      min-height: 48px;
+    }
+
+    textarea { min-height: 9rem; resize: vertical; }
+    fieldset { border: 1px solid var(--border); padding: var(--space-4); margin: 0 0 var(--space-5); }
+    .check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem 1rem; margin-top: var(--space-3); }
+    .check-grid label, .quiz-option label { display: flex; gap: .5rem; align-items: flex-start; }
+    input[type="checkbox"], input[type="radio"] { margin-top: .35rem; min-width: 1.1rem; min-height: 1.1rem; }
+
+    .field-error { color: var(--danger); font-weight: 700; margin-top: .35rem; }
+    .input-error { border-color: var(--danger) !important; }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: var(--space-4); }
+    .btn {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      background: var(--gc-blue);
+      color: #fff;
+      border: 2px solid var(--gc-blue);
+      padding: .65rem 1rem;
+      font-weight: 800;
+      text-decoration: none;
+      border-radius: var(--radius);
+    }
+    .btn:hover, .btn:focus { background: var(--gc-blue-dark); color: #fff; }
+    .btn-secondary { background: #fff; color: var(--gc-blue); }
+    .btn-secondary:hover, .btn-secondary:focus { background: var(--gc-blue); color: #fff; }
+    .btn-danger { background: #fff; color: var(--danger); border-color: var(--danger); }
+    .btn-danger:hover, .btn-danger:focus { background: var(--danger); color: #fff; }
+
+    .status-card { border-top-width: 8px; }
+    .status-green { border-top-color: var(--success); background: #f2f8f2; }
+    .status-yellow { border-top-color: var(--warning); background: #fff8e6; }
+    .status-red { border-top-color: var(--danger); background: #fff5f5; }
+
+    progress { width: 100%; height: 1.5rem; accent-color: var(--gc-blue); }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; margin: var(--space-4) 0 var(--space-5); }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    caption { text-align: left; font-weight: 800; padding: .5rem 0; }
+    th, td { border: 1px solid var(--border); padding: .7rem; vertical-align: top; text-align: left; }
+    th { background: var(--gc-blue); color: #fff; }
+    tbody th { background: #eef3f7; color: var(--text); }
+
+    /* Charts */
+    .chart { border: 1px solid var(--border); padding: var(--space-4); background: #fff; margin: var(--space-4) 0; }
+    .bar-row { display: grid; grid-template-columns: 12rem 1fr 4rem; gap: .75rem; align-items: center; margin-bottom: .75rem; }
+    .bar-track { background: #e6e6e6; border: 1px solid #aaa; min-height: 1.5rem; }
+    .bar-fill { min-height: 1.5rem; background: var(--gc-blue); color: #fff; text-align: right; padding-right: .35rem; font-weight: 700; }
+
+    .hash-box {
+      border: 1px solid var(--border);
+      background: #f5f5f5;
+      padding: var(--space-4);
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .architecture-flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: .5rem;
+      align-items: stretch;
+      margin: var(--space-4) 0;
+    }
+
+    .flow-step {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: .75rem;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .quiz-question {
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--gc-blue);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      background: #fff;
+    }
+
+    .quiz-option { margin: .6rem 0; }
+    .answer-good { border-left: 5px solid var(--success); background: #f2f8f2; padding: .75rem; }
+    .answer-bad { border-left: 5px solid var(--danger); background: #fff5f5; padding: .75rem; }
+
+    .footer {
+      margin-top: var(--space-7);
+      border-top: 4px solid var(--gc-blue);
+      background: #f1f1f1;
+      padding: var(--space-6) 0;
+    }
+
+    .footer-bottom {
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: var(--space-4) 0;
+    }
+
+    @media (max-width: 900px) {
+      body { font-size: 16px; }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .stepper, .architecture-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .check-grid { grid-template-columns: 1fr; }
+      .on-this-page ul { columns: 1; }
+      .bar-row { grid-template-columns: 1fr; }
+      .header-tools { justify-content: flex-start; width: 100%; }
+      .search-box { width: 100%; max-width: none; }
+      .search-box input { width: 100%; }
+    }
+
+    @media (max-width: 560px) {
+      .nav-bar .container, .nav-bar ul { display: block; }
+      .nav-bar a { border-left: 0; border-top: 1px solid rgba(255,255,255,.25); }
+      .stepper, .architecture-flow { grid-template-columns: 1fr; }
+      .button-row .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+
+    @media print {
+      body { font-size: 11pt; color: #000; background: #fff; }
+      .skip-links, .prototype-banner, .goc-header, .nav-bar, .breadcrumb, .on-this-page, .button-row, .search-box, .no-print { display: none !important; }
+      .container { width: 100%; max-width: none; margin: 0; }
+      h1 { font-size: 22pt; }
+      h2 { font-size: 16pt; border-bottom: 2px solid #000; margin-top: 18pt; }
+      .card, .form-panel, .notice, .warning, .quiz-question, .chart, table { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+      a { color: #000; text-decoration: none; }
+      th { background: #eee !important; color: #000 !important; }
+      .bar-fill { background: #ddd !important; color: #000; border-right: 2px solid #000; }
+    }
+  </style>
+  <script>
+    document.documentElement.classList.remove('no-js');
+    document.documentElement.classList.add('js');
+  </script>
+</head>
+<body>
+  <!-- Accessibility features: skip links -->
+  <nav class="skip-links" aria-label="Skip links">
+    <a href="#wb-cont">Skip to main content</a>
+    <a href="#claim-checker">Skip to claim checker</a>
+    <a href="#results">Skip to results and report</a>
+  </nav>
+
+  <!-- Header -->
+  <div class="prototype-banner" role="note">
+    <div class="container" id="prototypeNotice">
+      <strong>Prototype / Demonstration only:</strong> This is not an official Government of Canada service. Aliases and scores stay in this browser. No external AI or API is called.
+    </div>
+  </div>
+
+  <header class="goc-header" role="banner">
+    <div class="container header-row">
+      <a class="brand" href="#wb-cont" aria-label="Government of Canada prototype home">
+        <span class="canada">Canada <span class="leaf" aria-hidden="true">◆</span></span>
+        <span class="subtitle" id="brandSubtitle">Government of Canada-style standalone prototype</span>
+      </a>
+      <div class="header-tools">
+        <form class="search-box no-print" id="siteSearch" role="search" aria-label="Search placeholder">
+          <label class="sr-only" for="siteSearchInput" id="siteSearchLabel">Search Canada.ca</label>
+          <input id="siteSearchInput" type="search" autocomplete="off" placeholder="Search Canada.ca">
+          <button type="submit" id="siteSearchButton">Search</button>
+        </form>
+        <button class="language-button" id="languageToggle" type="button" aria-label="Switch to French">Français</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-bar" aria-label="Primary navigation">
+    <div class="container">
+      <div class="nav-label" id="menuLabel">Menu</div>
+      <ul>
+        <li><a href="#overview" data-nav="overview">Overview</a></li>
+        <li><a href="#claim-checker" data-nav="checker">Check a claim</a></li>
+        <li><a href="#results" data-nav="results">Results</a></li>
+        <li><a href="#source-registry" data-nav="sources">Sources</a></li>
+        <li><a href="#quiz" data-nav="quiz">Quiz</a></li>
+        <li><a href="#leaderboard" data-nav="leaderboard">Leaderboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main id="wb-cont" class="container" tabindex="-1">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb" id="breadcrumbNav">
+      <ol>
+        <li><a href="https://www.canada.ca/en.html" rel="noopener noreferrer">Canada.ca</a></li>
+        <li><a href="#overview" id="breadcrumbParent">Data literacy prototypes</a></li>
+        <li aria-current="page" id="breadcrumbCurrent">Misinformation-resistant data checker</li>
+      </ol>
+    </nav>
+
+    <!-- Main content -->
+    <section id="overview" aria-labelledby="pageTitle">
+      <h1 id="pageTitle">Misinformation-resistant data checker</h1>
+      <p class="lead" id="pageLead">Check whether a public data claim has enough source, context, metadata and limitation information before it is shared, cited or used in a briefing.</p>
+      <p class="muted" id="pageMeta">Challenge 10 · Bilingual standalone prototype · Local deterministic scoring</p>
+
+      <div class="notice" role="note">
+        <p id="scopeNotice"><strong>Important:</strong> This prototype does not determine legal truth or falsity. It provides diagnostic feedback on evidence quality and misinformation-risk signals.</p>
+      </div>
+
+      <nav class="on-this-page" aria-labelledby="onThisPageTitle">
+        <h2 id="onThisPageTitle">On this page</h2>
+        <ul>
+          <li><a href="#challenge-summary" data-onpage="challenge">Challenge summary</a></li>
+          <li><a href="#claim-checker" data-onpage="checker">Claim checker</a></li>
+          <li><a href="#results" data-onpage="barometer">Trust barometer result</a></li>
+          <li><a href="#lineage" data-onpage="lineage">Data lineage and hash</a></li>
+          <li><a href="#source-registry" data-onpage="registry">Verified source registry concept</a></li>
+          <li><a href="#architecture" data-onpage="architecture">Technical logic</a></li>
+          <li><a href="#quiz" data-onpage="quiz">Evidence quiz</a></li>
+          <li><a href="#leaderboard" data-onpage="leaderboard">Local leaderboard</a></li>
+        </ul>
+      </nav>
+    </section>
+
+    <section id="challenge-summary" aria-labelledby="challengeTitle">
+      <h2 id="challengeTitle">Challenge summary</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3 id="pitchTitle">What the app does</h3>
+          <p id="pitchText">It helps users check whether a statistic or data claim includes the basic evidence needed for responsible verification.</p>
+          <div class="badge-row" aria-label="Feature badges">
+            <span class="badge">🔎 <span id="badgeSource">Source checker</span></span>
+            <span class="badge">🧭 <span id="badgeContext">Context builder</span></span>
+            <span class="badge">🧾 <span id="badgeReporter">Evidence reporter</span></span>
+          </div>
+        </article>
+        <article class="card">
+          <h3 id="outcomeTitle">Public value</h3>
+          <p id="outcomeText">The checker strengthens data literacy by making source, reference period, geography, unit, method and limitations visible.</p>
+        </article>
+        <article class="card score-card">
+          <h3 id="priorityTitle">Priority score</h3>
+          <p class="big-number" aria-label="Priority score 86 out of 100">86</p>
+          <p id="priorityText">Strong challenge fit: public trust, transparent data use, responsible communication and source verification.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="workflow" aria-labelledby="workflowTitle">
+      <h2 id="workflowTitle">User workflow</h2>
+      <ol class="stepper">
+        <li id="step1">1. Enter claim</li>
+        <li id="step2">2. Check evidence</li>
+        <li id="step3">3. Review risk</li>
+        <li id="step4">4. Get result</li>
+        <li id="step5">5. Complete quiz</li>
+        <li id="step6">6. Export report</li>
+      </ol>
+    </section>
+
+    <!-- Forms -->
+    <section id="claim-checker" aria-labelledby="checkerTitle">
+      <h2 id="checkerTitle">Claim checker</h2>
+      <p id="checkerIntro">Paste a public claim or public URL, then identify what evidence is visible. Validation happens when you submit the form.</p>
+
+      <!-- Error handling -->
+      <div id="errorSummary" class="error-summary" tabindex="-1" hidden>
+        <h3 id="errorSummaryTitle">There is a problem</h3>
+        <ul id="errorSummaryList"></ul>
+      </div>
+
+      <form id="claimForm" class="form-panel" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="aliasInput"><span id="aliasLabel">Alias or team name</span> <span class="required" id="required1">(required)</span></label>
+          <p class="hint" id="aliasHint">Use a non-identifying alias. Do not enter a real name or personal information.</p>
+          <input id="aliasInput" name="alias" type="text" autocomplete="nickname" maxlength="60" aria-describedby="aliasHint aliasError" required>
+          <div id="aliasError" class="field-error" aria-live="polite"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="domainSelect"><span id="domainLabel">Claim domain</span> <span class="required" id="required2">(required)</span></label>
+          <p class="hint" id="domainHint">Choose a domain or use auto-detect from the claim text.</p>
+          <select id="domainSelect" name="domain" aria-describedby="domainHint domainError" required></select>
+          <div id="domainError" class="field-error" aria-live="polite"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="claimInput"><span id="claimLabel">Claim or public URL</span> <span class="required" id="required3">(required)</span></label>
+          <p class="hint" id="claimHint">Example: Did Canada's inflation rate hit 10% in 2025?</p>
+          <textarea id="claimInput" name="claim" aria-describedby="claimHint claimError" required></textarea>
+          <div id="claimError" class="field-error" aria-live="polite"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="sourceInput" id="sourceLabel">Known source URL or citation</label>
+          <p class="hint" id="sourceHint">Optional. Add a public source link, table ID or citation if the claim provides one.</p>
+          <input id="sourceInput" name="source" type="url" autocomplete="url" aria-describedby="sourceHint sourceError" placeholder="https://...">
+          <div id="sourceError" class="field-error" aria-live="polite"></div>
+        </div>
+
+        <fieldset>
+          <legend id="evidenceLegend">Evidence visible in the claim</legend>
+          <p class="hint" id="evidenceHint">Select all evidence elements that appear in the claim or source.</p>
+          <div id="evidenceOptions" class="check-grid"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend id="riskLegend">Potential misinformation-risk signals</legend>
+          <p class="hint" id="riskHint">Select all risk signals that may apply. The result will show why these lower confidence.</p>
+          <div id="riskOptions" class="check-grid"></div>
+        </fieldset>
+
+        <div class="button-row">
+          <button class="btn" type="submit" id="checkButton">Check claim</button>
+          <button class="btn btn-secondary" type="reset" id="clearButton">Clear form</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="results" aria-labelledby="resultsTitle">
+      <h2 id="resultsTitle">Trust barometer result</h2>
+      <div id="emptyResults" class="warning" role="note">
+        <p id="emptyResultsText">Submit the claim checker form to see a trust barometer result, evidence score, parsed entities, source route and report options.</p>
+      </div>
+
+      <div id="resultPanel" hidden>
+        <div class="grid grid-3">
+          <article id="statusCard" class="card status-card" aria-live="polite">
+            <h3 id="statusTitle">Trust status</h3>
+            <p class="big-number" id="statusIcon" aria-hidden="true">🟡</p>
+            <p><strong id="statusLabel">Needs context</strong></p>
+            <p id="statusDescription">The claim may have a source route, but it needs more context before reuse.</p>
+          </article>
+          <article class="card">
+            <h3 id="scoreTitle">Evidence score</h3>
+            <p><span class="big-number" id="scoreValue">0</span> <span id="scoreOutOf">/ 100</span></p>
+            <progress id="scoreProgress" max="100" value="0">0</progress>
+          </article>
+          <article class="card">
+            <h3 id="routeTitle">Matched source route</h3>
+            <p id="routeValue">No source route yet.</p>
+            <p><a id="routeLink" href="#source-registry">View source registry</a></p>
+          </article>
+        </div>
+
+        <h3 id="parsedTitle">Parsed claim entities</h3>
+        <div class="table-wrap">
+          <table>
+            <caption id="parsedCaption">Entities extracted locally from the claim text</caption>
+            <tbody id="parsedBody"></tbody>
+          </table>
+        </div>
+
+        <h3 id="breakdownTitle">Evidence score breakdown</h3>
+        <div class="chart" role="img" id="breakdownChart" aria-label="Evidence score breakdown shown as horizontal bars"></div>
+        <div class="table-wrap">
+          <table>
+            <caption id="breakdownCaption">Table equivalent for evidence score breakdown</caption>
+            <thead><tr><th scope="col" id="breakdownSignalHead">Signal</th><th scope="col" id="breakdownEffectHead">Effect</th><th scope="col" id="breakdownNoteHead">Note</th></tr></thead>
+            <tbody id="breakdownTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-2">
+          <article class="card">
+            <h3 id="meansTitle">What this means</h3>
+            <p id="meansText">This result explains whether the claim has enough source and context information to be responsibly checked.</p>
+          </article>
+          <article class="card">
+            <h3 id="notMeansTitle">What this does not mean</h3>
+            <p id="notMeansText">This prototype does not verify live values or decide whether a public statement is legally true or false.</p>
+          </article>
+        </div>
+
+        <article class="card">
+          <h3 id="nextStepsTitle">Recommended next steps</h3>
+          <ol id="nextStepsList"></ol>
+        </article>
+
+        <div class="button-row no-print">
+          <button class="btn" type="button" id="printButton">Print report</button>
+          <button class="btn btn-secondary" type="button" id="jsonButton">Export JSON</button>
+          <button class="btn btn-secondary" type="button" id="csvButton">Export CSV</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="lineage" aria-labelledby="lineageTitle">
+      <h2 id="lineageTitle">Data lineage and traceability</h2>
+      <p id="lineageIntro">After a claim is checked, the app creates a local lineage record and a browser-side SHA-256 hash where supported.</p>
+      <div class="hash-box" id="lineageBox">No lineage record yet.</div>
+      <p class="small muted" id="hashNote">The hash is a prototype safeguard, not a production blockchain, official provenance ledger or Government of Canada audit record.</p>
+    </section>
+
+    <!-- Tables -->
+    <section id="source-registry" aria-labelledby="registryTitle">
+      <h2 id="registryTitle">Verified source registry concept</h2>
+      <p id="registryIntro">The registry shows public source routes the prototype would use for source-only verification in a production version. Version 1 does not fetch live data.</p>
+      <div class="table-wrap">
+        <table>
+          <caption id="registryCaption">Prototype source registry</caption>
+          <thead><tr><th scope="col" id="domainHead">Domain</th><th scope="col" id="sourceRouteHead">Source route</th><th scope="col" id="useHead">Use</th><th scope="col" id="limitationHead">Limitation</th></tr></thead>
+          <tbody id="registryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="architecture" aria-labelledby="architectureTitle">
+      <h2 id="architectureTitle">Technical logic for AI-assisted verification</h2>
+      <div class="architecture-flow" aria-label="Prototype workflow">
+        <div class="flow-step" id="flow1">Claim intake</div>
+        <div class="flow-step" id="flow2">Local parser</div>
+        <div class="flow-step" id="flow3">Source router</div>
+        <div class="flow-step" id="flow4">Evidence score</div>
+        <div class="flow-step" id="flow5">Lineage hash</div>
+        <div class="flow-step" id="flow6">Report export</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption id="architectureCaption">Prototype behaviour compared with production-intent behaviour</caption>
+          <thead><tr><th scope="col" id="stepHead">Step</th><th scope="col" id="prototypeHead">Prototype behaviour</th><th scope="col" id="productionHead">Production-intent behaviour</th></tr></thead>
+          <tbody id="architectureBody"></tbody>
+        </table>
+      </div>
+      <div class="warning" role="note">
+        <p id="aiBoundary"><strong>AI boundary:</strong> No AI is called in this prototype. A production version should use source-only retrieval-augmented generation to explain retrieved official evidence, not invent values or make decisions about people.</p>
+      </div>
+    </section>
+
+    <section id="quiz" aria-labelledby="quizTitle">
+      <h2 id="quizTitle">10-question evidence quiz</h2>
+      <p id="quizIntro">Test whether you can identify source, context, metadata and responsible-use issues in public data claims.</p>
+      <form id="quizForm" class="form-panel"></form>
+      <div id="quizResult" class="notice" hidden tabindex="-1"></div>
+    </section>
+
+    <section id="leaderboard" aria-labelledby="leaderboardTitle">
+      <h2 id="leaderboardTitle">Local leaderboard</h2>
+      <p id="leaderboardIntro">Practice attempts are stored in this browser only. Keep aliases non-identifying.</p>
+      <div class="table-wrap">
+        <table>
+          <caption id="leaderboardCaption">Last 10 local attempts</caption>
+          <thead><tr><th scope="col" id="leaderAliasHead">Alias</th><th scope="col" id="leaderCheckerHead">Checker score</th><th scope="col" id="leaderQuizHead">Quiz score</th><th scope="col" id="leaderStatusHead">Trust status</th><th scope="col" id="leaderBadgeHead">Badge</th><th scope="col" id="leaderDateHead">Date</th></tr></thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-danger no-print" type="button" id="resetLeaderboardButton">Reset leaderboard</button>
+    </section>
+
+    <section id="about" aria-labelledby="aboutTitle">
+      <h2 id="aboutTitle">Privacy, accessibility and responsible use</h2>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3 id="privacyTitle">Privacy</h3>
+          <p id="privacyText">The app uses aliases only and stores practice attempts in localStorage. It does not send claim text to a server.</p>
+        </article>
+        <article class="card">
+          <h3 id="accessibilityTitle">Accessibility</h3>
+          <p id="accessibilityText">The prototype uses semantic HTML, labelled fields, keyboard-accessible controls, visible focus states, error summaries, data tables and print styles.</p>
+        </article>
+        <article class="card">
+          <h3 id="responsibleTitle">Responsible use</h3>
+          <p id="responsibleText">The checker supports learning and evidence review. It does not produce final decisions, legal conclusions or official Government of Canada verification.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo">
+    <div class="container grid grid-3">
+      <div>
+        <h2 id="footerStatusTitle">Prototype status</h2>
+        <p id="footerStatusText">Standalone demonstration. Not an official Government of Canada service.</p>
+      </div>
+      <div>
+        <h2 id="footerDataTitle">Data source note</h2>
+        <p id="footerDataText">Source routes are public-data references and must be validated before operational use.</p>
+      </div>
+      <div>
+        <h2 id="footerDateTitle">Date modified</h2>
+        <p><time datetime="2026-06-29">2026-06-29</time></p>
+      </div>
+    </div>
+  </footer>
+  <div class="footer-bottom">
+    <div class="container small" id="footerBottom">Privacy: aliases and scores stay in this browser. No external AI or API is called.</div>
+  </div>
+
+  <script>
+    /* ======================================================================
+       Standalone application script: no external APIs, no credentials, no AI
+       ====================================================================== */
+    (function () {
+      'use strict';
+
+      const storageKeys = {
+        lang: 'misinfoChecker.language',
+        leaderboard: 'misinfoChecker.leaderboard'
+      };
+
+      const copy = {
+        en: {
+          docTitle: 'Misinformation-resistant data checker - Prototype',
+          langName: 'English',
+          toggleText: 'Français',
+          toggleAria: 'Switch to French',
+          prototypeNotice: '<strong>Prototype / Demonstration only:</strong> This is not an official Government of Canada service. Aliases and scores stay in this browser. No external AI or API is called.',
+          brandSubtitle: 'Government of Canada-style standalone prototype',
+          siteSearchLabel: 'Search Canada.ca',
+          siteSearchPlaceholder: 'Search Canada.ca',
+          siteSearchButton: 'Search',
+          searchUnavailable: 'Search is a placeholder in this standalone prototype.',
+          menuLabel: 'Menu',
+          nav: { overview: 'Overview', checker: 'Check a claim', results: 'Results', sources: 'Sources', quiz: 'Quiz', leaderboard: 'Leaderboard' },
+          breadcrumbParent: 'Data literacy prototypes',
+          breadcrumbCurrent: 'Misinformation-resistant data checker',
+          pageTitle: 'Misinformation-resistant data checker',
+          pageLead: 'Check whether a public data claim has enough source, context, metadata and limitation information before it is shared, cited or used in a briefing.',
+          pageMeta: 'Challenge 10 · Bilingual standalone prototype · Local deterministic scoring',
+          scopeNotice: '<strong>Important:</strong> This prototype does not determine legal truth or falsity. It provides diagnostic feedback on evidence quality and misinformation-risk signals.',
+          onThisPageTitle: 'On this page',
+          onpage: {
+            challenge: 'Challenge summary', checker: 'Claim checker', barometer: 'Trust barometer result', lineage: 'Data lineage and hash', registry: 'Verified source registry concept', architecture: 'Technical logic', quiz: 'Evidence quiz', leaderboard: 'Local leaderboard'
+          },
+          challengeTitle: 'Challenge summary',
+          pitchTitle: 'What the app does',
+          pitchText: 'It helps users check whether a statistic or data claim includes the basic evidence needed for responsible verification.',
+          outcomeTitle: 'Public value',
+          outcomeText: 'The checker strengthens data literacy by making source, reference period, geography, unit, method and limitations visible.',
+          priorityTitle: 'Priority score',
+          priorityText: 'Strong challenge fit: public trust, transparent data use, responsible communication and source verification.',
+          badgeSource: 'Source checker', badgeContext: 'Context builder', badgeReporter: 'Evidence reporter',
+          workflowTitle: 'User workflow',
+          steps: ['1. Enter claim', '2. Check evidence', '3. Review risk', '4. Get result', '5. Complete quiz', '6. Export report'],
+          checkerTitle: 'Claim checker',
+          checkerIntro: 'Paste a public claim or public URL, then identify what evidence is visible. Validation happens when you submit the form.',
+          errorSummaryTitle: 'There is a problem',
+          required: '(required)',
+          aliasLabel: 'Alias or team name', aliasHint: 'Use a non-identifying alias. Do not enter a real name or personal information.',
+          domainLabel: 'Claim domain', domainHint: 'Choose a domain or use auto-detect from the claim text.',
+          claimLabel: 'Claim or public URL', claimHint: 'Example: Did Canada\'s inflation rate hit 10% in 2025?',
+          sourceLabel: 'Known source URL or citation', sourceHint: 'Optional. Add a public source link, table ID or citation if the claim provides one.',
+          evidenceLegend: 'Evidence visible in the claim', evidenceHint: 'Select all evidence elements that appear in the claim or source.',
+          riskLegend: 'Potential misinformation-risk signals', riskHint: 'Select all risk signals that may apply. The result will show why these lower confidence.',
+          checkButton: 'Check claim', clearButton: 'Clear form',
+          errors: {
+            alias: 'Enter a non-identifying alias or team name.',
+            claim: 'Enter a public claim or URL with at least 10 characters.',
+            source: 'Enter a valid URL beginning with http:// or https://, or leave the field blank.',
+            domain: 'Choose a claim domain.'
+          },
+          domains: {
+            auto: 'Auto-detect', unknown: 'Unknown or unclear', prices: 'Prices and inflation', population: 'Population and demography', labour: 'Labour and employment', health: 'Health and well-being', environment: 'Environment and climate'
+          },
+          evidence: {
+            source: 'Source, citation or table ID', period: 'Reference period or date', geography: 'Geography or population', unit: 'Unit or denominator', method: 'Method, concept or definition', limitation: 'Limitation or caveat'
+          },
+          risk: {
+            loaded: 'Alarmist or loaded wording', overgeneral: 'Overgeneralization', causality: 'Unsupported causal claim', chart: 'Chart, map scale or denominator risk'
+          },
+          resultsTitle: 'Trust barometer result',
+          emptyResultsText: 'Submit the claim checker form to see a trust barometer result, evidence score, parsed entities, source route and report options.',
+          statusTitle: 'Trust status', scoreTitle: 'Evidence score', scoreOutOf: '/ 100', routeTitle: 'Matched source route', routeLink: 'View source registry',
+          statuses: {
+            green: { label: 'Verified-ready', icon: '🟢', desc: 'The claim has a matched source route and enough context for responsible verification. Validate official values before operational use.' },
+            yellow: { label: 'Needs context', icon: '🟡', desc: 'The claim may have a source route, but more context is needed before reuse.' },
+            red: { label: 'Unverified', icon: '🔴', desc: 'The claim lacks a clear source route or has high verification-risk signals. Manual verification is required.' }
+          },
+          parsedTitle: 'Parsed claim entities', parsedCaption: 'Entities extracted locally from the claim text',
+          parsedRows: { metric: 'Metric', geography: 'Geography', period: 'Period', number: 'Numeric value', domain: 'Domain' },
+          unknownValue: 'Not detected',
+          breakdownTitle: 'Evidence score breakdown', breakdownCaption: 'Table equivalent for evidence score breakdown',
+          breakdownSignalHead: 'Signal', breakdownEffectHead: 'Effect', breakdownNoteHead: 'Note',
+          meansTitle: 'What this means', notMeansTitle: 'What this does not mean', nextStepsTitle: 'Recommended next steps',
+          meansText: 'This result explains whether the claim has enough source and context information to be responsibly checked.',
+          notMeansText: 'This prototype does not verify live values or decide whether a public statement is legally true or false.',
+          nextSteps: ['Confirm the official source and table or dataset ID.', 'Check that the reference period, geography and unit are comparable.', 'Separate data, interpretation and next steps.', 'Include at least one limitation before using the claim in a briefing.'],
+          printButton: 'Print report', jsonButton: 'Export JSON', csvButton: 'Export CSV',
+          lineageTitle: 'Data lineage and traceability', lineageIntro: 'After a claim is checked, the app creates a local lineage record and a browser-side SHA-256 hash where supported.',
+          lineageEmpty: 'No lineage record yet.', hashNote: 'The hash is a prototype safeguard, not a production blockchain, official provenance ledger or Government of Canada audit record.', hashUnavailable: 'Hash unavailable in this browser.',
+          registryTitle: 'Verified source registry concept', registryIntro: 'The registry shows public source routes the prototype would use for source-only verification in a production version. Version 1 does not fetch live data.', registryCaption: 'Prototype source registry',
+          domainHead: 'Domain', sourceRouteHead: 'Source route', useHead: 'Use', limitationHead: 'Limitation',
+          architectureTitle: 'Technical logic for AI-assisted verification', architectureCaption: 'Prototype behaviour compared with production-intent behaviour', stepHead: 'Step', prototypeHead: 'Prototype behaviour', productionHead: 'Production-intent behaviour',
+          flow: ['Claim intake', 'Local parser', 'Source router', 'Evidence score', 'Lineage hash', 'Report export'],
+          aiBoundary: '<strong>AI boundary:</strong> No AI is called in this prototype. A production version should use source-only retrieval-augmented generation to explain retrieved official evidence, not invent values or make decisions about people.',
+          quizTitle: '10-question evidence quiz', quizIntro: 'Test whether you can identify source, context, metadata and responsible-use issues in public data claims.', quizSubmit: 'Submit quiz', quizClear: 'Clear quiz', quizResultTitle: 'Quiz result', quizScoreLabel: 'Score', quizNeedClaim: 'Check a claim first if you want this quiz attempt added to the local leaderboard.',
+          leaderboardTitle: 'Local leaderboard', leaderboardIntro: 'Practice attempts are stored in this browser only. Keep aliases non-identifying.', leaderboardCaption: 'Last 10 local attempts',
+          leaderHeads: ['Alias', 'Checker score', 'Quiz score', 'Trust status', 'Badge', 'Date'], noAttempts: 'No local attempts yet.', resetLeaderboardButton: 'Reset leaderboard', confirmReset: 'Reset the local leaderboard in this browser?',
+          badges: { source: '🔎 Source checker', context: '🧭 Context builder', review: '🛡️ Needs review', report: '🧾 Evidence reporter' },
+          aboutTitle: 'Privacy, accessibility and responsible use', privacyTitle: 'Privacy', privacyText: 'The app uses aliases only and stores practice attempts in localStorage. It does not send claim text to a server.', accessibilityTitle: 'Accessibility', accessibilityText: 'The prototype uses semantic HTML, labelled fields, keyboard-accessible controls, visible focus states, error summaries, data tables and print styles.', responsibleTitle: 'Responsible use', responsibleText: 'The checker supports learning and evidence review. It does not produce final decisions, legal conclusions or official Government of Canada verification.',
+          footerStatusTitle: 'Prototype status', footerStatusText: 'Standalone demonstration. Not an official Government of Canada service.', footerDataTitle: 'Data source note', footerDataText: 'Source routes are public-data references and must be validated before operational use.', footerDateTitle: 'Date modified', footerBottom: 'Privacy: aliases and scores stay in this browser. No external AI or API is called.',
+          exportFile: 'misinformation-checker-report',
+          breakdownNotes: {
+            base: 'Starting point for a plausible public data claim review.', route: 'Domain matched to a public source route.', source: 'Source URL or citation was supplied.', evidence: 'Evidence element visible.', missing: 'Evidence element not visible.', risk: 'Potential misinformation-risk signal selected.'
+          },
+          metrics: {
+            inflation: 'Inflation or CPI', population: 'Population', labour: 'Labour market', health: 'Health indicator', environment: 'Environment or climate', unknown: 'General public data claim'
+          }
+        },
+        fr: {
+          docTitle: 'Vérificateur de données résistant à la désinformation - Prototype',
+          langName: 'Français',
+          toggleText: 'English',
+          toggleAria: 'Passer à la version anglaise',
+          prototypeNotice: '<strong>Prototype / démonstration seulement :</strong> Il ne s’agit pas d’un service officiel du gouvernement du Canada. Les alias et les scores restent dans ce navigateur. Aucune IA ni API externe n’est appelée.',
+          brandSubtitle: 'Prototype autonome de style gouvernement du Canada',
+          siteSearchLabel: 'Rechercher dans Canada.ca',
+          siteSearchPlaceholder: 'Rechercher dans Canada.ca',
+          siteSearchButton: 'Rechercher',
+          searchUnavailable: 'La recherche est un espace réservé dans ce prototype autonome.',
+          menuLabel: 'Menu',
+          nav: { overview: 'Aperçu', checker: 'Vérifier une affirmation', results: 'Résultats', sources: 'Sources', quiz: 'Questionnaire', leaderboard: 'Classement' },
+          breadcrumbParent: 'Prototypes de littératie des données',
+          breadcrumbCurrent: 'Vérificateur de données résistant à la désinformation',
+          pageTitle: 'Vérificateur de données résistant à la désinformation',
+          pageLead: 'Vérifiez si une affirmation fondée sur des données publiques contient assez d’information sur la source, le contexte, les métadonnées et les limites avant de la partager, de la citer ou de l’utiliser dans un breffage.',
+          pageMeta: 'Défi 10 · Prototype autonome bilingue · Notation déterministe locale',
+          scopeNotice: '<strong>Important :</strong> Ce prototype ne détermine pas la vérité ou la fausseté juridique d’une affirmation. Il fournit une rétroaction diagnostique sur la qualité des preuves et les signaux de risque de désinformation.',
+          onThisPageTitle: 'Sur cette page',
+          onpage: {
+            challenge: 'Résumé du défi', checker: 'Vérificateur d’affirmations', barometer: 'Résultat du baromètre de confiance', lineage: 'Traçabilité des données et hachage', registry: 'Concept de registre de sources vérifiées', architecture: 'Logique technique', quiz: 'Questionnaire sur les preuves', leaderboard: 'Classement local'
+          },
+          challengeTitle: 'Résumé du défi',
+          pitchTitle: 'Ce que fait l’application',
+          pitchText: 'Elle aide les utilisateurs à vérifier si une statistique ou une affirmation fondée sur des données contient les preuves de base nécessaires à une vérification responsable.',
+          outcomeTitle: 'Valeur publique',
+          outcomeText: 'Le vérificateur renforce la littératie des données en rendant visibles la source, la période de référence, la géographie, l’unité, la méthode et les limites.',
+          priorityTitle: 'Score de priorité',
+          priorityText: 'Forte adéquation au défi : confiance du public, utilisation transparente des données, communication responsable et vérification des sources.',
+          badgeSource: 'Vérificateur de sources', badgeContext: 'Bâtisseur de contexte', badgeReporter: 'Rapport de preuves',
+          workflowTitle: 'Parcours utilisateur',
+          steps: ['1. Entrer l’affirmation', '2. Vérifier les preuves', '3. Examiner le risque', '4. Obtenir le résultat', '5. Répondre au questionnaire', '6. Exporter le rapport'],
+          checkerTitle: 'Vérificateur d’affirmations',
+          checkerIntro: 'Collez une affirmation publique ou une URL publique, puis indiquez les preuves visibles. La validation se fait au moment de soumettre le formulaire.',
+          errorSummaryTitle: 'Il y a un problème',
+          required: '(obligatoire)',
+          aliasLabel: 'Alias ou nom d’équipe', aliasHint: 'Utilisez un alias non identifiant. N’entrez pas de vrai nom ni de renseignement personnel.',
+          domainLabel: 'Domaine de l’affirmation', domainHint: 'Choisissez un domaine ou utilisez la détection automatique à partir du texte de l’affirmation.',
+          claimLabel: 'Affirmation ou URL publique', claimHint: 'Exemple : Le taux d’inflation du Canada a-t-il atteint 10 % en 2025?',
+          sourceLabel: 'URL source ou citation connue', sourceHint: 'Facultatif. Ajoutez un lien public, un identifiant de tableau ou une citation si l’affirmation en fournit un.',
+          evidenceLegend: 'Preuves visibles dans l’affirmation', evidenceHint: 'Sélectionnez tous les éléments de preuve qui figurent dans l’affirmation ou la source.',
+          riskLegend: 'Signaux possibles de risque de désinformation', riskHint: 'Sélectionnez tous les signaux de risque qui peuvent s’appliquer. Le résultat expliquera pourquoi ils réduisent la confiance.',
+          checkButton: 'Vérifier l’affirmation', clearButton: 'Effacer le formulaire',
+          errors: {
+            alias: 'Entrez un alias ou un nom d’équipe non identifiant.',
+            claim: 'Entrez une affirmation publique ou une URL d’au moins 10 caractères.',
+            source: 'Entrez une URL valide commençant par http:// ou https://, ou laissez le champ vide.',
+            domain: 'Choisissez un domaine d’affirmation.'
+          },
+          domains: {
+            auto: 'Détection automatique', unknown: 'Inconnu ou peu clair', prices: 'Prix et inflation', population: 'Population et démographie', labour: 'Travail et emploi', health: 'Santé et bien-être', environment: 'Environnement et climat'
+          },
+          evidence: {
+            source: 'Source, citation ou identifiant de tableau', period: 'Période de référence ou date', geography: 'Géographie ou population', unit: 'Unité ou dénominateur', method: 'Méthode, concept ou définition', limitation: 'Limite ou mise en garde'
+          },
+          risk: {
+            loaded: 'Vocabulaire alarmiste ou chargé', overgeneral: 'Généralisation excessive', causality: 'Lien de causalité non appuyé', chart: 'Risque lié au graphique, à la carte ou au dénominateur'
+          },
+          resultsTitle: 'Résultat du baromètre de confiance',
+          emptyResultsText: 'Soumettez le formulaire du vérificateur pour voir le baromètre de confiance, le score de preuve, les entités extraites, la voie de source et les options de rapport.',
+          statusTitle: 'État de confiance', scoreTitle: 'Score de preuve', scoreOutOf: '/ 100', routeTitle: 'Voie de source appariée', routeLink: 'Voir le registre des sources',
+          statuses: {
+            green: { label: 'Prêt à vérifier', icon: '🟢', desc: 'L’affirmation a une voie de source appariée et assez de contexte pour une vérification responsable. Validez les valeurs officielles avant un usage opérationnel.' },
+            yellow: { label: 'Contexte requis', icon: '🟡', desc: 'L’affirmation peut avoir une voie de source, mais il faut plus de contexte avant de la réutiliser.' },
+            red: { label: 'Non vérifié', icon: '🔴', desc: 'L’affirmation n’a pas de voie de source claire ou présente des signaux de risque élevés. Une vérification manuelle est requise.' }
+          },
+          parsedTitle: 'Entités extraites de l’affirmation', parsedCaption: 'Entités extraites localement du texte de l’affirmation',
+          parsedRows: { metric: 'Mesure', geography: 'Géographie', period: 'Période', number: 'Valeur numérique', domain: 'Domaine' },
+          unknownValue: 'Non détecté',
+          breakdownTitle: 'Ventilation du score de preuve', breakdownCaption: 'Tableau équivalent pour la ventilation du score de preuve',
+          breakdownSignalHead: 'Signal', breakdownEffectHead: 'Effet', breakdownNoteHead: 'Note',
+          meansTitle: 'Ce que cela signifie', notMeansTitle: 'Ce que cela ne signifie pas', nextStepsTitle: 'Prochaines étapes recommandées',
+          meansText: 'Ce résultat explique si l’affirmation contient assez d’information sur la source et le contexte pour être vérifiée de façon responsable.',
+          notMeansText: 'Ce prototype ne vérifie pas les valeurs en direct et ne décide pas si une déclaration publique est juridiquement vraie ou fausse.',
+          nextSteps: ['Confirmer la source officielle et l’identifiant de tableau ou de jeu de données.', 'Vérifier que la période de référence, la géographie et l’unité sont comparables.', 'Séparer les données, l’interprétation et les prochaines étapes.', 'Inclure au moins une limite avant d’utiliser l’affirmation dans un breffage.'],
+          printButton: 'Imprimer le rapport', jsonButton: 'Exporter JSON', csvButton: 'Exporter CSV',
+          lineageTitle: 'Traçabilité des données', lineageIntro: 'Après la vérification d’une affirmation, l’application crée un enregistrement local de traçabilité et un hachage SHA-256 côté navigateur lorsque cette fonction est prise en charge.',
+          lineageEmpty: 'Aucun enregistrement de traçabilité pour le moment.', hashNote: 'Le hachage est une mesure de protection du prototype, et non une chaîne de blocs de production, un registre officiel de provenance ou un dossier d’audit du gouvernement du Canada.', hashUnavailable: 'Hachage non disponible dans ce navigateur.',
+          registryTitle: 'Concept de registre de sources vérifiées', registryIntro: 'Le registre montre les voies de sources publiques que le prototype utiliserait pour une vérification fondée uniquement sur les sources dans une version de production. La version 1 ne récupère pas de données en direct.', registryCaption: 'Registre de sources du prototype',
+          domainHead: 'Domaine', sourceRouteHead: 'Voie de source', useHead: 'Utilisation', limitationHead: 'Limite',
+          architectureTitle: 'Logique technique de vérification assistée par l’IA', architectureCaption: 'Comportement du prototype comparé au comportement visé en production', stepHead: 'Étape', prototypeHead: 'Comportement du prototype', productionHead: 'Comportement visé en production',
+          flow: ['Saisie de l’affirmation', 'Analyse locale', 'Acheminement vers la source', 'Score de preuve', 'Hachage de traçabilité', 'Exportation du rapport'],
+          aiBoundary: '<strong>Limite de l’IA :</strong> Aucune IA n’est appelée dans ce prototype. Une version de production devrait utiliser une génération augmentée par récupération limitée aux sources pour expliquer les preuves officielles récupérées, sans inventer de valeurs ni prendre de décisions au sujet de personnes.',
+          quizTitle: 'Questionnaire de 10 questions sur les preuves', quizIntro: 'Vérifiez si vous pouvez repérer les enjeux de source, de contexte, de métadonnées et d’utilisation responsable dans des affirmations fondées sur des données publiques.', quizSubmit: 'Soumettre le questionnaire', quizClear: 'Effacer le questionnaire', quizResultTitle: 'Résultat du questionnaire', quizScoreLabel: 'Score', quizNeedClaim: 'Vérifiez d’abord une affirmation si vous voulez ajouter cette tentative au classement local.',
+          leaderboardTitle: 'Classement local', leaderboardIntro: 'Les tentatives de pratique sont stockées uniquement dans ce navigateur. Gardez les alias non identifiants.', leaderboardCaption: 'Les 10 dernières tentatives locales',
+          leaderHeads: ['Alias', 'Score du vérificateur', 'Score du questionnaire', 'État de confiance', 'Badge', 'Date'], noAttempts: 'Aucune tentative locale pour le moment.', resetLeaderboardButton: 'Réinitialiser le classement', confirmReset: 'Réinitialiser le classement local dans ce navigateur?',
+          badges: { source: '🔎 Vérificateur de sources', context: '🧭 Bâtisseur de contexte', review: '🛡️ À examiner', report: '🧾 Rapport de preuves' },
+          aboutTitle: 'Protection des renseignements personnels, accessibilité et utilisation responsable', privacyTitle: 'Protection des renseignements personnels', privacyText: 'L’application utilise seulement des alias et stocke les tentatives de pratique dans localStorage. Elle n’envoie pas le texte des affirmations à un serveur.', accessibilityTitle: 'Accessibilité', accessibilityText: 'Le prototype utilise du HTML sémantique, des champs étiquetés, des commandes accessibles au clavier, des états de focus visibles, des résumés d’erreurs, des tableaux de données et des styles d’impression.', responsibleTitle: 'Utilisation responsable', responsibleText: 'Le vérificateur appuie l’apprentissage et l’examen des preuves. Il ne produit pas de décisions finales, de conclusions juridiques ni de vérification officielle du gouvernement du Canada.',
+          footerStatusTitle: 'État du prototype', footerStatusText: 'Démonstration autonome. Il ne s’agit pas d’un service officiel du gouvernement du Canada.', footerDataTitle: 'Note sur les sources de données', footerDataText: 'Les voies de source sont des références de données publiques et doivent être validées avant tout usage opérationnel.', footerDateTitle: 'Date de modification', footerBottom: 'Confidentialité : les alias et les scores restent dans ce navigateur. Aucune IA ni API externe n’est appelée.',
+          exportFile: 'rapport-verificateur-desinformation',
+          breakdownNotes: {
+            base: 'Point de départ pour l’examen d’une affirmation plausible fondée sur des données publiques.', route: 'Domaine apparié à une voie de source publique.', source: 'Une URL source ou une citation a été fournie.', evidence: 'Élément de preuve visible.', missing: 'Élément de preuve non visible.', risk: 'Signal possible de risque de désinformation sélectionné.'
+          },
+          metrics: {
+            inflation: 'Inflation ou IPC', population: 'Population', labour: 'Marché du travail', health: 'Indicateur de santé', environment: 'Environnement ou climat', unknown: 'Affirmation générale fondée sur des données publiques'
+          }
+        }
+      };
+
+      const registry = [
+        {
+          id: 'prices',
+          keywords: ['inflation', 'cpi', 'consumer price', 'price', 'prices', 'ipc', 'indice des prix', 'inflation'],
+          url: 'https://www.statcan.gc.ca/en/developers/wds',
+          tableId: '18-10-0004-01',
+          en: { route: 'Statistics Canada Web Data Service route for Consumer Price Index tables', use: 'Verify CPI, inflation and price-index claims against official table metadata and values.', limitation: 'This prototype does not fetch live CPI values. Validate against the official Statistics Canada table.' },
+          fr: { route: 'Voie du Service de données Web de Statistique Canada pour les tableaux de l’indice des prix à la consommation', use: 'Vérifier les affirmations sur l’IPC, l’inflation et les indices des prix au moyen des métadonnées et valeurs officielles.', limitation: 'Ce prototype ne récupère pas les valeurs de l’IPC en direct. Valider avec le tableau officiel de Statistique Canada.' }
+        },
+        {
+          id: 'population',
+          keywords: ['population', 'demography', 'people', 'resident', 'résident', 'démographie'],
+          url: 'https://www150.statcan.gc.ca/n1/en/catalogue/1710000901',
+          tableId: '17-10-0009-01',
+          en: { route: 'Statistics Canada Table 17-10-0009-01, Population estimates, quarterly', use: 'Verify population-estimate claims by geography and reference period.', limitation: 'Use component data before explaining causes of population change.' },
+          fr: { route: 'Tableau 17-10-0009-01 de Statistique Canada, Estimations de la population, trimestrielles', use: 'Vérifier les affirmations sur les estimations de la population selon la géographie et la période de référence.', limitation: 'Utiliser les données sur les composantes avant d’expliquer les causes du changement démographique.' }
+        },
+        {
+          id: 'labour',
+          keywords: ['employment', 'unemployment', 'labour', 'labor', 'job', 'jobs', 'emploi', 'chômage', 'travail'],
+          url: 'https://www.statcan.gc.ca/en/developers/wds',
+          tableId: 'Labour force tables through approved WDS route',
+          en: { route: 'Statistics Canada labour force tables through approved WDS/API route', use: 'Verify employment, unemployment and labour-force participation claims.', limitation: 'Confirm seasonal adjustment, age group, geography and reference month.' },
+          fr: { route: 'Tableaux de l’Enquête sur la population active de Statistique Canada au moyen d’une voie WDS/API approuvée', use: 'Vérifier les affirmations sur l’emploi, le chômage et l’activité sur le marché du travail.', limitation: 'Confirmer la désaisonnalisation, le groupe d’âge, la géographie et le mois de référence.' }
+        },
+        {
+          id: 'health',
+          keywords: ['health', 'well-being', 'wellbeing', 'disease', 'hospital', 'santé', 'bien-être', 'maladie'],
+          url: 'https://www.statcan.gc.ca/en/developers/wds',
+          tableId: 'PHAC or Statistics Canada health statistics route',
+          en: { route: 'PHAC or Statistics Canada health statistics route', use: 'Verify public health and health-statistics claims using approved public sources.', limitation: 'Avoid identifying people or making individual-level conclusions from aggregate data.' },
+          fr: { route: 'Voie de statistiques sur la santé de l’ASPC ou de Statistique Canada', use: 'Vérifier les affirmations en santé publique et en statistiques de la santé au moyen de sources publiques approuvées.', limitation: 'Éviter d’identifier des personnes ou de tirer des conclusions individuelles à partir de données agrégées.' }
+        },
+        {
+          id: 'environment',
+          keywords: ['climate', 'environment', 'emissions', 'weather', 'temperature', 'flood', 'climat', 'environnement', 'émissions', 'météo', 'inondation'],
+          url: 'https://www.statcan.gc.ca/en/developers/wds',
+          tableId: 'ECCC or Statistics Canada environmental indicators route',
+          en: { route: 'Environment and Climate Change Canada or Statistics Canada environmental indicators route', use: 'Verify climate, weather and environmental indicator claims.', limitation: 'Distinguish measured values, modelled estimates, projections and risk scenarios.' },
+          fr: { route: 'Voie d’indicateurs environnementaux d’Environnement et Changement climatique Canada ou de Statistique Canada', use: 'Vérifier les affirmations sur le climat, la météo et les indicateurs environnementaux.', limitation: 'Distinguer les valeurs mesurées, les estimations modélisées, les projections et les scénarios de risque.' }
+        }
+      ];
+
+      const architectureRows = [
+        { id: 'normalize', en: ['Normalize claim', 'Lowercase and keyword match locally.', 'Approved NLP in a protected environment.'], fr: ['Normaliser l’affirmation', 'Minuscules et appariement de mots-clés localement.', 'Traitement du langage naturel approuvé dans un environnement protégé.'] },
+        { id: 'extract', en: ['Extract entities', 'Extract year, number, geography and domain keywords.', 'Extract metric, geography, period, value, unit and source.'], fr: ['Extraire les entités', 'Extraire l’année, le nombre, la géographie et les mots-clés de domaine.', 'Extraire la mesure, la géographie, la période, la valeur, l’unité et la source.'] },
+        { id: 'route', en: ['Route source', 'Match local registry record.', 'Query an approved API gateway and metadata registry.'], fr: ['Acheminer vers la source', 'Apparier un enregistrement local du registre.', 'Interroger une passerelle API approuvée et un registre de métadonnées.'] },
+        { id: 'compare', en: ['Compare evidence', 'Score completeness and selected risk signals.', 'Compare value, unit, geography, period and metadata.'], fr: ['Comparer les preuves', 'Noter l’exhaustivité et les signaux de risque sélectionnés.', 'Comparer la valeur, l’unité, la géographie, la période et les métadonnées.'] },
+        { id: 'explain', en: ['Generate explanation', 'Deterministic feedback only.', 'Constrained source-only RAG summary from retrieved official evidence.'], fr: ['Générer l’explication', 'Rétroaction déterministe seulement.', 'Résumé RAG limité aux sources à partir des preuves officielles récupérées.'] },
+        { id: 'record', en: ['Record lineage', 'Browser-side hash demonstration.', 'Approved provenance ledger or tamper-evident logging.'], fr: ['Enregistrer la traçabilité', 'Démonstration de hachage côté navigateur.', 'Registre de provenance approuvé ou journalisation inviolable.'] }
+      ];
+
+      const quiz = [
+        { id: 'q1', skill: 'Source verification', correct: 0, en: { text: 'What should be checked before sharing a public statistic?', options: ['The source, table or dataset ID, and reference period', 'Only the number of social media reposts', 'Only whether the chart looks professional'], explanation: 'A responsible claim names the source and gives enough metadata to verify the number.' }, fr: { text: 'Que faut-il vérifier avant de partager une statistique publique?', options: ['La source, l’identifiant du tableau ou du jeu de données et la période de référence', 'Seulement le nombre de republications dans les médias sociaux', 'Seulement si le graphique semble professionnel'], explanation: 'Une affirmation responsable nomme la source et fournit assez de métadonnées pour vérifier le nombre.' } },
+        { id: 'q2', skill: 'Reference period', correct: 1, en: { text: 'Why does the reference period matter?', options: ['It changes the colour palette of the chart', 'It tells users what time period the statistic describes', 'It replaces the need for a source'], explanation: 'A value from one month, quarter or year should not be compared with another period without explanation.' }, fr: { text: 'Pourquoi la période de référence est-elle importante?', options: ['Elle change la palette de couleurs du graphique', 'Elle indique la période décrite par la statistique', 'Elle remplace le besoin d’une source'], explanation: 'Une valeur d’un mois, d’un trimestre ou d’une année ne doit pas être comparée à une autre période sans explication.' } },
+        { id: 'q3', skill: 'Comparability', correct: 2, en: { text: 'Before comparing two regions, what should be confirmed?', options: ['That one region is larger', 'That the headline is short', 'That geography, unit and method are comparable'], explanation: 'Valid comparison requires comparable geography, unit, method and reference period.' }, fr: { text: 'Avant de comparer deux régions, que faut-il confirmer?', options: ['Qu’une région est plus grande', 'Que le titre est court', 'Que la géographie, l’unité et la méthode sont comparables'], explanation: 'Une comparaison valide exige une géographie, une unité, une méthode et une période de référence comparables.' } },
+        { id: 'q4', skill: 'Causal overclaiming', correct: 1, en: { text: 'A chart shows that two indicators rose at the same time. What should the briefing say?', options: ['One caused the other', 'They changed at the same time, but causality requires more evidence', 'No limitation is needed'], explanation: 'Correlation or timing alone does not prove causation.' }, fr: { text: 'Un graphique montre que deux indicateurs ont augmenté en même temps. Que devrait dire le breffage?', options: ['L’un a causé l’autre', 'Ils ont changé en même temps, mais la causalité exige plus de preuves', 'Aucune limite n’est nécessaire'], explanation: 'Une corrélation ou une concordance temporelle ne prouve pas à elle seule la causalité.' } },
+        { id: 'q5', skill: 'Accessible charts', correct: 0, en: { text: 'What makes a chart more accessible?', options: ['A text summary and a data table equivalent', 'Colour-only labels', 'Tiny text to fit more data'], explanation: 'A chart needs a text alternative and data table so meaning is not limited to visual perception.' }, fr: { text: 'Qu’est-ce qui rend un graphique plus accessible?', options: ['Un résumé textuel et un tableau de données équivalent', 'Des étiquettes fondées uniquement sur la couleur', 'Un texte minuscule pour ajouter plus de données'], explanation: 'Un graphique doit avoir une solution textuelle et un tableau de données afin que le sens ne dépende pas seulement de la perception visuelle.' } },
+        { id: 'q6', skill: 'Denominator', correct: 2, en: { text: 'Why should a rate include its denominator?', options: ['To make the sentence longer', 'To avoid using tables', 'To show what population or base the rate is calculated from'], explanation: 'A rate is hard to interpret without knowing its denominator or population base.' }, fr: { text: 'Pourquoi un taux devrait-il inclure son dénominateur?', options: ['Pour allonger la phrase', 'Pour éviter les tableaux', 'Pour montrer la population ou la base utilisée dans le calcul du taux'], explanation: 'Un taux est difficile à interpréter sans connaître son dénominateur ou sa base de population.' } },
+        { id: 'q7', skill: 'AI summaries', correct: 1, en: { text: 'What should an AI-generated evidence summary do?', options: ['Invent missing data if the source is unclear', 'Explain retrieved official evidence and cite limitations', 'Replace official data validation'], explanation: 'A safe AI summary should be grounded in retrieved official evidence and should not invent values.' }, fr: { text: 'Que devrait faire un résumé de preuves généré par l’IA?', options: ['Inventer des données manquantes si la source est peu claire', 'Expliquer les preuves officielles récupérées et citer les limites', 'Remplacer la validation des données officielles'], explanation: 'Un résumé d’IA sécuritaire doit s’appuyer sur des preuves officielles récupérées et ne doit pas inventer de valeurs.' } },
+        { id: 'q8', skill: 'Loaded language', correct: 0, en: { text: 'Which wording is safer for a public data briefing?', options: ['The indicator increased over the selected period', 'The numbers prove a crisis without question', 'Everyone is affected in the same way'], explanation: 'Neutral wording reduces misinformation risk and avoids unsupported absolute claims.' }, fr: { text: 'Quelle formulation est plus sûre pour un breffage fondé sur des données publiques?', options: ['L’indicateur a augmenté pendant la période sélectionnée', 'Les chiffres prouvent sans aucun doute une crise', 'Tout le monde est touché de la même façon'], explanation: 'Une formulation neutre réduit le risque de désinformation et évite les affirmations absolues non appuyées.' } },
+        { id: 'q9', skill: 'Limitations', correct: 2, en: { text: 'Why include a limitation statement?', options: ['To weaken all findings', 'To hide the main message', 'To explain what the data can and cannot support'], explanation: 'Limitations help users understand the appropriate use of the evidence.' }, fr: { text: 'Pourquoi inclure un énoncé des limites?', options: ['Pour affaiblir tous les constats', 'Pour cacher le message principal', 'Pour expliquer ce que les données peuvent et ne peuvent pas appuyer'], explanation: 'Les limites aident les utilisateurs à comprendre l’utilisation appropriée des preuves.' } },
+        { id: 'q10', skill: 'Safe prototype output', correct: 1, en: { text: 'What is the safest output from this prototype?', options: ['An official final verification decision', 'A diagnostic evidence-quality report for further verification', 'A decision about a person’s eligibility'], explanation: 'The prototype provides diagnostic learning support only. It does not make official decisions.' }, fr: { text: 'Quel est le résultat le plus sûr de ce prototype?', options: ['Une décision officielle finale de vérification', 'Un rapport diagnostique sur la qualité des preuves aux fins de vérification', 'Une décision sur l’admissibilité d’une personne'], explanation: 'Le prototype fournit seulement un appui diagnostique à l’apprentissage. Il ne prend pas de décisions officielles.' } }
+      ];
+
+      const state = {
+        lang: localStorage.getItem(storageKeys.lang) || 'en',
+        currentResult: null,
+        currentQuizScore: null,
+        leaderboard: loadLeaderboard()
+      };
+
+      const ids = ['brandSubtitle','siteSearchLabel','siteSearchButton','menuLabel','breadcrumbParent','breadcrumbCurrent','pageTitle','pageLead','pageMeta','scopeNotice','onThisPageTitle','challengeTitle','pitchTitle','pitchText','outcomeTitle','outcomeText','priorityTitle','priorityText','badgeSource','badgeContext','badgeReporter','workflowTitle','checkerTitle','checkerIntro','errorSummaryTitle','aliasLabel','aliasHint','domainLabel','domainHint','claimLabel','claimHint','sourceLabel','sourceHint','evidenceLegend','evidenceHint','riskLegend','riskHint','checkButton','clearButton','resultsTitle','emptyResultsText','statusTitle','scoreTitle','scoreOutOf','routeTitle','routeLink','parsedTitle','parsedCaption','breakdownTitle','breakdownCaption','breakdownSignalHead','breakdownEffectHead','breakdownNoteHead','meansTitle','notMeansTitle','nextStepsTitle','printButton','jsonButton','csvButton','lineageTitle','lineageIntro','hashNote','registryTitle','registryIntro','registryCaption','domainHead','sourceRouteHead','useHead','limitationHead','architectureTitle','architectureCaption','stepHead','prototypeHead','productionHead','aiBoundary','quizTitle','quizIntro','leaderboardTitle','leaderboardIntro','leaderboardCaption','leaderAliasHead','leaderCheckerHead','leaderQuizHead','leaderStatusHead','leaderBadgeHead','leaderDateHead','resetLeaderboardButton','aboutTitle','privacyTitle','privacyText','accessibilityTitle','accessibilityText','responsibleTitle','responsibleText','footerStatusTitle','footerStatusText','footerDataTitle','footerDataText','footerDateTitle','footerBottom'];
+
+      function $(id) { return document.getElementById(id); }
+      function t(path) {
+        return path.split('.').reduce((obj, part) => obj && obj[part], copy[state.lang]) || '';
+      }
+      function setText(id, value) { const el = $(id); if (el) { el.textContent = value; } }
+      function setHTML(id, value) { const el = $(id); if (el) { el.innerHTML = value; } }
+
+      function init() {
+        $('languageToggle').addEventListener('click', () => setLanguage(state.lang === 'en' ? 'fr' : 'en'));
+        $('siteSearch').addEventListener('submit', (event) => { event.preventDefault(); alert(t('searchUnavailable')); });
+        $('claimForm').addEventListener('submit', onClaimSubmit);
+        $('claimForm').addEventListener('reset', () => setTimeout(clearFormState, 0));
+        $('printButton').addEventListener('click', () => window.print());
+        $('jsonButton').addEventListener('click', exportJSON);
+        $('csvButton').addEventListener('click', exportCSV);
+        $('quizForm').addEventListener('submit', onQuizSubmit);
+        $('quizForm').addEventListener('reset', () => { $('quizResult').hidden = true; state.currentQuizScore = null; });
+        $('resetLeaderboardButton').addEventListener('click', resetLeaderboard);
+        setLanguage(state.lang);
+      }
+
+      function setLanguage(lang) {
+        state.lang = lang;
+        localStorage.setItem(storageKeys.lang, lang);
+        document.documentElement.lang = lang;
+        document.title = t('docTitle');
+        $('languageToggle').textContent = t('toggleText');
+        $('languageToggle').setAttribute('aria-label', t('toggleAria'));
+        $('siteSearchInput').setAttribute('placeholder', t('siteSearchPlaceholder'));
+        setHTML('prototypeNotice', t('prototypeNotice'));
+        ids.forEach(id => {
+          if (copy[lang][id] !== undefined) setText(id, copy[lang][id]);
+        });
+        setHTML('scopeNotice', t('scopeNotice'));
+        setHTML('aiBoundary', t('aiBoundary'));
+        document.querySelectorAll('[data-nav]').forEach(link => { link.textContent = t('nav.' + link.dataset.nav); });
+        document.querySelectorAll('[data-onpage]').forEach(link => { link.textContent = t('onpage.' + link.dataset.onpage); });
+        ['required1','required2','required3'].forEach(id => setText(id, t('required')));
+        t('steps').forEach((value, index) => setText('step' + (index + 1), value));
+        t('flow').forEach((value, index) => setText('flow' + (index + 1), value));
+        renderDomainSelect();
+        renderEvidenceOptions();
+        renderRiskOptions();
+        renderRegistry();
+        renderArchitecture();
+        renderQuiz();
+        renderLeaderboard();
+        if (!state.currentResult) {
+          $('lineageBox').textContent = t('lineageEmpty');
+        } else {
+          renderResult(state.currentResult);
+          updateLineage(state.currentResult);
+        }
+      }
+
+      function renderDomainSelect() {
+        const select = $('domainSelect');
+        const current = select.value || 'auto';
+        select.textContent = '';
+        ['auto','prices','population','labour','health','environment','unknown'].forEach(value => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = t('domains.' + value);
+          select.appendChild(option);
+        });
+        select.value = current;
+      }
+
+      function renderEvidenceOptions() {
+        const box = $('evidenceOptions');
+        box.textContent = '';
+        Object.keys(t('evidence')).forEach(key => {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'checkbox'; input.name = 'evidence'; input.value = key;
+          const span = document.createElement('span'); span.textContent = t('evidence.' + key);
+          label.append(input, span);
+          box.appendChild(label);
+        });
+      }
+
+      function renderRiskOptions() {
+        const box = $('riskOptions');
+        box.textContent = '';
+        Object.keys(t('risk')).forEach(key => {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'checkbox'; input.name = 'risk'; input.value = key;
+          const span = document.createElement('span'); span.textContent = t('risk.' + key);
+          label.append(input, span);
+          box.appendChild(label);
+        });
+      }
+
+      function renderRegistry() {
+        const body = $('registryBody');
+        body.textContent = '';
+        registry.forEach(item => {
+          const row = document.createElement('tr');
+          const domain = document.createElement('th'); domain.scope = 'row'; domain.textContent = t('domains.' + item.id);
+          const route = document.createElement('td');
+          const link = document.createElement('a'); link.href = item.url; link.rel = 'noopener noreferrer'; link.textContent = item[state.lang].route + ' (' + item.tableId + ')';
+          route.appendChild(link);
+          const use = document.createElement('td'); use.textContent = item[state.lang].use;
+          const limitation = document.createElement('td'); limitation.textContent = item[state.lang].limitation;
+          row.append(domain, route, use, limitation);
+          body.appendChild(row);
+        });
+      }
+
+      function renderArchitecture() {
+        const body = $('architectureBody');
+        body.textContent = '';
+        architectureRows.forEach(item => {
+          const values = item[state.lang];
+          const row = document.createElement('tr');
+          const th = document.createElement('th'); th.scope = 'row'; th.textContent = values[0];
+          const proto = document.createElement('td'); proto.textContent = values[1];
+          const prod = document.createElement('td'); prod.textContent = values[2];
+          row.append(th, proto, prod);
+          body.appendChild(row);
+        });
+      }
+
+      function renderQuiz() {
+        const form = $('quizForm');
+        form.textContent = '';
+        quiz.forEach((question, index) => {
+          const q = question[state.lang];
+          const fieldset = document.createElement('fieldset');
+          fieldset.className = 'quiz-question';
+          const legend = document.createElement('legend');
+          legend.textContent = (index + 1) + '. ' + q.text;
+          fieldset.appendChild(legend);
+          q.options.forEach((optionText, optionIndex) => {
+            const wrapper = document.createElement('div'); wrapper.className = 'quiz-option';
+            const label = document.createElement('label');
+            const input = document.createElement('input');
+            input.type = 'radio'; input.name = question.id; input.value = String(optionIndex);
+            const span = document.createElement('span'); span.textContent = optionText;
+            label.append(input, span);
+            wrapper.appendChild(label);
+            fieldset.appendChild(wrapper);
+          });
+          form.appendChild(fieldset);
+        });
+        const buttons = document.createElement('div'); buttons.className = 'button-row';
+        const submit = document.createElement('button'); submit.className = 'btn'; submit.type = 'submit'; submit.textContent = t('quizSubmit');
+        const reset = document.createElement('button'); reset.className = 'btn btn-secondary'; reset.type = 'reset'; reset.textContent = t('quizClear');
+        buttons.append(submit, reset);
+        form.appendChild(buttons);
+      }
+
+      function validateClaimForm() {
+        const errors = [];
+        const alias = $('aliasInput').value.trim();
+        const claim = $('claimInput').value.trim();
+        const source = $('sourceInput').value.trim();
+        const domain = $('domainSelect').value;
+        clearErrors();
+        if (!alias) errors.push({ field: 'aliasInput', error: 'aliasError', message: t('errors.alias') });
+        if (!domain) errors.push({ field: 'domainSelect', error: 'domainError', message: t('errors.domain') });
+        if (!claim || claim.length < 10) errors.push({ field: 'claimInput', error: 'claimError', message: t('errors.claim') });
+        if (source && !/^https?:\/\//i.test(source)) errors.push({ field: 'sourceInput', error: 'sourceError', message: t('errors.source') });
+        if (errors.length > 0) showErrors(errors);
+        return { valid: errors.length === 0, alias, claim, source, domain };
+      }
+
+      function clearErrors() {
+        $('errorSummary').hidden = true;
+        $('errorSummaryList').textContent = '';
+        ['aliasInput','domainSelect','claimInput','sourceInput'].forEach(id => { $(id).classList.remove('input-error'); $(id).removeAttribute('aria-invalid'); });
+        ['aliasError','domainError','claimError','sourceError'].forEach(id => setText(id, ''));
+      }
+
+      function showErrors(errors) {
+        const list = $('errorSummaryList');
+        list.textContent = '';
+        errors.forEach(item => {
+          const field = $(item.field);
+          field.classList.add('input-error');
+          field.setAttribute('aria-invalid', 'true');
+          setText(item.error, item.message);
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = '#' + item.field;
+          a.textContent = item.message;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+        $('errorSummary').hidden = false;
+        $('errorSummary').focus();
+      }
+
+      function onClaimSubmit(event) {
+        event.preventDefault();
+        const form = validateClaimForm();
+        if (!form.valid) return;
+        const result = calculateResult(form);
+        state.currentResult = result;
+        state.currentQuizScore = null;
+        renderResult(result);
+        updateLineage(result);
+        $('resultPanel').hidden = false;
+        $('emptyResults').hidden = true;
+        $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function clearFormState() {
+        clearErrors();
+        state.currentResult = null;
+        state.currentQuizScore = null;
+        $('resultPanel').hidden = true;
+        $('emptyResults').hidden = false;
+        $('lineageBox').textContent = t('lineageEmpty');
+        $('quizResult').hidden = true;
+      }
+
+      function calculateResult(form) {
+        const evidence = Array.from(document.querySelectorAll('input[name="evidence"]:checked')).map(i => i.value);
+        const risks = Array.from(document.querySelectorAll('input[name="risk"]:checked')).map(i => i.value);
+        const entities = parseClaim(form.claim, form.domain);
+        const route = registry.find(item => item.id === entities.domain);
+        const breakdown = [];
+        let score = 68;
+        breakdown.push({ signal: 'Base evidence review', effect: 68, noteKey: 'base' });
+        if (route) { score += 12; breakdown.push({ signal: 'Matched source route', effect: 12, noteKey: 'route' }); }
+        if (form.source) { score += 8; breakdown.push({ signal: 'Source or citation supplied', effect: 8, noteKey: 'source' }); }
+        Object.keys(copy.en.evidence).forEach(key => {
+          if (evidence.includes(key)) { score += 4; breakdown.push({ signal: t('evidence.' + key), effect: 4, noteKey: 'evidence' }); }
+          else { score -= 6; breakdown.push({ signal: t('evidence.' + key), effect: -6, noteKey: 'missing' }); }
+        });
+        const riskPenalty = { loaded: -10, overgeneral: -10, causality: -14, chart: -10 };
+        risks.forEach(key => { score += riskPenalty[key] || 0; breakdown.push({ signal: t('risk.' + key), effect: riskPenalty[key] || 0, noteKey: 'risk' }); });
+        score = Math.max(0, Math.min(100, Math.round(score)));
+        let status = 'yellow';
+        if (!route || score < 50) status = 'red';
+        else if (score >= 78) status = 'green';
+        const result = {
+          prototype: 'Misinformation-resistant data checker / Démasquer la désinformation',
+          algorithmVersion: 'local-rules-v1',
+          language: state.lang,
+          timestamp: new Date().toISOString(),
+          alias: form.alias,
+          claim: form.claim,
+          source: form.source || '',
+          selectedDomain: form.domain,
+          domain: entities.domain || 'unknown',
+          status,
+          score,
+          evidence,
+          risks,
+          entities,
+          sourceRoute: route ? route[state.lang].route : 'No matched source route',
+          sourceUrl: route ? route.url : '',
+          sourceTableId: route ? route.tableId : '',
+          breakdown
+        };
+        return result;
+      }
+
+      function parseClaim(claim, selectedDomain) {
+        const lower = claim.toLowerCase();
+        let domain = selectedDomain && selectedDomain !== 'auto' ? selectedDomain : null;
+        if (!domain) {
+          const match = registry.find(item => item.keywords.some(keyword => lower.includes(keyword.toLowerCase())));
+          domain = match ? match.id : 'unknown';
+        }
+        let metric = t('metrics.unknown');
+        if (/(inflation|cpi|consumer price|ipc|prix)/i.test(claim)) metric = t('metrics.inflation');
+        else if (/(population|demography|démographie)/i.test(claim)) metric = t('metrics.population');
+        else if (/(employment|unemployment|labour|labor|emploi|chômage|travail)/i.test(claim)) metric = t('metrics.labour');
+        else if (/(health|santé|well-being|bien-être)/i.test(claim)) metric = t('metrics.health');
+        else if (/(climate|environment|weather|climat|environnement|météo)/i.test(claim)) metric = t('metrics.environment');
+        const geographyMatch = claim.match(/\b(Canada|Ontario|Quebec|Québec|British Columbia|Colombie-Britannique|Alberta|Manitoba|Saskatchewan|Nova Scotia|Nouvelle-Écosse|New Brunswick|Nouveau-Brunswick|Prince Edward Island|Île-du-Prince-Édouard|Newfoundland and Labrador|Terre-Neuve-et-Labrador|Yukon|Nunavut|Northwest Territories|Territoires du Nord-Ouest|Ottawa|Toronto|Montréal|Montreal|Vancouver)\b/i);
+        const periodMatch = claim.match(/\b(20\d{2}|19\d{2})\b/);
+        const numberMatch = claim.match(/[-+]?\d+(?:[.,]\d+)?\s?(?:%|percent|pour cent|million|billion|milliard|millions)?/i);
+        return {
+          metric,
+          geography: geographyMatch ? geographyMatch[0] : '',
+          period: periodMatch ? periodMatch[0] : '',
+          number: numberMatch ? numberMatch[0] : '',
+          domain
+        };
+      }
+
+      function renderResult(result) {
+        $('emptyResults').hidden = true;
+        $('resultPanel').hidden = false;
+        const status = t('statuses.' + result.status);
+        const statusCard = $('statusCard');
+        statusCard.className = 'card status-card status-' + (result.status === 'green' ? 'green' : result.status === 'yellow' ? 'yellow' : 'red');
+        $('statusIcon').textContent = status.icon;
+        $('statusLabel').textContent = status.label;
+        $('statusDescription').textContent = status.desc;
+        $('scoreValue').textContent = String(result.score);
+        $('scoreProgress').value = result.score;
+        $('scoreProgress').textContent = String(result.score);
+        $('routeValue').textContent = result.sourceRoute + (result.sourceTableId ? ' · ' + result.sourceTableId : '');
+        $('routeLink').href = result.sourceUrl || '#source-registry';
+        $('meansText').textContent = t('meansText');
+        $('notMeansText').textContent = t('notMeansText');
+        const nextList = $('nextStepsList');
+        nextList.textContent = '';
+        t('nextSteps').forEach(step => { const li = document.createElement('li'); li.textContent = step; nextList.appendChild(li); });
+        renderParsedTable(result);
+        renderBreakdown(result);
+      }
+
+      function renderParsedTable(result) {
+        const body = $('parsedBody');
+        body.textContent = '';
+        const rows = [
+          ['metric', result.entities.metric],
+          ['geography', result.entities.geography],
+          ['period', result.entities.period],
+          ['number', result.entities.number],
+          ['domain', t('domains.' + (result.entities.domain || 'unknown'))]
+        ];
+        rows.forEach(([key, value]) => {
+          const tr = document.createElement('tr');
+          const th = document.createElement('th'); th.scope = 'row'; th.textContent = t('parsedRows.' + key);
+          const td = document.createElement('td'); td.textContent = value || t('unknownValue');
+          tr.append(th, td);
+          body.appendChild(tr);
+        });
+      }
+
+      function renderBreakdown(result) {
+        const chart = $('breakdownChart');
+        chart.textContent = '';
+        const positive = result.breakdown.filter(item => item.effect > 0).reduce((sum, item) => sum + item.effect, 0);
+        const negative = result.breakdown.filter(item => item.effect < 0).reduce((sum, item) => sum + Math.abs(item.effect), 0);
+        const final = result.score;
+        const chartRows = [
+          { label: 'Positive evidence', value: Math.min(100, positive) },
+          { label: 'Risk and missing context', value: Math.min(100, negative) },
+          { label: 'Final score', value: final }
+        ];
+        chartRows.forEach(item => {
+          const row = document.createElement('div'); row.className = 'bar-row';
+          const label = document.createElement('div'); label.textContent = item.label;
+          const track = document.createElement('div'); track.className = 'bar-track';
+          const fill = document.createElement('div'); fill.className = 'bar-fill'; fill.style.width = Math.max(3, item.value) + '%'; fill.textContent = item.value;
+          const val = document.createElement('div'); val.textContent = item.value;
+          track.appendChild(fill); row.append(label, track, val); chart.appendChild(row);
+        });
+        const body = $('breakdownTableBody');
+        body.textContent = '';
+        result.breakdown.forEach(item => {
+          const tr = document.createElement('tr');
+          const signal = document.createElement('th'); signal.scope = 'row'; signal.textContent = item.signal;
+          const effect = document.createElement('td'); effect.textContent = (item.effect > 0 ? '+' : '') + item.effect;
+          const note = document.createElement('td'); note.textContent = t('breakdownNotes.' + item.noteKey);
+          tr.append(signal, effect, note);
+          body.appendChild(tr);
+        });
+      }
+
+      async function updateLineage(result) {
+        const record = {
+          prototype: result.prototype,
+          algorithmVersion: result.algorithmVersion,
+          language: state.lang,
+          timestamp: result.timestamp,
+          alias: result.alias,
+          domain: result.domain,
+          status: result.status,
+          score: result.score,
+          entities: result.entities,
+          sourceRoute: result.sourceUrl || result.sourceRoute
+        };
+        let hash = t('hashUnavailable');
+        try {
+          if (window.crypto && crypto.subtle) {
+            const data = new TextEncoder().encode(JSON.stringify(record));
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            hash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+          }
+        } catch (error) {
+          hash = t('hashUnavailable');
+        }
+        result.hash = hash;
+        $('lineageBox').textContent = JSON.stringify(record, null, 2) + '\n\nSHA-256: ' + hash;
+      }
+
+      function onQuizSubmit(event) {
+        event.preventDefault();
+        let score = 0;
+        const details = [];
+        quiz.forEach(question => {
+          const selected = document.querySelector('input[name="' + question.id + '"]:checked');
+          const selectedIndex = selected ? Number(selected.value) : -1;
+          const correct = selectedIndex === question.correct;
+          if (correct) score += 1;
+          details.push({ question, selectedIndex, correct });
+        });
+        state.currentQuizScore = score;
+        renderQuizResult(score, details);
+        if (state.currentResult) addAttempt(score);
+      }
+
+      function renderQuizResult(score, details) {
+        const box = $('quizResult');
+        box.textContent = '';
+        const h3 = document.createElement('h3'); h3.textContent = t('quizResultTitle');
+        const p = document.createElement('p'); p.innerHTML = '<strong>' + t('quizScoreLabel') + ':</strong> ' + score + ' / ' + quiz.length;
+        box.append(h3, p);
+        if (!state.currentResult) {
+          const note = document.createElement('p'); note.textContent = t('quizNeedClaim'); box.appendChild(note);
+        }
+        details.forEach((item, index) => {
+          const q = item.question[state.lang];
+          const div = document.createElement('div'); div.className = item.correct ? 'answer-good' : 'answer-bad';
+          const title = document.createElement('p'); title.innerHTML = '<strong>' + (index + 1) + '. ' + q.text + '</strong>';
+          const explanation = document.createElement('p'); explanation.textContent = q.explanation;
+          div.append(title, explanation);
+          box.appendChild(div);
+        });
+        box.hidden = false;
+        box.focus();
+      }
+
+      function addAttempt(quizScore) {
+        const result = state.currentResult;
+        const badge = result.status === 'green' ? t('badges.source') : result.status === 'yellow' ? t('badges.context') : t('badges.review');
+        const attempt = {
+          alias: result.alias,
+          checkerScore: result.score,
+          quizScore: quizScore + '/' + quiz.length,
+          status: t('statuses.' + result.status + '.label'),
+          badge,
+          date: new Date().toLocaleDateString(state.lang === 'fr' ? 'fr-CA' : 'en-CA')
+        };
+        state.leaderboard.unshift(attempt);
+        state.leaderboard = state.leaderboard.slice(0, 10);
+        localStorage.setItem(storageKeys.leaderboard, JSON.stringify(state.leaderboard));
+        renderLeaderboard();
+      }
+
+      function loadLeaderboard() {
+        try { return JSON.parse(localStorage.getItem(storageKeys.leaderboard) || '[]'); }
+        catch (error) { return []; }
+      }
+
+      function renderLeaderboard() {
+        const heads = t('leaderHeads');
+        ['leaderAliasHead','leaderCheckerHead','leaderQuizHead','leaderStatusHead','leaderBadgeHead','leaderDateHead'].forEach((id, index) => setText(id, heads[index]));
+        const body = $('leaderboardBody');
+        body.textContent = '';
+        if (state.leaderboard.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td'); td.colSpan = 6; td.textContent = t('noAttempts');
+          tr.appendChild(td); body.appendChild(tr); return;
+        }
+        state.leaderboard.forEach(item => {
+          const tr = document.createElement('tr');
+          ['alias','checkerScore','quizScore','status','badge','date'].forEach(key => {
+            const td = document.createElement('td'); td.textContent = item[key]; tr.appendChild(td);
+          });
+          body.appendChild(tr);
+        });
+      }
+
+      function resetLeaderboard() {
+        if (!confirm(t('confirmReset'))) return;
+        state.leaderboard = [];
+        localStorage.removeItem(storageKeys.leaderboard);
+        renderLeaderboard();
+      }
+
+      function exportJSON() {
+        if (!state.currentResult) return;
+        const payload = { result: state.currentResult, quizScore: state.currentQuizScore, exportedAt: new Date().toISOString(), disclaimer: copy.en.prototypeNotice.replace(/<[^>]*>/g, '') };
+        downloadFile(t('exportFile') + '.json', JSON.stringify(payload, null, 2), 'application/json');
+      }
+
+      function exportCSV() {
+        if (!state.currentResult) return;
+        const r = state.currentResult;
+        const rows = [
+          ['field','value'],
+          ['alias', r.alias], ['claim', r.claim], ['score', r.score], ['status', t('statuses.' + r.status + '.label')], ['domain', t('domains.' + r.domain)], ['source_route', r.sourceRoute], ['source_url', r.sourceUrl], ['table_id', r.sourceTableId], ['metric', r.entities.metric], ['geography', r.entities.geography], ['period', r.entities.period], ['number', r.entities.number], ['hash', r.hash || '']
+        ];
+        const csv = rows.map(row => row.map(value => '"' + String(value || '').replace(/"/g, '""') + '"').join(',')).join('\n');
+        downloadFile(t('exportFile') + '.csv', csv, 'text/csv');
+      }
+
+      function downloadFile(filename, content, mime) {
+        const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      init();
+    }());
+  </script>
+</body>
+</html>
