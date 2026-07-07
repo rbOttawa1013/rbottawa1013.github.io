@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A standalone, accessible prototype showing how the Model Context Protocol can expose national statistics tools, resources and prompts to an AI assistant.">
+  <title>MCP national statistics protocol simulator - Prototype</title>
+  <style>
+    :root {
+      --gc-blue: #26374a;
+      --gc-blue-dark: #1b2838;
+      --gc-blue-link: #284162;
+      --gc-red: #d3080c;
+      --gc-red-dark: #a90000;
+      --gc-green: #1f6f43;
+      --gc-amber: #8a5a00;
+      --gc-gray-50: #f8f8f8;
+      --gc-gray-100: #f1f1f1;
+      --gc-gray-200: #e5e5e5;
+      --gc-gray-300: #d6d6d6;
+      --gc-gray-500: #555;
+      --gc-gray-700: #333;
+      --gc-gray-900: #111;
+      --focus: #ffbf47;
+      --surface: #ffffff;
+      --border: #d6d6d6;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1.55;
+      color: var(--gc-gray-700);
+      background: #fff;
+    }
+    h1, h2, h3, h4 { color: var(--gc-gray-900); line-height: 1.2; margin: 0 0 1rem; }
+    h1 { font-size: clamp(2rem, 4vw, 2.75rem); border-bottom: 4px solid var(--gc-red); padding-bottom: .45rem; }
+    h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-top: 2.2rem; }
+    h3 { font-size: 1.25rem; margin-top: 1.5rem; }
+    p { margin: 0 0 1rem; }
+    a { color: var(--gc-blue-link); text-decoration: underline; text-underline-offset: 2px; }
+    a:hover, a:focus { color: #0535d2; }
+    button, select, input { font: inherit; }
+    button, select { min-height: 44px; }
+    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f7f7f7; border: 1px solid #ccc; padding: 1rem; border-left: 5px solid var(--gc-blue); }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: .95rem; }
+    caption { text-align: left; font-weight: 700; margin-bottom: .5rem; color: var(--gc-gray-900); }
+    th, td { border: 1px solid #c7c7c7; padding: .65rem; vertical-align: top; }
+    th { background: var(--gc-blue); color: #fff; text-align: left; }
+    tr:nth-child(even) td { background: var(--gc-gray-50); }
+    .container { width: min(100% - 2rem, var(--max)); margin: 0 auto; }
+    .skip-link { position: absolute; left: .5rem; top: -5rem; z-index: 9999; background: #000; color: #fff; padding: .65rem .9rem; font-weight: 700; }
+    .skip-link:focus { top: .5rem; outline: 4px solid var(--focus); outline-offset: 2px; }
+    :focus-visible { outline: 4px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 2px #000; }
+
+    /* Header */
+    .prototype-banner { background: #fff3cd; border-bottom: 1px solid #b99b33; padding: .55rem 0; }
+    .prototype-banner strong { color: #000; }
+    .goc-header { background: #fff; border-bottom: 1px solid var(--gc-gray-300); }
+    .header-inner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 0; flex-wrap: wrap; }
+    .brand { color: #000; text-decoration: none; display: flex; align-items: baseline; gap: .75rem; font-weight: 700; }
+    .brand .canada { font-size: clamp(1.4rem, 2vw, 1.8rem); letter-spacing: -.02em; }
+    .brand .flag { color: var(--gc-red); }
+    .brand .product { display: block; font-size: .86rem; font-weight: 400; color: var(--gc-gray-500); margin-top: .2rem; }
+    .header-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .search-form { display: flex; min-width: min(100%, 22rem); }
+    .search-form label { position: absolute; left: -9999px; }
+    .search-form input { min-width: 0; border: 2px solid #555; padding: .55rem .65rem; }
+    .search-form button { border-radius: 0; }
+    .lang-button { background: #fff; color: var(--gc-blue-link); border: 2px solid transparent; font-weight: 700; padding: .45rem .65rem; cursor: pointer; }
+    .site-nav { background: var(--gc-blue); }
+    .site-nav .container { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .menu-label { color: #fff; font-weight: 700; padding: .75rem 0; text-transform: uppercase; letter-spacing: .03em; }
+    .site-nav ul { list-style: none; display: flex; flex-wrap: wrap; padding: 0; margin: 0; }
+    .site-nav a { display: block; color: #fff; text-decoration: none; padding: .85rem 1rem; border-left: 1px solid rgba(255,255,255,.25); }
+    .site-nav a:hover, .site-nav a:focus { background: var(--gc-blue-dark); color: #fff; text-decoration: underline; }
+
+    /* Breadcrumb */
+    .breadcrumb { margin: 1rem 0 1.5rem; font-size: .95rem; }
+    .breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; padding: 0; margin: 0; }
+    .breadcrumb li + li::before { content: ">"; margin-right: .4rem; color: var(--gc-gray-500); }
+
+    /* Main content */
+    main { padding-bottom: 2rem; }
+    .lead { font-size: 1.22rem; max-width: 60rem; }
+    .meta { color: var(--gc-gray-500); font-size: .95rem; }
+    .notice { border-left: 6px solid var(--gc-blue); background: #eef4f9; padding: 1rem; margin: 1.5rem 0; }
+    .warning { border-left-color: var(--gc-amber); background: #fff8e8; }
+    .success { border-left-color: var(--gc-green); background: #eef9f2; }
+    .on-page { border: 1px solid var(--border); background: var(--gc-gray-50); padding: 1rem; margin: 1.5rem 0; }
+    .on-page h2 { font-size: 1.25rem; margin-top: 0; }
+    .on-page ul { margin-bottom: 0; columns: 2; }
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-top: 5px solid var(--gc-blue); padding: 1rem; box-shadow: var(--shadow); }
+    .card h3 { margin-top: 0; }
+    .badge { display: inline-block; border: 1px solid var(--gc-blue); color: var(--gc-blue); background: #eef4f9; border-radius: 999px; padding: .2rem .55rem; font-size: .82rem; font-weight: 700; margin: 0 .35rem .35rem 0; }
+    .badge.demo { border-color: var(--gc-amber); color: #684200; background: #fff8e8; }
+    .badge.verified { border-color: var(--gc-green); color: #0e582e; background: #eef9f2; }
+    .btn { background: var(--gc-blue); color: #fff; border: 2px solid var(--gc-blue); border-radius: 4px; padding: .65rem 1rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; text-decoration: none; }
+    .btn:hover, .btn:focus { background: var(--gc-blue-dark); color: #fff; }
+    .btn.secondary { background: #fff; color: var(--gc-blue); }
+    .btn.secondary:hover, .btn.secondary:focus { background: var(--gc-blue); color: #fff; }
+    .btn.danger { background: var(--gc-red-dark); border-color: var(--gc-red-dark); }
+    .controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: .75rem; align-items: end; margin: 1rem 0; }
+    .form-group { display: grid; gap: .35rem; }
+    label { font-weight: 700; color: var(--gc-gray-900); }
+    select, input[type="search"] { border: 2px solid #555; padding: .55rem .65rem; background: #fff; width: 100%; }
+    .hint { color: var(--gc-gray-500); font-size: .95rem; }
+    .status { min-height: 1.5rem; font-weight: 700; color: var(--gc-blue); }
+    .architecture { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; align-items: stretch; margin: 1rem 0; }
+    .arch-box { border: 2px solid var(--gc-blue); padding: .75rem; text-align: center; background: #fff; font-weight: 700; min-height: 7rem; display: grid; align-content: center; }
+    .arch-arrow { display: grid; place-items: center; color: var(--gc-blue); font-size: 1.6rem; font-weight: 700; }
+    .transcript { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: 1rem; }
+    .message { border: 1px solid var(--border); background: #fff; box-shadow: var(--shadow); }
+    .message-header { display: flex; justify-content: space-between; gap: 1rem; background: var(--gc-gray-100); border-bottom: 1px solid var(--border); padding: .65rem .8rem; font-weight: 700; flex-wrap: wrap; }
+    .message-header .method { color: var(--gc-blue); }
+    .message pre { margin: 0; border: 0; border-left: 5px solid var(--gc-blue); box-shadow: none; max-height: 22rem; overflow: auto; }
+    .output-panel { border: 2px solid var(--gc-blue); background: #f8fbff; padding: 1rem; margin: 1rem 0; }
+    .chart { margin: 1rem 0; border: 1px solid var(--border); padding: 1rem; background: #fff; }
+    .bar { display: grid; grid-template-columns: 12rem 1fr 5rem; align-items: center; gap: .65rem; margin: .55rem 0; }
+    .bar-track { background: var(--gc-gray-200); border: 1px solid #bbb; height: 1.2rem; }
+    .bar-fill { height: 100%; background: var(--gc-blue); }
+    .code-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .5rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    /* Footer */
+    footer { background: var(--gc-gray-100); border-top: 4px solid var(--gc-blue); margin-top: 2rem; }
+    footer .footer-main { padding: 1.5rem 0; }
+    footer .footer-bottom { background: #fff; border-top: 1px solid var(--border); padding: 1rem 0; }
+    footer ul { padding-left: 1.25rem; }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: 1fr; }
+      .architecture { grid-template-columns: 1fr; }
+      .arch-arrow { transform: rotate(90deg); min-height: 2rem; }
+      .on-page ul { columns: 1; }
+      .bar { grid-template-columns: 1fr; }
+      .site-nav .container { display: block; }
+      .site-nav ul { display: block; }
+      .site-nav a { border-left: 0; border-top: 1px solid rgba(255,255,255,.25); }
+      .search-form { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+
+    @media print {
+      body { font-size: 11pt; }
+      .skip-link, .prototype-banner, .goc-header, .site-nav, .breadcrumb, .on-page, .controls, .search-form, .no-print { display: none !important; }
+      .container { width: 100%; max-width: none; }
+      main { padding: 0; }
+      h1 { font-size: 22pt; }
+      h2 { page-break-after: avoid; }
+      .card, .notice, .output-panel, .message, .chart { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+      th { background: #eee !important; color: #000 !important; }
+      a { color: #000; text-decoration: none; }
+      .bar-fill { background: #999 !important; }
+    }
+  </style>
+  <script>document.documentElement.classList.remove('no-js'); document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <!-- Accessibility features -->
+  <a class="skip-link" href="#wb-cont">Skip to main content</a>
+
+  <div class="prototype-banner" role="note">
+    <div class="container"><strong id="prototypeLabel">Prototype / demonstration only:</strong> <span id="prototypeText">This page is not an official Government of Canada service. It simulates MCP messages in the browser and makes no external API calls.</span></div>
+  </div>
+
+  <!-- Header -->
+  <header class="goc-header" role="banner">
+    <div class="container header-inner">
+      <a class="brand" href="#wb-cont" aria-label="Prototype home">
+        <span class="canada">Canada <span class="flag" aria-hidden="true">◆</span></span>
+        <span><span id="brandGov">Government of Canada</span><span id="brandProduct" class="product">National statistics MCP prototype</span></span>
+      </a>
+      <div class="header-actions">
+        <form class="search-form" role="search" onsubmit="event.preventDefault(); document.getElementById('wb-cont').focus();">
+          <label id="searchLabel" for="siteSearch">Search this prototype</label>
+          <input id="siteSearch" type="search" placeholder="Search this prototype">
+          <button id="searchBtn" class="btn" type="submit">Search</button>
+        </form>
+        <button id="languageToggle" class="lang-button" type="button" aria-label="Switch to French">Français</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="container">
+      <div class="menu-label" id="menuLabel">Menu</div>
+      <ul>
+        <li><a id="navOverview" href="#overview">Overview</a></li>
+        <li><a id="navSimulator" href="#simulator">Simulator</a></li>
+        <li><a id="navSubjects" href="#subjects">Subject areas</a></li>
+        <li><a id="navContract" href="#contract">MCP contract</a></li>
+        <li><a id="navQuality" href="#quality">Quality gates</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main id="wb-cont" class="container" tabindex="-1">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="https://www.canada.ca/en.html" rel="noopener noreferrer">Canada.ca</a></li>
+        <li><a href="#">Statistics learning prototype</a></li>
+        <li id="crumbCurrent" aria-current="page">MCP national statistics simulator</li>
+      </ol>
+    </nav>
+
+    <h1 id="pageTitle">MCP national statistics protocol simulator</h1>
+    <p id="lead" class="lead">Use this working browser prototype to see how an AI assistant could discover, read and call national statistics tools through the Model Context Protocol.</p>
+    <p id="meta" class="meta">Static HTML/CSS/JavaScript prototype · No login · No backend · No external API calls · Demo data only</p>
+
+    <section class="notice" aria-labelledby="plain-language-heading">
+      <h2 id="plain-language-heading">What this demonstrates</h2>
+      <p id="plainLanguageText">MCP is shown as a safe interface between an AI host and a national statistics server. The AI host does not scrape pages or guess data. It discovers approved tools, reads approved metadata resources, calls a tool with structured arguments, and receives a structured response with source and quality notes.</p>
+    </section>
+
+    <nav class="on-page" aria-labelledby="on-page-heading">
+      <h2 id="on-page-heading">On this page</h2>
+      <ul>
+        <li><a id="otp1" href="#overview">How MCP maps to national statistics</a></li>
+        <li><a id="otp2" href="#simulator">Run the MCP exchange</a></li>
+        <li><a id="otp3" href="#subjects">Subject-matter areas and dataset examples</a></li>
+        <li><a id="otp4" href="#contract">Tools, resources and prompts exposed by the server</a></li>
+        <li><a id="otp5" href="#quality">Privacy, security and statistical quality gates</a></li>
+      </ul>
+    </nav>
+
+    <section id="overview" aria-labelledby="overview-heading">
+      <h2 id="overview-heading">How MCP maps to national statistics</h2>
+      <p id="overviewText">A national statistical organization can use an MCP server to expose only approved statistical capabilities. The server can make dataset metadata available as resources, analysis actions available as tools, and reusable plain-language workflows available as prompts.</p>
+      <div class="architecture" role="img" aria-labelledby="architecture-title" aria-describedby="architecture-desc">
+        <div class="arch-box"><span id="arch1">AI host<br><small>assistant or analyst tool</small></span></div>
+        <div class="arch-arrow" aria-hidden="true">→</div>
+        <div class="arch-box"><span id="arch2">MCP client<br><small>JSON-RPC messages</small></span></div>
+        <div class="arch-arrow" aria-hidden="true">→</div>
+        <div class="arch-box"><span id="arch3">National statistics MCP server<br><small>approved tools, resources, prompts</small></span></div>
+      </div>
+      <p id="architecture-title" class="sr-only">MCP architecture for national statistics</p>
+      <p id="architecture-desc" class="sr-only">The AI host communicates through an MCP client using structured JSON-RPC messages to a national statistics MCP server.</p>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3 id="overviewTools">Tools</h3>
+          <p id="overviewToolsText">Executable actions such as listing datasets, comparing geographies, validating claims, and creating a plain-language summary.</p>
+        </article>
+        <article class="card">
+          <h3 id="overviewResources">Resources</h3>
+          <p id="overviewResourcesText">Approved read-only context such as dataset metadata, subject definitions, quality rules, and disclosure warnings.</p>
+        </article>
+        <article class="card">
+          <h3 id="overviewPrompts">Prompts</h3>
+          <p id="overviewPromptsText">Reusable instruction templates for briefing notes, data-quality checks, source notes, and safe public communication.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="simulator" aria-labelledby="simulator-heading">
+      <h2 id="simulator-heading">Run the MCP exchange</h2>
+      <p id="simulatorIntro">Choose a statistical task, then run a simulated MCP exchange. The browser will generate the initialization, discovery, resource-read, tool-call and response messages.</p>
+      <div class="notice warning">
+        <p id="demoWarning"><strong>Demo data warning:</strong> numerical values in the result panel are small embedded demonstration values. Use official tables before making operational or public claims.</p>
+      </div>
+
+      <!-- Forms -->
+      <div class="controls no-print">
+        <div class="form-group">
+          <label id="scenarioLabel" for="scenarioSelect">Statistical task</label>
+          <select id="scenarioSelect"></select>
+          <p id="scenarioHelp" class="hint">The selected task controls the MCP tool call and the demonstration output.</p>
+        </div>
+        <button id="runBtn" class="btn" type="button">Run MCP exchange</button>
+        <button id="resetBtn" class="btn secondary" type="button">Reset</button>
+        <button id="printBtn" class="btn secondary" type="button">Print report</button>
+      </div>
+      <div id="status" class="status" aria-live="polite" aria-atomic="true"></div>
+
+      <div id="resultPanel" class="output-panel" tabindex="-1" aria-labelledby="result-heading" hidden>
+        <h3 id="result-heading">Assistant-ready response</h3>
+        <p id="resultSummary"></p>
+        <div id="badges"></div>
+        <div id="chart" class="chart" aria-labelledby="chart-heading"></div>
+        <div id="dataTable"></div>
+      </div>
+
+      <section aria-labelledby="transcript-heading">
+        <h3 id="transcript-heading">MCP JSON-RPC transcript</h3>
+        <p id="transcriptIntro">Each message is structured as JSON-RPC 2.0. This is a teaching simulator, not a live MCP client.</p>
+        <ol id="transcript" class="transcript"></ol>
+      </section>
+    </section>
+
+    <section id="subjects" aria-labelledby="subjects-heading">
+      <h2 id="subjects-heading">Subject-matter areas and dataset examples</h2>
+      <p id="subjectsIntro">A national statistics MCP server should expose subject definitions and dataset metadata before allowing analysis. This reduces hallucinated sources and unsupported claims.</p>
+      <div id="subjectCards" class="grid grid-3"></div>
+    </section>
+
+    <section id="contract" aria-labelledby="contract-heading">
+      <h2 id="contract-heading">MCP server contract for national statistics</h2>
+      <p id="contractIntro">The server contract below shows what the assistant can discover. A production implementation would enforce authentication, authorization, rate limits, audit logs and approved data domains.</p>
+
+      <!-- Tables -->
+      <div id="toolsTable"></div>
+      <div id="resourcesTable"></div>
+      <div id="promptsTable"></div>
+
+      <h3 id="sampleHeading">Sample tool call pattern</h3>
+      <pre aria-label="Sample MCP tools/call request"><code>{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "national_statistics_compare_geographies",
+    "arguments": {
+      "datasetId": "17-10-0009-01",
+      "geographies": ["Canada", "Ontario", "Quebec"],
+      "indicator": "population_estimate",
+      "referencePeriod": "Demo Q1"
+    }
+  }
+}</code></pre>
+    </section>
+
+    <section id="quality" aria-labelledby="quality-heading">
+      <h2 id="quality-heading">Privacy, security and statistical quality gates</h2>
+      <div class="grid grid-2">
+        <article class="card">
+          <h3 id="quality1">Before the tool call</h3>
+          <ul id="beforeList">
+            <li>Authenticate the user and propagate least-privilege authorization.</li>
+            <li>Expose only approved public or permissioned aggregate datasets.</li>
+            <li>Require dataset ID, geography, reference period and unit before comparison.</li>
+            <li>Block personal, confidential, protected or unpublished data in a public assistant.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3 id="quality2">After the tool call</h3>
+          <ul id="afterList">
+            <li>Return source metadata, limitations and quality notes with every answer.</li>
+            <li>Do not infer causes from descriptive statistics without supporting data.</li>
+            <li>Log tool calls for review, but avoid logging sensitive user content.</li>
+            <li>Mark AI summaries as draft text that requires human verification.</li>
+          </ul>
+        </article>
+      </div>
+      <section class="notice success" aria-labelledby="responsible-heading">
+        <h3 id="responsible-heading">Responsible-use boundary</h3>
+        <p id="responsibleText">This prototype allows an AI assistant to support analysis. It does not automate eligibility, enforcement, benefit, compliance or other decisions about people. Production use would require departmental privacy, security, accessibility, official languages and statistical-methodology review.</p>
+      </section>
+    </section>
+
+    <section id="about" aria-labelledby="about-heading">
+      <h2 id="about-heading">About this prototype</h2>
+      <p id="aboutText">Built as a static, self-contained HTML prototype for GitHub Pages. It uses embedded demonstration data and does not call external AI, MCP, Statistics Canada, mapping, analytics or telemetry services.</p>
+      <p><strong id="dateLabel">Date modified:</strong> <time datetime="2026-07-07">2026-07-07</time></p>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer role="contentinfo">
+    <div class="container footer-main">
+      <h2 id="footerHeading">Prototype footer</h2>
+      <ul>
+        <li id="footerPrivacy">Privacy: no personal information is required; all data is embedded in this page.</li>
+        <li id="footerAccessibility">Accessibility: designed to align with WCAG 2.1 AA intent; human testing is still required.</li>
+        <li id="footerSource">Sources: verify all dataset examples against official statistical sources before use.</li>
+      </ul>
+    </div>
+    <div class="footer-bottom">
+      <div class="container"><span id="footerCanada">Government of Canada style prototype · Not an official service</span></div>
+    </div>
+  </footer>
+
+  <script>
+    const state = { lang: localStorage.getItem('mcpStats.lang') || 'en', lastScenario: null };
+
+    const i18n = {
+      en: {
+        docTitle: 'MCP national statistics protocol simulator - Prototype',
+        switchLabel: 'Switch to French', languageToggle: 'Français',
+        prototypeLabel: 'Prototype / demonstration only:', prototypeText: 'This page is not an official Government of Canada service. It simulates MCP messages in the browser and makes no external API calls.',
+        brandGov: 'Government of Canada', brandProduct: 'National statistics MCP prototype', searchLabel: 'Search this prototype', searchPlaceholder: 'Search this prototype', searchBtn: 'Search', menuLabel: 'Menu',
+        navOverview: 'Overview', navSimulator: 'Simulator', navSubjects: 'Subject areas', navContract: 'MCP contract', navQuality: 'Quality gates', crumbCurrent: 'MCP national statistics simulator',
+        pageTitle: 'MCP national statistics protocol simulator', lead: 'Use this working browser prototype to see how an AI assistant could discover, read and call national statistics tools through the Model Context Protocol.', meta: 'Static HTML/CSS/JavaScript prototype · No login · No backend · No external API calls · Demo data only',
+        plainHeading: 'What this demonstrates', plainText: 'MCP is shown as a safe interface between an AI host and a national statistics server. The AI host does not scrape pages or guess data. It discovers approved tools, reads approved metadata resources, calls a tool with structured arguments, and receives a structured response with source and quality notes.',
+        onPage: 'On this page', otp1: 'How MCP maps to national statistics', otp2: 'Run the MCP exchange', otp3: 'Subject-matter areas and dataset examples', otp4: 'Tools, resources and prompts exposed by the server', otp5: 'Privacy, security and statistical quality gates',
+        overviewHeading: 'How MCP maps to national statistics', overviewText: 'A national statistical organization can use an MCP server to expose only approved statistical capabilities. The server can make dataset metadata available as resources, analysis actions available as tools, and reusable plain-language workflows available as prompts.',
+        arch1: 'AI host<br><small>assistant or analyst tool</small>', arch2: 'MCP client<br><small>JSON-RPC messages</small>', arch3: 'National statistics MCP server<br><small>approved tools, resources, prompts</small>',
+        overviewTools: 'Tools', overviewToolsText: 'Executable actions such as listing datasets, comparing geographies, validating claims, and creating a plain-language summary.', overviewResources: 'Resources', overviewResourcesText: 'Approved read-only context such as dataset metadata, subject definitions, quality rules, and disclosure warnings.', overviewPrompts: 'Prompts', overviewPromptsText: 'Reusable instruction templates for briefing notes, data-quality checks, source notes, and safe public communication.',
+        simulatorHeading: 'Run the MCP exchange', simulatorIntro: 'Choose a statistical task, then run a simulated MCP exchange. The browser will generate the initialization, discovery, resource-read, tool-call and response messages.', demoWarning: '<strong>Demo data warning:</strong> numerical values in the result panel are small embedded demonstration values. Use official tables before making operational or public claims.', scenarioLabel: 'Statistical task', scenarioHelp: 'The selected task controls the MCP tool call and the demonstration output.', runBtn: 'Run MCP exchange', resetBtn: 'Reset', printBtn: 'Print report', resultHeading: 'Assistant-ready response', transcriptHeading: 'MCP JSON-RPC transcript', transcriptIntro: 'Each message is structured as JSON-RPC 2.0. This is a teaching simulator, not a live MCP client.',
+        subjectsHeading: 'Subject-matter areas and dataset examples', subjectsIntro: 'A national statistics MCP server should expose subject definitions and dataset metadata before allowing analysis. This reduces hallucinated sources and unsupported claims.',
+        contractHeading: 'MCP server contract for national statistics', contractIntro: 'The server contract below shows what the assistant can discover. A production implementation would enforce authentication, authorization, rate limits, audit logs and approved data domains.', sampleHeading: 'Sample tool call pattern',
+        qualityHeading: 'Privacy, security and statistical quality gates', quality1: 'Before the tool call', quality2: 'After the tool call', responsibleHeading: 'Responsible-use boundary', responsibleText: 'This prototype allows an AI assistant to support analysis. It does not automate eligibility, enforcement, benefit, compliance or other decisions about people. Production use would require departmental privacy, security, accessibility, official languages and statistical-methodology review.',
+        aboutHeading: 'About this prototype', aboutText: 'Built as a static, self-contained HTML prototype for GitHub Pages. It uses embedded demonstration data and does not call external AI, MCP, Statistics Canada, mapping, analytics or telemetry services.', dateLabel: 'Date modified:', footerHeading: 'Prototype footer', footerPrivacy: 'Privacy: no personal information is required; all data is embedded in this page.', footerAccessibility: 'Accessibility: designed to align with WCAG 2.1 AA intent; human testing is still required.', footerSource: 'Sources: verify all dataset examples against official statistical sources before use.', footerCanada: 'Government of Canada style prototype · Not an official service',
+        statusReady: 'Ready. Choose a task and run the MCP exchange.', statusRun: 'MCP exchange complete. Review the result and JSON-RPC transcript.', statusReset: 'Reset complete.',
+        toolsCaption: 'MCP tools exposed by the demo server', resourcesCaption: 'MCP resources exposed by the demo server', promptsCaption: 'MCP prompts exposed by the demo server',
+        name: 'Name', title: 'Title', description: 'Description', type: 'Type', uri: 'URI', source: 'Source', period: 'Reference period', value: 'Value', unit: 'Unit', limitations: 'Limitations', status: 'Status', method: 'Method', direction: 'Direction', demo: 'Demo', verifiedMetadata: 'Verified metadata', chartHeading: 'Demonstration chart', chartCaption: 'Accessible data table for demonstration values'
+      },
+      fr: {
+        docTitle: 'Simulateur du protocole MCP pour les statistiques nationales - Prototype',
+        switchLabel: 'Passer à l’anglais', languageToggle: 'English',
+        prototypeLabel: 'Prototype / démonstration seulement :', prototypeText: 'Cette page n’est pas un service officiel du gouvernement du Canada. Elle simule des messages MCP dans le navigateur et ne fait aucun appel API externe.',
+        brandGov: 'Gouvernement du Canada', brandProduct: 'Prototype MCP pour les statistiques nationales', searchLabel: 'Rechercher dans ce prototype', searchPlaceholder: 'Rechercher dans ce prototype', searchBtn: 'Rechercher', menuLabel: 'Menu',
+        navOverview: 'Aperçu', navSimulator: 'Simulateur', navSubjects: 'Domaines', navContract: 'Contrat MCP', navQuality: 'Contrôles de qualité', crumbCurrent: 'Simulateur MCP pour les statistiques nationales',
+        pageTitle: 'Simulateur du protocole MCP pour les statistiques nationales', lead: 'Utilisez ce prototype fonctionnel dans le navigateur pour voir comment un assistant IA pourrait découvrir, lire et appeler des outils de statistiques nationales au moyen du Model Context Protocol.', meta: 'Prototype HTML/CSS/JavaScript statique · Aucun compte · Aucun serveur · Aucun appel API externe · Données de démonstration seulement',
+        plainHeading: 'Ce que cette page démontre', plainText: 'Le protocole MCP est présenté comme une interface sécurisée entre un hôte IA et un serveur de statistiques nationales. L’hôte IA ne moissonne pas des pages et ne devine pas les données. Il découvre des outils approuvés, lit des ressources de métadonnées approuvées, appelle un outil avec des arguments structurés et reçoit une réponse structurée avec les sources et les notes de qualité.',
+        onPage: 'Sur cette page', otp1: 'Comment MCP s’applique aux statistiques nationales', otp2: 'Exécuter l’échange MCP', otp3: 'Domaines statistiques et exemples de jeux de données', otp4: 'Outils, ressources et invites exposés par le serveur', otp5: 'Protection des renseignements, sécurité et qualité statistique',
+        overviewHeading: 'Comment MCP s’applique aux statistiques nationales', overviewText: 'Un organisme national de statistique peut utiliser un serveur MCP pour exposer seulement des capacités statistiques approuvées. Le serveur peut fournir les métadonnées des jeux de données comme ressources, les actions d’analyse comme outils et les flux de travail en langage clair comme invites réutilisables.',
+        arch1: 'Hôte IA<br><small>assistant ou outil d’analyse</small>', arch2: 'Client MCP<br><small>messages JSON-RPC</small>', arch3: 'Serveur MCP de statistiques nationales<br><small>outils, ressources et invites approuvés</small>',
+        overviewTools: 'Outils', overviewToolsText: 'Actions exécutables, comme lister les jeux de données, comparer des régions géographiques, valider des énoncés et créer un résumé en langage clair.', overviewResources: 'Ressources', overviewResourcesText: 'Contexte approuvé en lecture seule, comme les métadonnées, les définitions de domaines, les règles de qualité et les avertissements de divulgation.', overviewPrompts: 'Invites', overviewPromptsText: 'Modèles d’instructions réutilisables pour notes de breffage, contrôles de qualité, notes de source et communications publiques prudentes.',
+        simulatorHeading: 'Exécuter l’échange MCP', simulatorIntro: 'Choisissez une tâche statistique, puis exécutez un échange MCP simulé. Le navigateur générera les messages d’initialisation, de découverte, de lecture de ressource, d’appel d’outil et de réponse.', demoWarning: '<strong>Avertissement sur les données de démonstration :</strong> les valeurs numériques dans le panneau de résultat sont de petites valeurs de démonstration intégrées. Utilisez les tableaux officiels avant toute affirmation opérationnelle ou publique.', scenarioLabel: 'Tâche statistique', scenarioHelp: 'La tâche sélectionnée détermine l’appel d’outil MCP et le résultat de démonstration.', runBtn: 'Exécuter l’échange MCP', resetBtn: 'Réinitialiser', printBtn: 'Imprimer le rapport', resultHeading: 'Réponse prête pour l’assistant', transcriptHeading: 'Transcription MCP JSON-RPC', transcriptIntro: 'Chaque message est structuré en JSON-RPC 2.0. Il s’agit d’un simulateur pédagogique et non d’un client MCP réel.',
+        subjectsHeading: 'Domaines statistiques et exemples de jeux de données', subjectsIntro: 'Un serveur MCP de statistiques nationales devrait exposer les définitions de domaines et les métadonnées des jeux de données avant de permettre l’analyse. Cela réduit les sources inventées et les affirmations non appuyées.',
+        contractHeading: 'Contrat du serveur MCP pour les statistiques nationales', contractIntro: 'Le contrat du serveur ci-dessous montre ce que l’assistant peut découvrir. Une mise en œuvre de production appliquerait l’authentification, l’autorisation, les limites de débit, les journaux d’audit et les domaines de données approuvés.', sampleHeading: 'Exemple de modèle d’appel d’outil',
+        qualityHeading: 'Protection des renseignements, sécurité et qualité statistique', quality1: 'Avant l’appel d’outil', quality2: 'Après l’appel d’outil', responsibleHeading: 'Limite d’utilisation responsable', responsibleText: 'Ce prototype permet à un assistant IA de soutenir l’analyse. Il n’automatise pas les décisions d’admissibilité, d’application de la loi, de prestations, de conformité ou toute autre décision à propos de personnes. Une utilisation en production exigerait des examens ministériels de la protection des renseignements, de la sécurité, de l’accessibilité, des langues officielles et de la méthodologie statistique.',
+        aboutHeading: 'À propos de ce prototype', aboutText: 'Construit comme prototype HTML statique et autonome pour GitHub Pages. Il utilise des données de démonstration intégrées et n’appelle aucun service externe d’IA, de MCP, de Statistique Canada, de cartographie, d’analytique ou de télémétrie.', dateLabel: 'Date de modification :', footerHeading: 'Pied de page du prototype', footerPrivacy: 'Protection des renseignements : aucun renseignement personnel n’est requis; toutes les données sont intégrées à cette page.', footerAccessibility: 'Accessibilité : conçu pour s’aligner sur l’intention WCAG 2.1 AA; des tests humains demeurent requis.', footerSource: 'Sources : vérifiez tous les exemples de jeux de données avec les sources statistiques officielles avant utilisation.', footerCanada: 'Prototype de style gouvernement du Canada · Pas un service officiel',
+        statusReady: 'Prêt. Choisissez une tâche et exécutez l’échange MCP.', statusRun: 'Échange MCP terminé. Examinez le résultat et la transcription JSON-RPC.', statusReset: 'Réinitialisation terminée.',
+        toolsCaption: 'Outils MCP exposés par le serveur de démonstration', resourcesCaption: 'Ressources MCP exposées par le serveur de démonstration', promptsCaption: 'Invites MCP exposées par le serveur de démonstration',
+        name: 'Nom', title: 'Titre', description: 'Description', type: 'Type', uri: 'URI', source: 'Source', period: 'Période de référence', value: 'Valeur', unit: 'Unité', limitations: 'Limites', status: 'Statut', method: 'Méthode', direction: 'Sens', demo: 'Démo', verifiedMetadata: 'Métadonnées vérifiées', chartHeading: 'Graphique de démonstration', chartCaption: 'Tableau de données accessible pour les valeurs de démonstration'
+      }
+    };
+
+    const subjectAreas = [
+      { id: 'population', en: { title: 'Population and demography', definition: 'Counts, estimates and characteristics of people by geography, age, sex, migration and time.', dataset: 'Statistics Canada Table 17-10-0009-01 — Population estimates, quarterly' }, fr: { title: 'Population et démographie', definition: 'Dénombrements, estimations et caractéristiques des personnes selon la géographie, l’âge, le sexe, la migration et le temps.', dataset: 'Tableau 17-10-0009-01 de Statistique Canada — Estimations de la population, trimestrielles' } },
+      { id: 'labour', en: { title: 'Labour', definition: 'Employment, unemployment, labour force participation, job vacancies, earnings and workplace trends.', dataset: 'Labour Force Survey tables, for example employment and unemployment indicators' }, fr: { title: 'Travail', definition: 'Emploi, chômage, activité sur le marché du travail, postes vacants, rémunération et tendances en milieu de travail.', dataset: 'Tableaux de l’Enquête sur la population active, par exemple les indicateurs d’emploi et de chômage' } },
+      { id: 'prices', en: { title: 'Prices and inflation', definition: 'Price indexes and price change for goods and services over time.', dataset: 'Statistics Canada Table 18-10-0004-01 — Consumer Price Index, monthly, not seasonally adjusted' }, fr: { title: 'Prix et inflation', definition: 'Indices des prix et variation des prix des biens et services dans le temps.', dataset: 'Tableau 18-10-0004-01 de Statistique Canada — Indice des prix à la consommation, mensuel, non désaisonnalisé' } },
+      { id: 'housing', en: { title: 'Housing', definition: 'Housing supply, tenure, affordability, shelter costs, suitability and regional housing conditions.', dataset: 'Census housing indicators and housing affordability tables' }, fr: { title: 'Logement', definition: 'Offre de logements, mode d’occupation, abordabilité, frais de logement, taille convenable et conditions régionales.', dataset: 'Indicateurs du logement du recensement et tableaux sur l’abordabilité' } },
+      { id: 'health', en: { title: 'Health', definition: 'Health status, access to care, behaviours, outcomes and population health indicators.', dataset: 'Canadian Community Health Survey public indicators' }, fr: { title: 'Santé', definition: 'État de santé, accès aux soins, comportements, résultats et indicateurs de santé de la population.', dataset: 'Indicateurs publics de l’Enquête sur la santé dans les collectivités canadiennes' } },
+      { id: 'environment', en: { title: 'Environment', definition: 'Natural resources, emissions, climate indicators, land, water and environmental-economic accounts.', dataset: 'Census of Environment and environmental-economic accounts tables' }, fr: { title: 'Environnement', definition: 'Ressources naturelles, émissions, indicateurs climatiques, terres, eau et comptes économiques de l’environnement.', dataset: 'Recensement de l’environnement et tableaux des comptes économiques de l’environnement' } }
+    ];
+
+    const mcpTools = [
+      { name: 'national_statistics_list_subjects', title: 'List subject areas', description: 'Returns approved national statistics subject areas and definitions.', input: 'None' },
+      { name: 'national_statistics_get_dataset_examples', title: 'Get dataset examples', description: 'Returns dataset examples and metadata notes for one subject area.', input: 'subjectAreaId' },
+      { name: 'national_statistics_compare_geographies', title: 'Compare geographies', description: 'Compares embedded demonstration values by geography and returns source notes.', input: 'datasetId, geographies, indicator, referencePeriod' },
+      { name: 'national_statistics_validate_claim', title: 'Validate a statistical claim', description: 'Checks whether a claim includes source, geography, period, unit and limitation language.', input: 'claimText, datasetId' },
+      { name: 'national_statistics_plain_language_summary', title: 'Create plain-language summary', description: 'Creates cautious draft wording from a structured statistical result.', input: 'resultObject, audience, language' }
+    ];
+
+    const mcpResources = [
+      { uri: 'statcan://subjects', type: 'application/json', title: 'Subject area definitions', source: 'Embedded demonstration resource' },
+      { uri: 'statcan://datasets/17-10-0009-01', type: 'application/json', title: 'Population estimates, quarterly metadata', source: 'Statistics Canada catalogue metadata, embedded for demo' },
+      { uri: 'statcan://quality/disclosure-rules', type: 'text/markdown', title: 'Quality and disclosure rules', source: 'Prototype rules requiring aggregate, source-backed outputs' },
+      { uri: 'statcan://prompts/briefing-note', type: 'text/markdown', title: 'Briefing note prompt template', source: 'Embedded demonstration prompt' }
+    ];
+
+    const mcpPrompts = [
+      { name: 'statistical_briefing_note', title: 'Statistical briefing note', description: 'Drafts a short note with finding, context, source and limitation.' },
+      { name: 'data_quality_check', title: 'Data quality check', description: 'Prompts the assistant to verify source, geography, period, unit and known limitations.' },
+      { name: 'safe_public_statement', title: 'Safe public statement', description: 'Prompts neutral wording that avoids unsupported causality, ranking or policy claims.' }
+    ];
+
+    const scenarios = [
+      {
+        id: 'population-compare', toolName: 'national_statistics_compare_geographies', datasetId: '17-10-0009-01', subject: 'population',
+        en: { label: 'Compare quarterly population estimates by geography', summary: 'The MCP server returned a structured comparison for selected geographies using the embedded population-estimates demonstration subset.', finding: 'In this demo subset, Canada is the national total and Ontario has the largest provincial value among the selected regions. This is a demonstration only; verify the official table before use.' },
+        fr: { label: 'Comparer les estimations trimestrielles de la population par région', summary: 'Le serveur MCP a retourné une comparaison structurée pour certaines régions à l’aide du sous-ensemble de démonstration sur les estimations de population.', finding: 'Dans ce sous-ensemble de démonstration, le Canada est le total national et l’Ontario présente la plus grande valeur provinciale parmi les régions sélectionnées. Il s’agit d’une démonstration seulement; vérifiez le tableau officiel avant utilisation.' },
+        arguments: { datasetId: '17-10-0009-01', geographies: ['Canada', 'Ontario', 'Quebec', 'British Columbia'], indicator: 'population_estimate', referencePeriod: 'Demo Q1' },
+        data: [
+          { geo: 'Canada', value: 40000, unit: 'thousands of persons', period: 'Demo Q1' },
+          { geo: 'Ontario', value: 15500, unit: 'thousands of persons', period: 'Demo Q1' },
+          { geo: 'Quebec', value: 8900, unit: 'thousands of persons', period: 'Demo Q1' },
+          { geo: 'British Columbia', value: 5500, unit: 'thousands of persons', period: 'Demo Q1' }
+        ],
+        source: 'Statistics Canada Table 17-10-0009-01 metadata; values are embedded demo values.'
+      },
+      {
+        id: 'prices-check', toolName: 'national_statistics_validate_claim', datasetId: '18-10-0004-01', subject: 'prices',
+        en: { label: 'Validate a plain-language CPI claim', summary: 'The MCP server checked whether a Consumer Price Index claim contains source, geography, period, unit and limitation language.', finding: 'The claim is incomplete unless it states the geography, reference period, product group, unit and source. A CPI index should not be described as a percentage change unless a percentage calculation has been performed.' },
+        fr: { label: 'Valider une affirmation en langage clair sur l’IPC', summary: 'Le serveur MCP a vérifié si une affirmation sur l’indice des prix à la consommation contient la source, la géographie, la période, l’unité et les limites.', finding: 'L’affirmation est incomplète si elle ne précise pas la géographie, la période de référence, le groupe de produits, l’unité et la source. Un indice de l’IPC ne doit pas être présenté comme une variation en pourcentage sauf si un calcul de pourcentage a été effectué.' },
+        arguments: { claimText: 'Prices are higher this month.', datasetId: '18-10-0004-01', requiredChecks: ['source', 'geography', 'referencePeriod', 'unit', 'limitation'] },
+        data: [
+          { geo: 'Source stated', value: 0, unit: 'missing', period: 'Claim check' },
+          { geo: 'Geography stated', value: 0, unit: 'missing', period: 'Claim check' },
+          { geo: 'Reference period stated', value: 0, unit: 'missing', period: 'Claim check' },
+          { geo: 'Unit stated', value: 0, unit: 'missing', period: 'Claim check' },
+          { geo: 'Limitation stated', value: 0, unit: 'missing', period: 'Claim check' }
+        ],
+        source: 'CPI dataset example; no official values used in this claim-check scenario.'
+      },
+      {
+        id: 'subject-list', toolName: 'national_statistics_list_subjects', datasetId: 'statcan-subjects', subject: 'metadata',
+        en: { label: 'List approved subject areas before analysis', summary: 'The MCP server returned approved subject definitions so the assistant can classify the request before selecting a dataset.', finding: 'Subject discovery reduces source hallucination. The assistant should select from approved subject areas and then request dataset metadata before analysis.' },
+        fr: { label: 'Lister les domaines approuvés avant l’analyse', summary: 'Le serveur MCP a retourné des définitions de domaines approuvées afin que l’assistant puisse classer la demande avant de choisir un jeu de données.', finding: 'La découverte des domaines réduit les sources inventées. L’assistant devrait choisir parmi les domaines approuvés, puis demander les métadonnées du jeu de données avant l’analyse.' },
+        arguments: {},
+        data: subjectAreas.map((s, index) => ({ geo: s.en.title, value: index + 1, unit: 'subject area', period: 'Current prototype' })),
+        source: 'Embedded subject metadata definitions.'
+      }
+    ];
+
+    function t(key) { return i18n[state.lang][key] || i18n.en[key] || key; }
+    function currentScenario() { return scenarios.find(s => s.id === document.getElementById('scenarioSelect').value) || scenarios[0]; }
+
+    function safeText(value) { return String(value ?? ''); }
+
+    function setLanguage(lang) {
+      state.lang = lang;
+      localStorage.setItem('mcpStats.lang', lang);
+      document.documentElement.lang = lang;
+      document.title = t('docTitle');
+      const staticMap = {
+        prototypeLabel: 'prototypeLabel', prototypeText: 'prototypeText', brandGov: 'brandGov', brandProduct: 'brandProduct', searchLabel: 'searchLabel', searchBtn: 'searchBtn', menuLabel: 'menuLabel', navOverview: 'navOverview', navSimulator: 'navSimulator', navSubjects: 'navSubjects', navContract: 'navContract', navQuality: 'navQuality', crumbCurrent: 'crumbCurrent', pageTitle: 'pageTitle', lead: 'lead', meta: 'meta', 'plain-language-heading': 'plainHeading', plainLanguageText: 'plainText', 'on-page-heading': 'onPage', otp1: 'otp1', otp2: 'otp2', otp3: 'otp3', otp4: 'otp4', otp5: 'otp5', 'overview-heading': 'overviewHeading', overviewText: 'overviewText', arch1: 'arch1', arch2: 'arch2', arch3: 'arch3', overviewTools: 'overviewTools', overviewToolsText: 'overviewToolsText', overviewResources: 'overviewResources', overviewResourcesText: 'overviewResourcesText', overviewPrompts: 'overviewPrompts', overviewPromptsText: 'overviewPromptsText', 'simulator-heading': 'simulatorHeading', simulatorIntro: 'simulatorIntro', demoWarning: 'demoWarning', scenarioLabel: 'scenarioLabel', scenarioHelp: 'scenarioHelp', runBtn: 'runBtn', resetBtn: 'resetBtn', printBtn: 'printBtn', 'result-heading': 'resultHeading', 'transcript-heading': 'transcriptHeading', transcriptIntro: 'transcriptIntro', 'subjects-heading': 'subjectsHeading', subjectsIntro: 'subjectsIntro', 'contract-heading': 'contractHeading', contractIntro: 'contractIntro', sampleHeading: 'sampleHeading', 'quality-heading': 'qualityHeading', quality1: 'quality1', quality2: 'quality2', 'responsible-heading': 'responsibleHeading', responsibleText: 'responsibleText', 'about-heading': 'aboutHeading', aboutText: 'aboutText', dateLabel: 'dateLabel', footerHeading: 'footerHeading', footerPrivacy: 'footerPrivacy', footerAccessibility: 'footerAccessibility', footerSource: 'footerSource', footerCanada: 'footerCanada'
+      };
+      Object.entries(staticMap).forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (t(key).includes('<')) el.innerHTML = t(key); else el.textContent = t(key);
+      });
+      document.getElementById('languageToggle').textContent = t('languageToggle');
+      document.getElementById('languageToggle').setAttribute('aria-label', t('switchLabel'));
+      document.getElementById('siteSearch').setAttribute('placeholder', t('searchPlaceholder'));
+      renderScenarioOptions();
+      renderSubjectCards();
+      renderContractTables();
+      if (state.lastScenario) runExchange(false);
+      else setStatus(t('statusReady'));
+    }
+
+    function renderScenarioOptions() {
+      const select = document.getElementById('scenarioSelect');
+      const previous = select.value || scenarios[0].id;
+      select.textContent = '';
+      scenarios.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.id;
+        option.textContent = s[state.lang].label;
+        select.appendChild(option);
+      });
+      select.value = scenarios.some(s => s.id === previous) ? previous : scenarios[0].id;
+    }
+
+    function renderSubjectCards() {
+      const wrap = document.getElementById('subjectCards');
+      wrap.textContent = '';
+      subjectAreas.forEach((s) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        const h = document.createElement('h3'); h.textContent = s[state.lang].title;
+        const p1 = document.createElement('p'); p1.textContent = s[state.lang].definition;
+        const p2 = document.createElement('p');
+        const strong = document.createElement('strong'); strong.textContent = t('source') + ': ';
+        p2.appendChild(strong); p2.appendChild(document.createTextNode(s[state.lang].dataset));
+        const badge = document.createElement('span'); badge.className = 'badge demo'; badge.textContent = t('demo');
+        card.append(h, p1, p2, badge);
+        wrap.appendChild(card);
+      });
+    }
+
+    function tableFromData(caption, headers, rows) {
+      const table = document.createElement('table');
+      const cap = document.createElement('caption'); cap.textContent = caption; table.appendChild(cap);
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      headers.forEach(h => { const th = document.createElement('th'); th.scope = 'col'; th.textContent = h; trh.appendChild(th); });
+      thead.appendChild(trh); table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => { const td = document.createElement('td'); td.textContent = safeText(cell); tr.appendChild(td); });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      return table;
+    }
+
+    function renderContractTables() {
+      document.getElementById('toolsTable').replaceChildren(tableFromData(t('toolsCaption'), [t('name'), t('title'), t('description'), 'Input schema'], mcpTools.map(x => [x.name, x.title, x.description, x.input])));
+      document.getElementById('resourcesTable').replaceChildren(tableFromData(t('resourcesCaption'), [t('uri'), t('type'), t('title'), t('source')], mcpResources.map(x => [x.uri, x.type, x.title, x.source])));
+      document.getElementById('promptsTable').replaceChildren(tableFromData(t('promptsCaption'), [t('name'), t('title'), t('description')], mcpPrompts.map(x => [x.name, x.title, x.description])));
+    }
+
+    function setStatus(message) { document.getElementById('status').textContent = message; }
+
+    function makeTranscript(scenario) {
+      const serverCaps = { tools: { listChanged: true }, resources: {}, prompts: {} };
+      return [
+        { direction: 'Client → Server', method: 'initialize', json: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: { elicitation: {} }, clientInfo: { name: 'national-statistics-demo-client', version: '1.0.0' } } } },
+        { direction: 'Server → Client', method: 'initialize response', json: { jsonrpc: '2.0', id: 1, result: { protocolVersion: '2025-06-18', capabilities: serverCaps, serverInfo: { name: 'national-statistics-mcp-server', version: '0.1.0-prototype' } } } },
+        { direction: 'Client → Server', method: 'notifications/initialized', json: { jsonrpc: '2.0', method: 'notifications/initialized' } },
+        { direction: 'Client → Server', method: 'tools/list', json: { jsonrpc: '2.0', id: 2, method: 'tools/list' } },
+        { direction: 'Server → Client', method: 'tools/list response', json: { jsonrpc: '2.0', id: 2, result: { tools: mcpTools.map(tool => ({ name: tool.name, title: tool.title, description: tool.description, inputSchema: { type: 'object', description: tool.input } })) } } },
+        { direction: 'Client → Server', method: 'resources/read', json: { jsonrpc: '2.0', id: 3, method: 'resources/read', params: { uri: scenario.datasetId === '17-10-0009-01' ? 'statcan://datasets/17-10-0009-01' : 'statcan://subjects' } } },
+        { direction: 'Server → Client', method: 'resources/read response', json: { jsonrpc: '2.0', id: 3, result: { contents: [{ uri: scenario.datasetId === '17-10-0009-01' ? 'statcan://datasets/17-10-0009-01' : 'statcan://subjects', mimeType: 'application/json', text: JSON.stringify({ datasetId: scenario.datasetId, source: scenario.source, qualityNotes: ['Verify source table before public use.', 'State geography, reference period and unit.', 'Avoid causal claims unless supported by component data.'] }, null, 2) }] } } },
+        { direction: 'Client → Server', method: 'tools/call', json: { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: scenario.toolName, arguments: scenario.arguments } } },
+        { direction: 'Server → Client', method: 'tools/call response', json: { jsonrpc: '2.0', id: 4, result: { content: [{ type: 'text', text: scenario[state.lang].finding }], structuredContent: { datasetId: scenario.datasetId, resultType: scenario.id, demoData: scenario.data, sourceNote: scenario.source, limitations: ['Embedded demonstration values only.', 'Human verification required before operational use.'] } } } }
+      ];
+    }
+
+    function renderTranscript(items) {
+      const ol = document.getElementById('transcript');
+      ol.textContent = '';
+      items.forEach((item, index) => {
+        const li = document.createElement('li'); li.className = 'message';
+        const head = document.createElement('div'); head.className = 'message-header';
+        const left = document.createElement('span'); left.textContent = `${index + 1}. ${item.direction}`;
+        const method = document.createElement('span'); method.className = 'method'; method.textContent = item.method;
+        head.append(left, method);
+        const pre = document.createElement('pre');
+        const code = document.createElement('code'); code.textContent = JSON.stringify(item.json, null, 2);
+        pre.appendChild(code);
+        li.append(head, pre);
+        ol.appendChild(li);
+      });
+    }
+
+    function renderResult(scenario) {
+      document.getElementById('resultPanel').hidden = false;
+      document.getElementById('resultSummary').textContent = scenario[state.lang].summary + ' ' + scenario[state.lang].finding;
+      const badges = document.getElementById('badges'); badges.textContent = '';
+      ['JSON-RPC 2.0', 'tools/list', 'resources/read', 'tools/call', t('demo')].forEach((label, i) => {
+        const span = document.createElement('span'); span.className = 'badge' + (i === 4 ? ' demo' : ' verified'); span.textContent = label; badges.appendChild(span);
+      });
+      const chart = document.getElementById('chart'); chart.textContent = '';
+      const h = document.createElement('h4'); h.id = 'chart-heading'; h.textContent = t('chartHeading'); chart.appendChild(h);
+      const max = Math.max(...scenario.data.map(d => Number(d.value) || 1));
+      scenario.data.forEach(d => {
+        const row = document.createElement('div'); row.className = 'bar';
+        const lab = document.createElement('span'); lab.textContent = d.geo;
+        const track = document.createElement('div'); track.className = 'bar-track';
+        const fill = document.createElement('div'); fill.className = 'bar-fill'; fill.style.width = `${Math.max(4, ((Number(d.value) || 0) / max) * 100)}%`;
+        track.appendChild(fill);
+        const val = document.createElement('span'); val.textContent = safeText(d.value);
+        row.append(lab, track, val); chart.appendChild(row);
+      });
+      document.getElementById('dataTable').replaceChildren(tableFromData(t('chartCaption'), ['Geography / Check', t('value'), t('unit'), t('period')], scenario.data.map(d => [d.geo, d.value, d.unit, d.period])));
+    }
+
+    function runExchange(moveFocus = true) {
+      const scenario = currentScenario();
+      state.lastScenario = scenario.id;
+      renderResult(scenario);
+      renderTranscript(makeTranscript(scenario));
+      setStatus(t('statusRun'));
+      if (moveFocus) document.getElementById('resultPanel').focus();
+    }
+
+    function resetDemo() {
+      state.lastScenario = null;
+      document.getElementById('resultPanel').hidden = true;
+      document.getElementById('transcript').textContent = '';
+      setStatus(t('statusReset'));
+      document.getElementById('scenarioSelect').focus();
+    }
+
+    document.getElementById('languageToggle').addEventListener('click', () => setLanguage(state.lang === 'en' ? 'fr' : 'en'));
+    document.getElementById('runBtn').addEventListener('click', () => runExchange(true));
+    document.getElementById('resetBtn').addEventListener('click', resetDemo);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('scenarioSelect').addEventListener('change', () => { if (state.lastScenario) runExchange(false); });
+
+    setLanguage(state.lang);
+  </script>
+</body>
+</html>
