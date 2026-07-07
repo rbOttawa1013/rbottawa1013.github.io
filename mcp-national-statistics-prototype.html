@@ -128,7 +128,29 @@
     .bar { display: grid; grid-template-columns: 12rem 1fr 5rem; align-items: center; gap: .65rem; margin: .55rem 0; }
     .bar-track { background: var(--gc-gray-200); border: 1px solid #bbb; height: 1.2rem; }
     .bar-fill { height: 100%; background: var(--gc-blue); }
-    .code-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .5rem; }
+
+    /* Animated MCP protocol flow */
+    .flow-shell { border: 1px solid var(--border); background: #fff; box-shadow: var(--shadow); padding: 1rem; margin: 1.5rem 0; }
+    .flow-controls { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .flow-progress { height: .85rem; background: var(--gc-gray-200); border: 1px solid #aaa; margin: 1rem 0; overflow: hidden; }
+    .flow-progress-fill { height: 100%; width: 0; background: var(--gc-blue); transition: width .45s ease; }
+    .flow-stage { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; align-items: stretch; margin: 1rem 0; }
+    .flow-node { border: 2px solid var(--gc-blue); background: #fff; min-height: 8rem; padding: .85rem; display: grid; align-content: center; text-align: center; position: relative; }
+    .flow-node strong { color: var(--gc-gray-900); display: block; }
+    .flow-node.active { background: #eef4f9; box-shadow: inset 0 0 0 3px var(--focus); }
+    .flow-node::after { content: ""; position: absolute; top: 50%; right: -1.1rem; width: 1.35rem; height: .25rem; background: var(--gc-blue); transform: translateY(-50%); }
+    .flow-node:last-child::after { display: none; }
+    .flow-packet { border: 2px solid var(--gc-red-dark); background: #fff5f5; padding: .65rem; margin: .75rem 0; font-weight: 700; text-align: center; transition: transform .4s ease, background-color .4s ease; }
+    .flow-packet.active { transform: scale(1.03); background: #fff; box-shadow: inset 0 0 0 3px var(--focus); }
+    .flow-steps { counter-reset: step; list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .75rem; }
+    .flow-steps li { border: 1px solid var(--border); border-left: 5px solid var(--gc-gray-300); background: #fff; padding: .85rem; }
+    .flow-steps li::before { counter-increment: step; content: counter(step); display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; margin-right: .5rem; border-radius: 50%; background: var(--gc-gray-200); color: #000; font-weight: 700; }
+    .flow-steps li.active { border-left-color: var(--gc-red); background: #fffdf5; box-shadow: inset 0 0 0 2px var(--focus); }
+    .flow-steps li.active::before { background: var(--gc-red-dark); color: #fff; }
+    .flow-steps .flow-method { font-weight: 700; color: var(--gc-blue); display: inline; }
+    .flow-steps .flow-direction { display: block; margin-top: .35rem; color: var(--gc-gray-500); }
+    .flow-narration { border-left: 6px solid var(--gc-red); background: #fff5f5; padding: 1rem; margin-top: 1rem; }
+
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     /* Footer */
@@ -148,6 +170,8 @@
       .site-nav ul { display: block; }
       .site-nav a { border-left: 0; border-top: 1px solid rgba(255,255,255,.25); }
       .search-form { width: 100%; }
+      .flow-stage { grid-template-columns: 1fr; }
+      .flow-node::after { top: auto; bottom: -1.1rem; left: 50%; right: auto; width: .25rem; height: 1.35rem; transform: translateX(-50%); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -157,15 +181,18 @@
 
     @media print {
       body { font-size: 11pt; }
-      .skip-link, .prototype-banner, .goc-header, .site-nav, .breadcrumb, .on-page, .controls, .search-form, .no-print { display: none !important; }
+      .skip-link, .prototype-banner, .goc-header, .site-nav, .breadcrumb, .on-page, .controls, .search-form, .no-print, .flow-controls { display: none !important; }
       .container { width: 100%; max-width: none; }
       main { padding: 0; }
       h1 { font-size: 22pt; }
       h2 { page-break-after: avoid; }
-      .card, .notice, .output-panel, .message, .chart { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+      .card, .notice, .output-panel, .message, .chart, .flow-shell { box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
       th { background: #eee !important; color: #000 !important; }
       a { color: #000; text-decoration: none; }
-      .bar-fill { background: #999 !important; }
+      .bar-fill, .flow-progress-fill { background: #999 !important; }
+      .flow-stage { display: block; }
+      .flow-node { margin-bottom: .5rem; }
+      .flow-node::after { display: none; }
     }
   </style>
   <script>document.documentElement.classList.remove('no-js'); document.documentElement.classList.add('js');</script>
@@ -201,6 +228,7 @@
       <div class="menu-label" id="menuLabel">Menu</div>
       <ul>
         <li><a id="navOverview" href="#overview">Overview</a></li>
+        <li><a id="navFlow" href="#protocol-flow">Protocol flow</a></li>
         <li><a id="navSimulator" href="#simulator">Simulator</a></li>
         <li><a id="navSubjects" href="#subjects">Subject areas</a></li>
         <li><a id="navContract" href="#contract">MCP contract</a></li>
@@ -233,6 +261,7 @@
       <h2 id="on-page-heading">On this page</h2>
       <ul>
         <li><a id="otp1" href="#overview">How MCP maps to national statistics</a></li>
+        <li><a id="otpFlow" href="#protocol-flow">Step-by-step protocol flow animation</a></li>
         <li><a id="otp2" href="#simulator">Run the MCP exchange</a></li>
         <li><a id="otp3" href="#subjects">Subject-matter areas and dataset examples</a></li>
         <li><a id="otp4" href="#contract">Tools, resources and prompts exposed by the server</a></li>
@@ -266,6 +295,33 @@
           <p id="overviewPromptsText">Reusable instruction templates for briefing notes, data-quality checks, source notes, and safe public communication.</p>
         </article>
       </div>
+    </section>
+
+    <section id="protocol-flow" aria-labelledby="flow-heading">
+      <h2 id="flow-heading">Step-by-step MCP protocol flow animation</h2>
+      <p id="flowIntro">Use the controls to watch the protocol advance from initialization to tool execution. The active step is highlighted visually and announced in text for assistive technologies.</p>
+      <div class="flow-shell">
+        <div class="flow-controls no-print" aria-label="Protocol flow controls">
+          <button id="flowPlayBtn" class="btn" type="button">Play flow</button>
+          <button id="flowPrevBtn" class="btn secondary" type="button">Previous step</button>
+          <button id="flowNextBtn" class="btn secondary" type="button">Next step</button>
+          <button id="flowResetBtn" class="btn secondary" type="button">Reset flow</button>
+        </div>
+        <div class="flow-progress" aria-hidden="true"><div id="flowProgress" class="flow-progress-fill"></div></div>
+        <div class="flow-stage" role="img" aria-labelledby="flow-diagram-title" aria-describedby="flow-diagram-desc">
+          <div id="flowHost" class="flow-node"><strong id="flowHostTitle">AI host</strong><span id="flowHostText">User prompt and assistant plan</span></div>
+          <div id="flowClient" class="flow-node"><strong id="flowClientTitle">MCP client</strong><span id="flowClientText">Protocol messages</span></div>
+          <div id="flowServer" class="flow-node"><strong id="flowServerTitle">MCP server</strong><span id="flowServerText">Statistics tools and resources</span></div>
+        </div>
+        <p id="flow-diagram-title" class="sr-only">Animated MCP protocol flow</p>
+        <p id="flow-diagram-desc" class="sr-only">The active protocol step shows whether the AI host, MCP client or MCP server is currently sending or processing the message.</p>
+        <div id="flowPacket" class="flow-packet" aria-hidden="true">initialize</div>
+        <p id="flowNarration" class="flow-narration" aria-live="polite" aria-atomic="true"></p>
+        <ol id="flowSteps" class="flow-steps"></ol>
+      </div>
+      <noscript>
+        <div class="notice warning"><p>JavaScript is required for the animation controls. The step list remains available when JavaScript is disabled.</p></div>
+      </noscript>
     </section>
 
     <section id="simulator" aria-labelledby="simulator-heading">
@@ -386,7 +442,7 @@
   </footer>
 
   <script>
-    const state = { lang: localStorage.getItem('mcpStats.lang') || 'en', lastScenario: null };
+    const state = { lang: localStorage.getItem('mcpStats.lang') || 'en', lastScenario: null, flowStep: 0, flowPlaying: false, flowTimer: null };
 
     const i18n = {
       en: {
@@ -394,13 +450,14 @@
         switchLabel: 'Switch to French', languageToggle: 'Français',
         prototypeLabel: 'Prototype / demonstration only:', prototypeText: 'This page is not an official Government of Canada service. It simulates MCP messages in the browser and makes no external API calls.',
         brandGov: 'Government of Canada', brandProduct: 'National statistics MCP prototype', searchLabel: 'Search this prototype', searchPlaceholder: 'Search this prototype', searchBtn: 'Search', menuLabel: 'Menu',
-        navOverview: 'Overview', navSimulator: 'Simulator', navSubjects: 'Subject areas', navContract: 'MCP contract', navQuality: 'Quality gates', crumbCurrent: 'MCP national statistics simulator',
+        navOverview: 'Overview', navFlow: 'Protocol flow', navSimulator: 'Simulator', navSubjects: 'Subject areas', navContract: 'MCP contract', navQuality: 'Quality gates', crumbCurrent: 'MCP national statistics simulator',
         pageTitle: 'MCP national statistics protocol simulator', lead: 'Use this working browser prototype to see how an AI assistant could discover, read and call national statistics tools through the Model Context Protocol.', meta: 'Static HTML/CSS/JavaScript prototype · No login · No backend · No external API calls · Demo data only',
         plainHeading: 'What this demonstrates', plainText: 'MCP is shown as a safe interface between an AI host and a national statistics server. The AI host does not scrape pages or guess data. It discovers approved tools, reads approved metadata resources, calls a tool with structured arguments, and receives a structured response with source and quality notes.',
-        onPage: 'On this page', otp1: 'How MCP maps to national statistics', otp2: 'Run the MCP exchange', otp3: 'Subject-matter areas and dataset examples', otp4: 'Tools, resources and prompts exposed by the server', otp5: 'Privacy, security and statistical quality gates',
+        onPage: 'On this page', otp1: 'How MCP maps to national statistics', otpFlow: 'Step-by-step protocol flow animation', otp2: 'Run the MCP exchange', otp3: 'Subject-matter areas and dataset examples', otp4: 'Tools, resources and prompts exposed by the server', otp5: 'Privacy, security and statistical quality gates',
         overviewHeading: 'How MCP maps to national statistics', overviewText: 'A national statistical organization can use an MCP server to expose only approved statistical capabilities. The server can make dataset metadata available as resources, analysis actions available as tools, and reusable plain-language workflows available as prompts.',
         arch1: 'AI host<br><small>assistant or analyst tool</small>', arch2: 'MCP client<br><small>JSON-RPC messages</small>', arch3: 'National statistics MCP server<br><small>approved tools, resources, prompts</small>',
         overviewTools: 'Tools', overviewToolsText: 'Executable actions such as listing datasets, comparing geographies, validating claims, and creating a plain-language summary.', overviewResources: 'Resources', overviewResourcesText: 'Approved read-only context such as dataset metadata, subject definitions, quality rules, and disclosure warnings.', overviewPrompts: 'Prompts', overviewPromptsText: 'Reusable instruction templates for briefing notes, data-quality checks, source notes, and safe public communication.',
+        flowHeading: 'Step-by-step MCP protocol flow animation', flowIntro: 'Use the controls to watch the protocol advance from initialization to tool execution. The active step is highlighted visually and announced in text for assistive technologies.', flowPlay: 'Play flow', flowPause: 'Pause flow', flowPrev: 'Previous step', flowNext: 'Next step', flowReset: 'Reset flow', flowHostTitle: 'AI host', flowHostText: 'User prompt and assistant plan', flowClientTitle: 'MCP client', flowClientText: 'Protocol messages', flowServerTitle: 'MCP server', flowServerText: 'Statistics tools and resources',
         simulatorHeading: 'Run the MCP exchange', simulatorIntro: 'Choose a statistical task, then run a simulated MCP exchange. The browser will generate the initialization, discovery, resource-read, tool-call and response messages.', demoWarning: '<strong>Demo data warning:</strong> numerical values in the result panel are small embedded demonstration values. Use official tables before making operational or public claims.', scenarioLabel: 'Statistical task', scenarioHelp: 'The selected task controls the MCP tool call and the demonstration output.', runBtn: 'Run MCP exchange', resetBtn: 'Reset', printBtn: 'Print report', resultHeading: 'Assistant-ready response', transcriptHeading: 'MCP JSON-RPC transcript', transcriptIntro: 'Each message is structured as JSON-RPC 2.0. This is a teaching simulator, not a live MCP client.',
         subjectsHeading: 'Subject-matter areas and dataset examples', subjectsIntro: 'A national statistics MCP server should expose subject definitions and dataset metadata before allowing analysis. This reduces hallucinated sources and unsupported claims.',
         contractHeading: 'MCP server contract for national statistics', contractIntro: 'The server contract below shows what the assistant can discover. A production implementation would enforce authentication, authorization, rate limits, audit logs and approved data domains.', sampleHeading: 'Sample tool call pattern',
@@ -415,13 +472,14 @@
         switchLabel: 'Passer à l’anglais', languageToggle: 'English',
         prototypeLabel: 'Prototype / démonstration seulement :', prototypeText: 'Cette page n’est pas un service officiel du gouvernement du Canada. Elle simule des messages MCP dans le navigateur et ne fait aucun appel API externe.',
         brandGov: 'Gouvernement du Canada', brandProduct: 'Prototype MCP pour les statistiques nationales', searchLabel: 'Rechercher dans ce prototype', searchPlaceholder: 'Rechercher dans ce prototype', searchBtn: 'Rechercher', menuLabel: 'Menu',
-        navOverview: 'Aperçu', navSimulator: 'Simulateur', navSubjects: 'Domaines', navContract: 'Contrat MCP', navQuality: 'Contrôles de qualité', crumbCurrent: 'Simulateur MCP pour les statistiques nationales',
+        navOverview: 'Aperçu', navFlow: 'Flux du protocole', navSimulator: 'Simulateur', navSubjects: 'Domaines', navContract: 'Contrat MCP', navQuality: 'Contrôles de qualité', crumbCurrent: 'Simulateur MCP pour les statistiques nationales',
         pageTitle: 'Simulateur du protocole MCP pour les statistiques nationales', lead: 'Utilisez ce prototype fonctionnel dans le navigateur pour voir comment un assistant IA pourrait découvrir, lire et appeler des outils de statistiques nationales au moyen du Model Context Protocol.', meta: 'Prototype HTML/CSS/JavaScript statique · Aucun compte · Aucun serveur · Aucun appel API externe · Données de démonstration seulement',
         plainHeading: 'Ce que cette page démontre', plainText: 'Le protocole MCP est présenté comme une interface sécurisée entre un hôte IA et un serveur de statistiques nationales. L’hôte IA ne moissonne pas des pages et ne devine pas les données. Il découvre des outils approuvés, lit des ressources de métadonnées approuvées, appelle un outil avec des arguments structurés et reçoit une réponse structurée avec les sources et les notes de qualité.',
-        onPage: 'Sur cette page', otp1: 'Comment MCP s’applique aux statistiques nationales', otp2: 'Exécuter l’échange MCP', otp3: 'Domaines statistiques et exemples de jeux de données', otp4: 'Outils, ressources et invites exposés par le serveur', otp5: 'Protection des renseignements, sécurité et qualité statistique',
+        onPage: 'Sur cette page', otp1: 'Comment MCP s’applique aux statistiques nationales', otpFlow: 'Animation étape par étape du flux du protocole', otp2: 'Exécuter l’échange MCP', otp3: 'Domaines statistiques et exemples de jeux de données', otp4: 'Outils, ressources et invites exposés par le serveur', otp5: 'Protection des renseignements, sécurité et qualité statistique',
         overviewHeading: 'Comment MCP s’applique aux statistiques nationales', overviewText: 'Un organisme national de statistique peut utiliser un serveur MCP pour exposer seulement des capacités statistiques approuvées. Le serveur peut fournir les métadonnées des jeux de données comme ressources, les actions d’analyse comme outils et les flux de travail en langage clair comme invites réutilisables.',
         arch1: 'Hôte IA<br><small>assistant ou outil d’analyse</small>', arch2: 'Client MCP<br><small>messages JSON-RPC</small>', arch3: 'Serveur MCP de statistiques nationales<br><small>outils, ressources et invites approuvés</small>',
         overviewTools: 'Outils', overviewToolsText: 'Actions exécutables, comme lister les jeux de données, comparer des régions géographiques, valider des énoncés et créer un résumé en langage clair.', overviewResources: 'Ressources', overviewResourcesText: 'Contexte approuvé en lecture seule, comme les métadonnées, les définitions de domaines, les règles de qualité et les avertissements de divulgation.', overviewPrompts: 'Invites', overviewPromptsText: 'Modèles d’instructions réutilisables pour notes de breffage, contrôles de qualité, notes de source et communications publiques prudentes.',
+        flowHeading: 'Animation étape par étape du flux du protocole MCP', flowIntro: 'Utilisez les contrôles pour voir le protocole avancer de l’initialisation à l’exécution de l’outil. L’étape active est mise en évidence visuellement et annoncée en texte pour les technologies d’assistance.', flowPlay: 'Lire le flux', flowPause: 'Mettre en pause', flowPrev: 'Étape précédente', flowNext: 'Étape suivante', flowReset: 'Réinitialiser le flux', flowHostTitle: 'Hôte IA', flowHostText: 'Invite utilisateur et plan de l’assistant', flowClientTitle: 'Client MCP', flowClientText: 'Messages du protocole', flowServerTitle: 'Serveur MCP', flowServerText: 'Outils et ressources statistiques',
         simulatorHeading: 'Exécuter l’échange MCP', simulatorIntro: 'Choisissez une tâche statistique, puis exécutez un échange MCP simulé. Le navigateur générera les messages d’initialisation, de découverte, de lecture de ressource, d’appel d’outil et de réponse.', demoWarning: '<strong>Avertissement sur les données de démonstration :</strong> les valeurs numériques dans le panneau de résultat sont de petites valeurs de démonstration intégrées. Utilisez les tableaux officiels avant toute affirmation opérationnelle ou publique.', scenarioLabel: 'Tâche statistique', scenarioHelp: 'La tâche sélectionnée détermine l’appel d’outil MCP et le résultat de démonstration.', runBtn: 'Exécuter l’échange MCP', resetBtn: 'Réinitialiser', printBtn: 'Imprimer le rapport', resultHeading: 'Réponse prête pour l’assistant', transcriptHeading: 'Transcription MCP JSON-RPC', transcriptIntro: 'Chaque message est structuré en JSON-RPC 2.0. Il s’agit d’un simulateur pédagogique et non d’un client MCP réel.',
         subjectsHeading: 'Domaines statistiques et exemples de jeux de données', subjectsIntro: 'Un serveur MCP de statistiques nationales devrait exposer les définitions de domaines et les métadonnées des jeux de données avant de permettre l’analyse. Cela réduit les sources inventées et les affirmations non appuyées.',
         contractHeading: 'Contrat du serveur MCP pour les statistiques nationales', contractIntro: 'Le contrat du serveur ci-dessous montre ce que l’assistant peut découvrir. Une mise en œuvre de production appliquerait l’authentification, l’autorisation, les limites de débit, les journaux d’audit et les domaines de données approuvés.', sampleHeading: 'Exemple de modèle d’appel d’outil',
@@ -432,6 +490,17 @@
         name: 'Nom', title: 'Titre', description: 'Description', type: 'Type', uri: 'URI', source: 'Source', period: 'Période de référence', value: 'Valeur', unit: 'Unité', limitations: 'Limites', status: 'Statut', method: 'Méthode', direction: 'Sens', demo: 'Démo', verifiedMetadata: 'Métadonnées vérifiées', chartHeading: 'Graphique de démonstration', chartCaption: 'Tableau de données accessible pour les valeurs de démonstration'
       }
     };
+
+    const flowSteps = [
+      { from: 'host', to: 'client', method: 'User prompt', en: 'The analyst asks the AI host to compare a national statistics indicator. The host plans the task but does not access data directly.', fr: 'L’analyste demande à l’hôte IA de comparer un indicateur statistique national. L’hôte planifie la tâche sans accéder directement aux données.' },
+      { from: 'client', to: 'server', method: 'initialize', en: 'The MCP client opens the session and sends protocol version and client capabilities.', fr: 'Le client MCP ouvre la session et envoie la version du protocole ainsi que les capacités du client.' },
+      { from: 'server', to: 'client', method: 'initialize result', en: 'The MCP server confirms its version, server identity and supported capabilities.', fr: 'Le serveur MCP confirme sa version, son identité et ses capacités prises en charge.' },
+      { from: 'client', to: 'server', method: 'tools/list', en: 'The client asks which approved statistical tools are available.', fr: 'Le client demande quels outils statistiques approuvés sont disponibles.' },
+      { from: 'server', to: 'client', method: 'tools/list result', en: 'The server returns tool names, descriptions and input schemas so the host can choose safely.', fr: 'Le serveur retourne les noms, descriptions et schémas d’entrée des outils afin que l’hôte puisse choisir de façon sûre.' },
+      { from: 'client', to: 'server', method: 'resources/read', en: 'The client reads approved dataset metadata and quality notes before calling an analysis tool.', fr: 'Le client lit les métadonnées approuvées et les notes de qualité du jeu de données avant d’appeler un outil d’analyse.' },
+      { from: 'client', to: 'server', method: 'tools/call', en: 'The client calls the selected tool with structured arguments: dataset, geography, period, indicator and unit.', fr: 'Le client appelle l’outil choisi avec des arguments structurés : jeu de données, géographie, période, indicateur et unité.' },
+      { from: 'server', to: 'host', method: 'structured result', en: 'The server returns machine-readable results plus source, limitations and disclosure notes for the assistant response.', fr: 'Le serveur retourne des résultats lisibles par machine avec la source, les limites et les notes de divulgation pour la réponse de l’assistant.' }
+    ];
 
     const subjectAreas = [
       { id: 'population', en: { title: 'Population and demography', definition: 'Counts, estimates and characteristics of people by geography, age, sex, migration and time.', dataset: 'Statistics Canada Table 17-10-0009-01 — Population estimates, quarterly' }, fr: { title: 'Population et démographie', definition: 'Dénombrements, estimations et caractéristiques des personnes selon la géographie, l’âge, le sexe, la migration et le temps.', dataset: 'Tableau 17-10-0009-01 de Statistique Canada — Estimations de la population, trimestrielles' } },
@@ -503,7 +572,6 @@
 
     function t(key) { return i18n[state.lang][key] || i18n.en[key] || key; }
     function currentScenario() { return scenarios.find(s => s.id === document.getElementById('scenarioSelect').value) || scenarios[0]; }
-
     function safeText(value) { return String(value ?? ''); }
 
     function setLanguage(lang) {
@@ -512,7 +580,7 @@
       document.documentElement.lang = lang;
       document.title = t('docTitle');
       const staticMap = {
-        prototypeLabel: 'prototypeLabel', prototypeText: 'prototypeText', brandGov: 'brandGov', brandProduct: 'brandProduct', searchLabel: 'searchLabel', searchBtn: 'searchBtn', menuLabel: 'menuLabel', navOverview: 'navOverview', navSimulator: 'navSimulator', navSubjects: 'navSubjects', navContract: 'navContract', navQuality: 'navQuality', crumbCurrent: 'crumbCurrent', pageTitle: 'pageTitle', lead: 'lead', meta: 'meta', 'plain-language-heading': 'plainHeading', plainLanguageText: 'plainText', 'on-page-heading': 'onPage', otp1: 'otp1', otp2: 'otp2', otp3: 'otp3', otp4: 'otp4', otp5: 'otp5', 'overview-heading': 'overviewHeading', overviewText: 'overviewText', arch1: 'arch1', arch2: 'arch2', arch3: 'arch3', overviewTools: 'overviewTools', overviewToolsText: 'overviewToolsText', overviewResources: 'overviewResources', overviewResourcesText: 'overviewResourcesText', overviewPrompts: 'overviewPrompts', overviewPromptsText: 'overviewPromptsText', 'simulator-heading': 'simulatorHeading', simulatorIntro: 'simulatorIntro', demoWarning: 'demoWarning', scenarioLabel: 'scenarioLabel', scenarioHelp: 'scenarioHelp', runBtn: 'runBtn', resetBtn: 'resetBtn', printBtn: 'printBtn', 'result-heading': 'resultHeading', 'transcript-heading': 'transcriptHeading', transcriptIntro: 'transcriptIntro', 'subjects-heading': 'subjectsHeading', subjectsIntro: 'subjectsIntro', 'contract-heading': 'contractHeading', contractIntro: 'contractIntro', sampleHeading: 'sampleHeading', 'quality-heading': 'qualityHeading', quality1: 'quality1', quality2: 'quality2', 'responsible-heading': 'responsibleHeading', responsibleText: 'responsibleText', 'about-heading': 'aboutHeading', aboutText: 'aboutText', dateLabel: 'dateLabel', footerHeading: 'footerHeading', footerPrivacy: 'footerPrivacy', footerAccessibility: 'footerAccessibility', footerSource: 'footerSource', footerCanada: 'footerCanada'
+        prototypeLabel: 'prototypeLabel', prototypeText: 'prototypeText', brandGov: 'brandGov', brandProduct: 'brandProduct', searchLabel: 'searchLabel', searchBtn: 'searchBtn', menuLabel: 'menuLabel', navOverview: 'navOverview', navFlow: 'navFlow', navSimulator: 'navSimulator', navSubjects: 'navSubjects', navContract: 'navContract', navQuality: 'navQuality', crumbCurrent: 'crumbCurrent', pageTitle: 'pageTitle', lead: 'lead', meta: 'meta', 'plain-language-heading': 'plainHeading', plainLanguageText: 'plainText', 'on-page-heading': 'onPage', otp1: 'otp1', otpFlow: 'otpFlow', otp2: 'otp2', otp3: 'otp3', otp4: 'otp4', otp5: 'otp5', 'overview-heading': 'overviewHeading', overviewText: 'overviewText', arch1: 'arch1', arch2: 'arch2', arch3: 'arch3', overviewTools: 'overviewTools', overviewToolsText: 'overviewToolsText', overviewResources: 'overviewResources', overviewResourcesText: 'overviewResourcesText', overviewPrompts: 'overviewPrompts', overviewPromptsText: 'overviewPromptsText', 'flow-heading': 'flowHeading', flowIntro: 'flowIntro', flowHostTitle: 'flowHostTitle', flowHostText: 'flowHostText', flowClientTitle: 'flowClientTitle', flowClientText: 'flowClientText', flowServerTitle: 'flowServerTitle', flowServerText: 'flowServerText', 'simulator-heading': 'simulatorHeading', simulatorIntro: 'simulatorIntro', demoWarning: 'demoWarning', scenarioLabel: 'scenarioLabel', scenarioHelp: 'scenarioHelp', runBtn: 'runBtn', resetBtn: 'resetBtn', printBtn: 'printBtn', 'result-heading': 'resultHeading', 'transcript-heading': 'transcriptHeading', transcriptIntro: 'transcriptIntro', 'subjects-heading': 'subjectsHeading', subjectsIntro: 'subjectsIntro', 'contract-heading': 'contractHeading', contractIntro: 'contractIntro', sampleHeading: 'sampleHeading', 'quality-heading': 'qualityHeading', quality1: 'quality1', quality2: 'quality2', 'responsible-heading': 'responsibleHeading', responsibleText: 'responsibleText', 'about-heading': 'aboutHeading', aboutText: 'aboutText', dateLabel: 'dateLabel', footerHeading: 'footerHeading', footerPrivacy: 'footerPrivacy', footerAccessibility: 'footerAccessibility', footerSource: 'footerSource', footerCanada: 'footerCanada'
       };
       Object.entries(staticMap).forEach(([id, key]) => {
         const el = document.getElementById(id);
@@ -525,6 +593,7 @@
       renderScenarioOptions();
       renderSubjectCards();
       renderContractTables();
+      renderFlow();
       if (state.lastScenario) runExchange(false);
       else setStatus(t('statusReady'));
     }
@@ -580,6 +649,70 @@
       document.getElementById('toolsTable').replaceChildren(tableFromData(t('toolsCaption'), [t('name'), t('title'), t('description'), 'Input schema'], mcpTools.map(x => [x.name, x.title, x.description, x.input])));
       document.getElementById('resourcesTable').replaceChildren(tableFromData(t('resourcesCaption'), [t('uri'), t('type'), t('title'), t('source')], mcpResources.map(x => [x.uri, x.type, x.title, x.source])));
       document.getElementById('promptsTable').replaceChildren(tableFromData(t('promptsCaption'), [t('name'), t('title'), t('description')], mcpPrompts.map(x => [x.name, x.title, x.description])));
+    }
+
+    function renderFlow() {
+      document.getElementById('flowPlayBtn').textContent = state.flowPlaying ? t('flowPause') : t('flowPlay');
+      document.getElementById('flowPrevBtn').textContent = t('flowPrev');
+      document.getElementById('flowNextBtn').textContent = t('flowNext');
+      document.getElementById('flowResetBtn').textContent = t('flowReset');
+      const list = document.getElementById('flowSteps');
+      list.textContent = '';
+      flowSteps.forEach((step, index) => {
+        const item = document.createElement('li');
+        item.id = `flow-step-${index}`;
+        const method = document.createElement('span');
+        method.className = 'flow-method';
+        method.textContent = step.method;
+        const direction = document.createElement('span');
+        direction.className = 'flow-direction';
+        direction.textContent = `${step.from.toUpperCase()} → ${step.to.toUpperCase()}`;
+        const explanation = document.createElement('p');
+        explanation.textContent = step[state.lang];
+        item.append(method, direction, explanation);
+        list.appendChild(item);
+      });
+      setFlowStep(state.flowStep, false);
+    }
+
+    function setFlowStep(index, announce = true) {
+      const bounded = Math.max(0, Math.min(index, flowSteps.length - 1));
+      state.flowStep = bounded;
+      const step = flowSteps[bounded];
+      document.querySelectorAll('.flow-steps li').forEach((item, itemIndex) => item.classList.toggle('active', itemIndex === bounded));
+      ['flowHost', 'flowClient', 'flowServer'].forEach(id => document.getElementById(id).classList.remove('active'));
+      const activeNode = step.to === 'server' ? 'flowServer' : step.to === 'client' ? 'flowClient' : 'flowHost';
+      document.getElementById(activeNode).classList.add('active');
+      const packet = document.getElementById('flowPacket');
+      packet.textContent = step.method;
+      packet.classList.add('active');
+      window.setTimeout(() => packet.classList.remove('active'), 450);
+      document.getElementById('flowProgress').style.width = `${((bounded + 1) / flowSteps.length) * 100}%`;
+      document.getElementById('flowNarration').textContent = `${bounded + 1}. ${step.method}: ${step[state.lang]}`;
+      if (announce) document.getElementById(`flow-step-${bounded}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function toggleFlowPlayback() {
+      if (state.flowPlaying) {
+        stopFlowPlayback();
+        return;
+      }
+      state.flowPlaying = true;
+      document.getElementById('flowPlayBtn').textContent = t('flowPause');
+      state.flowTimer = window.setInterval(() => {
+        if (state.flowStep >= flowSteps.length - 1) {
+          stopFlowPlayback();
+          return;
+        }
+        setFlowStep(state.flowStep + 1);
+      }, 1500);
+    }
+
+    function stopFlowPlayback() {
+      state.flowPlaying = false;
+      window.clearInterval(state.flowTimer);
+      state.flowTimer = null;
+      document.getElementById('flowPlayBtn').textContent = t('flowPlay');
     }
 
     function setStatus(message) { document.getElementById('status').textContent = message; }
@@ -660,6 +793,10 @@
     document.getElementById('resetBtn').addEventListener('click', resetDemo);
     document.getElementById('printBtn').addEventListener('click', () => window.print());
     document.getElementById('scenarioSelect').addEventListener('change', () => { if (state.lastScenario) runExchange(false); });
+    document.getElementById('flowPlayBtn').addEventListener('click', toggleFlowPlayback);
+    document.getElementById('flowPrevBtn').addEventListener('click', () => { stopFlowPlayback(); setFlowStep(state.flowStep - 1); });
+    document.getElementById('flowNextBtn').addEventListener('click', () => { stopFlowPlayback(); setFlowStep(state.flowStep + 1); });
+    document.getElementById('flowResetBtn').addEventListener('click', () => { stopFlowPlayback(); setFlowStep(0); document.getElementById('flowPlayBtn').focus(); });
 
     setLanguage(state.lang);
   </script>
