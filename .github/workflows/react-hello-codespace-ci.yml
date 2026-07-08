@@ -1,0 +1,34 @@
+name: React Hello Codespace Demo CI
+
+on:
+  pull_request:
+    paths:
+      - "demos/react-hello-codespace/**"
+      - ".github/workflows/react-hello-codespace-ci.yml"
+      - ".devcontainer/devcontainer.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: demos/react-hello-codespace
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build React demo
+        run: npm run build
