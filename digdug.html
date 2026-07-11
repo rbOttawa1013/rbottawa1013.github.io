@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07111f">
+<title>Dig Dug — Mobile Arcade</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1b2a;--ink:#f8fafc;--muted:#9fb3c8;--accent:#ffd43b;--danger:#ff5d73;--ok:#52d273}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 0,#183454 0,#07111f 55%,#030812 100%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;justify-content:center;align-items:center;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
+.app{width:min(100%,720px);height:min(100dvh,980px);display:grid;grid-template-rows:auto 1fr auto;gap:8px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;background:#081523d9;border:1px solid #28445f;border-radius:14px;padding:8px 12px;box-shadow:0 8px 30px #0007;backdrop-filter:blur(8px)}
+.stat{font-weight:800;font-variant-numeric:tabular-nums}.stat.right{text-align:right}.logo{text-align:center;font-weight:1000;letter-spacing:.12em;color:var(--accent);text-shadow:0 2px #9a5d00;font-size:clamp(15px,4vw,23px)}
+.sub{display:block;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.08em}
+.stage{position:relative;min-height:0;border-radius:16px;overflow:hidden;border:2px solid #274963;background:#000;box-shadow:0 14px 45px #000a}
+canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#020714bf;backdrop-filter:blur(4px);z-index:5}
+.card{max-width:500px;text-align:center;background:#0d1b2af2;border:1px solid #385b79;border-radius:20px;padding:22px;box-shadow:0 16px 50px #000b}
+h1{margin:.1em 0 .2em;color:var(--accent);font-size:clamp(30px,9vw,54px);line-height:.95;letter-spacing:.08em;text-shadow:0 3px #9a5d00}p{color:#d7e3ef;line-height:1.45;margin:10px 0}.small{font-size:13px;color:var(--muted)}
+button{font:inherit;font-weight:900;color:#07111f;background:linear-gradient(#ffe982,#ffd43b);border:0;border-radius:13px;padding:13px 22px;box-shadow:0 5px 0 #9a6500,0 8px 20px #0008;cursor:pointer;touch-action:manipulation}button:active{transform:translateY(3px);box-shadow:0 2px 0 #9a6500}
+.controls{display:grid;grid-template-columns:1fr 120px 1fr;align-items:center;gap:12px;padding:2px 4px}
+.dpad{width:156px;height:156px;position:relative;justify-self:start}.ctl{position:absolute;width:54px;height:54px;border:1px solid #426684;background:linear-gradient(#18344c,#0b2034);color:#fff;border-radius:14px;box-shadow:0 5px 0 #03101c,0 8px 18px #0008;display:grid;place-items:center;font-size:26px;font-weight:1000;user-select:none;touch-action:none}.ctl.active{transform:translateY(4px);box-shadow:0 1px 0 #03101c;background:#244c69}.up{left:51px;top:0}.down{left:51px;bottom:0}.left{left:0;top:51px}.right{right:0;top:51px}.center{left:51px;top:51px;background:#081421;border-radius:18px;box-shadow:inset 0 0 12px #000}
+.pump{justify-self:end;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#ff9cac,#ff4e68 55%,#a70f2d);color:white;border:5px solid #ffd4da;box-shadow:0 8px 0 #760b22,0 12px 24px #0009;font-size:20px;letter-spacing:.05em}.pump:active,.pump.active{transform:translateY(5px);box-shadow:0 3px 0 #760b22}
+.pause{justify-self:center;background:linear-gradient(#d8e7f3,#93b4ce);box-shadow:0 5px 0 #49677c;padding:11px 15px;color:#082033}
+@media (max-height:720px){.dpad{width:126px;height:126px}.ctl{width:44px;height:44px;font-size:21px;border-radius:11px}.up{left:41px}.down{left:41px}.left{top:41px}.right{top:41px}.center{left:41px;top:41px}.pump{width:94px;height:94px;font-size:16px}.controls{grid-template-columns:1fr 95px 1fr}.top{padding:5px 10px}}
+@media (min-width:800px) and (pointer:fine){.controls{opacity:.92}.app{height:min(98vh,980px)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top" aria-label="Game status">
+    <div class="stat"><span class="sub">SCORE</span><span id="score">000000</span></div>
+    <div class="logo">DIG DUG</div>
+    <div class="stat right"><span class="sub">LIVES · LEVEL</span><span id="lives">3</span> · <span id="level">1</span></div>
+  </header>
+  <main class="stage" id="stage">
+    <canvas id="game" width="640" height="800" aria-label="Dig Dug game area"></canvas>
+    <div class="overlay" id="overlay">
+      <section class="card">
+        <h1>DIG DUG</h1>
+        <p>Dig tunnels, inflate underground creatures, and drop rocks for bonus points.</p>
+        <p class="small"><b>Move:</b> D-pad, arrow keys, or WASD · <b>Pump:</b> red button, Space, or Z · <b>Pause:</b> P</p>
+        <button id="startBtn">START GAME</button>
+      </section>
+    </div>
+  </main>
+  <footer class="controls" aria-label="Touch controls">
+    <div class="dpad">
+      <div class="ctl up" data-dir="up">▲</div><div class="ctl down" data-dir="down">▼</div>
+      <div class="ctl left" data-dir="left">◀</div><div class="ctl right" data-dir="right">▶</div><div class="ctl center"></div>
+    </div>
+    <button class="pause" id="pauseBtn" aria-label="Pause game">Ⅱ</button>
+    <button class="pump" id="pumpBtn" aria-label="Pump">PUMP</button>
+  </footer>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),levelEl=document.getElementById('level');
+const overlay=document.getElementById('overlay'),startBtn=document.getElementById('startBtn'),pauseBtn=document.getElementById('pauseBtn'),pumpBtn=document.getElementById('pumpBtn');
+const W=640,H=800,T=32,COLS=W/T,ROWS=H/T;
+let grid=[],player,enemies=[],rocks=[],particles=[],score=0,lives=3,level=1,state='title',last=0,acc=0,shake=0;
+const input={up:false,down:false,left:false,right:false,pump:false};
+const DIRS={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rnd=(a,b)=>a+Math.random()*(b-a),irnd=(a,b)=>Math.floor(rnd(a,b+1));
+function resetGrid(){grid=Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},()=>y<2?0:1));for(let x=8;x<=11;x++)grid[2][x]=0}
+function carve(cx,cy,r=0){for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++)if(x>=0&&x<COLS&&y>=0&&y<ROWS)grid[y][x]=0}
+function cellPos(c,r){return{x:c*T+T/2,y:r*T+T/2}}
+function beginLevel(){resetGrid();const p=cellPos(10,2);player={x:p.x,y:p.y,dir:'right',want:'right',speed:116,r:12,dead:0,pumpCd:0,step:0};enemies=[];rocks=[];particles=[];
+  const tunnels=[[3,6,16,6],[6,10,18,10],[2,15,14,15],[8,20,18,20],[4,6,4,18],[10,3,10,22],[16,7,16,21]];
+  for(const [x1,y1,x2,y2] of tunnels){let x=x1,y=y1;while(x!==x2||y!==y2){carve(x,y);if(x<x2)x++;else if(x>x2)x--;else if(y<y2)y++;else y--}carve(x2,y2)}
+  const spots=[[3,6],[17,10],[3,15],[14,20],[16,7],[7,10],[17,20],[4,18]];
+  for(let i=0;i<Math.min(3+level,8);i++){const [cx,cy]=spots[i];const q=cellPos(cx,cy);enemies.push({x:q.x,y:q.y,dir:i%2?'left':'right',speed:48+level*3,type:i%3===2?'fygar':'pooka',inflate:0,stun:0,ghost:0,alive:true,think:rnd(.2,1.2),fire:0})}
+  const rs=[[7,7],[13,12],[5,17],[15,18]];for(let i=0;i<Math.min(2+Math.floor(level/2),4);i++){const [cx,cy]=rs[i];const q=cellPos(cx,cy);rocks.push({x:q.x,y:q.y,row:cy,col:cx,state:'rest',vy:0,wobble:0,fall:0})}
+  state='playing';updateHud()}
+function updateHud(){scoreEl.textContent=String(score).padStart(6,'0');livesEl.textContent=lives;levelEl.textContent=level}
+function showCard(title,body,button='PLAY AGAIN'){overlay.innerHTML=`<section class="card"><h1>${title}</h1><p>${body}</p><p class="small"><b>Move:</b> D-pad / arrows / WASD · <b>Pump:</b> red button / Space / Z</p><button id="again">${button}</button></section>`;overlay.style.display='flex';document.getElementById('again').onclick=()=>{overlay.style.display='none';score=0;lives=3;level=1;beginLevel()}}
+function start(){overlay.style.display='none';score=0;lives=3;level=1;beginLevel()}
+startBtn.onclick=start;
+function nearestCell(o){return{c:clamp(Math.round((o.x-T/2)/T),0,COLS-1),r:clamp(Math.round((o.y-T/2)/T),0,ROWS-1)}}
+function centered(o){const n=nearestCell(o),p=cellPos(n.c,n.r);return Math.abs(o.x-p.x)<3&&Math.abs(o.y-p.y)<3}
+function canMove(o,dir,allowDirt=false){const n=nearestCell(o),d=DIRS[dir],c=n.c+d.x,r=n.r+d.y;if(c<0||c>=COLS||r<1||r>=ROWS)return false;return allowDirt||grid[r][c]===0}
+function movePlayer(dt){if(player.dead>0)return;let want=null;if(input.up)want='up';else if(input.down)want='down';else if(input.left)want='left';else if(input.right)want='right';if(want)player.want=want;
+  const n=nearestCell(player),cp=cellPos(n.c,n.r);if(centered(player)){player.x=cp.x;player.y=cp.y;if(player.want)player.dir=player.want}
+  const d=DIRS[player.dir];player.x+=d.x*player.speed*dt;player.y+=d.y*player.speed*dt;player.x=clamp(player.x,T/2,W-T/2);player.y=clamp(player.y,T*1.5,H-T/2);const cc=nearestCell(player);carve(cc.c,cc.r);if(Math.abs(d.x))carve(cc.c+d.x,cc.r);else carve(cc.c,cc.r+d.y);player.step+=dt*10}
+function lineClear(a,b,max=150){const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);if(dist>max)return false;for(let i=0;i<=dist;i+=8){const x=a.x+dx*i/dist,y=a.y+dy*i/dist,c=Math.floor(x/T),r=Math.floor(y/T);if(grid[r]?.[c]!==0)return false}return true}
+function pump(){if(state!=='playing'||player.dead>0||player.pumpCd>0)return;player.pumpCd=.26;const d=DIRS[player.dir],tip={x:player.x+d.x*28,y:player.y+d.y*28};let target=null,best=145;for(const e of enemies){if(!e.alive)continue;const vx=e.x-player.x,vy=e.y-player.y,along=vx*d.x+vy*d.y,side=Math.abs(vx*d.y-vy*d.x);if(along>5&&along<best&&side<18&&lineClear(tip,e,150)){target=e;best=along}}
+  for(let i=0;i<12;i++)particles.push({x:tip.x+d.x*i*8,y:tip.y+d.y*i*8,vx:0,vy:0,t:.12,type:'hose'});
+  if(target){target.inflate++;target.stun=.75;score+=10;if(target.inflate>=4){target.alive=false;score+=target.type==='fygar'?500:300;burst(target.x,target.y,target.type==='fygar'?'#72e77d':'#ff7188');updateHud()}}}
+function burst(x,y,color){for(let i=0;i<22;i++)particles.push({x,y,vx:rnd(-150,150),vy:rnd(-150,150),t:rnd(.35,.8),type:'spark',color})}
+function enemyAI(e,dt){if(!e.alive)return;if(e.inflate>0&&e.stun<=0)e.inflate=Math.max(0,e.inflate-dt*.48);if(e.stun>0){e.stun-=dt;return}e.think-=dt;
+  const n=nearestCell(e);if(centered(e)){const p=cellPos(n.c,n.r);e.x=p.x;e.y=p.y;if(e.think<=0){e.think=rnd(.5,1.2);const choices=[];for(const k of Object.keys(DIRS))if(canMove(e,k,false))choices.push(k);const toward=Math.abs(player.x-e.x)>Math.abs(player.y-e.y)?(player.x<e.x?'left':'right'):(player.y<e.y?'up':'down');e.dir=(choices.includes(toward)&&Math.random()<.68)?toward:choices[irnd(0,Math.max(0,choices.length-1))]||e.dir}}
+  if(!canMove(e,e.dir,false)&&centered(e))e.dir=['up','down','left','right'][irnd(0,3)];const d=DIRS[e.dir];e.x+=d.x*e.speed*dt;e.y+=d.y*e.speed*dt;
+  if(e.type==='fygar'){e.fire-=dt;if(e.fire<=0&&Math.abs(e.y-player.y)<18&&Math.abs(e.x-player.x)<150&&lineClear(e,player,160)){e.fire=3;const s=Math.sign(player.x-e.x);for(let i=1;i<6;i++)particles.push({x:e.x+s*i*20,y:e.y,vx:0,vy:0,t:.45,type:'fire'});if(Math.abs(player.x-e.x)<135)killPlayer()}}
+  if(Math.hypot(e.x-player.x,e.y-player.y)<22)killPlayer()}
+function updateRocks(dt){for(const r of rocks){if(r.state==='gone')continue;const c=Math.floor(r.x/T),below=Math.floor((r.y+20)/T);if(r.state==='rest'){if(grid[below]?.[c]===0){r.wobble+=dt;if(r.wobble>.45){r.state='fall';r.vy=20;r.fall=0}}else r.wobble=0}else if(r.state==='fall'){r.vy+=620*dt;r.y+=r.vy*dt;r.fall+=dt;const row=Math.floor((r.y+18)/T);if(row>=ROWS-1||grid[row]?.[c]===1){r.state='break';r.fall=.28;shake=.18;burst(r.x,r.y,'#b8c2cc')}for(const e of enemies)if(e.alive&&Math.hypot(e.x-r.x,e.y-r.y)<27){e.alive=false;score+=1000;burst(e.x,e.y,'#ffd43b');updateHud()}if(Math.hypot(player.x-r.x,player.y-r.y)<24)killPlayer()}else if(r.state==='break'){r.fall-=dt;if(r.fall<=0)r.state='gone'}}}
+function killPlayer(){if(player.dead>0||state!=='playing')return;player.dead=1.5;shake=.35;burst(player.x,player.y,'#68c7ff')}
+function update(dt){if(state!=='playing')return;if(player.pumpCd>0)player.pumpCd-=dt;movePlayer(dt);if(input.pump){pump();input.pump=false}for(const e of enemies)enemyAI(e,dt);updateRocks(dt);
+  for(const p of particles){p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.type==='spark'?260:0)*dt}particles=particles.filter(p=>p.t>0);shake=Math.max(0,shake-dt);
+  if(player.dead>0){player.dead-=dt;if(player.dead<=0){lives--;updateHud();if(lives<=0){state='gameover';showCard('GAME OVER',`Final score: <b>${score}</b>`)}else{const p=cellPos(10,2);player.x=p.x;player.y=p.y;player.dir='right'}}}
+  if(enemies.every(e=>!e.alive)&&state==='playing'){state='clear';setTimeout(()=>{level++;score+=1000;beginLevel()},900)}}
+function drawBackground(){const sky=64;ctx.fillStyle='#050b17';ctx.fillRect(0,0,W,sky);ctx.fillStyle='#58a84f';ctx.fillRect(0,sky-10,W,12);for(let y=2;y<ROWS;y++)for(let x=0;x<COLS;x++){const px=x*T,py=y*T;ctx.fillStyle=y<7?'#b85d36':y<13?'#9a4932':y<19?'#743a38':'#573044';ctx.fillRect(px,py,T,T);ctx.fillStyle='rgba(255,255,255,.035)';ctx.fillRect(px+((x*11+y*7)%23),py+((x*5+y*13)%19),3,3);if(grid[y][x]===0){ctx.fillStyle='#07111f';ctx.fillRect(px,py,T,T);ctx.strokeStyle='rgba(87,143,180,.10)';ctx.strokeRect(px+.5,py+.5,T-1,T-1)}}}
+function drawPlayer(){if(player.dead>0&&Math.floor(player.dead*12)%2)return;ctx.save();ctx.translate(player.x,player.y);const d=DIRS[player.dir];ctx.rotate(Math.atan2(d.y,d.x));ctx.fillStyle='#e8f5ff';ctx.beginPath();ctx.arc(0,0,13,0,Math.PI*2);ctx.fill();ctx.fillStyle='#238ad6';ctx.fillRect(-11,-12,20,8);ctx.fillStyle='#ff4d5e';ctx.fillRect(6,-7,7,14);ctx.fillStyle='#111';ctx.fillRect(4,-9,3,3);ctx.fillStyle='#f6b733';ctx.fillRect(-8,9,6,4);ctx.restore()}
+function drawEnemy(e){if(!e.alive)return;ctx.save();ctx.translate(e.x,e.y);const s=1+e.inflate*.14;ctx.scale(s,s);ctx.fillStyle=e.type==='fygar'?'#59cf68':'#f05a77';ctx.beginPath();ctx.arc(0,0,13,Math.PI,0);ctx.lineTo(13,10);ctx.lineTo(7,6);ctx.lineTo(2,11);ctx.lineTo(-4,6);ctx.lineTo(-10,11);ctx.lineTo(-13,8);ctx.closePath();ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(-7,-5,5,5);ctx.fillRect(3,-5,5,5);ctx.fillStyle='#17202b';ctx.fillRect(-5,-4,2,3);ctx.fillRect(5,-4,2,3);if(e.inflate){ctx.strokeStyle='#fff8';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,8+e.inflate*2,0,Math.PI*2);ctx.stroke()}ctx.restore()}
+function drawRock(r){if(r.state==='gone')return;ctx.save();ctx.translate(r.x+(r.state==='rest'?Math.sin(r.wobble*30)*3:0),r.y);ctx.fillStyle='#9ea7ad';ctx.beginPath();ctx.moveTo(-15,-12);ctx.lineTo(8,-15);ctx.lineTo(16,-2);ctx.lineTo(10,14);ctx.lineTo(-11,13);ctx.lineTo(-17,0);ctx.closePath();ctx.fill();ctx.strokeStyle='#58636b';ctx.lineWidth=3;ctx.stroke();ctx.strokeStyle='#cbd2d6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-8,-6);ctx.lineTo(2,-10);ctx.lineTo(8,-4);ctx.stroke();ctx.restore()}
+function drawParticles(){for(const p of particles){if(p.type==='hose'){ctx.fillStyle='#dff5ff';ctx.fillRect(p.x-4,p.y-4,8,8)}else if(p.type==='fire'){ctx.fillStyle=Math.random()<.5?'#ffcf33':'#ff542e';ctx.beginPath();ctx.arc(p.x,p.y,rnd(7,13),0,Math.PI*2);ctx.fill()}else{ctx.globalAlpha=clamp(p.t*2,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x-3,p.y-3,6,6);ctx.globalAlpha=1}}}
+function draw(){ctx.save();if(shake>0)ctx.translate(rnd(-6,6),rnd(-6,6));drawBackground();for(const r of rocks)drawRock(r);for(const e of enemies)drawEnemy(e);drawPlayer();drawParticles();ctx.restore();if(state==='paused'){ctx.fillStyle='#000a';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='900 48px system-ui';ctx.fillText('PAUSED',W/2,H/2)}}
+function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;acc+=dt;while(acc>=1/120){update(1/120);acc-=1/120}draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function setDir(dir,on){input[dir]=on;document.querySelector(`[data-dir="${dir}"]`)?.classList.toggle('active',on)}
+for(const el of document.querySelectorAll('[data-dir]')){const dir=el.dataset.dir;el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);setDir(dir,true)});for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>setDir(dir,false))}
+pumpBtn.addEventListener('pointerdown',e=>{e.preventDefault();input.pump=true;pumpBtn.classList.add('active')});for(const ev of ['pointerup','pointercancel'])pumpBtn.addEventListener(ev,()=>pumpBtn.classList.remove('active'));
+function togglePause(){if(state==='playing')state='paused';else if(state==='paused')state='playing'}pauseBtn.onclick=togglePause;
+const keyMap={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+addEventListener('keydown',e=>{if(keyMap[e.key]){e.preventDefault();setDir(keyMap[e.key],true)}if([' ','z','Z'].includes(e.key)){e.preventDefault();if(!e.repeat)input.pump=true}if((e.key==='p'||e.key==='P')&&!e.repeat)togglePause()});addEventListener('keyup',e=>{if(keyMap[e.key])setDir(keyMap[e.key],false)});
+addEventListener('blur',()=>{for(const k of Object.keys(input))input[k]=false;if(state==='playing')state='paused'});
+})();
+</script>
+</body>
+</html>
