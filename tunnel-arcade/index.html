@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#111827">
+<title>Tunnel Pop Arcade</title>
+<style>
+:root{--bg:#0b1020;--panel:#151d33;--ink:#f8fafc;--muted:#a8b3cf;--gold:#ffd54a;--red:#ff5b5b;--blue:#5bc0ff;--green:#65e08b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at top,#202b4a 0,#0b1020 55%);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overscroll-behavior:none}
+body{display:flex;justify-content:center;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+.app{width:min(100%,760px);display:grid;gap:10px;align-content:start}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px 0}
+h1{font-size:clamp(18px,4vw,28px);margin:0;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);text-shadow:0 3px 0 #8b5f00}
+.actions{display:flex;gap:8px}
+button{font:inherit;color:var(--ink);background:#243150;border:2px solid #526487;border-radius:12px;min-height:44px;padding:8px 12px;box-shadow:0 4px 0 #0a0f1f;touch-action:manipulation}
+button:active,.pressed{transform:translateY(3px);box-shadow:0 1px 0 #0a0f1f}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(21,29,51,.9);border:2px solid #394867;border-radius:14px;padding:8px;text-align:center}
+.hud b{display:block;color:var(--gold);font-size:clamp(14px,3.5vw,20px)}
+.hud span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.stage{position:relative;border:3px solid #526487;border-radius:16px;overflow:hidden;background:#0e162b;box-shadow:0 12px 28px rgba(0,0,0,.35)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:pixelated;touch-action:none}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,8,18,.72);padding:20px;text-align:center}
+.overlay[hidden]{display:none}.card{max-width:480px;background:#17213b;border:3px solid #60739b;border-radius:16px;padding:20px;box-shadow:0 10px 0 rgba(0,0,0,.35)}
+.card h2{margin:.2em 0;color:var(--gold);font-size:clamp(24px,7vw,40px)}.card p{color:#dce4f8;line-height:1.45}.card small{display:block;color:var(--muted);margin-top:12px}
+.controls{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;align-items:center;padding:2px 2px 12px}
+.dpad{display:grid;grid-template-columns:repeat(3,minmax(52px,72px));grid-template-rows:repeat(3,minmax(48px,64px));justify-content:center;gap:5px}.dpad button{font-size:24px;padding:0}.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
+.fireWrap{display:grid;place-items:center}.fire{width:min(29vw,128px);aspect-ratio:1;border-radius:50%;background:linear-gradient(#ff7878,#d73232);border-color:#ffb1b1;font-size:clamp(16px,4vw,24px);font-weight:900;text-shadow:0 2px #7a1111;box-shadow:0 7px 0 #7a1111}.fire:active,.fire.pressed{box-shadow:0 2px 0 #7a1111}
+.help{font-size:11px;text-align:center;color:var(--muted);padding-bottom:8px}
+@media (min-width:760px){.controls{max-width:560px;margin:auto;width:100%}}
+@media (max-height:720px) and (orientation:landscape){body{padding:4px}.app{grid-template-columns:1fr 270px;max-width:980px}.app header,.app .hud{grid-column:1/3}.controls{grid-column:2;grid-row:3;grid-template-columns:1fr}.stage{grid-column:1}.help{display:none}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><h1>Tunnel Pop</h1><div class="actions"><button id="pause" aria-label="Pause game">Ⅱ</button><button id="sound" aria-label="Toggle sound">♪</button></div></header>
+<section class="hud" aria-label="Game status"><div><b id="score">000000</b><span>Score</span></div><div><b id="high">000000</b><span>High</span></div><div><b id="level">1</b><span>Round</span></div><div><b id="lives">3</b><span>Lives</span></div></section>
+<section class="stage"><canvas id="game" width="640" height="480" aria-label="Tunnel Pop arcade game"></canvas><div class="overlay" id="overlay"><div class="card"><h2 id="overlayTitle">Tunnel Pop</h2><p id="overlayText">Dig through the soil, pump the roaming creatures until they pop, and avoid their attacks.</p><button id="start">Start game</button><small>Keyboard: arrows or WASD to move · Space to pump · P to pause</small></div></div></section>
+<section class="controls" aria-label="Touch controls"><div class="dpad"><button class="up" data-key="up" aria-label="Move up">▲</button><button class="left" data-key="left" aria-label="Move left">◀</button><button class="down" data-key="down" aria-label="Move down">▼</button><button class="right" data-key="right" aria-label="Move right">▶</button></div><div class="fireWrap"><button class="fire" data-key="fire" aria-label="Pump">PUMP</button></div></section>
+<div class="help">Original single-file arcade game. No external assets, libraries, or network access required.</div>
+</main>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const W=640,H=480,T=32,COLS=20,ROWS=15;
+const ui={score:$('#score'),high:$('#high'),level:$('#level'),lives:$('#lives'),overlay:$('#overlay'),title:$('#overlayTitle'),text:$('#overlayText'),start:$('#start'),pause:$('#pause'),sound:$('#sound')};
+const keys={up:false,down:false,left:false,right:false,fire:false};
+let grid,player,enemies,rocks,score=0,high=+(localStorage.tunnelPopHigh||0),level=1,lives=3,running=false,paused=false,last=0,soundOn=true,fireLatch=false,shake=0;
+ui.high.textContent=pad(high);
+function $(s){return document.querySelector(s)}
+function pad(n){return String(n).padStart(6,'0')}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rnd(a,b){return a+Math.random()*(b-a)}
+function cell(x,y){return {c:clamp(Math.floor(x/T),0,COLS-1),r:clamp(Math.floor(y/T),0,ROWS-1)}}
+function beep(freq=220,d=.06,type='square',vol=.035){if(!soundOn)return;const A=beep.ctx||(beep.ctx=new(window.AudioContext||window.webkitAudioContext)());const o=A.createOscillator(),g=A.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,A.currentTime);g.gain.exponentialRampToValueAtTime(.0001,A.currentTime+d);o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+d)}
+function carve(x,y,r=16){const p=cell(x,y);for(let rr=Math.max(1,p.r-1);rr<=Math.min(ROWS-1,p.r+1);rr++)for(let cc=Math.max(0,p.c-1);cc<=Math.min(COLS-1,p.c+1);cc++){const cx=cc*T+T/2,cy=rr*T+T/2;if(Math.hypot(cx-x,cy-y)<r+22)grid[rr][cc]=0}}
+function resetRound(){grid=Array.from({length:ROWS},(_,r)=>Array.from({length:COLS},()=>r===0?0:1));for(let c=0;c<COLS;c++)grid[1][c]=0;for(let r=1;r<ROWS;r++)grid[r][1]=0;player={x:48,y:48,r:12,dir:'right',speed:112,cool:0,dead:0};enemies=[];rocks=[];
+ const count=Math.min(4+level,10);for(let i=0;i<count;i++){let c=4+((i*3+level)%15),r=3+((i*2+level)%11);carve(c*T+16,r*T+16,27);enemies.push({x:c*T+16,y:r*T+16,r:13,dir:['left','right','up','down'][i%4],speed:44+level*3,hp:0,stun:0,phase:rnd(0,6.2),ghost:0,dead:false})}
+ const rc=Math.min(2+Math.floor(level/2),5);for(let i=0;i<rc;i++)rocks.push({x:(5+i*4)%18*T+16,y:(4+i*3)%13*T+16,r:13,fall:0,done:false});updateHud()}
+function startGame(){score=0;level=1;lives=3;running=true;paused=false;resetRound();hideOverlay();last=performance.now();requestAnimationFrame(loop);beep(440,.08)}
+function hideOverlay(){ui.overlay.hidden=true}
+function showOverlay(title,text,button='Play again'){ui.title.textContent=title;ui.text.textContent=text;ui.start.textContent=button;ui.overlay.hidden=false}
+function updateHud(){ui.score.textContent=pad(score);ui.high.textContent=pad(high);ui.level.textContent=level;ui.lives.textContent=lives}
+function addScore(n){score+=n;if(score>high){high=score;localStorage.tunnelPopHigh=high}updateHud()}
+function axis(){let dx=(keys.right?1:0)-(keys.left?1:0),dy=(keys.down?1:0)-(keys.up?1:0);if(dx&&dy){dx*=.707;dy*=.707}return{dx,dy}}
+function movePlayer(dt){if(player.dead>0){player.dead-=dt;return}const a=axis();if(a.dx||a.dy){if(Math.abs(a.dx)>Math.abs(a.dy))player.dir=a.dx>0?'right':'left';else player.dir=a.dy>0?'down':'up';player.x=clamp(player.x+a.dx*player.speed*dt,14,W-14);player.y=clamp(player.y+a.dy*player.speed*dt,34,H-14);carve(player.x,player.y,18)}player.cool=Math.max(0,player.cool-dt);if(keys.fire&&!fireLatch&&player.cool<=0){fireLatch=true;player.cool=.28;pump()}if(!keys.fire)fireLatch=false}
+function pump(){beep(150,.05,'sawtooth');const d={left:[-1,0],right:[1,0],up:[0,-1],down:[0,1]}[player.dir];let best=null,bd=95;for(const e of enemies){if(e.dead)continue;const vx=e.x-player.x,vy=e.y-player.y,along=vx*d[0]+vy*d[1],across=Math.abs(vx*d[1]-vy*d[0]);if(along>0&&along<bd&&across<18){best=e;bd=along}}if(best){best.hp++;best.stun=.7;addScore(100*best.hp);beep(240+best.hp*100,.09);if(best.hp>=3){best.dead=true;addScore(800+level*100);shake=8;beep(720,.16,'square',.06)}}}
+function openAt(x,y){const p=cell(x,y);return grid[p.r][p.c]===0}
+function moveEnemies(dt){for(const e of enemies){if(e.dead)continue;e.phase+=dt*7;if(e.stun>0){e.stun-=dt;e.hp=Math.max(0,e.hp-dt*.18);continue}const dx=player.x-e.x,dy=player.y-e.y,dist=Math.hypot(dx,dy);e.ghost=dist>150&&Math.random()<.012?1.4:Math.max(0,e.ghost-dt);let vx=0,vy=0;if(e.ghost>0){vx=dx/dist;vy=dy/dist}else{const dirs=[[1,0],[-1,0],[0,1],[0,-1]];if(Math.random()<.025||!openAt(e.x+(e.dir==='right'?18:e.dir==='left'?-18:0),e.y+(e.dir==='down'?18:e.dir==='up'?-18:0))){const options=dirs.filter(q=>openAt(e.x+q[0]*20,e.y+q[1]*20));const q=options[Math.floor(Math.random()*options.length)]||dirs[0];vx=q[0];vy=q[1];e.dir=vx>0?'right':vx<0?'left':vy>0?'down':'up'}else{vx=e.dir==='right'?1:e.dir==='left'?-1:0;vy=e.dir==='down'?1:e.dir==='up'?-1:0}}
+ e.x=clamp(e.x+vx*e.speed*dt,13,W-13);e.y=clamp(e.y+vy*e.speed*dt,35,H-13);if(player.dead<=0&&Math.hypot(e.x-player.x,e.y-player.y)<23)loseLife()}
+ enemies=enemies.filter(e=>!e.dead||((e.fade=(e.fade||.35)-dt)>0));if(enemies.every(e=>e.dead)){level++;addScore(1500);resetRound();beep(880,.2)}}
+function moveRocks(dt){for(const r of rocks){if(r.done)continue;const below=openAt(r.x,r.y+22);if(below&&r.y>50)r.fall+=dt;else r.fall=0;if(r.fall>.35){r.y+=150*dt;shake=3;for(const e of enemies)if(!e.dead&&Math.hypot(e.x-r.x,e.y-r.y)<24){e.dead=true;addScore(1200)}if(Math.hypot(player.x-r.x,player.y-r.y)<22)loseLife();if(r.y>H-18)r.done=true}}}
+function loseLife(){if(player.dead>0)return;player.dead=1.1;lives--;shake=10;beep(90,.35,'sawtooth',.08);updateHud();setTimeout(()=>{if(lives<=0){running=false;showOverlay('Game Over',`Score ${pad(score)} · High ${pad(high)}`)}else{player.x=48;player.y=48;player.dead=0}},900)}
+function draw(){ctx.save();if(shake>0){ctx.translate(rnd(-shake,shake),rnd(-shake,shake));shake*=.82}ctx.fillStyle='#17213b';ctx.fillRect(0,0,W,H);drawSoil();drawRocks();drawEnemies();drawPlayer();drawPump();ctx.restore()}
+function drawSoil(){for(let r=1;r<ROWS;r++)for(let c=0;c<COLS;c++){if(!grid[r][c])continue;const y=r*T;ctx.fillStyle=r<5?'#a84f38':r<9?'#8d4938':'#6f3d35';ctx.fillRect(c*T,y,T,T);ctx.fillStyle='rgba(255,210,120,.13)';for(let i=0;i<3;i++)ctx.fillRect(c*T+5+i*9,y+7+((c+r+i)*7)%19,3,3)}ctx.fillStyle='#57a8e8';ctx.fillRect(0,0,W,T);ctx.fillStyle='#79cb5a';ctx.fillRect(0,T-6,W,7)}
+function drawPlayer(){if(player.dead>0&&Math.floor(player.dead*12)%2)return;ctx.save();ctx.translate(player.x,player.y);const bob=Math.sin(performance.now()/90)*1.5;ctx.translate(0,bob);ctx.fillStyle='#f2f5fb';ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#38a5e8';ctx.fillRect(-10,-10,20,8);ctx.fillStyle='#1d3557';ctx.fillRect(-3,-7,10,4);ctx.fillStyle='#ff6363';ctx.fillRect(-13,7,8,5);ctx.fillRect(5,7,8,5);ctx.restore()}
+function drawEnemies(){for(const e of enemies){if(e.dead&&e.fade<=0)continue;ctx.save();ctx.globalAlpha=e.dead?Math.max(0,e.fade/.35):1;ctx.translate(e.x,e.y);const s=1+e.hp*.16+Math.sin(e.phase)*.03;ctx.scale(s,s);ctx.fillStyle=e.ghost>0?'rgba(255,255,255,.65)':e.hp? '#ff8e9d':'#ef476f';ctx.beginPath();ctx.arc(0,0,13,Math.PI,0);ctx.lineTo(13,10);ctx.lineTo(6,6);ctx.lineTo(0,11);ctx.lineTo(-6,6);ctx.lineTo(-13,10);ctx.closePath();ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(-7,-4,5,6);ctx.fillRect(3,-4,5,6);ctx.fillStyle='#14213d';ctx.fillRect(-5,-2,2,3);ctx.fillRect(5,-2,2,3);ctx.restore()}}
+function drawRocks(){for(const r of rocks){if(r.done)continue;ctx.save();ctx.translate(r.x,r.y);ctx.fillStyle='#70798c';ctx.beginPath();ctx.moveTo(-13,-8);ctx.lineTo(-4,-14);ctx.lineTo(10,-10);ctx.lineTo(14,5);ctx.lineTo(5,14);ctx.lineTo(-10,11);ctx.lineTo(-15,0);ctx.closePath();ctx.fill();ctx.fillStyle='#9aa3b5';ctx.fillRect(-5,-7,7,4);ctx.restore()}}
+function drawPump(){if(player.cool<=.12)return;const d={left:[-1,0],right:[1,0],up:[0,-1],down:[0,1]}[player.dir];ctx.strokeStyle='#f7e47e';ctx.lineWidth=3;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(player.x+d[0]*12,player.y+d[1]*12);ctx.lineTo(player.x+d[0]*92,player.y+d[1]*92);ctx.stroke();ctx.setLineDash([])}
+function loop(t){if(!running)return;const dt=Math.min(.033,(t-last)/1000||0);last=t;if(!paused){movePlayer(dt);moveEnemies(dt);moveRocks(dt)}draw();requestAnimationFrame(loop)}
+function togglePause(){if(!running)return;paused=!paused;ui.pause.textContent=paused?'▶':'Ⅱ';if(paused)showOverlay('Paused','Take a breath. Your round is waiting.','Resume');else hideOverlay()}
+ui.start.addEventListener('click',()=>{if(paused){paused=false;ui.pause.textContent='Ⅱ';hideOverlay()}else startGame()});ui.pause.addEventListener('click',togglePause);ui.sound.addEventListener('click',()=>{soundOn=!soundOn;ui.sound.textContent=soundOn?'♪':'×';if(soundOn)beep(420,.05)});
+const map={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right',' ':'fire'};
+addEventListener('keydown',e=>{if(e.key==='p'||e.key==='P'){togglePause();return}const k=map[e.key];if(k){keys[k]=true;e.preventDefault()}});addEventListener('keyup',e=>{const k=map[e.key];if(k){keys[k]=false;e.preventDefault()}});
+document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;const on=e=>{e.preventDefault();keys[k]=true;b.classList.add('pressed')},off=e=>{e.preventDefault();keys[k]=false;b.classList.remove('pressed')};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)togglePause()});
+resetRound();draw();
+})();
+</script>
+</body>
+</html>
