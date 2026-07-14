@@ -1,0 +1,24 @@
+{
+  "name": "React Hello Codespace Demo",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [5173, 4173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite dev server",
+      "onAutoForward": "notify"
+    },
+    "4173": {
+      "label": "Vite preview server",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "cd demos/react-hello-codespace && npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
