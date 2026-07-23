@@ -16,7 +16,7 @@
  * buybackRows(): marginal service benefit is capped by the 35-year pensionable-service maximum.
  * runSelfTests(): calculation invariants. Add a test whenever a formula defect is fixed.
  */
-const APP_META=Object.freeze({name:'Integrated Retirement Model',version:'1.2.0',storageSchema:2,modelBaseYear:2026,reviewed:'2026-07-23',auditPasses:33});
+const APP_META=Object.freeze({name:'Integrated Retirement Model',version:'1.2.0',storageSchema:2,modelBaseYear:2026,reviewed:'2026-07-23',auditPasses:34});
 const STORAGE_KEY='retirementModelV2',LEGACY_STORAGE_KEY='retirementModelV1';
 const money=new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0});
 const money2=new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:2});
@@ -75,7 +75,8 @@ const AUDIT_LOG=[
  ['30','Projection auditability','Transition-year employment/TSM/vacation/payroll and tax-context values were hidden','Added transition cash, payroll deductions and tax-context columns to the projection table.'],
  ['31','CSV auditability','CSV omitted transition/payroll/funding context needed to reproduce results','Expanded export columns and metadata including schema/base year/review date and selected dollar basis.'],
  ['32','AI change tracking','Maintainer note lacked a formal commit protocol and version-history ledger','Added required AI change-control checklist, append-only tracking rules, invariant IDs and release history inside HTML.'],
- ['33','Regression coverage','Tests did not cover the new tax-order, context-tax, boolean migration or break-even edge cases','Expanded runSelfTests() with targeted regression invariants for v1.2.0 fixes.']
+ ['33','Regression coverage','Tests did not cover the new tax-order, context-tax, boolean migration or break-even edge cases','Expanded runSelfTests() with targeted regression invariants for v1.2.0 fixes.'],
+ ['34','Configurable bridge KPI','Retirement pension KPI used a hard-coded age-65 test instead of the configurable bridgeEnd setting','KPI now follows state.bridgeEnd so custom bridge-end assumptions remain internally consistent.']
 ];
 let state={...DEFAULTS};
 
