@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Integrated Canadian retirement model for a federal Public Service pension, CPP, OAS, buybacks, tax, RRSP/RRIF, TFSA and cash-flow projections.">
+<meta name="application-name" content="Integrated Retirement Model">
+<meta name="version" content="1.2.0">
+<meta name="model-base-year" content="2026">
+<meta name="state-schema" content="2">
+<meta name="review-passes" content="34">
+<title>Integrated Retirement Model v1.2.0</title>
+<!--
+AI MAINTAINER NOTE — READ BEFORE EDITING
+App: Integrated Retirement Model
+Version: 1.2.0 | State schema: 2 | Model base year: 2026 | Review passes: 34
+Purpose: deterministic Canadian retirement-planning SPA for a federal Public Service pension,
+CPP/OAS, service buybacks, Ontario/federal tax estimates, RRSP/RRIF, TFSA and cash.
+
+SAFE-CHANGE RULES FOR AI/CODE AGENTS
+1. Preserve this as a zero-build static single-page application. The deployed form may use versioned local CSS/JS assets; the downloadable artifact may be bundled as one standalone HTML file.
+2. Update APP_META.version and APP_META.reviewed whenever calculation rules materially change.
+3. Update APP_META.storageSchema only when persisted state structure becomes incompatible; add migration logic in load().
+4. Government/tax constants must be sourced from official Canada.ca/CRA/TBS material and identified by base year.
+5. Preserve model invariants: pensionable service <= 35 years; TFSA room >= 0; account balances >= 0;
+   no NaN/Infinity output; RRIF minimums are floors; TFSA withdrawals restore room only next calendar year.
+6. Do not describe benefitPV/economic as a commuted value or liquid asset. It is an illustrative gross PV only.
+7. Exact CPP/OAS start-month, spouse splitting, PSPA/deductibility, mortality, survivor benefits and terminal tax
+   remain outside scope unless explicitly implemented and tested.
+8. Run JavaScript syntax check and runSelfTests() after every calculation change.
+
+AUTHORITATIVE UPDATE AREAS
+- DEFAULTS / SCENARIOS: planning assumptions only.
+- RRIF: prescribed minimum factors.
+- federalTax / ontarioTax / payrollContributions: 2026-base planning tax/payroll engine.
+- annualLifetimePension / annualBridge / pensionIndexFactor: Public Service pension logic.
+- project: cash-flow/account roll-forward; edit cautiously and maintain reconciliation.
+- AUDIT_LOG: append-only concise record of review issues and fixes.
+
+AI CHANGE-CONTROL CHECKLIST — REQUIRED BEFORE COMMIT
+A. Read APP_META, DEFAULTS, SCENARIOS, INPUT_BOUNDS, AUDIT_LOG and runSelfTests().
+B. Classify the change: UI-only, assumption update, calculation change, or persisted-state/schema change.
+C. For calculation changes: add an AUDIT_LOG entry and at least one regression test proving the defect/fix.
+D. For official-rule changes: record source URL/base year in sourceLinks and update methodology text.
+E. For storage changes: preserve backward loading or deliberately bump storageSchema and migrate old payloads.
+F. Validate: JavaScript syntax, runSelfTests(), all scenarios finite, no negative account balances/TFSA room,
+   service <= 35, asset reconciliation, and the default funding warnings remain explainable.
+G. Never silently change user-specific defaults while fixing a calculation unless the default itself is the defect.
+
+DOCUMENT TRACKING / VERSION HISTORY
+- v1.0.0: initial spreadsheet-to-SPA conversion.
+- v1.1.0 (2026-07-22): 22-pass audit; state schema v2; validation, scenario, PV, TFSA, accessibility hardening.
+- v1.2.0 (2026-07-23): passes 23–34; Ontario tax-order fix, transition-year marginal-tax context,
+  TSM/vacation cash treatment, CPP/EI payroll deductions, buyback break-even, storage/boolean hardening,
+  exact DOB validation, richer export/projection auditability, expanded AI regression/change tracking, and configurable bridge-KPI consistency.
+
+CURRENT RELEASE INVARIANTS (machine/test IDs)
+INV-01 finite_projection; INV-02 service_cap_35; INV-03 tfsa_room_nonnegative; INV-04 asset_reconciliation;
+INV-05 first_year_fraction; INV-06 benefit_pv_no_current_year; INV-07 buyback_marginal_cap;
+INV-08 ontario_reduction_order; INV-09 postret_incremental_tax_context; INV-10 boolean_coercion;
+INV-11 buyback_break_even_horizon.
+-->
+<script type="application/json" id="ai-maintenance-manifest">
+{
+  "app": "Integrated Retirement Model",
+  "version": "1.2.0",
+  "stateSchema": 2,
+  "modelBaseYear": 2026,
+  "reviewed": "2026-07-23",
+  "auditPasses": 34,
+  "changeProtocol": [
+    "Read AI MAINTAINER NOTE and APP_META before editing",
+    "Append AUDIT_LOG for every calculation defect/fix",
+    "Add or update runSelfTests regression coverage",
+    "Use official Canada.ca/CRA/TBS sources for rule constants",
+    "Preserve backward storage compatibility or bump schema with migration",
+    "Run syntax, invariant, all-scenario and asset-reconciliation tests before commit"
+  ],
+  "invariants": [
+    "INV-01 finite_projection", "INV-02 service_cap_35", "INV-03 tfsa_room_nonnegative",
+    "INV-04 asset_reconciliation", "INV-05 first_year_fraction", "INV-06 benefit_pv_no_current_year",
+    "INV-07 buyback_marginal_cap", "INV-08 ontario_reduction_order",
+    "INV-09 postret_incremental_tax_context", "INV-10 boolean_coercion",
+    "INV-11 buyback_break_even_horizon"
+  ],
+  "releaseHistory": [
+    {"version":"1.0.0","summary":"Initial spreadsheet-to-SPA conversion"},
+    {"version":"1.1.0","date":"2026-07-22","summary":"22-pass validation, scenario, PV, TFSA and accessibility hardening"},
+    {"version":"1.2.0","date":"2026-07-23","summary":"Passes 23-34: tax order/context, transition cash/payroll, break-even, migration, AI tracking and bridge-KPI consistency"}
+  ]
+}
+</script>
+<link rel="stylesheet" href="retirement-model-v1.2.0.css">
+</head>
+<body>
+<div class="app">
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><h1>Integrated Retirement Model <span class="version-badge" id="versionBadge">v1.2.0</span></h1><p>Federal Public Service pension + CPP/OAS + buybacks + Ontario tax + RRSP/RRIF + TFSA</p></div>
+  <div class="toolbar">
+    <label for="scenario" class="sr-only">Scenario</label><select id="scenario" class="btn" aria-label="Scenario"></select>
+    <button class="btn" id="saveBtn">Save locally</button><button class="btn" id="exportBtn">Export CSV</button><button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+</div></header>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<main class="shell">
+<nav class="tabs" aria-label="Model sections" role="tablist">
+<button class="tab active" role="tab" aria-selected="true" aria-controls="dashboard" data-panel="dashboard">Dashboard</button><button class="tab" role="tab" aria-selected="false" aria-controls="assumptions" data-panel="assumptions">Assumptions</button><button class="tab" role="tab" aria-selected="false" aria-controls="projection" data-panel="projection">Projection</button><button class="tab" role="tab" aria-selected="false" aria-controls="buybacks" data-panel="buybacks">Buybacks</button><button class="tab" role="tab" aria-selected="false" aria-controls="methodology" data-panel="methodology">Methodology</button><button class="tab" role="tab" aria-selected="false" aria-controls="audit" data-panel="audit">Audit</button>
+</nav>
+<section id="dashboard" role="tabpanel" tabindex="0" class="panel active">
+  <div id="alerts"></div>
+  <div class="grid kpi-grid" id="kpis"></div>
+  <div class="grid two" style="margin-top:14px"><div class="card"><h2>Net cash income vs spending</h2><div id="cashChart" class="chart" role="img" aria-label="Line chart of net retirement cash income and spending by age"></div><div id="cashLegend" class="chart-legend"></div></div><div class="card"><h2>Liquid assets by age</h2><div id="assetChart" class="chart" role="img" aria-label="Line chart of retirement assets by age"></div><div id="assetLegend" class="chart-legend"></div></div></div>
+  <div class="grid two" style="margin-top:14px"><div class="card"><h2>Model checks</h2><div id="checks" class="audit-list"></div></div><div class="card"><h2>Selected scenario</h2><div id="scenarioSummary"></div></div></div>
+</section>
+<section id="assumptions" role="tabpanel" tabindex="0" class="panel"><div class="card"><h2>Editable assumptions</h2><p class="muted">Changes recalculate immediately. Values are planning assumptions, not tax or actuarial advice.</p><div id="assumptionForms"></div></div></section>
+<section id="projection" role="tabpanel" tabindex="0" class="panel"><div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><h2>Annual projection</h2><p class="muted" id="projectionHorizon">Projection horizon. First year is prorated from the retirement date.</p></div><label>Dollar basis <select id="dollarBasis"><option value="nominal">Nominal</option><option value="real">Today's dollars</option></select></label></div><div class="table-wrap"><table id="projectionTable"></table></div></div></section>
+<section id="buybacks" role="tabpanel" tabindex="0" class="panel"><div class="grid two"><div class="card"><h2>Buyback comparison</h2><div class="table-wrap"><table id="buybackTable"></table></div></div><div class="card"><h2>Interpretation</h2><div class="callout">Buyback PV is a gross, pre-tax planning estimate through the selected projection horizon. It is not a commuted value and does not incorporate mortality probabilities, survivor reductions, PSPA certification, or tax deductibility.</div><div id="buybackNotes" style="margin-top:12px"></div></div></div></section>
+<section id="methodology" role="tabpanel" tabindex="0" class="panel"><div class="grid two"><div class="card"><h2>Methodology</h2><div id="methodText"></div></div><div class="card"><h2>Known limitations</h2><div id="limitations"></div></div></div><div class="grid two" style="margin-top:14px"><div class="card"><h2>Version & AI maintenance</h2><div id="versionInfo"></div></div><div class="card"><h2>Reference sources</h2><div id="sourceLinks"></div></div></div></section>
+<section id="audit" role="tabpanel" tabindex="0" class="panel"><div class="card"><h2>34-pass review log</h2><p class="muted">Issues identified through the v1.2.0 audit and the implemented resolution.</p><div id="auditLog" class="audit-list"></div></div></section>
+<div class="footer">Integrated Retirement Model <span id="footerVersion">v1.2.0</span> — planning model for personal decision support. Verify pension amounts with the Government of Canada Pension Centre and tax outcomes with current CRA rules or a qualified adviser.</div>
+</main></div>
+<script src="retirement-model-v1.2.0-1.js"></script>
+<script src="retirement-model-v1.2.0-2.js"></script>
+<script src="retirement-model-v1.2.0-3.js"></script>
+<script src="retirement-model-v1.2.0-4.js"></script>
+<script src="retirement-model-v1.2.0-5.js"></script>
+</body>
+</html>
