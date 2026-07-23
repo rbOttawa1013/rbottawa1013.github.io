@@ -18,7 +18,7 @@ Purpose: deterministic Canadian retirement-planning SPA for a federal Public Ser
 CPP/OAS, service buybacks, Ontario/federal tax estimates, RRSP/RRIF, TFSA and cash.
 
 SAFE-CHANGE RULES FOR AI/CODE AGENTS
-1. Preserve this as a zero-build, single-file application unless a migration is explicitly requested.
+1. Preserve this as a zero-build static single-page application. The deployed form may use versioned local CSS/JS assets; the downloadable artifact may be bundled as one standalone HTML file.
 2. Update APP_META.version and APP_META.reviewed whenever calculation rules materially change.
 3. Update APP_META.storageSchema only when persisted state structure becomes incompatible; add migration logic in load().
 4. Government/tax constants must be sourced from official Canada.ca/CRA/TBS material and identified by base year.
